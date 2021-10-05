@@ -1,8 +1,11 @@
 {
-  "name": "boilerplate-card",
+  "name": "plotly-graph-card",
   "version": "1.4.0",
-  "description": "Lovelace boilerplate-card",
+  "description": "Lovelace plotly-graph-card",
   "keywords": [
+    "graph",
+    "plotly-card",
+    "plotly",
     "home-assistant",
     "homeassistant",
     "hass",
@@ -10,14 +13,17 @@
     "lovelace",
     "custom-cards"
   ],
-  "module": "boilerplate-card.js",
-  "repository": "git@github.com:custom_cards/boilerplate-card.git",
-  "author": "Ian Richardson <iantrich@gmail.com>",
+  "module": "plotly-graph-card.js",
+  "repository": "git@github.com:dbuezas/plotly-graph-card.git",
+  "author": "David Buezas <david.buezas@gmail.com>",
   "license": "MIT",
   "dependencies": {
+    "@types/plotly.js": "^1.54.16",
     "custom-card-helpers": "^1.7.2",
     "home-assistant-js-websocket": "^4.5.0",
-    "lit": "^2.0.0-rc.2"
+    "lit": "^2.0.0-rc.2",
+    "lodash-es": "^4.17.21",
+    "plotly.js-dist": "^2.5.1"
   },
   "devDependencies": {
     "@babel/core": "^7.15.0",
@@ -31,8 +37,8 @@
     "eslint-config-prettier": "^6.15.0",
     "eslint-plugin-import": "^2.24.0",
     "eslint-plugin-prettier": "^3.4.0",
-    "prettier": "^1.19.1",
     "rollup": "^1.32.1",
+    "prettier": "^2.4.1",
     "rollup-plugin-babel": "^4.4.0",
     "rollup-plugin-commonjs": "^10.1.0",
     "rollup-plugin-node-resolve": "^5.2.0",
@@ -40,10 +46,10 @@
     "rollup-plugin-terser": "^5.3.1",
     "rollup-plugin-typescript2": "^0.24.3",
     "rollup-plugin-uglify": "^6.0.4",
-    "typescript": "^3.9.10"
+    "typescript": "^4.4.3"
   },
   "scripts": {
-    "start": "rollup -c rollup.config.dev.js --watch",
+    "start": "rollup -c rollup.config.js --watch",
     "build": "npm run lint && npm run rollup",
     "lint": "eslint src/*.ts",
     "rollup": "rollup -c"

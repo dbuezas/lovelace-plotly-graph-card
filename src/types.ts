@@ -2,7 +2,7 @@ import { ActionConfig, LovelaceCard, LovelaceCardConfig, LovelaceCardEditor } fr
 
 declare global {
   interface HTMLElementTagNameMap {
-    'boilerplate-card-editor': LovelaceCardEditor;
+    'plotly-graph-editor': LovelaceCardEditor;
     'hui-error-card': LovelaceCard;
   }
 }
@@ -14,8 +14,16 @@ export interface BoilerplateCardConfig extends LovelaceCardConfig {
   show_warning?: boolean;
   show_error?: boolean;
   test_gui?: boolean;
-  entity?: string;
+  entities: { entity: string }[];
   tap_action?: ActionConfig;
   hold_action?: ActionConfig;
   double_tap_action?: ActionConfig;
 }
+
+export type History = {
+  last_changed: string;
+  state: string;
+  attributes: {
+    friendly_name: string;
+  };
+}[];

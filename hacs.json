@@ -1,5 +1,5 @@
 {
-    "name": "Boilerplate Card",
-    "render_readme": true,
-    "filename": "boilerplate-card.js"
+  "name": "Plotly Graph Card",
+  "render_readme": true,
+  "filename": "plotly-graph-card.js"
 }

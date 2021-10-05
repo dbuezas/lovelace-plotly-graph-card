@@ -79,7 +79,7 @@ Note: this is available only in vscode ensure you have the [Remote Containers](h
    `resources:`
 
 ```yaml
-- url: 'http://127.0.0.1:5000/boilerplate-card.js'
+- url: 'http://127.0.0.1:5000/plotly-graph-card.js'
   type: module
 ```
 
