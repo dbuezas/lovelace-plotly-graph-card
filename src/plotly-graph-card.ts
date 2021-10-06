@@ -2,17 +2,19 @@
 import { LitElement, html, TemplateResult, css, PropertyValues, CSSResultGroup } from 'lit';
 import { customElement, property, state } from 'lit/decorators';
 
-import { HomeAssistant, hasConfigOrEntityChanged, LovelaceCardEditor, getLovelace } from 'custom-card-helpers'; // This is a community maintained npm module with common helper functions/types. https://github.com/custom-cards/custom-card-helpers
+import { HomeAssistant, LovelaceCardEditor, getLovelace } from 'custom-card-helpers'; // This is a community maintained npm module with common helper functions/types. https://github.com/custom-cards/custom-card-helpers
 
 // TODO: bundle with
 import 'https://cdn.plot.ly/plotly-2.4.2.min.js';
 const Plotly = (window as any).Plotly;
 import merge from 'lodash-es/merge';
+import isEqual from 'lodash-es/isEqual';
 import './editor';
 
 import type { BoilerplateCardConfig, History } from './types';
 import { CARD_VERSION } from './const';
 import { localize } from './localize/localize';
+import defaultLayout from './default-layout';
 
 /* eslint no-console: 0 */
 console.info(
@@ -48,17 +50,19 @@ export class BoilerplateCard extends LitElement {
     };
   }
 
-  // TODO Add any properities that should cause your element to re-render here
   // https://lit.dev/docs/components/properties/
   @property({ attribute: false }) public hass!: HomeAssistant;
 
-  @state() private config!: BoilerplateCardConfig;
+  @property({ attribute: false }) private config!: BoilerplateCardConfig;
+  @property({ attribute: false }) private entities: string[] = [];
+  @property({ attribute: false }) private plotlyData: Plotly.Data[] = [];
+  @property({ attribute: false }) private plotlyLayout: Partial<Plotly.Layout> = {};
+  @property({ attribute: false }) private plotlyConfig: Partial<Plotly.Config> = {};
+  @property({ attribute: false }) private history: History[] = [];
 
-  private history: History[] = [];
-  private _data = [];
-  private fetched = false;
   // https://lit.dev/docs/components/properties/#accessors-custom
   public setConfig(config: BoilerplateCardConfig): void {
+    console.log('setConfig');
     // TODO Check for required fields and that they are of the proper format
     if (!config) {
       throw new Error(localize('common.invalid_configuration'));
@@ -67,7 +71,11 @@ export class BoilerplateCard extends LitElement {
     if (config.test_gui) {
       getLovelace().setEditMode(true);
     }
-
+    const entities = config.entities.map(({ entity }) => entity);
+    if (!isEqual(entities, this.entities)) {
+      this.entities = entities;
+      console.log('entities', entities);
+    }
     this.config = {
       name: 'Plotly Graph',
       ...config,
@@ -76,11 +84,12 @@ export class BoilerplateCard extends LitElement {
 
   // https://lit.dev/docs/components/lifecycle/#reactive-update-cycle-performing
   protected shouldUpdate(changedProps: PropertyValues): boolean {
+    return false;
+    console.log('changedProps', changedProps);
     if (!this.config) {
       return false;
     }
-
-    return hasConfigOrEntityChanged(this, changedProps, false);
+    return true;
   }
 
   protected firstUpdated() {
@@ -97,15 +106,19 @@ export class BoilerplateCard extends LitElement {
       }
       ${style}
     `;
+    const container = this.shadowRoot!.querySelector('.card-content')!;
+    const updateWidth = () => {
+      const width = parseFloat(window.getComputedStyle(container).width);
+      this.plotlyLayout = { ...this.plotlyLayout, width };
+    };
+    const observer = new ResizeObserver(updateWidth);
+    updateWidth();
+    observer.observe(container);
   }
-  async fetch(hass) {
-    this.history = [];
-    if (!hass) return;
-    this._data = [];
+  async fetch() {
+    // if (this.history?.length) return this.history;
     const startDate = new Date(new Date().setDate(new Date().getDate() - this.config.days));
-
     const endDate = new Date();
-
     const uri =
       'history/period/' +
       startDate.toISOString() +
@@ -117,70 +130,42 @@ export class BoilerplateCard extends LitElement {
       endDate.toISOString();
     console.log(uri);
     console.time('fetch');
-    this.history = (await hass.callApi('GET', uri)) || [];
-    this.fetched = true;
+    const history = (await this.hass.callApi('GET', uri)) || [];
     console.timeEnd('fetch');
+    return history as History[];
   }
 
-  async plot(hass) {
-    if (!this.fetched) {
-      await this.fetch(hass);
+  protected async updated(changedProps) {
+    if (changedProps.has('config')) {
+      console.log('changed config');
+
+      this.plotlyLayout = merge(defaultLayout, this.config.layout);
+      this.history = await this.fetch();
     }
-    console.log(history);
-    const data = this.history.map((entity, i) => ({
-      x: entity.map(({ last_changed }) => last_changed),
-      y: entity.map(({ state }) => state),
-      name: entity[0].attributes.friendly_name,
-      type: 'scatter',
-      ...this.config.entities[i],
-    }));
+    if (changedProps.has('history')) {
+      console.log('changed history');
+      this.plotlyData = this.history.map((entity, i) => ({
+        x: entity.map(({ last_changed }) => last_changed),
+        y: entity.map(({ state }) => state),
+        name: entity[0].attributes.friendly_name,
+        type: 'scatter',
+        ...this.config.entities[i],
+      }));
+    }
 
-    const layoutDefaults = {
-      width: parseFloat(window.getComputedStyle(this).width),
-      paper_bgcolor: 'rgba(0,0,0,0)',
-      plot_bgcolor: 'rgba(0,0,0,0)',
-      yaxis: {
-        tickcolor: 'rgb(63,63,63)',
-        gridcolor: 'rgb(63,63,63)',
-        zerolinecolor: 'rgb(63,63,63)',
-        zeroline: true,
-        showline: true,
-      },
-      xaxis: {
-        tickcolor: 'rgb(63,63,63)',
-        gridcolor: 'rgb(63,63,63)',
-        zerolinecolor: 'rgb(63,63,63)',
-        zeroline: true,
-        showline: true,
-      },
-      font: {
-        color: 'rgb(136,136,136)',
-      },
-      margin: {
-        b: 40,
-        t: 0,
-        l: 60,
-        r: 10,
-      },
-      legend: {
-        orientation: 'h',
-        xanchor: 'start',
-        y: 1.15,
-      },
-      title: !this.fetched
-        ? { text: 'Loading...', xanchor: 'center', yanchor: 'middle', y: 0.5, font: { size: 40 } }
-        : undefined,
-    };
-    const layout = merge(layoutDefaults, this.config.layout || {});
-    console.log(layout);
-    Plotly.newPlot(this.shadowRoot?.querySelector('.card-content'), data as any, layout);
-  }
-
-  protected updated() {
-    this.plot(this.hass);
+    if (['plotlyData', 'plotlyLayout', 'plotlyConfig'].some((prop) => changedProps.has(prop))) {
+      console.log("changed history ['plotlyData', 'plotlyLayout', 'plotlyConfig'] ");
+      Plotly.newPlot(
+        this.shadowRoot?.querySelector('.card-content'),
+        this.plotlyData,
+        this.plotlyLayout,
+        this.plotlyConfig,
+      );
+    }
   }
   // https://lit.dev/docs/components/rendering/
   protected render(): TemplateResult | void {
+    console.log('render');
     // TODO Check for stateObj or other necessary things and render a warning if missing
     if (this.config.show_warning) {
       return this._showWarning(localize('common.show_warning'));

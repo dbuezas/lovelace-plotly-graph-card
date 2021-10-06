@@ -23,7 +23,8 @@
     "home-assistant-js-websocket": "^4.5.0",
     "lit": "^2.0.0-rc.2",
     "lodash-es": "^4.17.21",
-    "plotly.js-dist": "^2.5.1"
+    "plotly.js-dist": "^2.5.1",
+    "rollup-plugin-typescript": "^1.0.1"
   },
   "devDependencies": {
     "@babel/core": "^7.15.0",
