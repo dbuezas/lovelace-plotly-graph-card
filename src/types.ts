@@ -1,24 +1,10 @@
-import { ActionConfig, LovelaceCard, LovelaceCardConfig, LovelaceCardEditor } from 'custom-card-helpers';
-
-declare global {
-  interface HTMLElementTagNameMap {
-    'plotly-graph-editor': LovelaceCardEditor;
-    'hui-error-card': LovelaceCard;
-  }
-}
-
-// TODO Add your configuration elements here for type-checking
-export interface BoilerplateCardConfig extends LovelaceCardConfig {
-  type: string;
-  name?: string;
-  show_warning?: boolean;
-  show_error?: boolean;
-  test_gui?: boolean;
-  entities: { entity: string }[];
-  tap_action?: ActionConfig;
-  hold_action?: ActionConfig;
-  double_tap_action?: ActionConfig;
-}
+export type Config = {
+  hours_to_show: number;
+  entities: ({
+    entity: string;
+  } & Partial<Plotly.PlotData>)[];
+  layout?: Partial<Plotly.Layout>;
+};
 
 export type History = {
   last_changed: string;
@@ -27,3 +13,4 @@ export type History = {
     friendly_name: string;
   };
 }[];
+export type Range = [string | undefined, string | undefined];

@@ -1,23 +1,22 @@
 const defaultLayout = {
-  width: 100,
-  paper_bgcolor: 'rgba(0,0,0,0)',
-  plot_bgcolor: 'rgba(0,0,0,0)',
+  paper_bgcolor: "rgba(0,0,0,0)",
+  plot_bgcolor: "rgba(0,0,0,0)",
   yaxis: {
-    tickcolor: 'rgb(63,63,63)',
-    gridcolor: 'rgb(63,63,63)',
-    zerolinecolor: 'rgb(63,63,63)',
+    tickcolor: "rgb(63,63,63)",
+    gridcolor: "rgb(63,63,63)",
+    zerolinecolor: "rgb(63,63,63)",
     zeroline: true,
     showline: true,
   },
   xaxis: {
-    tickcolor: 'rgb(63,63,63)',
-    gridcolor: 'rgb(63,63,63)',
-    zerolinecolor: 'rgb(63,63,63)',
+    tickcolor: "rgb(63,63,63)",
+    gridcolor: "rgb(63,63,63)",
+    zerolinecolor: "rgb(63,63,63)",
     zeroline: true,
     showline: true,
   },
   font: {
-    color: 'rgb(136,136,136)',
+    color: "rgb(136,136,136)",
   },
   margin: {
     b: 40,
@@ -26,11 +25,12 @@ const defaultLayout = {
     r: 10,
   },
   legend: {
-    orientation: 'h',
-    xanchor: 'start',
+    orientation: "h",
+    xanchor: "start",
     y: 1.15,
   },
-  title: 'unchanged',
+  dragmode: "pan",
+  title: "unchanged",
 };
 
 export default defaultLayout;
