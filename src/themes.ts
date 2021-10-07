@@ -1,4 +1,6 @@
-const defaultLayout = {
+export const raw = {};
+export const dark = {
+  height: 280,
   paper_bgcolor: "rgba(0,0,0,0)",
   plot_bgcolor: "rgba(0,0,0,0)",
   yaxis: {
@@ -30,7 +32,28 @@ const defaultLayout = {
     y: 1.15,
   },
   dragmode: "pan",
-  title: "unchanged",
 };
-
-export default defaultLayout;
+export const white = {
+  height: 280,
+  yaxis: {
+    zerolinecolor: "rgb(63,63,63)",
+    zeroline: true,
+    showline: true,
+  },
+  xaxis: {
+    zeroline: true,
+    showline: true,
+  },
+  margin: {
+    b: 40,
+    t: 0,
+    l: 60,
+    r: 10,
+  },
+  legend: {
+    orientation: "h",
+    xanchor: "start",
+    y: 1.15,
+  },
+  dragmode: "pan",
+};

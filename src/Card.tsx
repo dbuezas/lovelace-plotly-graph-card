@@ -1,8 +1,8 @@
 import { h } from 'preact'
 import { useEffect, useRef, useState } from 'preact/hooks'
-import { react as PlotlyReact } from 'plotly.js-dist'
+import Plotly from './plotly'
 import { HomeAssistant } from 'custom-card-helpers' // This is a community maintained npm module with common helper functions/types. https://github.com/custom-cards/custom-card-helpers
-import defaultLayout from './default-layout'
+import * as themes from './themes'
 import StyleHack from './StyleHack'
 import merge from 'lodash-es/merge'
 import { useData, useWidth } from './hooks'
@@ -29,7 +29,9 @@ const Plotter = ({ config, hass }: Props) => {
     const element = container.current
     console.log(width, 'replot')
 
-    const layout = merge(defaultLayout, config.layout, { width })
+    const layout = merge(themes[config.theme] || themes.dark, config.layout, {
+      width
+    })
     layout.title = isLoading
       ? {
           text: 'Loading...',
@@ -40,7 +42,7 @@ const Plotter = ({ config, hass }: Props) => {
         }
       : undefined
 
-    PlotlyReact(element, data, layout)
+    Plotly.react(element, data, layout)
     const zoomCallback = eventdata => {
       console.log(eventdata)
       if (eventdata['xaxis.showspikes'] === false)
@@ -50,7 +52,14 @@ const Plotter = ({ config, hass }: Props) => {
     }
     const eventEmmitter = (element as any).on('plotly_relayout', zoomCallback)
     return () => eventEmmitter.off('plotly_relayout', zoomCallback)
-  }, [width, isLoading, data, container.current, JSON.stringify(config.layout)])
+  }, [
+    config.theme,
+    width,
+    isLoading,
+    data,
+    container.current,
+    JSON.stringify(config.layout)
+  ])
 
   return (
     <ha-card>

@@ -13,7 +13,6 @@
   "devDependencies": {
     "@types/node": "^16.10.3",
     "@types/plotly.js": "^1.54.16",
-    "@types/plotly.js-basic-dist": "^1.54.0",
     "esbuild": "^0.13.4",
     "pretier": "0.0.1"
   },
@@ -22,8 +21,6 @@
     "date-fns": "^2.25.0",
     "lodash-es": "^4.17.21",
     "plotly.js": "^2.5.1",
-    "plotly.js-basic-dist": "^2.5.1",
-    "plotly.js-dist": "^2.5.1",
     "preact": "^10.5.14"
   }
 }

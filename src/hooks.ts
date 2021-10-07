@@ -10,7 +10,12 @@ const useHistory = (
 ) => {
   const [history, setHistory] = useState<History[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const entityNames = config.entities.map(({ entity }) => entity);
+  const entityNames = config.traces.flatMap(({ entity, x, y, z }) => [
+    entity,
+    x,
+    y,
+    z,
+  ]);
   useEffect(() => {
     if (!hass) return;
     const fetch = async () => {
@@ -45,15 +50,14 @@ export const useData = (
   const [data, setData] = useState<Plotly.Data[]>([]);
   useEffect(() => {
     console.log("reData");
-    const data: Plotly.Data[] = history.map((entity, i) => ({
-      x: entity.map(({ last_changed }) => last_changed),
-      y: entity.map(({ state }) => state),
-      name: entity[0].attributes.friendly_name,
-      type: "scatter",
-      ...config.entities[i],
+    const data: Plotly.Data[] = history.map((trace, i) => ({
+      x: trace.map(({ last_changed }) => last_changed),
+      y: trace.map(({ state }) => state),
+      name: trace[0].attributes.friendly_name,
+      ...config.traces[i],
     }));
     setData(data);
-  }, [history, JSON.stringify(config.entities)]);
+  }, [history, JSON.stringify(config.traces)]);
   return { data, isLoading };
 };
 

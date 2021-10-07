@@ -1,7 +1,11 @@
 export type Config = {
   hours_to_show: number;
-  entities: ({
-    entity: string;
+  theme: string;
+  traces: ({
+    x?: string;
+    y?: string;
+    z?: string;
+    entity?: string;
   } & Partial<Plotly.PlotData>)[];
   layout?: Partial<Plotly.Layout>;
 };
