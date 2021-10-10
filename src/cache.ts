@@ -31,6 +31,7 @@ export const addToCache = async (
         `significant_changes_only=1&` +
         `minimal_response&end_time=${end.toISOString()}`;
       const r: History[] = (await hass.callApi("GET", uri)) || [];
+      console.log("added:", r[0]?.length);
       return r.map((history) =>
         history.map((entry) => ({
           ...entry,

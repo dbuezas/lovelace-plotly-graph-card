@@ -1,5 +1,5 @@
 import { h } from "preact";
-import { useEffect, useRef, useState } from "preact/hooks";
+import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import Plotly from "./plotly";
 import { HomeAssistant } from "custom-card-helpers"; // This is a community maintained npm module with common helper functions/types. https://github.com/custom-cards/custom-card-helpers
 import * as themes from "./themes";
@@ -38,26 +38,26 @@ type Props = {
 const Plotter = ({ config, hass }: Props) => {
   const layoutRef = useRef<Partial<Plotly.Layout>>({});
   const container = useRef<HTMLDivElement>(null);
-  const [range, setRange] = useState<DateRange>([new Date(), new Date()]);
-  const { data, isLoading } = useData(hass, config, range);
   const width = useWidth(container.current);
+  const [range, setRange] = useState<DateRange>(() => {
+    const minutes = Number(config.hours_to_show) * 60; // if add hours is used, decimals are ignored
+    return [sub(new Date(), { minutes }), new Date()];
+  });
+  const { data, isLoading } = useData(hass, config, range);
+  const resetRange = useCallback(() => {
+    const minutes = Number(config.hours_to_show) * 60; // if add hours is used, decimals are ignored
+    setRange([sub(new Date(), { minutes }), new Date()]);
+  }, [container.current, config.hours_to_show]);
   useEffect(() => {
     const refresh_interval = Number(config.refresh_interval);
     if (refresh_interval > 0) {
       console.log("refresh_interval", refresh_interval);
-      const timeout = setTimeout(() => {
-        console.log("refreshing");
-        const minutes = Number(config.hours_to_show) * 60; // if add hours is used, decimals are ignored
-        setRange([sub(new Date(), { minutes }), new Date()]);
-      }, refresh_interval * 1000);
+      const timeout = setTimeout(resetRange, refresh_interval * 1000);
       return () => clearTimeout(timeout);
     }
     return;
   }, [range, config.refresh_interval, config.hours_to_show]);
-  useEffect(() => {
-    const minutes = Number(config.hours_to_show) * 60; // if add hours is used, decimals are ignored
-    setRange([sub(new Date(), { minutes }), new Date()]);
-  }, [config.hours_to_show]);
+  useEffect(resetRange, [config.hours_to_show]);
   useEffect(() => {
     if (!container.current || width === 0) return;
     const element = container.current;
@@ -66,28 +66,29 @@ const Plotter = ({ config, hass }: Props) => {
       extractRanges(layoutRef.current),
       themes[config.theme!] || themes.dark,
       config.layout,
-      {
-        width,
-      }
+      { width }
     );
     layoutRef.current.title = isLoading
       ? {
           text: "Loading...",
           xanchor: "center",
           yanchor: "top",
-          y: 0.9,
+          // y: 0.9,
           font: { size: 20 },
         }
       : undefined;
 
-    Plotly.react(element, data, layoutRef.current);
+    Plotly.react(element, data, layoutRef.current, {
+      displaylogo: false,
+      ...config.config,
+    });
     const zoomCallback = (eventdata) => {
       if (eventdata["xaxis.showspikes"] === false) {
         // user clicked the home icon
-        const minutes = Number(config.hours_to_show) * 60; // if add hours is used, decimals are ignored
-        setRange([sub(new Date(), { minutes }), new Date()]);
+        resetRange();
       }
       if (eventdata["xaxis.range[0]"]) {
+        console.log("layout event");
         setRange([
           new Date(eventdata["xaxis.range[0]"]),
           new Date(eventdata["xaxis.range[1]"]),
@@ -98,18 +99,17 @@ const Plotter = ({ config, hass }: Props) => {
     return () => eventEmmitter.off("plotly_relayout", zoomCallback);
   }, [
     config.theme,
-    config.hours_to_show,
     width,
     isLoading,
     data,
     container.current,
     JSON.stringify(config.layout),
+    JSON.stringify(config.config),
   ]);
   useEffect(() => {
-    const element = container.current;
-    if (!element) return;
+    if (!container.current) return;
     try {
-      Plotly.relayout(element, {
+      Plotly.relayout(container.current, {
         // 'yaxis.range': TODO:
         "xaxis.range": range,
       });

@@ -23,6 +23,9 @@ const subtract_single_single = (
   if (a_start < b_start && b_start <= a_end && a_end <= b_end)
     return [[a_start, addMilliseconds(b_start, -1)]];
   else {
+    console.log("---------");
+    console.log([a_start, a_end]);
+    console.log([b_start, b_end]);
     throw new Error(
       "Error computing range subtraction. Please report an issue in the repo of this card."
     );

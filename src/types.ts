@@ -7,6 +7,7 @@ export type Config = {
     entity: string;
   } & Partial<Plotly.PlotData>)[];
   layout?: Partial<Plotly.Layout>;
+  config?: Partial<Plotly.Config>;
 };
 
 export type History = {
