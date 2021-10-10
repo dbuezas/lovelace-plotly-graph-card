@@ -1,63 +1,48 @@
 import { useEffect, useState } from "preact/hooks";
 import { HomeAssistant } from "custom-card-helpers"; // This is a community maintained npm module with common helper functions/types. https://github.com/custom-cards/custom-card-helpers
-import sub from "date-fns/sub";
-import { Config, History, Range } from "./types";
+import { Config, DateRange } from "./types";
+import { Cache, addToCache } from "./cache";
 
 const useHistory = (
   hass: HomeAssistant | undefined,
   config: Config,
-  range: Range
+  range: DateRange
 ) => {
-  const [history, setHistory] = useState<History[]>([]);
+  const [cache, setCache] = useState<Cache>({
+    ranges: [],
+    histories: [],
+    entityNames: [],
+  });
   const [isLoading, setIsLoading] = useState(false);
-  const entityNames = config.traces.flatMap(({ entity, x, y, z }) => [
-    entity,
-    x,
-    y,
-    z,
-  ]);
+  const entityNames = config.entities.flatMap(({ entity }) => [entity]);
   useEffect(() => {
     if (!hass) return;
     const fetch = async () => {
       setIsLoading(true);
-      const startDate = range[0]
-        ? new Date(range[0] + "Z")
-        : sub(new Date(), { hours: config.hours_to_show });
-      const endDate = range[1] ? new Date(range[1] + "Z") : new Date();
-      const uri =
-        `history/period/${startDate.toISOString()}?` +
-        `filter_entity_id=${entityNames}&` +
-        `significant_changes_only=1&` +
-        `minimal_response&end_time=${endDate.toISOString()}`;
-      console.log("hass", hass);
-
-      const history: History[] = (await hass.callApi("GET", uri)) || [];
-      console.log(uri, history);
-      setHistory(history);
+      setCache(await addToCache(cache, range, hass, entityNames));
       setIsLoading(false);
     };
     fetch();
-  }, [!!hass, range, entityNames.toString(), config.hours_to_show]);
-  return { history, isLoading };
+  }, [!!hass, range, entityNames.toString()]);
+  return { history: cache.histories, isLoading };
 };
 
 export const useData = (
   hass: HomeAssistant | undefined,
   config: Config,
-  range: Range
+  range: DateRange
 ) => {
   const { history, isLoading } = useHistory(hass, config, range);
   const [data, setData] = useState<Plotly.Data[]>([]);
   useEffect(() => {
-    console.log("reData");
     const data: Plotly.Data[] = history.map((trace, i) => ({
       x: trace.map(({ last_changed }) => last_changed),
       y: trace.map(({ state }) => state),
       name: trace[0].attributes.friendly_name,
-      ...config.traces[i],
+      ...config.entities[i],
     }));
     setData(data);
-  }, [history, JSON.stringify(config.traces)]);
+  }, [history, JSON.stringify(config.entities)]);
   return { data, isLoading };
 };
 

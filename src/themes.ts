@@ -1,59 +1,49 @@
+import merge from "lodash-es/merge";
 export const raw = {};
-export const dark = {
+
+const base: Partial<Plotly.Layout> = {
   height: 280,
+  yaxis: {
+    zeroline: false,
+    showline: true,
+    fixedrange: true,
+  },
+  xaxis: {
+    zeroline: false,
+    showline: true,
+  },
+  margin: {
+    b: 40,
+    t: 0,
+    l: 60,
+    r: 10,
+  },
+  legend: {
+    orientation: "h",
+  },
+  dragmode: "pan",
+};
+
+export const dark: Partial<Plotly.Layout> = merge({}, base, {
   paper_bgcolor: "rgba(0,0,0,0)",
   plot_bgcolor: "rgba(0,0,0,0)",
   yaxis: {
     tickcolor: "rgb(63,63,63)",
     gridcolor: "rgb(63,63,63)",
     zerolinecolor: "rgb(63,63,63)",
-    zeroline: true,
-    showline: true,
   },
   xaxis: {
     tickcolor: "rgb(63,63,63)",
     gridcolor: "rgb(63,63,63)",
     zerolinecolor: "rgb(63,63,63)",
-    zeroline: true,
-    showline: true,
   },
   font: {
     color: "rgb(136,136,136)",
   },
-  margin: {
-    b: 40,
-    t: 0,
-    l: 60,
-    r: 10,
-  },
-  legend: {
-    orientation: "h",
-    xanchor: "start",
-    y: 1.15,
-  },
-  dragmode: "pan",
-};
-export const white = {
-  height: 280,
+});
+
+export const white: Partial<Plotly.Layout> = merge({}, base, {
   yaxis: {
     zerolinecolor: "rgb(63,63,63)",
-    zeroline: true,
-    showline: true,
   },
-  xaxis: {
-    zeroline: true,
-    showline: true,
-  },
-  margin: {
-    b: 40,
-    t: 0,
-    l: 60,
-    r: 10,
-  },
-  legend: {
-    orientation: "h",
-    xanchor: "start",
-    y: 1.15,
-  },
-  dragmode: "pan",
-};
+});

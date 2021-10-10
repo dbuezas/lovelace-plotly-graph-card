@@ -2,6 +2,7 @@ import Card from './Card'
 import { version } from '../package.json'
 import { render } from 'preact'
 import { h } from 'preact'
+import { Config } from './types'
 
 console.info(
   `%c PLOTLY-GRAPH-CARD %c ${version} `,
@@ -31,6 +32,18 @@ class PlotlyCardWebComponent extends HTMLElement {
 
   getCardSize () {
     return 3
+  }
+  public static async getConfigElement () {
+    // await import('/frontend_latest/da9cd922.js')
+    // return document.createElement('hui-history-graph-card-editor')
+  }
+
+  public static getStubConfig (): Config {
+    // Hard coded to sun.sun to prevent high server load when it would pick an entity with a lot of state changes
+    return {
+      type: 'custom:plotly-graph-card',
+      entities: [{ entity: 'sun.sun' }]
+    }
   }
 }
 
