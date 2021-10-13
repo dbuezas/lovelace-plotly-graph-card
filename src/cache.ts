@@ -52,7 +52,7 @@ export const addToCache = async (
     }
   });
   let lastKnwonTimestamp = 0;
-  entityNames.forEach((name, i) => {
+  entityNames.forEach((name) => {
     histories[name].sort(
       (a, b) => a.last_changed.getTime() - b.last_changed.getTime()
     );

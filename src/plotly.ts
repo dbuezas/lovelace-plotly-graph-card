@@ -1,6 +1,3 @@
-import * as Plotly from "plotly.js-dist";
-export default Plotly;
-/*
 window.global = window;
 var Plotly = require("plotly.js/lib/core");
 Plotly.register([
