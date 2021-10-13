@@ -1,4 +1,3 @@
-import { h } from "preact";
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import Plotly from "./plotly";
 import { HomeAssistant } from "custom-card-helpers"; // This is a community maintained npm module with common helper functions/types. https://github.com/custom-cards/custom-card-helpers

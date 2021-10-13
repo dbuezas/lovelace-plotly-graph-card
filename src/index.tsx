@@ -1,8 +1,15 @@
 import register from "preact-custom-element";
 import Card from "./Card";
 import { version } from "../package.json";
-import { render } from "preact";
-import { h } from "preact";
+import { RecoilRoot } from "recoil";
+
+function App(props) {
+  return (
+    <RecoilRoot>
+      <Card {...props} />
+    </RecoilRoot>
+  );
+}
 
 register(Card, "plotly-graph", ["config", "hass"]);
 

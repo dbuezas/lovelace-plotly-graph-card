@@ -4,9 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "esbuild src/plotly-graph-card.tsx --servedir=dist --outdir=dist --bundle ",
-    "start1": "esbuild src/plotly-graph-card.tsx --servedir=dist --outdir=dist --bundle --sourcemap=inline",
-    "build": "esbuild src/plotly-graph-card.tsx --outdir=dist --bundle --minify"
+    "start": "node script/build.mjs",
+    "build": "NODE_ENV=production node script/build.mjs",
+    "upgrade": "npx npm-check -u"
   },
   "author": "",
   "license": "ISC",
@@ -19,9 +19,11 @@
   "dependencies": {
     "custom-card-helpers": "^1.8.0",
     "date-fns": "^2.25.0",
+    "esbuild-plugin-alias": "^0.2.0",
     "lodash-es": "^4.17.21",
     "plotly.js": "^2.5.1",
     "preact": "^10.5.14",
-    "preact-custom-element": "^4.2.1"
+    "preact-custom-element": "^4.2.1",
+    "recoil": "^0.4.1"
   }
 }

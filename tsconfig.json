@@ -3,7 +3,7 @@
     "jsx": "preserve",
     "jsxFactory": "h",
     "jsxFragmentFactory": "Fragment",
-    "target": "es2019",
+    "target": "ES2020",
     "module": "esnext",
     "moduleResolution": "node",
     "lib": ["es2019", "dom", "dom.iterable"],
