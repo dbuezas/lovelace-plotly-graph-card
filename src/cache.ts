@@ -4,8 +4,7 @@ import { DateRange, History } from "./types";
 
 export type Cache = {
   ranges: DateRange[];
-  histories: History[];
-  entityNames: string[];
+  histories: Record<string, History>;
 };
 
 export const addToCache = async (
@@ -14,12 +13,16 @@ export const addToCache = async (
   hass: HomeAssistant,
   entityNames: string[]
 ) => {
-  if (JSON.stringify(cache.entityNames) != JSON.stringify(entityNames)) {
+  entityNames = Array.from(new Set(entityNames)).filter(
+    (name) => name !== "dates"
+  );
+  if (
+    JSON.stringify(Object.keys(cache.histories)) != JSON.stringify(entityNames)
+  ) {
     // entity names changed, clear cache
     cache = {
       ranges: [],
-      histories: [],
-      entityNames,
+      histories: {},
     };
   }
   const rangesToFetch = subtractRanges([range], cache.ranges);
@@ -33,33 +36,35 @@ export const addToCache = async (
       const r: History[] = (await hass.callApi("GET", uri)) || [];
       console.log("added:", r[0]?.length);
       return r.map((history) =>
-        history.map((entry) => ({
+        history?.map((entry) => ({
           ...entry,
           last_changed: new Date(entry.last_changed),
         }))
       );
     })
   );
-  const histories = [cache.histories, ...fetchedHistories].reduce(
-    (acc, curr) =>
-      acc.map((history, i) =>
-        [...history, ...(curr[i] || [])].sort(
-          (a, b) => a.last_changed.getTime() - b.last_changed.getTime()
-        )
-      ),
-    entityNames.map(() => [])
-  );
-  const lastKnwonDate = new Date(
-    Math.max(
-      ...histories.map(
-        (entityHistory) => +entityHistory.slice(-1)[0].last_changed + 1
-      )
-    )
-  );
+
+  const histories: Cache["histories"] = {};
+  entityNames.forEach((name, i) => {
+    histories[name] = cache.histories[name] || [];
+    for (const history of fetchedHistories) {
+      histories[name] = [...histories[name], ...history[i]];
+    }
+  });
+  let lastKnwonTimestamp = 0;
+  entityNames.forEach((name, i) => {
+    histories[name].sort(
+      (a, b) => a.last_changed.getTime() - b.last_changed.getTime()
+    );
+    const timestamp = +histories[name].slice(-1)[0].last_changed + 1;
+    lastKnwonTimestamp = Math.max(lastKnwonTimestamp, timestamp);
+  });
 
   let ranges = [...cache.ranges, ...rangesToFetch];
   var MAX_TIMESTAMP = 8640000000000000;
-  ranges = subtractRanges(ranges, [[lastKnwonDate, new Date(MAX_TIMESTAMP)]]);
+  ranges = subtractRanges(ranges, [
+    [new Date(lastKnwonTimestamp), new Date(MAX_TIMESTAMP)],
+  ]);
 
   const newCache = {
     ranges: compactRanges(ranges),

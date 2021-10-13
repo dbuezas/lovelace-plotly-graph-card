@@ -21,6 +21,8 @@
     "date-fns": "^2.25.0",
     "lodash-es": "^4.17.21",
     "plotly.js": "^2.5.1",
-    "preact": "^10.5.14"
+    "plotly.js-dist": "^2.5.1",
+    "preact": "^10.5.14",
+    "preact-custom-element": "^4.2.1"
   }
 }
