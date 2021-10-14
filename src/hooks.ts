@@ -1,52 +1,38 @@
-import { useEffect, useRef, useState } from "preact/hooks";
-import { HomeAssistant } from "custom-card-helpers"; // This is a community maintained npm module with common helper functions/types. https://github.com/custom-cards/custom-card-helpers
-import { Config, DateRange } from "./types";
-import { Cache, addToCache } from "./cache";
+import { useEffect, useState } from "preact/hooks";
+import { DateRange } from "./types";
+import { cacheAtom } from "./cache";
 
-const useHistory = (
-  hass: HomeAssistant | undefined,
-  config: Config,
-  range: DateRange
-) => {
-  const [cache, setCache] = useState<Cache>({
-    ranges: [],
-    histories: {},
-  });
-  const [isLoading, setIsLoading] = useState(false);
-  const entityNames = config.entities?.map(({ entity }) => entity) || [];
-  useEffect(() => {
-    if (!hass) return;
-    const fetch = async () => {
-      setIsLoading(true);
-      setCache(await addToCache(cache, range, hass, entityNames));
-      setIsLoading(false);
-    };
-    fetch();
-  }, [!!hass, range, entityNames.toString()]);
-  return { history: cache.histories, isLoading };
-};
+import { atom, selector } from "recoil";
+import { EntitiesAtom } from "./Card";
 
-export const useData = (
-  hass: HomeAssistant | undefined,
-  config: Config,
-  range: DateRange
-) => {
-  const { history, isLoading } = useHistory(hass, config, range);
-  const [data, setData] = useState<Plotly.Data[]>([]);
-  useEffect(() => {
-    const data: Plotly.Data[] = config.entities.map((trace) => {
+export const isLoadingAtom = atom({
+  key: "isLoadingAtom",
+  default: false,
+});
+
+export const rangeAtom = atom<DateRange>({
+  key: "rangeAtom",
+  default: [new Date(), new Date()],
+});
+
+export const dataAtom = selector<Plotly.Data[]>({
+  key: "dataAtom",
+  get: ({ get }) => {
+    const entities = get(EntitiesAtom);
+    const { histories } = get(cacheAtom);
+
+    const data: Plotly.Data[] = entities.map((trace) => {
       const name = trace.entity;
       return {
         name,
         ...trace,
-        x: history[name]?.map(({ last_changed }) => last_changed),
-        y: history[name]?.map(({ state }) => state),
+        x: histories[name]?.map(({ last_changed }) => last_changed),
+        y: histories[name]?.map(({ state }) => state),
       };
     });
-    setData(data);
-  }, [history, JSON.stringify(config.entities)]);
-  return { data, isLoading };
-};
+    return data;
+  },
+});
 
 export const useWidth = (element: HTMLDivElement | null) => {
   const [width, setWidth] = useState(0);

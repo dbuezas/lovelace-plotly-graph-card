@@ -11,7 +11,7 @@ function App(props) {
   );
 }
 
-register(Card, "plotly-graph", ["config", "hass"]);
+register(App, "plotly-graph", ["config", "hass"]);
 
 console.info(
   `%c PLOTLY-GRAPH-CARD %c ${version} `,

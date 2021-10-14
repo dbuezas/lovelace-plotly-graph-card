@@ -4,9 +4,16 @@ import { HomeAssistant } from "custom-card-helpers"; // This is a community main
 import * as themes from "./themes";
 import StyleHack from "./StyleHack";
 import merge from "lodash-es/merge";
-import { useData, useWidth } from "./hooks";
+import { dataAtom, useWidth, isLoadingAtom, rangeAtom } from "./hooks";
 import { Config, DateRange } from "./types";
 import sub from "date-fns/sub";
+import {
+  atom,
+  useRecoilState,
+  useRecoilValue,
+  useSetRecoilState,
+} from "recoil";
+import { WithCache } from "./cache";
 
 declare module "preact/src/jsx" {
   namespace JSXInternal {
@@ -34,15 +41,35 @@ type Props = {
   hass?: HomeAssistant;
   config: Config;
 };
+
+export const EntitiesAtom = atom<Config["entities"]>({
+  key: "ConfigEntitiesAtom",
+  default: [],
+});
+export const HassAtom = atom<HomeAssistant | undefined>({
+  key: "HassAtom",
+  default: undefined,
+  dangerouslyAllowMutability: true,
+});
+
 const Plotter = ({ config, hass }: Props) => {
+  config = JSON.parse(JSON.stringify(config));
+  const [entities, setEntities] = useRecoilState(EntitiesAtom);
+  if (JSON.stringify(config.entities) !== JSON.stringify(entities))
+    setEntities(config.entities);
+  const [storedHass, setStoredHass] = useRecoilState(HassAtom);
+  if (!storedHass && hass) setStoredHass(hass);
+
   const layoutRef = useRef<Partial<Plotly.Layout>>({});
   const container = useRef<HTMLDivElement>(null);
   const width = useWidth(container.current);
-  const [range, setRange] = useState<DateRange>(() => {
+  const [range, setRange] = useRecoilState(rangeAtom);
+  useEffect(() => {
     const minutes = Number(config.hours_to_show) * 60; // if add hours is used, decimals are ignored
-    return [sub(new Date(), { minutes }), new Date()];
-  });
-  const { data, isLoading } = useData(hass, config, range);
+    setRange([sub(new Date(), { minutes }), new Date()]);
+  }, []);
+  const isLoading = useRecoilValue(isLoadingAtom);
+  const data = useRecoilValue(dataAtom);
   const resetRange = useCallback(() => {
     const minutes = Number(config.hours_to_show) * 60; // if add hours is used, decimals are ignored
     setRange([sub(new Date(), { minutes }), new Date()]);
@@ -60,7 +87,6 @@ const Plotter = ({ config, hass }: Props) => {
   useEffect(() => {
     if (!container.current || width === 0) return;
     const element = container.current;
-    console.log("layoutRef.current", layoutRef.current);
     layoutRef.current = merge(
       extractRanges(layoutRef.current),
       themes[config.theme!] || themes.dark,
@@ -87,7 +113,6 @@ const Plotter = ({ config, hass }: Props) => {
         resetRange();
       }
       if (eventdata["xaxis.range[0]"]) {
-        console.log("layout event");
         setRange([
           new Date(eventdata["xaxis.range[0]"]),
           new Date(eventdata["xaxis.range[1]"]),
@@ -110,13 +135,14 @@ const Plotter = ({ config, hass }: Props) => {
     try {
       Plotly.relayout(container.current, {
         // 'yaxis.range': TODO:
-        "xaxis.range": range,
+        "xaxis.range": range.slice(),
       });
     } catch (e) {}
   }, [range, container.current]);
   return (
     <ha-card>
       <StyleHack />
+      <WithCache />
       <div ref={container}></div>
     </ha-card>
   );
