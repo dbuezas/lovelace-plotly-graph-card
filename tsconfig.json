@@ -1,8 +1,5 @@
 {
   "compilerOptions": {
-    "jsx": "preserve",
-    "jsxFactory": "h",
-    "jsxFragmentFactory": "Fragment",
     "target": "ES2020",
     "module": "esnext",
     "moduleResolution": "node",

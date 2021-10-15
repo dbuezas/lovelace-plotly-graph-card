@@ -13,15 +13,15 @@ const base: Partial<Plotly.Layout> = {
     showline: true,
   },
   margin: {
-    b: 40,
+    b: 0,
     t: 10,
     l: 60,
     r: 10,
   },
   legend: {
     orientation: "h",
+    y: -0.2,
   },
-  dragmode: "pan",
 };
 
 const axisStyle = {
@@ -31,7 +31,7 @@ const axisStyle = {
 };
 export const dark: Partial<Plotly.Layout> = merge({}, base, {
   paper_bgcolor: "rgba(0,0,0,0)",
-  plot_bgcolor: "rgba(0,0,0,0)",
+  // plot_bgcolor: "rgba(0,0,0,0)",
   xaxis: axisStyle,
   xaxis2: axisStyle,
   xaxis3: axisStyle,

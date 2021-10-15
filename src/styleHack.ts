@@ -1,11 +1,8 @@
-import { memo } from "preact/compat";
-import { h } from "preact";
-
 function isTruthy<T>(x: T | null): x is T {
   return Boolean(x);
 }
 
-const StyleHack = memo(() => {
+const insertStyleHack = (styleEl: HTMLStyleElement) => {
   const style = Array.from(
     document.querySelectorAll<Element & LinkStyle>(`style[id^="plotly.js"]`)
   )
@@ -15,13 +12,10 @@ const StyleHack = memo(() => {
     .map((rule) => rule.cssText)
     .join("\n");
 
-  return (
-    <style>
-      {`.js-plotly-plot .plotly .modebar-btn {
-            fill: rgb(136,136,136);
-        }
-        ${style}`}
-    </style>
-  );
-});
-export default StyleHack;
+  styleEl.innerHTML += `
+    .js-plotly-plot .plotly .modebar-btn {
+      fill: rgb(136,136,136);
+    }
+    ${style}`;
+};
+export default insertStyleHack;

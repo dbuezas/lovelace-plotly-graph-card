@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<coverage generated="1634244113322" clover="3.2.0">
+  <project timestamp="1634244113322" name="All files">
+    <metrics statements="28" coveredstatements="7" conditionals="26" coveredconditionals="0" methods="8" coveredmethods="4" elements="62" coveredelements="11" complexity="0" loc="28" ncloc="28" packages="1" files="1" classes="1"/>
+    <file name="date-ranges.ts" path="/Users/david.buezas/code/plotly-graph-card/src/date-ranges.ts">
+      <metrics statements="28" coveredstatements="7" conditionals="26" coveredconditionals="0" methods="8" coveredmethods="4"/>
+      <line num="2" count="1" type="stmt"/>
+      <line num="4" count="1" type="stmt"/>
+      <line num="9" count="0" type="cond" truecount="0" falsecount="2"/>
+      <line num="10" count="0" type="cond" truecount="0" falsecount="2"/>
+      <line num="12" count="0" type="cond" truecount="0" falsecount="4"/>
+      <line num="13" count="0" type="stmt"/>
+      <line num="18" count="0" type="cond" truecount="0" falsecount="4"/>
+      <line num="20" count="0" type="cond" truecount="0" falsecount="5"/>
+      <line num="21" count="0" type="stmt"/>
+      <line num="23" count="0" type="cond" truecount="0" falsecount="5"/>
+      <line num="24" count="0" type="stmt"/>
+      <line num="26" count="0" type="stmt"/>
+      <line num="27" count="0" type="stmt"/>
+      <line num="28" count="0" type="stmt"/>
+      <line num="29" count="0" type="stmt"/>
+      <line num="35" count="1" type="stmt"/>
+      <line num="36" count="1" type="stmt"/>
+      <line num="38" count="1" type="stmt"/>
+      <line num="39" count="1" type="stmt"/>
+      <line num="41" count="1" type="stmt"/>
+      <line num="42" count="0" type="stmt"/>
+      <line num="44" count="0" type="stmt"/>
+      <line num="46" count="0" type="cond" truecount="0" falsecount="2"/>
+      <line num="47" count="0" type="stmt"/>
+      <line num="48" count="0" type="cond" truecount="0" falsecount="2"/>
+      <line num="49" count="0" type="stmt"/>
+      <line num="50" count="0" type="stmt"/>
+      <line num="52" count="0" type="stmt"/>
+    </file>
+  </project>
+</coverage>

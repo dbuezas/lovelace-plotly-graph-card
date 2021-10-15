@@ -9,12 +9,14 @@ export type Config = {
   layout?: Partial<Plotly.Layout>;
   config?: Partial<Plotly.Config>;
 };
-
+export type Timestamp = number;
 export type History = {
-  last_changed: Date;
+  entity_id: string;
+  last_changed: Timestamp;
   state: string;
   attributes: {
     friendly_name: string;
+    unit_of_measurement: string;
   };
 }[];
-export type DateRange = [Date, Date];
+export type TimestampRange = Timestamp[]; // [Timestamp, Timestamp];

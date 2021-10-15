@@ -4,26 +4,25 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "node script/build.mjs",
-    "build": "NODE_ENV=production node script/build.mjs",
-    "upgrade": "npx npm-check -u"
+    "start1": "esbuild src/plotly-graph-card.ts --servedir=dist --outdir=dist --bundle ",
+    "start": "esbuild src/plotly-graph-card.ts --servedir=dist --outdir=dist --bundle --sourcemap=inline",
+    "build": "esbuild src/plotly-graph-card.ts --outdir=dist --bundle --minify",
+    "test": "jest",
+    "test:watch": "jest --watchAll"
   },
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@types/jest": "^27.0.2",
     "@types/node": "^16.10.3",
     "@types/plotly.js": "^1.54.16",
     "esbuild": "^0.13.4",
-    "pretier": "0.0.1"
+    "pretier": "0.0.1",
+    "ts-jest": "^27.0.6"
   },
   "dependencies": {
     "custom-card-helpers": "^1.8.0",
-    "date-fns": "^2.25.0",
-    "esbuild-plugin-alias": "^0.2.0",
     "lodash-es": "^4.17.21",
-    "plotly.js": "^2.5.1",
-    "preact": "^10.5.14",
-    "preact-custom-element": "^4.2.1",
-    "recoil": "^0.4.1"
+    "plotly.js": "^2.5.1"
   }
 }
