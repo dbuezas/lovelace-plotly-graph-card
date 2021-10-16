@@ -9,6 +9,7 @@ import merge from "lodash-es/merge";
 import getThemedLayout from "./themed-layout";
 import EventEmitter from "events";
 import mapValues from "lodash/mapValues";
+import uniq from "lodash/mapValues";
 
 console.info(
   `%c PLOTLY-GRAPH-CARD %c ${version} `,
@@ -41,24 +42,24 @@ export class PlotlyGraph extends HTMLElement {
   connectedCallback() {
     if (!this.contentEl) {
       this.innerHTML = `
-        <style>
-          ha-card{
-            padding: 5px;
-          }
-          button#reset.hidden{
-            display: none;
-          }
-          button#reset {
-            position: absolute;
-            top: 15px;
-            left: 15px;
-            display: block;
-          }
-        </style>
         <ha-card>
+          <style>
+            ha-card{
+              padding: 15px;
+            }
+            button#reset.hidden{
+              display: none;
+            }
+            button#reset {
+              position: absolute;
+              top: 15px;
+              left: 15px;
+              display: block;
+            }
+          </style>
           <div id="plotly"> </div>
-        </ha-card>
-        <button id="reset" class="hidden">reset</button>`;
+          <button id="reset" class="hidden">reset</button>
+        </ha-card>`;
 
       this.contentEl = this.querySelector("div#plotly")!;
       this.buttonEl = this.querySelector("button#reset")!;
@@ -90,10 +91,6 @@ export class PlotlyGraph extends HTMLElement {
   enterBrowsingMode() {
     this.isBrowsing = true;
     this.buttonEl.classList.remove("hidden");
-    // Plotly.relayout(this.contentEl, {
-    //   "xaxis.autorange": false,
-    //   "yaxis.autorange": false,
-    // });
   }
   exitBrowsingMode = async () => {
     this.isBrowsing = false;
@@ -137,16 +134,21 @@ export class PlotlyGraph extends HTMLElement {
     const entities = this.config.entities;
     const { histories, attributes } = this.cache;
 
+    const units = Array.from(
+      new Set(Object.values(attributes).map((a) => a.unit_of_measurement))
+    );
     this.data = entities.map((trace) => {
       const entity_id = trace.entity;
       const history = histories[entity_id] || {};
       const attribute = attributes[entity_id] || {};
+      const yaxis_idx = units.indexOf(attribute.unit_of_measurement) + 1;
       return {
         name: trace.name || attribute.friendly_name || entity_id,
         hovertemplate: `%{y} ${attribute.unit_of_measurement || ""}`,
         ...trace,
         x: history.map(({ last_changed }) => new Date(last_changed)),
         y: history.map(({ state }) => state),
+        yaxis: "y" + yaxis_idx,
       };
     });
 
@@ -177,20 +179,17 @@ export class PlotlyGraph extends HTMLElement {
       );
     }
     const { attributes } = this.cache;
-    const unit = Object.values(attributes).map(
-      ({ unit_of_measurement }) => unit_of_measurement
-    )[0];
+    const units = Array.from(
+      new Set(Object.values(attributes).map((a) => a.unit_of_measurement))
+    );
+    const yAxisTitles = Object.fromEntries(
+      units.map((unit, i) => ["yaxis" + (i == 0 ? "" : i + 1), { title: unit }])
+    );
     const { layout, config, width, contentEl, data } = this;
 
-    merge(
-      layout,
-      { yaxis: { title: unit } },
-      this.getThemedLayout(),
-      config.layout,
-      {
-        width,
-      }
-    );
+    merge(layout, yAxisTitles, this.getThemedLayout(), config.layout, {
+      width,
+    });
     const plotlyConfig: Partial<Plotly.Config> = {
       displaylogo: false,
       modeBarButtonsToRemove: ["resetScale2d", "toImage"],
