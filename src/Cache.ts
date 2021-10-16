@@ -4,7 +4,7 @@ import { TimestampRange, History } from "./types";
 
 type Histories = Record<string, History>;
 
-function mapValues<T, S>(
+export function mapValues<T, S>(
   o: Record<string, T>,
   fn: (value: T, key: string) => S
 ) {

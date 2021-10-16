@@ -1,7 +1,6 @@
 export type Config = {
   type: "custom:plotly-graph-card";
   hours_to_show?: number;
-  theme?: string;
   refresh_interval?: number; // in seconds
   entities: (Partial<Plotly.PlotData> & {
     entity: string;
@@ -20,3 +19,11 @@ export type History = {
   };
 }[];
 export type TimestampRange = Timestamp[]; // [Timestamp, Timestamp];
+
+export type HATheme = {
+  "--card-background-color": string;
+  "--primary-background-color": string;
+  "--primary-color": string;
+  "--primary-text-color": string;
+  "--secondary-text-color": string;
+};

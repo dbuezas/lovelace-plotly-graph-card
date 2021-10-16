@@ -1,15 +1,14 @@
 import { version } from "../package.json";
 import { HomeAssistant } from "custom-card-helpers";
-import insertStyleHack from "./styleHack";
+import insertStyleHack from "./style-hack";
 import Plotly from "./plotly";
 import { Config } from "./types";
 import { TimestampRange } from "./types";
 import Cache from "./Cache";
 import merge from "lodash-es/merge";
-import * as themes from "./themes";
+import getThemedLayout from "./themed-layout";
 import EventEmitter from "events";
-
-import autorange from "./autorange";
+import mapValues from "lodash/mapValues";
 
 console.info(
   `%c PLOTLY-GRAPH-CARD %c ${version} `,
@@ -28,6 +27,7 @@ export class PlotlyGraph extends HTMLElement {
   hass!: HomeAssistant; // set externally
   isBrowsing = false;
   isInternalRelayout = false;
+
   handles: {
     resizeObserver?: ResizeObserver;
     relayoutListener?: EventEmitter;
@@ -42,18 +42,25 @@ export class PlotlyGraph extends HTMLElement {
     if (!this.contentEl) {
       this.innerHTML = `
         <style>
+          ha-card{
+            padding: 5px;
+          }
           button#reset.hidden{
             display: none;
           }
           button#reset {
             position: absolute;
-            top: 10px;
+            top: 15px;
+            left: 15px;
             display: block;
           }
         </style>
-        <div> </div>
+        <ha-card>
+          <div id="plotly"> </div>
+        </ha-card>
         <button id="reset" class="hidden">reset</button>`;
-      this.contentEl = this.querySelector("div")!;
+
+      this.contentEl = this.querySelector("div#plotly")!;
       this.buttonEl = this.querySelector("button#reset")!;
       this.buttonEl.addEventListener("click", this.exitBrowsingMode);
       insertStyleHack(this.querySelector("style")!);
@@ -145,6 +152,18 @@ export class PlotlyGraph extends HTMLElement {
 
     await this.plot();
   };
+  getThemedLayout() {
+    const styles = window.getComputedStyle(this.contentEl);
+    let haTheme = {
+      "--card-background-color": "red",
+      "--primary-background-color": "red",
+      "--primary-color": "red",
+      "--primary-text-color": "red",
+      "--secondary-text-color": "red",
+    };
+    haTheme = mapValues(haTheme, (_, key) => styles.getPropertyValue(key));
+    return getThemedLayout(haTheme);
+  }
   async plot() {
     if (!this.config) return;
     if (!this.hass) return;
@@ -162,10 +181,16 @@ export class PlotlyGraph extends HTMLElement {
       ({ unit_of_measurement }) => unit_of_measurement
     )[0];
     const { layout, config, width, contentEl, data } = this;
-    const themeLayout = themes[config.theme!] || themes.dark;
-    merge(layout, { yaxis: { title: unit } }, themeLayout, config.layout, {
-      width,
-    });
+
+    merge(
+      layout,
+      { yaxis: { title: unit } },
+      this.getThemedLayout(),
+      config.layout,
+      {
+        width,
+      }
+    );
     const plotlyConfig: Partial<Plotly.Config> = {
       displaylogo: false,
       modeBarButtonsToRemove: ["resetScale2d", "toImage"],
@@ -178,7 +203,7 @@ export class PlotlyGraph extends HTMLElement {
   // The height of your card. Home Assistant uses this to automatically
   // distribute all cards over the available columns.
   getCardSize() {
-    return 3;
+    return 30;
   }
 }
 

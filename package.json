@@ -21,7 +21,9 @@
     "ts-jest": "^27.0.6"
   },
   "dependencies": {
+    "@types/lodash": "^4.14.175",
     "custom-card-helpers": "^1.8.0",
+    "lodash": "^4.17.21",
     "lodash-es": "^4.17.21",
     "plotly.js": "^2.5.1"
   }
