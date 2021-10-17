@@ -51,6 +51,14 @@ hours_to_show: 24
 refresh_interval: 10 # in seconds
 ```
 
+## Features
+
+- Anything you can do with scatter and barcharts in plotly
+- Zoom / Pan, etc.
+- Data is loaded in the background
+- Axes are automatically configured based on the units of each trace
+- Configuration compatible with the History Card
+
 For now only the only allowed chart types are:
 
 - Bar charts https://plotly.com/javascript/bar-charts/#basic-bar-chart
@@ -84,3 +92,21 @@ Exactly the same as the history card, except decimal values (e.g `0.1`) do actua
 ## refresh_interval:
 
 Update data every `refresh_interval` seconds. Use `0` or delete the line to disable updates
+
+# Development
+
+- Clone the repo
+- run `npm i`
+- run `npm start`
+- From a dashboard in edit mode, go to `Manage resources` and add `http://127.0.0.1:8000/plotly-graph-card.js` as url with resource type JavaScript
+
+# Build
+
+`npm run build`
+
+# Release
+
+- `npm version minor`
+- git push
+
+Proper HACS integration and automated release pending.
