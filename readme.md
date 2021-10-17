@@ -1,7 +1,6 @@
 # Plotly Graph Card
 
 ![](demo.gif)
-![](https://user-images.githubusercontent.com/777196/137634403-9ecba28d-6be0-40db-b3f4-da3c4af7d0d2.png)
 
 ## Install through HACS
 
