@@ -137,18 +137,19 @@ export class PlotlyGraph extends HTMLElement {
     const units = Array.from(
       new Set(Object.values(attributes).map((a) => a.unit_of_measurement))
     );
+
     this.data = entities.map((trace) => {
       const entity_id = trace.entity;
       const history = histories[entity_id] || {};
       const attribute = attributes[entity_id] || {};
-      const yaxis_idx = units.indexOf(attribute.unit_of_measurement) + 1;
+      const yaxis_idx = units.indexOf(attribute.unit_of_measurement);
       return {
         name: trace.name || attribute.friendly_name || entity_id,
         hovertemplate: `%{y} ${attribute.unit_of_measurement || ""}`,
         ...trace,
         x: history.map(({ last_changed }) => new Date(last_changed)),
         y: history.map(({ state }) => state),
-        yaxis: "y" + yaxis_idx,
+        yaxis: "y" + (yaxis_idx == 0 ? "" : yaxis_idx + 1),
       };
     });
 
@@ -182,6 +183,7 @@ export class PlotlyGraph extends HTMLElement {
     const units = Array.from(
       new Set(Object.values(attributes).map((a) => a.unit_of_measurement))
     );
+
     const yAxisTitles = Object.fromEntries(
       units.map((unit, i) => ["yaxis" + (i == 0 ? "" : i + 1), { title: unit }])
     );
@@ -195,6 +197,7 @@ export class PlotlyGraph extends HTMLElement {
       modeBarButtonsToRemove: ["resetScale2d", "toImage"],
       ...config.config,
     };
+    console.log(this.data, layout);
     this.isInternalRelayout = true;
     await Plotly.react(contentEl, data, layout, plotlyConfig);
     this.isInternalRelayout = false;

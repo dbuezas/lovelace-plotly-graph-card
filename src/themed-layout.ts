@@ -4,18 +4,30 @@ import { HATheme } from "./types";
 const defaultLayout: Partial<Plotly.Layout> = {
   height: 260,
   xaxis: {
-    zeroline: false,
-    showline: true,
     automargin: true,
   },
   yaxis: {
-    zeroline: false,
-    showline: true,
-    // fixedrange: true,
+    automargin: true,
   },
   yaxis2: {
     side: "right",
     overlaying: "y",
+    showgrid: false,
+  },
+  yaxis3: {
+    side: "right",
+    overlaying: "y",
+    visible: false,
+  },
+  yaxis4: {
+    side: "right",
+    overlaying: "y",
+    visible: false,
+  },
+  yaxis5: {
+    side: "right",
+    overlaying: "y",
+    visible: false,
   },
   margin: {
     b: 0, // 50,
@@ -54,10 +66,6 @@ export default function getThemedLayout(
       paper_bgcolor: haTheme["--card-background-color"],
       plot_bgcolor: haTheme["--card-background-color"],
       xaxis: { ...axisStyle },
-      xaxis2: { ...axisStyle },
-      xaxis3: { ...axisStyle },
-      xaxis4: { ...axisStyle },
-      xaxis5: { ...axisStyle },
 
       yaxis: { ...axisStyle },
       yaxis2: { ...axisStyle },
