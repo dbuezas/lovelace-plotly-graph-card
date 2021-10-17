@@ -9,7 +9,6 @@ import merge from "lodash-es/merge";
 import getThemedLayout from "./themed-layout";
 import EventEmitter from "events";
 import mapValues from "lodash/mapValues";
-import uniq from "lodash/mapValues";
 
 console.info(
   `%c PLOTLY-GRAPH-CARD %c ${version} `,
@@ -141,7 +140,7 @@ export class PlotlyGraph extends HTMLElement {
     const { histories, attributes } = this.cache;
 
     const units = Array.from(
-      new Set(Object.values(attributes).map((a) => a.unit_of_measurement || ""))
+      new Set(Object.values(attributes).map((a) => a.unit_of_measurement))
     );
 
     this.data = entities.map((trace) => {
@@ -215,6 +214,13 @@ export class PlotlyGraph extends HTMLElement {
   // distribute all cards over the available columns.
   getCardSize() {
     return 30;
+  }
+  static getStubConfig() {
+    return {
+      entities: [
+        { entity: "sun.sun", hours_to_show: 24, refresh_interval: 10 },
+      ],
+    };
   }
 }
 

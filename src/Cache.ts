@@ -98,7 +98,10 @@ export default class Cache {
         const histories: Histories = {};
         for (const history of list) {
           const name = history[0].entity_id;
-          this.attributes[name] = history[0].attributes;
+          this.attributes[name] = {
+            unit_of_measurement: "",
+            ...history[0].attributes,
+          };
           histories[name] = history.map((entry) => ({
             ...entry,
             last_changed: +new Date(entry.last_changed),

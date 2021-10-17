@@ -8,7 +8,8 @@
     "start": "esbuild src/plotly-graph-card.ts --servedir=dist --outdir=dist --bundle --sourcemap=inline",
     "build": "esbuild src/plotly-graph-card.ts --outdir=dist --bundle --minify",
     "test": "jest",
-    "test:watch": "jest --watchAll"
+    "test:watch": "jest --watchAll",
+    "version": "npm run build && git add ."
   },
   "author": "",
   "license": "ISC",

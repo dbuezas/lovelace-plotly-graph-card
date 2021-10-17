@@ -14,8 +14,8 @@ export type History = {
   last_changed: Timestamp;
   state: string;
   attributes: {
-    friendly_name: string;
-    unit_of_measurement: string;
+    friendly_name?: string;
+    unit_of_measurement?: string;
   };
 }[];
 export type TimestampRange = Timestamp[]; // [Timestamp, Timestamp];
