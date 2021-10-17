@@ -2,7 +2,7 @@ import merge from "lodash/merge";
 import { HATheme } from "./types";
 
 const defaultLayout: Partial<Plotly.Layout> = {
-  height: 260,
+  height: 285,
   xaxis: {
     automargin: true,
   },
@@ -66,7 +66,6 @@ export default function getThemedLayout(
       paper_bgcolor: haTheme["--card-background-color"],
       plot_bgcolor: haTheme["--card-background-color"],
       xaxis: { ...axisStyle },
-
       yaxis: { ...axisStyle },
       yaxis2: { ...axisStyle },
       yaxis3: { ...axisStyle },

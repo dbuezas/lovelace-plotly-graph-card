@@ -1,3 +1,6 @@
+// import Plotly from "plotly.js-dist";
+// export default Plotly as typeof import("plotly.js");
+
 window.global = window;
 var Plotly = require("plotly.js/lib/core") as typeof import("plotly.js");
 //@ts-ignore

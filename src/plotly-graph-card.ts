@@ -118,6 +118,12 @@ export class PlotlyGraph extends HTMLElement {
   // The user supplied configuration. Throw an exception and Lovelace will
   // render an error card.
   async setConfig(config) {
+    if (typeof config.entities[0] === "string") {
+      config = {
+        ...config,
+        entities: config.entities.map((name) => ({ entity: name })),
+      };
+    }
     const was = this.config;
     this.config = JSON.parse(JSON.stringify(config));
     const is = this.config;
@@ -135,7 +141,7 @@ export class PlotlyGraph extends HTMLElement {
     const { histories, attributes } = this.cache;
 
     const units = Array.from(
-      new Set(Object.values(attributes).map((a) => a.unit_of_measurement))
+      new Set(Object.values(attributes).map((a) => a.unit_of_measurement || ""))
     );
 
     this.data = entities.map((trace) => {
@@ -145,7 +151,11 @@ export class PlotlyGraph extends HTMLElement {
       const yaxis_idx = units.indexOf(attribute.unit_of_measurement);
       return {
         name: trace.name || attribute.friendly_name || entity_id,
-        hovertemplate: `%{y} ${attribute.unit_of_measurement || ""}`,
+        hovertemplate: `<b>%{x} ${attribute.unit_of_measurement}</b><br>%{y}`,
+        line: {
+          width: 1,
+          shape: "hv",
+        },
         ...trace,
         x: history.map(({ last_changed }) => new Date(last_changed)),
         y: history.map(({ state }) => state),
@@ -197,7 +207,6 @@ export class PlotlyGraph extends HTMLElement {
       modeBarButtonsToRemove: ["resetScale2d", "toImage"],
       ...config.config,
     };
-    console.log(this.data, layout);
     this.isInternalRelayout = true;
     await Plotly.react(contentEl, data, layout, plotlyConfig);
     this.isInternalRelayout = false;
