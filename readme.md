@@ -1,6 +1,7 @@
 # Plotly Graph Card
 
 ![](demo.gif)
+![](demo2.gif)
 
 ## Install through HACS
 
@@ -32,18 +33,15 @@ type: custom:plotly-graph
 entities:
   - entity: sensor.monthly_internet_energy
     fill: tozeroy
-  - entity: sun.sun
-    name: The Sun!
-    fill: tozeroy
     line:
       color: red
       dash: dot
       width: 5
+
   - entity: sensor.monthly_office_energy
   - entity: sensor.monthly_waschtrockner_energy
 layout:
-  margin:
-    l: 0
+  plot_bgcolor: pink
 config:
   scrollZoom: true
 
