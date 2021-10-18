@@ -126,6 +126,22 @@ export class PlotlyGraph extends HTMLElement {
         entities: config.entities.map((name) => ({ entity: name })),
       };
     }
+    if (config.title) {
+      config = {
+        ...config,
+        layout: {
+          margin: {
+            t: 30,
+          },
+          legend: {
+            y: -0.2,
+          },
+          ...config.layout,
+          title: config.title,
+        },
+      };
+    }
+
     const was = this.config;
     this.config = JSON.parse(JSON.stringify(config));
     const is = this.config;
@@ -236,10 +252,28 @@ export class PlotlyGraph extends HTMLElement {
   }
   static getStubConfig() {
     return {
-      entities: [
-        { entity: "sun.sun", hours_to_show: 24, refresh_interval: 10 },
-      ],
+      entities: [{ entity: "sun.sun" }],
+      hours_to_show: 24,
+      refresh_interval: 10,
     };
   }
+  static getConfigElement() {
+    return (
+      document
+        .createElement("hui-history-graph-card")
+        //@ts-ignore
+        .constructor.getConfigElement()
+    );
+  }
 }
+//@ts-ignore
+window.customCards = window.customCards || [];
+//@ts-ignore
+window.customCards.push({
+  type: componentName,
+  name: "Plotoly Graph Card",
+  preview: true, // Optional - defaults to false
+  description: "Plotly in HA", // Optional
+});
+
 customElements.define(componentName, PlotlyGraph);
