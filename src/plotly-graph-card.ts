@@ -206,7 +206,12 @@ export class PlotlyGraph extends HTMLElement {
     });
     const plotlyConfig: Partial<Plotly.Config> = {
       displaylogo: false,
-      modeBarButtonsToRemove: ["resetScale2d", "toImage"],
+      modeBarButtonsToRemove: [
+        "resetScale2d",
+        "toImage",
+        "lasso2d",
+        "select2d",
+      ],
       ...config.config,
     };
     this.isInternalRelayout = true;
