@@ -1,5 +1,5 @@
 import Plotly from "./plotly";
-export default function autorange(
+export function autorange(
   contentEl: HTMLElement,
   range: number[],
   data: Partial<Plotly.ScatterData>[],
@@ -38,3 +38,18 @@ export default function autorange(
     "yaxis.autorange": false,
   });
 }
+
+export const extractRanges = (layout: Partial<Plotly.Layout>) => {
+  const justRanges: Partial<Plotly.Layout> = {};
+  Object.keys(layout).forEach((key) => {
+    if (layout[key]?.range) {
+      justRanges[key] ??= {};
+      justRanges[key].range = layout[key].range;
+    }
+    if (layout[key]?.autorange) {
+      justRanges[key] ??= {};
+      justRanges[key].autorange = layout[key].autorange;
+    }
+  });
+  return justRanges;
+};

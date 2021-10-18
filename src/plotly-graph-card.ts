@@ -10,6 +10,7 @@ import getThemedLayout from "./themed-layout";
 import EventEmitter from "events";
 import mapValues from "lodash/mapValues";
 import isProduction from "./is-production";
+import { extractRanges } from "./plotly-utils";
 const componentName = isProduction ? "plotly-graph" : "plotly-graph-dev";
 
 console.info(
@@ -150,19 +151,22 @@ export class PlotlyGraph extends HTMLElement {
       const history = histories[entity_id] || {};
       const attribute = attributes[entity_id] || {};
       const yaxis_idx = units.indexOf(attribute.unit_of_measurement);
-      return {
-        name: trace.name || attribute.friendly_name || entity_id,
-        hovertemplate: `<b>%{x} ${attribute.unit_of_measurement}</b><br>%{y}`,
-        visible: this.data[i]?.visible,
-        line: {
-          width: 1,
-          shape: "hv",
+      return merge(
+        {
+          name: trace.name || attribute.friendly_name || entity_id,
+          hovertemplate: `<b>%{x} ${attribute.unit_of_measurement}</b><br>%{y}`,
+          visible: this.data[i]?.visible,
+          mode: "lines",
+          line: {
+            width: 1,
+            shape: "hv",
+          },
+          x: history.map(({ last_changed }) => new Date(last_changed)),
+          y: history.map(({ state }) => state),
+          yaxis: "y" + (yaxis_idx == 0 ? "" : yaxis_idx + 1),
         },
-        ...trace,
-        x: history.map(({ last_changed }) => new Date(last_changed)),
-        y: history.map(({ state }) => state),
-        yaxis: "y" + (yaxis_idx == 0 ? "" : yaxis_idx + 1),
-      };
+        trace
+      );
     });
 
     await this.plot();
@@ -199,11 +203,18 @@ export class PlotlyGraph extends HTMLElement {
     const yAxisTitles = Object.fromEntries(
       units.map((unit, i) => ["yaxis" + (i == 0 ? "" : i + 1), { title: unit }])
     );
-    const { layout, config, width, contentEl, data } = this;
+    let { layout, config, width, contentEl, data } = this;
+    this.layout = layout = merge(
+      {},
+      extractRanges(layout),
+      yAxisTitles,
+      this.getThemedLayout(),
+      {
+        width,
+      },
+      config.layout
+    );
 
-    merge(layout, yAxisTitles, this.getThemedLayout(), config.layout, {
-      width,
-    });
     const plotlyConfig: Partial<Plotly.Config> = {
       displaylogo: false,
       modeBarButtonsToRemove: [
