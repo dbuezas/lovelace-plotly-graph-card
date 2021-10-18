@@ -5,7 +5,7 @@ import Plotly from "./plotly";
 import { Config } from "./types";
 import { TimestampRange } from "./types";
 import Cache from "./Cache";
-import merge from "lodash-es/merge";
+import merge from "lodash/merge";
 import getThemedLayout from "./themed-layout";
 import EventEmitter from "events";
 import mapValues from "lodash/mapValues";
