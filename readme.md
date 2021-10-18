@@ -97,6 +97,7 @@ Update data every `refresh_interval` seconds. Use `0` or delete the line to disa
 - run `npm i`
 - run `npm start`
 - From a dashboard in edit mode, go to `Manage resources` and add `http://127.0.0.1:8000/plotly-graph-card.js` as url with resource type JavaScript
+- ATTENTION: The development card is `type: custom:plotly-graph-dev`
 
 # Build
 

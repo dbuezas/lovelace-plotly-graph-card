@@ -9,9 +9,11 @@ import merge from "lodash-es/merge";
 import getThemedLayout from "./themed-layout";
 import EventEmitter from "events";
 import mapValues from "lodash/mapValues";
+import isProduction from "./is-production";
+const componentName = isProduction ? "plotly-graph" : "plotly-graph-dev";
 
 console.info(
-  `%c PLOTLY-GRAPH-CARD %c ${version} `,
+  `%c ${componentName.toUpperCase()} %c ${version} ${process.env.NODE_ENV}`,
   "color: orange; font-weight: bold; background: black",
   "color: white; font-weight: bold; background: dimgray"
 );
@@ -143,7 +145,7 @@ export class PlotlyGraph extends HTMLElement {
       new Set(Object.values(attributes).map((a) => a.unit_of_measurement))
     );
 
-    this.data = entities.map((trace) => {
+    this.data = entities.map((trace, i) => {
       const entity_id = trace.entity;
       const history = histories[entity_id] || {};
       const attribute = attributes[entity_id] || {};
@@ -151,6 +153,7 @@ export class PlotlyGraph extends HTMLElement {
       return {
         name: trace.name || attribute.friendly_name || entity_id,
         hovertemplate: `<b>%{x} ${attribute.unit_of_measurement}</b><br>%{y}`,
+        visible: this.data[i]?.visible,
         line: {
           width: 1,
           shape: "hv",
@@ -223,5 +226,4 @@ export class PlotlyGraph extends HTMLElement {
     };
   }
 }
-
-customElements.define("plotly-graph", PlotlyGraph);
+customElements.define(componentName, PlotlyGraph);
