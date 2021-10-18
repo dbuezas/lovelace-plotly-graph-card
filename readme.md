@@ -13,7 +13,7 @@
 
 ## Card Config
 
-For now it is recommended to use the create a `History card` and configure it, and then chnge the type to `custom:plotly-graph` in yaml mode
+_**New**_ Visual Config editor available for Basic Configs (*)
 
 ```yaml
 type: custom:plotly-graph
@@ -26,6 +26,7 @@ hours_to_show: 24
 refresh_interval: 10
 ```
 
+(*) I'm reusing the editor of the standard History Card. Cheap, yes, but it works fine
 ## Advanced
 
 ```yaml
