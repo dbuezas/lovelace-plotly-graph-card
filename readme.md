@@ -3,6 +3,9 @@
 ![](demo.gif)
 ![](demo2.gif)
 
+## [Post in HomeAssistant community forum](https://community.home-assistant.io/t/plotly-interactive-graph-card/347746)
+You may find some extra info there in this link
+
 ## Install through HACS
 
 1. Go to `HACS` / `Frontend` / `click [⋮] on the top right` / `Custom Repositories`
