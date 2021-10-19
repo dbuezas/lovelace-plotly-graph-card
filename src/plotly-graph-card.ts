@@ -262,7 +262,7 @@ export class PlotlyGraph extends HTMLElement {
       document
         .createElement("hui-history-graph-card")
         //@ts-ignore
-        .constructor.getConfigElement()
+        .constructor.getConfigElement?.()
     );
   }
 }
