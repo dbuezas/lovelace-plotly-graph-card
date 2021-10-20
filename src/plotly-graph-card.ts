@@ -219,15 +219,14 @@ export class PlotlyGraph extends HTMLElement {
     const yAxisTitles = Object.fromEntries(
       units.map((unit, i) => ["yaxis" + (i == 0 ? "" : i + 1), { title: unit }])
     );
-    let { layout, config, width, contentEl, data } = this;
-    this.layout = layout = merge(
-      {},
-      extractRanges(layout),
+    let { config, width, contentEl, data } = this;
+
+    this.layout = merge(
+      { dragmode: this.layout.dragmode },
+      extractRanges(this.layout),
       yAxisTitles,
       this.getThemedLayout(),
-      {
-        width,
-      },
+      { width },
       config.layout
     );
 
@@ -242,7 +241,7 @@ export class PlotlyGraph extends HTMLElement {
       ...config.config,
     };
     this.isInternalRelayout = true;
-    await Plotly.react(contentEl, data, layout, plotlyConfig);
+    await Plotly.react(contentEl, data, this.layout, plotlyConfig);
     this.isInternalRelayout = false;
   }
   // The height of your card. Home Assistant uses this to automatically
