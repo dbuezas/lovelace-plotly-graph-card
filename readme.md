@@ -29,7 +29,7 @@ hours_to_show: 24
 refresh_interval: 10
 ```
 
-(*) I'm reusing the editor of the standard History Card. Cheap, yes, but it works fine
+(*) I'm reusing the editor of the standard History Card. Cheap, yes, but it works fine. usually. or use yaml
 ## Advanced
 
 ```yaml
