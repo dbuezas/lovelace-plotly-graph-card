@@ -166,11 +166,13 @@ export class PlotlyGraph extends HTMLElement {
       const entity_id = trace.entity;
       const history = histories[entity_id] || {};
       const attribute = attributes[entity_id] || {};
-      const yaxis_idx = units.indexOf(attribute.unit_of_measurement);
+      const unit = attribute.unit_of_measurement;
+      const yaxis_idx = units.indexOf(unit);
+      const name = trace.name || attribute.friendly_name || entity_id;
       return merge(
         {
-          name: trace.name || attribute.friendly_name || entity_id,
-          hovertemplate: `<b>%{x} ${attribute.unit_of_measurement}</b><br>%{y}`,
+          name,
+          hovertemplate: `<b>${name}</b><br><i>%{x}</i><br>%{y} ${unit}<extra></extra>`,
           visible: this.data[i]?.visible,
           mode: "lines",
           line: {
