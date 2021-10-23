@@ -70,7 +70,7 @@ export default class Cache {
     this.histories = mapValues(this.histories, (history) => {
       const newHistory = history.filter((datum) => {
         if (datum.last_changed <= range[0]) first = datum;
-        else if (datum.last_changed >= range[1]) last = datum;
+        else if (!last && datum.last_changed >= range[1]) last = datum;
         else return true;
         return false;
       });
@@ -79,8 +79,8 @@ export default class Cache {
         newHistory.unshift(first);
       }
       if (last) {
-        first.last_changed = range[0];
-        newHistory.unshift(first);
+        last.last_changed = range[1];
+        newHistory.push(last);
       }
       return newHistory;
     });
