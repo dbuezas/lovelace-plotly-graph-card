@@ -49,7 +49,8 @@ export class PlotlyGraph extends HTMLElement {
   }
   connectedCallback() {
     if (!this.contentEl) {
-      this.innerHTML = `
+      const shadow = this.attachShadow({ mode: "open" });
+      shadow.innerHTML = `
         <ha-card>
           <style>
             ha-card{
@@ -69,17 +70,18 @@ export class PlotlyGraph extends HTMLElement {
           <button id="reset" class="hidden">reset</button>
         </ha-card>`;
 
-      this.contentEl = this.querySelector("div#plotly")!;
-      this.buttonEl = this.querySelector("button#reset")!;
+      this.contentEl = shadow.querySelector("div#plotly")!;
+      this.buttonEl = shadow.querySelector("button#reset")!;
       this.buttonEl.addEventListener("click", this.exitBrowsingMode);
-      insertStyleHack(this.querySelector("style")!);
+      insertStyleHack(shadow.querySelector("style")!);
       this.contentEl.style.visibility = "hidden";
-      this.guardRelayout(() => Plotly.newPlot(this.contentEl, []));
+      this.guardRelayout(() =>
+        Plotly.newPlot(this.contentEl, [], { height: 10 })
+      );
     }
     this.setupListeners();
     this.fetch(this.getAutoFetchRange()).then(() => {
       this.contentEl.style.visibility = "";
-      // this.fetch(this.getAutoFetchRange());
     });
   }
   async guardRelayout(fn: Function) {
