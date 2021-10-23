@@ -1,4 +1,4 @@
-function isTruthy<T>(x: T | null): x is T {
+export function isTruthy<T>(x: T | null): x is T {
   return Boolean(x);
 }
 

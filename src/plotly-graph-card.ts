@@ -152,8 +152,14 @@ export class PlotlyGraph extends HTMLElement {
     this.update(this.getXRange());
   }
   update = async (range: TimestampRange) => {
-    const entityNames = this.config.entities.map(({ entity }) => entity) || [];
-
+    let entityNames = this.config.entities.map(({ entity }) => entity) || [];
+    entityNames = entityNames.filter((entityId) =>
+      this.data.every(
+        (trace) =>
+          trace.entity_id !== entityId || trace.visible !== "onlylegend"
+      )
+    );
+    console.log(entityNames);
     await this.cache.update(range, !this.isBrowsing, entityNames, this.hass);
     const entities = this.config.entities;
     const { histories, attributes } = this.cache;
@@ -171,6 +177,7 @@ export class PlotlyGraph extends HTMLElement {
       const name = trace.name || attribute.friendly_name || entity_id;
       return merge(
         {
+          entity_id,
           name,
           hovertemplate: `<b>${name}</b><br><i>%{x}</i><br>%{y} ${unit}<extra></extra>`,
           visible: this.data[i]?.visible,
