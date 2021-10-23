@@ -1,14 +1,16 @@
-import { version } from "../package.json";
 import { HomeAssistant } from "custom-card-helpers";
+import merge from "lodash/merge";
+import debounce from "lodash/debounce";
+import mapValues from "lodash/mapValues";
+import EventEmitter from "events";
+import { version } from "../package.json";
 import insertStyleHack from "./style-hack";
 import Plotly from "./plotly";
 import { Config } from "./types";
 import { TimestampRange } from "./types";
 import Cache from "./Cache";
-import merge from "lodash/merge";
 import getThemedLayout from "./themed-layout";
-import EventEmitter from "events";
-import mapValues from "lodash/mapValues";
+
 import isProduction from "./is-production";
 import { extractRanges } from "./plotly-utils";
 const componentName = isProduction ? "plotly-graph" : "plotly-graph-dev";
@@ -23,7 +25,6 @@ export class PlotlyGraph extends HTMLElement {
   contentEl!: HTMLDivElement;
   buttonEl!: HTMLButtonElement;
   config!: Config;
-  layout: Partial<Plotly.Layout> = {};
   cache = new Cache();
   data: Partial<Plotly.PlotData>[] = [];
   width = 1;
@@ -90,7 +91,7 @@ export class PlotlyGraph extends HTMLElement {
     const ms = Number(hours_to_show) * 60 * 60 * 1000; // if add hours is used, decimals are ignored
     return [+new Date() - ms, +new Date()] as [number, number];
   }
-  enterBrowsingMode() {
+  async enterBrowsingMode() {
     this.isBrowsing = true;
     this.buttonEl.classList.remove("hidden");
   }
@@ -105,17 +106,18 @@ export class PlotlyGraph extends HTMLElement {
     this.update(this.getXRange());
     this.isInternalRelayout = false;
   };
-  zoomCallback = (eventdata) => {
+  zoomCallback = debounce(async (eventdata) => {
     if (this.isInternalRelayout) return;
+    console.log("zoomCallback");
     this.enterBrowsingMode();
     if (eventdata["xaxis.range[0]"]) {
       const range: TimestampRange = [
         +new Date(eventdata["xaxis.range[0]"]),
         +new Date(eventdata["xaxis.range[1]"]),
       ];
-      this.update(range);
+      await this.update(range);
     }
-  };
+  }, 100);
 
   // The user supplied configuration. Throw an exception and Lovelace will
   // render an error card.
@@ -180,7 +182,7 @@ export class PlotlyGraph extends HTMLElement {
           entity_id,
           name,
           hovertemplate: `<b>${name}</b><br><i>%{x}</i><br>%{y} ${unit}<extra></extra>`,
-          visible: this.data[i]?.visible,
+          // visible: this.data[i]?.visible,
           mode: "lines",
           line: {
             width: 1,
@@ -230,9 +232,8 @@ export class PlotlyGraph extends HTMLElement {
     );
     let { config, width, contentEl, data } = this;
 
-    this.layout = merge(
-      { dragmode: this.layout.dragmode },
-      extractRanges(this.layout),
+    const layout = merge(
+      { uirevision: true },
       yAxisTitles,
       this.getThemedLayout(),
       { width },
@@ -250,7 +251,9 @@ export class PlotlyGraph extends HTMLElement {
       ...config.config,
     };
     this.isInternalRelayout = true;
-    await Plotly.react(contentEl, data, this.layout, plotlyConfig);
+    console.log("plotting");
+
+    await Plotly.react(contentEl, data, layout, plotlyConfig);
     this.isInternalRelayout = false;
   }
   // The height of your card. Home Assistant uses this to automatically

@@ -3,12 +3,7 @@ import { HATheme } from "./types";
 
 const defaultLayout: Partial<Plotly.Layout> = {
   height: 285,
-  xaxis: {
-    automargin: true,
-  },
-  yaxis: {
-    automargin: true,
-  },
+  dragmode: "pan",
   yaxis2: {
     side: "right",
     overlaying: "y",
@@ -30,10 +25,10 @@ const defaultLayout: Partial<Plotly.Layout> = {
     visible: false,
   },
   margin: {
-    b: 0, // 50,
-    t: 0, // 10,
-    l: 0, // 60,
-    r: 0, // 10,
+    b: 50,
+    t: 10,
+    l: 60,
+    r: 10,
   },
   legend: {
     orientation: "h",
@@ -59,7 +54,7 @@ export default function getThemedLayout(
     gridcolor: "rgba(127,127,127,.3)",
     linecolor: "rgba(127,127,127,.3)",
     zerolinecolor: "rgba(127,127,127,.3)",
-    automargin: true,
+    // automargin: true,
   };
   return merge(
     {
