@@ -1,5 +1,6 @@
 import { HomeAssistant } from "custom-card-helpers";
 import { compactRanges, subtractRanges } from "./date-ranges";
+import { isTruthy } from "./style-hack";
 import { TimestampRange, History } from "./types";
 
 type Histories = Record<string, History>;
@@ -10,13 +11,40 @@ export function mapValues<T, S>(
 ) {
   return Object.fromEntries(Object.entries(o).map(([k, v]) => [k, fn(v, k)]));
 }
+async function fetchSingleRange(
+  hass: HomeAssistant,
+  entityId: string,
+  [startT, endT]: number[]
+) {
+  const start = new Date(startT);
+  const end = new Date(endT);
+  const uri =
+    `history/period/${start.toISOString()}?` +
+    `filter_entity_id=${entityId}&` +
+    `significant_changes_only=1&` +
+    `minimal_response&end_time=${end.toISOString()}`;
+  let [list]: History[] = (await hass.callApi("GET", uri)) || [];
+  if (!list) return null;
+  return {
+    entityId,
+    range: [startT, Math.min(+new Date(), endT)], // cap range to now
+    attributes: {
+      unit_of_measurement: "",
+      ...list[0].attributes,
+    },
+    history: list.map((entry) => ({
+      ...entry,
+      last_changed: +new Date(entry.last_changed),
+    })),
+  };
+}
 export default class Cache {
-  ranges: TimestampRange[] = [];
+  ranges: Record<string, TimestampRange[]> = {};
   histories: Record<string, History> = {};
   attributes: Record<string, History[0]["attributes"]> = {};
   busy = Promise.resolve();
   clearCache() {
-    this.ranges = [];
+    this.ranges = {};
     this.histories = {};
   }
   async update(
@@ -29,31 +57,20 @@ export default class Cache {
       this._update(range, removeOutsideRange, entityNames, hass)
     ));
   }
-  private removeOutsideRange2(range: TimestampRange) {
-    // subtracting also the 1st and last milliseconds, so that those re refetched
-    // and the plot starts right at the borders
-    this.ranges = subtractRanges(this.ranges, [
-      [Number.NEGATIVE_INFINITY, range[0]],
-      [range[1], Number.POSITIVE_INFINITY],
-    ]);
-    this.histories = mapValues(this.histories, (history) =>
-      history.filter(
-        ({ last_changed }) =>
-          range[0] <= last_changed && last_changed <= range[1]
-      )
-    );
-  }
+
   private removeOutsideRange(range: TimestampRange) {
-    this.ranges = subtractRanges(this.ranges, [
-      [Number.NEGATIVE_INFINITY, range[0] - 1],
-      [range[1] + 1, Number.POSITIVE_INFINITY],
-    ]);
+    this.ranges = mapValues(this.ranges, (ranges) =>
+      subtractRanges(ranges, [
+        [Number.NEGATIVE_INFINITY, range[0] - 1],
+        [range[1] + 1, Number.POSITIVE_INFINITY],
+      ])
+    );
     let first: History[0];
     let last: History[0];
     this.histories = mapValues(this.histories, (history) => {
       const newHistory = history.filter((datum) => {
         if (datum.last_changed <= range[0]) first = datum;
-        else if (datum.last_changed >= range[1]) last = datum;
+        else if (!last && datum.last_changed >= range[1]) last = datum;
         else return true;
         return false;
       });
@@ -62,8 +79,8 @@ export default class Cache {
         newHistory.unshift(first);
       }
       if (last) {
-        first.last_changed = range[0];
-        newHistory.unshift(first);
+        last.last_changed = range[1];
+        newHistory.push(last);
       }
       return newHistory;
     });
@@ -74,73 +91,39 @@ export default class Cache {
     entityNames: string[],
     hass: HomeAssistant
   ) {
-    const invalidte =
-      JSON.stringify(Object.keys(this.histories)) !=
-      JSON.stringify(entityNames);
-    if (invalidte) {
-      // entity names changed, clear cache
-      this.clearCache();
-    }
     if (removeOutsideRange) {
       this.removeOutsideRange(range);
     }
-    const rangesToFetch = subtractRanges([range], this.ranges);
-    const fetchedHistories = await Promise.all(
-      rangesToFetch.map(async ([startT, endT]) => {
-        const start = new Date(startT);
-        const end = new Date(endT);
-        const uri =
-          `history/period/${start.toISOString()}?` +
-          `filter_entity_id=${entityNames}&` +
-          `significant_changes_only=1&` +
-          `minimal_response&end_time=${end.toISOString()}`;
-        let list: History[] = (await hass.callApi("GET", uri)) || [];
-        const histories: Histories = {};
-        for (const history of list) {
-          const name = history[0].entity_id;
-          this.attributes[name] = {
-            unit_of_measurement: "",
-            ...history[0].attributes,
-          };
-          histories[name] = history.map((entry) => ({
-            ...entry,
-            last_changed: +new Date(entry.last_changed),
-          }));
-        }
-        return histories;
+    for (const entity of entityNames) {
+      this.ranges[entity] ??= [];
+    }
+    const fetchedHistoriesP = Promise.all(
+      entityNames.flatMap((entityId) => {
+        const rangesToFetch = subtractRanges([range], this.ranges[entityId]);
+        return rangesToFetch.map((aRange) =>
+          fetchSingleRange(hass, entityId, aRange)
+        );
       })
     );
-
+    const fetchedHistories = (await fetchedHistoriesP).filter(isTruthy);
     // add to existing histories
     for (const fetchedHistory of fetchedHistories) {
-      for (const name of Object.keys(fetchedHistory)) {
-        const h = (this.histories[name] ??= []);
-        h.push(...fetchedHistory[name]);
-        h.sort((a, b) => a.last_changed - b.last_changed);
-        // remove the rogue datapoint home assistant creates when there is no new data
-        const [prev, last] = h.slice(-2);
-        const isRepeated =
-          prev?.last_changed === last?.last_changed - 1 &&
-          prev?.state === last?.state;
-        if (isRepeated) {
-          // remove the old one
-          h.splice(h.length - 2, 1);
-        }
+      const { entityId } = fetchedHistory;
+      const h = (this.histories[entityId] ??= []);
+      h.push(...fetchedHistory.history);
+      h.sort((a, b) => a.last_changed - b.last_changed);
+      // remove the rogue datapoint home assistant creates when there is no new data
+      const [prev, last] = h.slice(-2);
+      const isRepeated =
+        prev?.last_changed === last?.last_changed - 1 &&
+        prev?.state === last?.state;
+      if (isRepeated) {
+        // remove the old one
+        h.splice(h.length - 2, 1);
       }
+      this.attributes[entityId] = fetchedHistory.attributes;
+      this.ranges[entityId].push(fetchedHistory.range);
+      this.ranges[entityId] = compactRanges(this.ranges[entityId]);
     }
-
-    // cap the "known ranges" to the latest known timestamp
-    let lastKnwonTimestamp = 0;
-    for (const history of Object.values(this.histories)) {
-      const timestamp = history[history.length - 1].last_changed;
-      lastKnwonTimestamp = Math.max(lastKnwonTimestamp, timestamp);
-    }
-
-    let ranges = [...this.ranges, ...rangesToFetch];
-    ranges = subtractRanges(ranges, [
-      [lastKnwonTimestamp + 1, Number.POSITIVE_INFINITY],
-    ]);
-
-    this.ranges = compactRanges(ranges);
   }
 }
