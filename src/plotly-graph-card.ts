@@ -22,15 +22,17 @@ console.info(
   "color: white; font-weight: bold; background: dimgray"
 );
 
+const padding = 15;
 export class PlotlyGraph extends HTMLElement {
   contentEl!: Plotly.PlotlyHTMLElement & {
     data: (Plotly.PlotData & { entity_id: string })[];
     layout: Plotly.Layout;
   };
+  cardEl!: HTMLElement;
   buttonEl!: HTMLButtonElement;
   config!: Config;
   cache = new Cache();
-  width = 1;
+  size: { width?: number; height?: number } = {};
   hass!: HomeAssistant; // set externally
   isBrowsing = false;
   isInternalRelayout = 0;
@@ -54,22 +56,24 @@ export class PlotlyGraph extends HTMLElement {
         <ha-card>
           <style>
             ha-card{
-              padding: 15px;
+              padding: ${padding}px;
+              height: 100%;
+              box-sizing: border-box;
             }
             button#reset.hidden{
               display: none;
             }
             button#reset {
               position: absolute;
-              top: 15px;
-              left: 15px;
+              top: ${padding}px;
+              left: ${padding}px;
               display: block;
             }
           </style>
           <div id="plotly"> </div>
           <button id="reset" class="hidden">reset</button>
         </ha-card>`;
-
+      this.cardEl = shadow.querySelector("ha-card")!;
       this.contentEl = shadow.querySelector("div#plotly")!;
       this.buttonEl = shadow.querySelector("button#reset")!;
       this.buttonEl.addEventListener("click", this.exitBrowsingMode);
@@ -87,22 +91,41 @@ export class PlotlyGraph extends HTMLElement {
   async guardRelayout(fn: Function) {
     this.isInternalRelayout++;
     await fn();
-    // await sleep(100);
     this.isInternalRelayout--;
   }
   setupListeners() {
-    const updateWidth = async () => {
-      this.width = this.contentEl!.offsetWidth;
-      this.guardRelayout(() =>
-        Plotly.relayout(this.contentEl, {
-          width: this.width,
-        })
-      );
+    const updateCardSize = async () => {
+      console.time("size");
+      this.contentEl.style.position = "absolute";
+      const width = this.cardEl.offsetWidth - padding * 2;
+      const height =
+        this.cardEl.offsetHeight -
+        padding * 2 -
+        // 1 pixel is left unfilled, so that something can get smaller when the
+        // window changes sizes
+        1;
+      this.contentEl.style.position = "";
+      console.timeEnd("size");
+      this.size = { width };
+      if (height > 100) {
+        // Panel view type has the cards covering 100% of the height of the window.
+        // Masonry lets the cards grow by themselves.
+        // if height > 100 ==> Panel ==> use available height
+        // else ==> Mansonry ==> let the height be determined by defaults
+        this.size.height = height;
+      }
+      this.guardRelayout(async () => {
+        const layout = this.getLayout();
+        await Plotly.relayout(this.contentEl, {
+          width: layout.width,
+          height: layout.height,
+        });
+      });
     };
-    this.handles.resizeObserver = new ResizeObserver(updateWidth);
-    this.handles.resizeObserver.observe(this.contentEl);
+    this.handles.resizeObserver = new ResizeObserver(updateCardSize);
+    this.handles.resizeObserver.observe(this.cardEl);
 
-    updateWidth();
+    updateCardSize();
     this.handles.relayoutListener = this.contentEl.on(
       "plotly_relayout",
       this.onRelayout
@@ -240,6 +263,7 @@ export class PlotlyGraph extends HTMLElement {
       );
     });
   }
+
   getLayout(): Plotly.Layout {
     const { attributes } = this.cache;
     const units = Array.from(
@@ -254,7 +278,7 @@ export class PlotlyGraph extends HTMLElement {
       { uirevision: true },
       yAxisTitles,
       this.getThemedLayout(),
-      { width: this.width },
+      this.size,
       this.config.layout
     );
     return layout;
@@ -296,7 +320,7 @@ export class PlotlyGraph extends HTMLElement {
   // The height of your card. Home Assistant uses this to automatically
   // distribute all cards over the available columns.
   getCardSize() {
-    return 30;
+    return 3;
   }
   static getStubConfig() {
     return {
