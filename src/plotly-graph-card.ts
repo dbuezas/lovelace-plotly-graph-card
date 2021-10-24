@@ -95,7 +95,6 @@ export class PlotlyGraph extends HTMLElement {
   }
   setupListeners() {
     const updateCardSize = async () => {
-      console.time("size");
       this.contentEl.style.position = "absolute";
       const width = this.cardEl.offsetWidth - padding * 2;
       const height =
@@ -105,7 +104,6 @@ export class PlotlyGraph extends HTMLElement {
         // window changes sizes
         1;
       this.contentEl.style.position = "";
-      console.timeEnd("size");
       this.size = { width };
       if (height > 100) {
         // Panel view type has the cards covering 100% of the height of the window.
