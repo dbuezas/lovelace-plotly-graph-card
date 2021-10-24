@@ -22,7 +22,7 @@ console.info(
   "color: white; font-weight: bold; background: dimgray"
 );
 
-const padding = 15;
+const padding = 1;
 export class PlotlyGraph extends HTMLElement {
   contentEl!: Plotly.PlotlyHTMLElement & {
     data: (Plotly.PlotData & { entity_id: string })[];
@@ -65,8 +65,8 @@ export class PlotlyGraph extends HTMLElement {
             }
             button#reset {
               position: absolute;
-              top: ${padding}px;
-              left: ${padding}px;
+              top: 15px;
+              left: 15px;
               display: block;
             }
           </style>

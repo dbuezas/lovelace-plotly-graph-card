@@ -26,9 +26,9 @@ const defaultLayout: Partial<Plotly.Layout> = {
   },
   margin: {
     b: 50,
-    t: 10,
+    t: 30,
     l: 60,
-    r: 10,
+    r: 20,
   },
   legend: {
     orientation: "h",
