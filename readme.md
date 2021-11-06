@@ -36,6 +36,8 @@ refresh_interval: 10
 type: custom:plotly-graph
 entities:
   - entity: sensor.monthly_internet_energy
+    # see examples: https://plotly.com/javascript/line-and-scatter/
+    # see full API: https://plotly.com/javascript/reference/scatter/#scatter
     fill: tozeroy
     line:
       color: red
