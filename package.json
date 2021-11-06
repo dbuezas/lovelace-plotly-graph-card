@@ -4,7 +4,6 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start1": "esbuild src/plotly-graph-card.ts --servedir=dist --outdir=dist --bundle ",
     "start": "esbuild src/plotly-graph-card.ts --servedir=dist --outdir=dist --bundle --sourcemap=inline",
     "build": "esbuild src/plotly-graph-card.ts --outdir=dist --bundle --minify",
     "test": "jest",
