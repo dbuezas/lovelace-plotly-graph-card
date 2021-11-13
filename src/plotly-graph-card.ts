@@ -69,9 +69,10 @@ export class PlotlyGraph extends HTMLElement {
               top: 13px;
               left: 15px;
               height: 19px;
-              color: rgb(68, 68, 68);
-              fill: rgb(238, 238, 238);
+              color: rgb(114, 114, 114);
+              background: rgb(238, 238, 238);
               border: 0px;
+              border-radius: 3px;
             }
           </style>
           <div id="plotly"> </div>
