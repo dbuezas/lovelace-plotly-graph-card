@@ -211,6 +211,7 @@ export class PlotlyGraph extends HTMLElement {
           trace.entity_id !== entityId || trace.visible !== "legendonly"
       )
     );
+    while (!this.hass) await sleep(100)
     await this.cache.update(range, !this.isBrowsing, entityNames, this.hass);
 
     await this.plot();
@@ -306,7 +307,7 @@ export class PlotlyGraph extends HTMLElement {
         refresh_interval * 1000
       );
     }
-    await this.guardRelayout(() =>
+    await this.withoutRelayout(() =>
       Plotly.react(
         this.contentEl,
         this.getData(),
