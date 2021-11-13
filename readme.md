@@ -36,30 +36,33 @@ refresh_interval: 10
 
 ### Filling, line width, color
 
+![](example1.png)
+
 ```yaml
 type: custom:plotly-graph
 entities:
-  - entity: sensor.monthly_internet_energy
-    # see examples: https://plotly.com/javascript/line-and-scatter/
-    # see full API: https://plotly.com/javascript/reference/scatter/#scatter
+  - entity: sensor.office_plug_wattage
+  # see examples: https://plotly.com/javascript/line-and-scatter/
+  # see full API: https://plotly.com/javascript/reference/scatter/#scatter
+  - entity: sensor.freezer_plug_power
     fill: tozeroy
     line:
       color: red
       dash: dot
-      width: 5
+      width: 1
 
-  - entity: sensor.monthly_office_energy
-  - entity: sensor.monthly_waschtrockner_energy
 layout:
-  plot_bgcolor: pink
+  plot_bgcolor: lightgray
 config:
-  scrollZoom: true
+  scrollZoom: false
 
-hours_to_show: 24
+hours_to_show: 1
 refresh_interval: 10 # in seconds
 ```
 
 ### Range Selector buttons
+
+![](rangeselector.apng)
 
 ```yaml
 type: custom:plotly-graph
@@ -70,6 +73,8 @@ hours_to_show: 12
 layout:
   xaxis:
     rangeselector:
+      # see examples: https://plotly.com/javascript/range-slider/
+      # see API: https://plotly.com/javascript/reference/layout/xaxis/#layout-xaxis-rangeselector
       "y": 1.2
       buttons:
         - count: 1
@@ -83,8 +88,6 @@ layout:
         - count: 7
           step: day
 ```
-
-![](rangeselector.apng)
 
 ## Features
 
