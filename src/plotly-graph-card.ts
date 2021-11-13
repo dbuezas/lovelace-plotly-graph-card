@@ -79,7 +79,7 @@ export class PlotlyGraph extends HTMLElement {
       this.buttonEl.addEventListener("click", this.exitBrowsingMode);
       insertStyleHack(shadow.querySelector("style")!);
       this.contentEl.style.visibility = "hidden";
-      this.guardRelayout(() =>
+      this.withoutRelayout(() =>
         Plotly.newPlot(this.contentEl, [], { height: 10 })
       );
     }
@@ -88,7 +88,7 @@ export class PlotlyGraph extends HTMLElement {
       this.contentEl.style.visibility = "";
     });
   }
-  async guardRelayout(fn: Function) {
+  async withoutRelayout(fn: Function) {
     this.isInternalRelayout++;
     await fn();
     this.isInternalRelayout--;
@@ -112,7 +112,7 @@ export class PlotlyGraph extends HTMLElement {
         // else ==> Mansonry ==> let the height be determined by defaults
         this.size.height = height;
       }
-      this.guardRelayout(async () => {
+      this.withoutRelayout(async () => {
         const layout = this.getLayout();
         await Plotly.relayout(this.contentEl, {
           width: layout.width,
@@ -149,7 +149,7 @@ export class PlotlyGraph extends HTMLElement {
     this.isBrowsing = false;
     this.buttonEl.classList.add("hidden");
     await this.fetch(this.getAutoFetchRange());
-    this.guardRelayout(async () => {
+    this.withoutRelayout(async () => {
       await Plotly.relayout(this.contentEl, {
         "xaxis.autorange": true,
         "yaxis.autorange": true,
