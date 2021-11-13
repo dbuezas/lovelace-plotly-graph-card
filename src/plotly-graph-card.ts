@@ -327,13 +327,14 @@ export class PlotlyGraph extends HTMLElement {
       refresh_interval: 10,
     };
   }
-  static getConfigElement() {
-    return (
-      document
-        .createElement("hui-history-graph-card")
-        //@ts-ignore
-        .constructor.getConfigElement?.()
-    );
+  static async getConfigElement() {
+    const { createCardElement } = await (window as any).loadCardHelpers();
+
+    const historyGraphCard = createCardElement({
+      type: "history-graph",entities:['sun.sun']
+    });
+    while (!historyGraphCard.constructor.getConfigElement) await sleep(100)
+    return historyGraphCard.constructor.getConfigElement();
   }
 }
 //@ts-ignore
