@@ -65,9 +65,13 @@ export class PlotlyGraph extends HTMLElement {
             }
             button#reset {
               position: absolute;
-              top: 15px;
-              left: 15px;
               display: block;
+              top: 13px;
+              left: 15px;
+              height: 19px;
+              color: rgb(68, 68, 68);
+              fill: rgb(238, 238, 238);
+              border: 0px;
             }
           </style>
           <div id="plotly"> </div>
