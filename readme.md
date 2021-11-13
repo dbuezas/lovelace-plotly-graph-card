@@ -4,6 +4,7 @@
 ![](demo2.gif)
 
 ## [Post in HomeAssistant community forum](https://community.home-assistant.io/t/plotly-interactive-graph-card/347746)
+
 You may find some extra info there in this link
 
 ## Install through HACS
@@ -16,7 +17,7 @@ You may find some extra info there in this link
 
 ## Card Config
 
-_**New**_ Visual Config editor available for Basic Configs (*)
+_**New**_ Visual Config editor available for Basic Configs (\*)
 
 ```yaml
 type: custom:plotly-graph
@@ -29,8 +30,11 @@ hours_to_show: 24
 refresh_interval: 10
 ```
 
-(*) I'm reusing the editor of the standard History Card. Cheap, yes, but it works fine. usually. or use yaml
+(\*) I'm reusing the editor of the standard History Card. Cheap, yes, but it works fine. Use yaml for advanced functionality
+
 ## Advanced
+
+### Filling, line width, color
 
 ```yaml
 type: custom:plotly-graph
@@ -54,6 +58,33 @@ config:
 hours_to_show: 24
 refresh_interval: 10 # in seconds
 ```
+
+### Range Selector buttons
+
+```yaml
+type: custom:plotly-graph
+entities:
+  - entity: sensor.temperature
+refresh_interval: 10
+hours_to_show: 12
+layout:
+  xaxis:
+    rangeselector:
+      "y": 1.2
+      buttons:
+        - count: 1
+          step: minute
+        - count: 1
+          step: hour
+        - count: 12
+          step: hour
+        - count: 1
+          step: day
+        - count: 7
+          step: day
+```
+
+![](rangeselector.apng)
 
 ## Features
 
