@@ -216,7 +216,7 @@ export class PlotlyGraph extends HTMLElement {
           trace.entity_id !== entityId || trace.visible !== "legendonly"
       )
     );
-    while (!this.hass) await sleep(100)
+    while (!this.hass) await sleep(100);
     await this.cache.update(range, !this.isBrowsing, entityNames, this.hass);
 
     await this.plot();
@@ -260,7 +260,9 @@ export class PlotlyGraph extends HTMLElement {
             shape: "hv",
           },
           x: history.map(({ last_changed }) => new Date(last_changed)),
-          y: history.map(({ state }) => state),
+          y: history.map(({ state }) =>
+            state === "unavailable" ? undefined : state
+          ),
           yaxis: "y" + (yaxis_idx == 0 ? "" : yaxis_idx + 1),
         },
         trace
@@ -337,9 +339,12 @@ export class PlotlyGraph extends HTMLElement {
     const { createCardElement } = await (window as any).loadCardHelpers();
 
     const historyGraphCard = createCardElement({
-      type: "history-graph",entities:['sun.sun']
+      type: "history-graph",
+      entities: ["sun.sun"],
+      hours_to_show: 1,
+      refresh_interval: 0,
     });
-    while (!historyGraphCard.constructor.getConfigElement) await sleep(100)
+    while (!historyGraphCard.constructor.getConfigElement) await sleep(100);
     return historyGraphCard.constructor.getConfigElement();
   }
 }
