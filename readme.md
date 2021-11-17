@@ -7,6 +7,12 @@
 
 You may find some extra info there in this link
 
+## Share and see what others are doing with this
+
+Check out the [Discussion](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions) section  (new!)
+Eventually I hope we accumulate a bunch of nice looking plots and yaml examples there :)
+
+
 ## Install through HACS
 
 1. Go to `HACS` / `Frontend` / `click [⋮] on the top right` / `Custom Repositories`
