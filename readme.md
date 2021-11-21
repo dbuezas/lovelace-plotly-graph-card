@@ -9,9 +9,8 @@ You may find some extra info there in this link
 
 ## Share and see what others are doing with this
 
-Check out the [Discussion](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions) section  (new!)
+Check out the [Discussion](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions) section (new!)
 Eventually I hope we accumulate a bunch of nice looking plots and yaml examples there :)
-
 
 ## Install through HACS
 
@@ -108,15 +107,110 @@ For now only the only allowed chart types are:
 - Bar charts https://plotly.com/javascript/bar-charts/#basic-bar-chart
 - Line and scatter https://plotly.com/javascript/line-and-scatter/
 
-## entities:
+## Entities:
 
 - `entities` translates to the `data` argument in PlotlyJS
 
   - each `entity` will be translated to a trace inside the data array.
     - `x` (states) and `y` (timestamps of stored states)
-    - you can add any attribute that works in a trace
+    - you can add any attribute that works in a plotly trace
+    - see https://plotly.com/javascript/reference/scatter/#scatter-line for more
 
-- see https://plotly.com/javascript/reference/scatter/#scatter-line for more
+```yaml
+entities:
+  - entity: sensor.temperature
+  - entity: sensor.humidity
+```
+
+## Extra entity attributes:
+
+```yaml
+entities:
+  - entity: sensor.temperature_in_celsius
+    name: living temperature in Farenheit # Overrides the entity name
+    lambda: |- # Transforms the data
+      (ys) => ys.map(y => (y × 9/5) + 32)
+    unit_of_measurement: °F # Overrides the unit
+```
+
+### `lambda:` transforms
+
+`lambda` takes a js function (as a string) to pre process the data before plotting it. Here you can do things like normalisation, integration. For example:
+
+#### Normalisation wrt to last
+
+```yaml
+type: custom:plotly-graph
+entities:
+  - entity: sensor.my_sensor
+     lambda: |-
+        (ys) => ys.map(y => y/ys[ys.length-1])
+```
+
+#### Normalisation wrt to first fetched value
+
+```yaml
+  - entity: sensor.my_sensor
+     lambda: |-
+        (ys) => ys.map(y => y/ys[0])
+```
+
+note: `ys[0]` represents the first "known" value, which is the value furthest to the past among the downloaded data. This value will change if you scroll, zoom out, change the hours_to_show, or just let time pass.
+
+#### Accumulated value
+
+```yaml
+  - entity: sensor.my_sensor
+     unit_of_measurement: "total pulses"
+     lambda: |-
+        (ys) => {
+          let accumulator = 0;
+          return ys.map(y => accumulator + y)
+        }
+```
+
+#### Derivative
+
+```yaml
+  - entity: sensor.my_sensor
+     unit_of_measurement: "pulses / second"
+     lambda: |-
+        (ys, xs) => {
+          let last = {
+            x: new Date(),
+            y: 0,
+          }
+          return ys.map((y, index) => {
+            const x = xs[index];
+            const dateDelta = x - last.x;
+            accumulator += (y - last.y) / dateDelta;
+            last = { x, y };
+            return accumulator;
+          })
+        }
+```
+
+#### Right hand riemann integration
+
+```yaml
+  - entity: sensor.my_sensor
+     unit_of_measurement: "kWh"
+     lambda: |-
+        (ys, xs) => {
+          let accumulator = 0;
+          let last = {
+            x: new Date(),
+            y: 0,
+          }
+          return ys.map((y, index) => {
+            const x = xs[index]
+            const dateDelta = x - last.x;
+            accumulator += last.y * dateDelta;
+            last = { x, y };
+            return accumulator;
+          })
+        }
+```
 
 ## layout:
 

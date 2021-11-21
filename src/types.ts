@@ -4,6 +4,8 @@ export type Config = {
   refresh_interval?: number; // in seconds
   entities: (Partial<Plotly.PlotData> & {
     entity: string;
+    unit_of_measurement?: string;
+    lambda: (y: any[], x: Date[]) => number[];
   })[];
   layout?: Partial<Plotly.Layout>;
   config?: Partial<Plotly.Config>;

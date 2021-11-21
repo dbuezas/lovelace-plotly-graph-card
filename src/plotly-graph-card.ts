@@ -183,6 +183,10 @@ export class PlotlyGraph extends HTMLElement {
     config.entities = config.entities.map((entity) =>
       typeof entity === "string" ? { entity } : entity
     );
+    config.entities = config.entities.map((entity) => ({
+      ...entity,
+      lambda: entity.lambda ? window.eval(entity.lambda) : (y: number[]) => y,
+    }));
     if (config.title) {
       config = {
         ...config,
@@ -218,9 +222,22 @@ export class PlotlyGraph extends HTMLElement {
     );
     while (!this.hass) await sleep(100);
     await this.cache.update(range, !this.isBrowsing, entityNames, this.hass);
-
     await this.plot();
   };
+  getAllUnitsOfMeasurement() {
+    const all = this.config.entities.map(({ entity }) =>
+      this.getUnitOfMeasurement(entity)
+    );
+    return Array.from(new Set(all));
+  }
+  getUnitOfMeasurement(entityName: string) {
+    return (
+      this.config.entities.find((trace) => trace.entity === entityName)
+        ?.unit_of_measurement ||
+      this.cache.attributes[entityName]?.unit_of_measurement ||
+      ""
+    );
+  }
   getThemedLayout() {
     const styles = window.getComputedStyle(this.contentEl);
     let haTheme = {
@@ -238,17 +255,19 @@ export class PlotlyGraph extends HTMLElement {
     const entities = this.config.entities;
     const { histories, attributes } = this.cache;
 
-    const units = Array.from(
-      new Set(Object.values(attributes).map((a) => a.unit_of_measurement))
-    );
+    const units = this.getAllUnitsOfMeasurement();
 
     return entities.map((trace) => {
       const entity_id = trace.entity;
       const history = histories[entity_id] || {};
       const attribute = attributes[entity_id] || {};
-      const unit = attribute.unit_of_measurement;
+      const unit = this.getUnitOfMeasurement(entity_id);
       const yaxis_idx = units.indexOf(unit);
       const name = trace.name || attribute.friendly_name || entity_id;
+      const xs = history.map(({ last_changed }) => new Date(last_changed));
+      const ys = history.map(({ state }) =>
+        state === "unavailable" ? undefined : state
+      );
       return merge(
         {
           entity_id,
@@ -259,10 +278,8 @@ export class PlotlyGraph extends HTMLElement {
             width: 1,
             shape: "hv",
           },
-          x: history.map(({ last_changed }) => new Date(last_changed)),
-          y: history.map(({ state }) =>
-            state === "unavailable" ? undefined : state
-          ),
+          x: xs,
+          y: trace.lambda(ys, xs),
           yaxis: "y" + (yaxis_idx == 0 ? "" : yaxis_idx + 1),
         },
         trace
@@ -272,9 +289,7 @@ export class PlotlyGraph extends HTMLElement {
 
   getLayout(): Plotly.Layout {
     const { attributes } = this.cache;
-    const units = Array.from(
-      new Set(Object.values(attributes).map((a) => a.unit_of_measurement))
-    );
+    const units = this.getAllUnitsOfMeasurement();
 
     const yAxisTitles = Object.fromEntries(
       units.map((unit, i) => ["yaxis" + (i == 0 ? "" : i + 1), { title: unit }])
