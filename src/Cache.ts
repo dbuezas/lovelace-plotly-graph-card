@@ -53,9 +53,9 @@ export default class Cache {
     entityNames: string[],
     hass: HomeAssistant
   ) {
-    return (this.busy = this.busy.then(() =>
-      this._update(range, removeOutsideRange, entityNames, hass)
-    ));
+    return (this.busy = this.busy
+      .catch(() => {})
+      .then(() => this._update(range, removeOutsideRange, entityNames, hass)));
   }
 
   private removeOutsideRange(range: TimestampRange) {
