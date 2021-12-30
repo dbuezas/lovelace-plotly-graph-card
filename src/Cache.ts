@@ -2,6 +2,7 @@ import { HomeAssistant } from "custom-card-helpers";
 import { compactRanges, subtractRanges } from "./date-ranges";
 import { isTruthy } from "./style-hack";
 import { TimestampRange, History } from "./types";
+import { sleep } from "./utils";
 
 type Histories = Record<string, History>;
 
@@ -13,20 +14,36 @@ export function mapValues<T, S>(
 }
 async function fetchSingleRange(
   hass: HomeAssistant,
-  entityId: string,
+  entityIdWithAttribute: string,
   [startT, endT]: number[]
 ) {
   const start = new Date(startT);
   const end = new Date(endT);
+  const [entityId2, attribute] = entityIdWithAttribute.split("::");
+  const minimal_response = !!attribute ? "&minimal_response" : "";
   const uri =
     `history/period/${start.toISOString()}?` +
-    `filter_entity_id=${entityId}&` +
-    `significant_changes_only=1&` +
-    `minimal_response&end_time=${end.toISOString()}`;
-  let [list]: History[] = (await hass.callApi("GET", uri)) || [];
+    `filter_entity_id=${entityId2}&` +
+    `significant_changes_only=1` +
+    minimal_response +
+    `&end_time=${end.toISOString()}`;
+  let list: History | undefined;
+  let succeeded = false;
+  let retries = 0;
+  while (!succeeded) {
+    try {
+      const lists: History[] = (await hass.callApi("GET", uri)) || [];
+      list = lists[0];
+      succeeded = true;
+    } catch (e) {
+      console.error(e);
+      retries++;
+      if (retries > 10) return null;
+    }
+  }
   if (!list) return null;
   return {
-    entityId,
+    entityId: entityIdWithAttribute,
     range: [startT, Math.min(+new Date(), endT)], // cap range to now
     attributes: {
       unit_of_measurement: "",
@@ -34,7 +51,10 @@ async function fetchSingleRange(
     },
     history: list.map((entry) => ({
       ...entry,
-      last_changed: +new Date(entry.last_changed),
+      state: attribute ? entry.attributes[attribute] : entry.state,
+      last_changed: +new Date(
+        attribute ? entry.last_updated : entry.last_changed
+      ),
     })),
   };
 }

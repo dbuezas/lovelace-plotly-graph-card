@@ -11,8 +11,7 @@ import { TimestampRange } from "./types";
 import Cache from "./Cache";
 import getThemedLayout from "./themed-layout";
 import isProduction from "./is-production";
-
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+import { sleep } from "./utils";
 
 const componentName = isProduction ? "plotly-graph" : "plotly-graph-dev";
 
@@ -89,9 +88,9 @@ export class PlotlyGraph extends HTMLElement {
       );
     }
     this.setupListeners();
-    this.fetch(this.getAutoFetchRange()).then(() => {
-      this.contentEl.style.visibility = "";
-    });
+    this.fetch(this.getAutoFetchRange())
+      .then(() => this.fetch(this.getAutoFetchRange())) // again so home assistant extends until end of time axis
+      .then(() => (this.contentEl.style.visibility = ""));
   }
   async withoutRelayout(fn: Function) {
     this.isInternalRelayout++;
@@ -210,7 +209,7 @@ export class PlotlyGraph extends HTMLElement {
     if (is.hours_to_show !== was.hours_to_show) {
       this.exitBrowsingMode();
     }
-    this.fetch(this.getAutoFetchRange());
+    await this.fetch(this.getAutoFetchRange());
   }
   fetch = async (range: TimestampRange) => {
     let entityNames = this.config.entities.map(({ entity }) => entity) || [];
@@ -248,7 +247,11 @@ export class PlotlyGraph extends HTMLElement {
       "--secondary-text-color": "red",
     };
     haTheme = mapValues(haTheme, (_, key) => styles.getPropertyValue(key));
-    return getThemedLayout(haTheme);
+    return getThemedLayout(
+      haTheme,
+      this.config.no_theme,
+      this.config.no_default_layout
+    );
   }
 
   getData(): Plotly.Data[] {
@@ -279,9 +282,10 @@ export class PlotlyGraph extends HTMLElement {
             shape: "hv",
           },
           x: xs,
-          y: trace.lambda(ys, xs),
+          y: trace.lambda(ys, xs, history),
           yaxis: "y" + (yaxis_idx == 0 ? "" : yaxis_idx + 1),
         },
+        this.config.default_trace,
         trace
       );
     });

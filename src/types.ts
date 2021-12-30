@@ -5,15 +5,19 @@ export type Config = {
   entities: (Partial<Plotly.PlotData> & {
     entity: string;
     unit_of_measurement?: string;
-    lambda: (y: any[], x: Date[]) => number[];
+    lambda: (y: any[], x: Date[], raw_entity: History) => number[];
   })[];
+  default_trace?: Partial<Plotly.PlotData>,
   layout?: Partial<Plotly.Layout>;
   config?: Partial<Plotly.Config>;
+  no_theme?: boolean;
+  no_default_layout?: boolean;
 };
 export type Timestamp = number;
 export type History = {
   entity_id: string;
   last_changed: Timestamp;
+  last_updated: Timestamp;
   state: string;
   attributes: {
     friendly_name?: string;

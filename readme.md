@@ -122,6 +122,15 @@ entities:
   - entity: sensor.humidity
 ```
 
+### Attribute values
+
+Plot the attributes of an entity by adding `::atribute_name` to the entity name
+
+```yaml
+entities: climate.living::temperature
+  climate.kitchen::temperature
+```
+
 ## Extra entity attributes:
 
 ```yaml
@@ -212,10 +221,51 @@ note: `ys[0]` represents the first "known" value, which is the value furthest to
         }
 ```
 
+#### Access all entity attributes inside lambda
+
+```yaml
+- entity: climate.wintergarten_floor::valve
+  unit_of_measurement: °C
+  lambda: |-
+    (ys, xs, entity) => 
+      entity.map(({attributes}) => 
+        return +attributes.temperature - (+attributes.valve / 100) * 2
+      )
+```
+
+## Default trace styling
+
+```yaml
+entities: sensor.temperature1
+  sensor.temperature2
+default_trace:
+  fill: tozeroy
+  line:
+    width: 2
+```
+
 ## layout:
 
 To define layout aspects, like margins, title, axes names, ...
 Anything from https://plotly.com/javascript/reference/layout/.
+
+### disable default layout:
+
+Use this if you want to use plotly default layout instead. Very useful for heavy customization while following pure plotly examples.
+
+```yaml
+entities:
+  - entity: sensor.temperature_in_celsius
+no_default_layout: true
+```
+
+### disable Home Assistant themes:
+
+```yaml
+entities:
+  - entity: sensor.temperature_in_celsius
+no_theme: true
+```
 
 ## config:
 

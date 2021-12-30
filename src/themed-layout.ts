@@ -46,31 +46,41 @@ const defaultLayout: Partial<Plotly.Layout> = {
   },
 };
 
+const themeAxisStyle = {
+  tickcolor: "rgba(127,127,127,.3)",
+  gridcolor: "rgba(127,127,127,.3)",
+  linecolor: "rgba(127,127,127,.3)",
+  zerolinecolor: "rgba(127,127,127,.3)",
+  // automargin: true,
+};
+
 export default function getThemedLayout(
-  haTheme: HATheme
+  haTheme: HATheme,
+  no_theme?: boolean,
+  no_default_layout?: boolean
 ): Partial<Plotly.Layout> {
-  const axisStyle = {
-    tickcolor: "rgba(127,127,127,.3)",
-    gridcolor: "rgba(127,127,127,.3)",
-    linecolor: "rgba(127,127,127,.3)",
-    zerolinecolor: "rgba(127,127,127,.3)",
-    // automargin: true,
-  };
-  return merge(
-    {
-      paper_bgcolor: haTheme["--card-background-color"],
-      plot_bgcolor: haTheme["--card-background-color"],
-      xaxis: { ...axisStyle },
-      yaxis: { ...axisStyle },
-      yaxis2: { ...axisStyle },
-      yaxis3: { ...axisStyle },
-      yaxis4: { ...axisStyle },
-      yaxis5: { ...axisStyle },
-      font: {
-        color: haTheme["--secondary-text-color"],
-        size: 11,
-      },
+  const theme = {
+    paper_bgcolor: haTheme["--card-background-color"],
+    plot_bgcolor: haTheme["--card-background-color"],
+    font: {
+      color: haTheme["--secondary-text-color"],
+      size: 11,
     },
-    defaultLayout
+    xaxis: { ...themeAxisStyle },
+    yaxis1: { ...themeAxisStyle },
+    yaxis2: { ...themeAxisStyle },
+    yaxis3: { ...themeAxisStyle },
+    yaxis4: { ...themeAxisStyle },
+    yaxis5: { ...themeAxisStyle },
+    yaxis6: { ...themeAxisStyle },
+    yaxis7: { ...themeAxisStyle },
+    yaxis8: { ...themeAxisStyle },
+    yaxis9: { ...themeAxisStyle },
+  };
+
+  return merge(
+    {},
+    no_theme ? {} : theme,
+    no_default_layout ? {} : defaultLayout
   );
 }
