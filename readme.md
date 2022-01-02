@@ -7,10 +7,9 @@
 
 You may find some extra info there in this link
 
-## Share and see what others are doing with this
+## More yaml examples
 
-Check out the [Discussion](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions) section (new!)
-Eventually I hope we accumulate a bunch of nice looking plots and yaml examples there :)
+Find more advanced examples in [Show & Tell](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/categories/show-and-tell)
 
 ## Install through HACS
 
