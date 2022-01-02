@@ -301,7 +301,7 @@ export class PlotlyGraph extends HTMLElement {
 
     const layout = merge(
       { uirevision: true },
-      yAxisTitles,
+      this.config.no_default_layout ? {} : yAxisTitles,
       this.getThemedLayout(),
       this.size,
       this.config.layout

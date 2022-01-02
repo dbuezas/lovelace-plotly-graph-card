@@ -67,7 +67,7 @@ export default function getThemedLayout(
       size: 11,
     },
     xaxis: { ...themeAxisStyle },
-    yaxis1: { ...themeAxisStyle },
+    yaxis: { ...themeAxisStyle },
     yaxis2: { ...themeAxisStyle },
     yaxis3: { ...themeAxisStyle },
     yaxis4: { ...themeAxisStyle },
