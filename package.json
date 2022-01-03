@@ -25,6 +25,6 @@
     "custom-card-helpers": "^1.8.0",
     "deepmerge": "^4.2.2",
     "lodash": "^4.17.21",
-    "plotly.js": "^2.5.1"
+    "plotly.js": "^2.8.3"
   }
 }
