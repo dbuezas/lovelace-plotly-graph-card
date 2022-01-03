@@ -12,6 +12,7 @@ import Cache from "./Cache";
 import getThemedLayout from "./themed-layout";
 import isProduction from "./is-production";
 import { sleep } from "./utils";
+import { Datum } from "plotly.js";
 
 const componentName = isProduction ? "plotly-graph" : "plotly-graph-dev";
 
@@ -184,7 +185,7 @@ export class PlotlyGraph extends HTMLElement {
     );
     config.entities = config.entities.map((entity) => ({
       ...entity,
-      lambda: entity.lambda ? window.eval(entity.lambda) : (y: number[]) => y,
+      lambda: entity.lambda ? window.eval(entity.lambda) : undefined,
     }));
     if (config.title) {
       config = {
@@ -267,10 +268,22 @@ export class PlotlyGraph extends HTMLElement {
       const unit = this.getUnitOfMeasurement(entity_id);
       const yaxis_idx = units.indexOf(unit);
       const name = trace.name || attribute.friendly_name || entity_id;
-      const xs = history.map(({ last_changed }) => new Date(last_changed));
-      const ys = history.map(({ state }) =>
-        state === "unavailable" ? undefined : state
+      const xsIn = history.map(({ last_changed }) => new Date(last_changed));
+      const ysIn: Datum[] = history.map(({ state }) =>
+        state === "unavailable" ? null : state
       );
+
+      let xs: Datum[] = xsIn;
+      let ys = ysIn;
+      if (trace.lambda) {
+        const r = trace.lambda(ysIn, xsIn, history);
+        if (Array.isArray(r)) {
+          ys = r;
+        } else {
+          if (r.x) xs = r.x;
+          if (r.y) ys = r.y;
+        }
+      }
       return merge(
         {
           entity_id,
@@ -282,7 +295,7 @@ export class PlotlyGraph extends HTMLElement {
             shape: "hv",
           },
           x: xs,
-          y: trace.lambda(ys, xs, history),
+          y: ys,
           yaxis: "y" + (yaxis_idx == 0 ? "" : yaxis_idx + 1),
         },
         this.config.default_trace,

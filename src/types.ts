@@ -1,3 +1,5 @@
+import { Datum } from "plotly.js";
+
 export type Config = {
   type: "custom:plotly-graph-card";
   hours_to_show?: number;
@@ -5,7 +7,7 @@ export type Config = {
   entities: (Partial<Plotly.PlotData> & {
     entity: string;
     unit_of_measurement?: string;
-    lambda: (y: any[], x: Date[], raw_entity: History) => number[];
+    lambda?: (y: Datum[], x: Date[], raw_entity: History) => Datum[] | {x?:Datum[], y?:Datum[]};
   })[];
   default_trace?: Partial<Plotly.PlotData>,
   layout?: Partial<Plotly.Layout>;

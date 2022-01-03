@@ -232,6 +232,18 @@ note: `ys[0]` represents the first "known" value, which is the value furthest to
       )
 ```
 
+#### Custom x coordinates of traces
+
+```yaml
+- entity: climate.wintergarten_floor
+  unit_of_measurement: °C
+  lambda: |-
+    (ys, xs, entity) => ({
+      x: xs.map(x => -x),
+      y: ys.map(y => y / 2),
+    })
+```
+
 ## Default trace styling
 
 ```yaml
