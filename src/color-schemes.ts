@@ -1,12 +1,9 @@
 /*
-r=Array.from(document.querySelectorAll(".scheme")).slice(0,14).map(el=>{
-  const name= el.querySelector("a").name
-  const list = Array.from(el.querySelectorAll(".swatch div")).map(el=>`"${el.title}"`)
-  return `${name}: [${list}]`
-}).join(',\n')
-copy(r)
+e.g
+color_scheme: dark2
+or 
+color_scheme: 5
 */
-
 
 const colorSchemes = {
   // https://vega.github.io/vega/docs/schemes/#categorical
