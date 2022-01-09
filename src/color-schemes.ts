@@ -1,8 +1,8 @@
 /*
-e.g
-color_scheme: dark2
-or 
-color_scheme: 5
+Usage example in YAML:
+
+  color_scheme: accent
+  color_scheme: 0 # both mean the same
 */
 
 const colorSchemes = {
