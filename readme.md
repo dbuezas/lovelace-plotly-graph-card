@@ -12,9 +12,6 @@
 <img src="https://user-images.githubusercontent.com/52346449/142386216-dfc22660-b053-495d-906f-0ebccbdf985f.png" width="300" align="right" >
 <br clear="left"/>
 
-
-
-
 ## [Post in HomeAssistant community forum](https://community.home-assistant.io/t/plotly-interactive-graph-card/347746)
 
 You may find some extra info there in this link
@@ -133,12 +130,26 @@ entities:
   - entity: sensor.humidity
 ```
 
+## Color schemes
+
+Changes default line colors.
+See more here: https://github.com/dbuezas/lovelace-plotly-graph-card/blob/master/src/color-schemes.ts
+
+```yaml
+type: custom:plotly-graph
+entities:
+  - sensor.temperature1
+  - sensor.temperature2
+color_scheme: dutch_field
+# color_scheme: 1 # or use numbers instead 0 to 24 available
+```
+
 ### Attribute values
 
 Plot the attributes of an entity by adding `::atribute_name` to the entity name
 
 ```yaml
-entities: 
+entities:
   - entity: climate.living::temperature
   - entity: climate.kitchen::temperature
 ```
@@ -152,6 +163,7 @@ entities:
     lambda: |- # Transforms the data
       (ys) => ys.map(y => (y × 9/5) + 32)
     unit_of_measurement: °F # Overrides the unit
+    show_value: true # shows the last known value of each entity in the graph
 ```
 
 ### `lambda:` transforms
@@ -257,15 +269,21 @@ note: `ys[0]` represents the first "known" value, which is the value furthest to
     })
 ```
 
-## Default trace styling
+## Default trace & axis styling
+
+default configurations for all entities and all yaxes (e.g yaxis, yaxis2, yaxis3, etc).
 
 ```yaml
-entities: sensor.temperature1
-  sensor.temperature2
-default_trace:
-  fill: tozeroy
-  line:
-    width: 2
+entities:
+  - sensor.temperature1
+  - sensor.temperature2
+defaults:
+  entity:
+    fill: tozeroy
+    line:
+      width: 2
+  yaxis:
+    fixedrange: true # disables vertical zoom & scroll
 ```
 
 ## layout:

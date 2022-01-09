@@ -13,6 +13,7 @@ import getThemedLayout from "./themed-layout";
 import isProduction from "./is-production";
 import { sleep } from "./utils";
 import { Datum } from "plotly.js";
+import colorSchemes from "./color-schemes";
 
 const componentName = isProduction ? "plotly-graph" : "plotly-graph-dev";
 
@@ -261,7 +262,7 @@ export class PlotlyGraph extends HTMLElement {
 
     const units = this.getAllUnitsOfMeasurement();
 
-    return entities.map((trace) => {
+    return entities.flatMap((trace, traceIdx) => {
       const entity_id = trace.entity;
       const history = histories[entity_id] || {};
       const attribute = attributes[entity_id] || {};
@@ -284,11 +285,17 @@ export class PlotlyGraph extends HTMLElement {
             if (r.x) xs = r.x;
             if (r.y) ys = r.y;
           }
-        } catch (e){
-          console.error(e)
+        } catch (e) {
+          console.error(e);
         }
       }
-      return merge(
+
+      const schemeName = this.config.color_scheme ?? "category10" 
+      let colorScheme = 
+        colorSchemes[schemeName] ||
+        colorSchemes[Object.keys(colorSchemes)[schemeName]]||
+        colorSchemes.category10;
+      const mergedTrace = merge(
         {
           entity_id,
           name,
@@ -297,14 +304,37 @@ export class PlotlyGraph extends HTMLElement {
           line: {
             width: 1,
             shape: "hv",
+            color: colorScheme[traceIdx % colorScheme.length],
           },
+          legendgroup: "group" + traceIdx,
           x: xs,
           y: ys,
           yaxis: "y" + (yaxis_idx == 0 ? "" : yaxis_idx + 1),
         },
-        this.config.default_trace,
+        this.config.defaults?.entity,
         trace
       );
+      const traces: Plotly.Data[] = [mergedTrace];
+      if (mergedTrace.show_value) {
+        traces.push({
+          ...mergedTrace,
+          mode: "text+markers",
+          // @ts-expect-error (texttemplate missing in plotly typings)
+          texttemplate: `%{y}${unit}`,
+          legendgroup: "group" + traceIdx,
+          showlegend: false,
+          textposition: "middle right",
+          marker: {
+            color: mergedTrace.line.color,
+          },
+          textfont: {
+            color: mergedTrace.line.color,
+          },
+          x: mergedTrace.x.slice(-1),
+          y: mergedTrace.y.slice(-1),
+        });
+      }
+      return traces;
     });
   }
 
@@ -318,6 +348,17 @@ export class PlotlyGraph extends HTMLElement {
 
     const layout = merge(
       { uirevision: true },
+      {
+        yaxis: this.config.defaults?.yaxis,
+        yaxis2: this.config.defaults?.yaxis,
+        yaxis3: this.config.defaults?.yaxis,
+        yaxis4: this.config.defaults?.yaxis,
+        yaxis5: this.config.defaults?.yaxis,
+        yaxis6: this.config.defaults?.yaxis,
+        yaxis7: this.config.defaults?.yaxis,
+        yaxis8: this.config.defaults?.yaxis,
+        yaxis9: this.config.defaults?.yaxis,
+      },
       this.config.no_default_layout ? {} : yAxisTitles,
       this.getThemedLayout(),
       this.size,

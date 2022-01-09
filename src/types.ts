@@ -1,15 +1,21 @@
 import { Datum } from "plotly.js";
+import { ColorSchemeNames } from "./color-schemes";
 
 export type Config = {
   type: "custom:plotly-graph-card";
   hours_to_show?: number;
   refresh_interval?: number; // in seconds
+  color_scheme?: ColorSchemeNames;
   entities: (Partial<Plotly.PlotData> & {
     entity: string;
     unit_of_measurement?: string;
     lambda?: (y: Datum[], x: Date[], raw_entity: History) => Datum[] | {x?:Datum[], y?:Datum[]};
+    show_value?: boolean;
   })[];
-  default_trace?: Partial<Plotly.PlotData>,
+  defaults?: {
+    entity?: Partial<Plotly.PlotData>,
+    yaxis?: Partial<Plotly.Layout["yaxis"]>,
+  }
   layout?: Partial<Plotly.Layout>;
   config?: Partial<Plotly.Config>;
   no_theme?: boolean;
