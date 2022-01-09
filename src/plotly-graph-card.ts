@@ -276,12 +276,16 @@ export class PlotlyGraph extends HTMLElement {
       let xs: Datum[] = xsIn;
       let ys = ysIn;
       if (trace.lambda) {
-        const r = trace.lambda(ysIn, xsIn, history);
-        if (Array.isArray(r)) {
-          ys = r;
-        } else {
-          if (r.x) xs = r.x;
-          if (r.y) ys = r.y;
+        try {
+          const r = trace.lambda(ysIn, xsIn, history);
+          if (Array.isArray(r)) {
+            ys = r;
+          } else {
+            if (r.x) xs = r.x;
+            if (r.y) ys = r.y;
+          }
+        } catch (e){
+          console.error(e)
         }
       }
       return merge(
