@@ -1,7 +1,19 @@
 # Plotly Graph Card
 
-![](demo.gif)
-![](demo2.gif)
+<img src="demo.gif" width="300" align="left">
+<img src="demo2.gif" width="300" align="right">
+<br clear="left"/>
+
+<img src="https://user-images.githubusercontent.com/777196/148675247-6e838783-a02a-453c-96b5-8ce86094ece2.gif" width="300" align="left" >
+<img src="https://user-images.githubusercontent.com/37914650/148646429-34f32f23-20b8-4171-87d3-ca69d8ab34b1.JPG" width="300" align="right">
+<br clear="left"/>
+
+<img src="https://user-images.githubusercontent.com/52346449/142387417-f3b8e494-8897-4348-970e-dffae03302b9.png" width="300" align="left" >
+<img src="https://user-images.githubusercontent.com/52346449/142386216-dfc22660-b053-495d-906f-0ebccbdf985f.png" width="300" align="right" >
+<br clear="left"/>
+
+
+
 
 ## [Post in HomeAssistant community forum](https://community.home-assistant.io/t/plotly-interactive-graph-card/347746)
 
@@ -126,8 +138,9 @@ entities:
 Plot the attributes of an entity by adding `::atribute_name` to the entity name
 
 ```yaml
-entities: climate.living::temperature
-  climate.kitchen::temperature
+entities: 
+  - entity: climate.living::temperature
+  - entity: climate.kitchen::temperature
 ```
 
 ## Extra entity attributes:
