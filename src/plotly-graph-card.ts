@@ -290,10 +290,10 @@ export class PlotlyGraph extends HTMLElement {
         }
       }
 
-      const schemeName = this.config.color_scheme ?? "category10" 
-      let colorScheme = 
+      const schemeName = this.config.color_scheme ?? "category10";
+      let colorScheme =
         colorSchemes[schemeName] ||
-        colorSchemes[Object.keys(colorSchemes)[schemeName]]||
+        colorSchemes[Object.keys(colorSchemes)[schemeName]] ||
         colorSchemes.category10;
       const mergedTrace = merge(
         {
@@ -306,7 +306,6 @@ export class PlotlyGraph extends HTMLElement {
             shape: "hv",
             color: colorScheme[traceIdx % colorScheme.length],
           },
-          legendgroup: "group" + traceIdx,
           x: xs,
           y: ys,
           yaxis: "y" + (yaxis_idx == 0 ? "" : yaxis_idx + 1),
@@ -316,6 +315,9 @@ export class PlotlyGraph extends HTMLElement {
       );
       const traces: Plotly.Data[] = [mergedTrace];
       if (mergedTrace.show_value) {
+        merge(mergedTrace, {
+          legendgroup: "group" + traceIdx,
+        });
         traces.push({
           ...mergedTrace,
           mode: "text+markers",
