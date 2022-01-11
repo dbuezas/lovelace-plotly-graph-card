@@ -216,14 +216,14 @@ export class PlotlyGraph extends HTMLElement {
             },
           },
           config.defaults?.entity,
-          entity
+          entity,
         );
 
         return merge(
+          entity,
           {
             show_value: entity.show_value ?? false,
           },
-          entity,
           { lambda: entity.lambda ? window.eval(entity.lambda) : undefined }
         );
       }),
