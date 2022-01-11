@@ -222,9 +222,9 @@ export class PlotlyGraph extends HTMLElement {
         return merge(
           {
             show_value: entity.show_value ?? false,
-            lambda: entity.lambda ? window.eval(entity.lambda) : undefined,
           },
-          entity
+          entity,
+          { lambda: entity.lambda ? window.eval(entity.lambda) : undefined }
         );
       }),
 
