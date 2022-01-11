@@ -163,7 +163,15 @@ entities:
     lambda: |- # Transforms the data
       (ys) => ys.map(y => (y × 9/5) + 32)
     unit_of_measurement: °F # Overrides the unit
-    show_value: true # shows the last known value of each entity in the graph
+    show_value: # shows the last value with 40% right margin
+      right_margin: 40
+    texttemplate: >- # custom format for show_value
+      <b>%{y}</b>%{customdata.unit_of_measurement}<br>
+      %{customdata.name}
+    hovertemplate: >- # custom format for tooltip
+      <b>%{customdata.name}</b><br><i>%{x}</i><br>
+      %{y}%{customdata.unit_of_measurement}
+      <extra></extra>
 ```
 
 ### `lambda:` transforms

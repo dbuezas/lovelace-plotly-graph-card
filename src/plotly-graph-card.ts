@@ -1,12 +1,11 @@
 import { HomeAssistant } from "custom-card-helpers";
 import merge from "lodash/merge";
-import debounce from "lodash/debounce";
 import mapValues from "lodash/mapValues";
 import EventEmitter from "events";
 import { version } from "../package.json";
 import insertStyleHack from "./style-hack";
 import Plotly from "./plotly";
-import { Config } from "./types";
+import { Config, InputConfig } from "./types";
 import { TimestampRange } from "./types";
 import Cache from "./Cache";
 import getThemedLayout from "./themed-layout";
@@ -26,7 +25,7 @@ console.info(
 const padding = 1;
 export class PlotlyGraph extends HTMLElement {
   contentEl!: Plotly.PlotlyHTMLElement & {
-    data: (Plotly.PlotData & { entity_id: string })[];
+    data: (Plotly.PlotData & { entity: string })[];
     layout: Plotly.Layout;
   };
   cardEl!: HTMLElement;
@@ -140,8 +139,7 @@ export class PlotlyGraph extends HTMLElement {
     )!;
   }
   getAutoFetchRange() {
-    const hours_to_show = this.config.hours_to_show || 1;
-    const ms = Number(hours_to_show) * 60 * 60 * 1000; // if add hours is used, decimals are ignored
+    const ms = this.config.hours_to_show * 60 * 60 * 1000;
     return [+new Date() - ms, +new Date()] as [number, number];
   }
   getVisibleRange() {
@@ -178,16 +176,9 @@ export class PlotlyGraph extends HTMLElement {
 
   // The user supplied configuration. Throw an exception and Lovelace will
   // render an error card.
-  async setConfig(config) {
+  async setConfig(config: InputConfig) {
     config = JSON.parse(JSON.stringify(config));
-
-    config.entities = config.entities.map((entity) =>
-      typeof entity === "string" ? { entity } : entity
-    );
-    config.entities = config.entities.map((entity) => ({
-      ...entity,
-      lambda: entity.lambda ? window.eval(entity.lambda) : undefined,
-    }));
+    const schemeName = config.color_scheme ?? "category10";
     if (config.title) {
       config = {
         ...config,
@@ -203,9 +194,61 @@ export class PlotlyGraph extends HTMLElement {
         },
       };
     }
+    const colorScheme =
+      colorSchemes[schemeName] ||
+      colorSchemes[Object.keys(colorSchemes)[schemeName]] ||
+      colorSchemes.category10;
+    const newConfig: Config = {
+      hours_to_show: config.hours_to_show ?? 1,
+      refresh_interval: config.refresh_interval ?? 0,
+
+      entities: config.entities.map((entityIn, entityIdx) => {
+        let entity =
+          typeof entityIn === "string" ? { entity: entityIn } : entityIn;
+        entity = merge(
+          {
+            hovertemplate: `<b>%{customdata.name}</b><br><i>%{x}</i><br>%{y}%{customdata.unit_of_measurement}<extra></extra>`,
+            mode: "lines",
+            line: {
+              width: 1,
+              shape: "hv",
+              color: colorScheme[entityIdx % colorScheme.length],
+            },
+          },
+          config.defaults?.entity,
+          entity
+        );
+
+        return merge(
+          {
+            show_value: entity.show_value ?? false,
+            lambda: entity.lambda ? window.eval(entity.lambda) : undefined,
+          },
+          entity
+        );
+      }),
+
+      layout: {
+        yaxis: config.defaults?.yaxis,
+        yaxis2: config.defaults?.yaxis,
+        yaxis3: config.defaults?.yaxis,
+        yaxis4: config.defaults?.yaxis,
+        yaxis5: config.defaults?.yaxis,
+        yaxis6: config.defaults?.yaxis,
+        yaxis7: config.defaults?.yaxis,
+        yaxis8: config.defaults?.yaxis,
+        yaxis9: config.defaults?.yaxis,
+        ...config.layout,
+      },
+      config: {
+        ...config.config,
+      },
+      no_theme: config.no_theme ?? false,
+      no_default_layout: config.no_default_layout ?? false,
+    };
 
     const was = this.config;
-    this.config = config;
+    this.config = newConfig;
     const is = this.config;
     if (!this.contentEl) return;
     if (is.hours_to_show !== was.hours_to_show) {
@@ -217,8 +260,7 @@ export class PlotlyGraph extends HTMLElement {
     let entityNames = this.config.entities.map(({ entity }) => entity) || [];
     entityNames = entityNames.filter((entityId) =>
       this.contentEl.data.every(
-        (trace) =>
-          trace.entity_id !== entityId || trace.visible !== "legendonly"
+        (trace) => trace.entity !== entityId || trace.visible !== "legendonly"
       )
     );
     while (!this.hass) await sleep(100);
@@ -289,28 +331,16 @@ export class PlotlyGraph extends HTMLElement {
           console.error(e);
         }
       }
-
-      const schemeName = this.config.color_scheme ?? "category10";
-      let colorScheme =
-        colorSchemes[schemeName] ||
-        colorSchemes[Object.keys(colorSchemes)[schemeName]] ||
-        colorSchemes.category10;
+      const customdatum = { unit_of_measurement: unit, name };
+      const customdata = xs.map(() => customdatum);
       const mergedTrace = merge(
         {
-          entity_id,
           name,
-          hovertemplate: `<b>${name}</b><br><i>%{x}</i><br>%{y} ${unit}<extra></extra>`,
-          mode: "lines",
-          line: {
-            width: 1,
-            shape: "hv",
-            color: colorScheme[traceIdx % colorScheme.length],
-          },
+          customdata,
           x: xs,
           y: ys,
           yaxis: "y" + (yaxis_idx == 0 ? "" : yaxis_idx + 1),
         },
-        this.config.defaults?.entity,
         trace
       );
       const traces: Plotly.Data[] = [mergedTrace];
@@ -319,22 +349,39 @@ export class PlotlyGraph extends HTMLElement {
           legendgroup: "group" + traceIdx,
         });
         traces.push({
+          // @ts-expect-error (texttemplate missing in plotly typings)
+          texttemplate: `%{y}%{customdata.unit_of_measurement}`, // here so it can be overwritten
           ...mergedTrace,
           mode: "text+markers",
-          // @ts-expect-error (texttemplate missing in plotly typings)
-          texttemplate: `%{y}${unit}`,
           legendgroup: "group" + traceIdx,
           showlegend: false,
           textposition: "middle right",
           marker: {
-            color: mergedTrace.line.color,
+            color: mergedTrace.line!.color,
           },
           textfont: {
-            color: mergedTrace.line.color,
+            color: mergedTrace.line!.color,
           },
           x: mergedTrace.x.slice(-1),
           y: mergedTrace.y.slice(-1),
         });
+        if (
+          typeof mergedTrace.show_value === "object" &&
+          "right_margin" in mergedTrace.show_value
+        ) {
+          const timeMargin =
+            mergedTrace.show_value.right_margin *
+            ((this.config.hours_to_show * 1000 * 60 * 60) / 100);
+          traces.push({
+            legendgroup: "group" + traceIdx,
+            marker: {
+              color: "transparent",
+            },
+            showlegend: false,
+            x: [+Date.now() + timeMargin],
+            y: mergedTrace.y.slice(-1),
+          });
+        }
       }
       return traces;
     });
@@ -350,17 +397,6 @@ export class PlotlyGraph extends HTMLElement {
 
     const layout = merge(
       { uirevision: true },
-      {
-        yaxis: this.config.defaults?.yaxis,
-        yaxis2: this.config.defaults?.yaxis,
-        yaxis3: this.config.defaults?.yaxis,
-        yaxis4: this.config.defaults?.yaxis,
-        yaxis5: this.config.defaults?.yaxis,
-        yaxis6: this.config.defaults?.yaxis,
-        yaxis7: this.config.defaults?.yaxis,
-        yaxis8: this.config.defaults?.yaxis,
-        yaxis9: this.config.defaults?.yaxis,
-      },
       this.config.no_default_layout ? {} : yAxisTitles,
       this.getThemedLayout(),
       this.size,
@@ -385,7 +421,7 @@ export class PlotlyGraph extends HTMLElement {
     if (!this.config) return;
     if (!this.hass) return;
     if (!this.isConnected) return;
-    const refresh_interval = Number(this.config.refresh_interval);
+    const refresh_interval = this.config.refresh_interval;
     clearTimeout(this.handles.refreshTimeout!);
     if (refresh_interval > 0) {
       this.handles.refreshTimeout = window.setTimeout(
@@ -419,9 +455,7 @@ export class PlotlyGraph extends HTMLElement {
 
     const historyGraphCard = createCardElement({
       type: "history-graph",
-      entities: ["sun.sun"],
-      hours_to_show: 1,
-      refresh_interval: 0,
+      ...this.getStubConfig(),
     });
     while (!historyGraphCard.constructor.getConfigElement) await sleep(100);
     return historyGraphCard.constructor.getConfigElement();
