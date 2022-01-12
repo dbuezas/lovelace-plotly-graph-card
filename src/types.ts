@@ -17,7 +17,7 @@ export type InputConfig = {
   })[];
   defaults?: {
     entity?: Partial<Plotly.PlotData>,
-    yaxis?: Partial<Plotly.Layout["yaxis"]>,
+    yaxes?: Partial<Plotly.Layout["yaxis"]>,
   }
   layout?: Partial<Plotly.Layout>;
   config?: Partial<Plotly.Config>;

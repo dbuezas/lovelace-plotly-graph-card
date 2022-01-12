@@ -216,7 +216,7 @@ export class PlotlyGraph extends HTMLElement {
             },
           },
           config.defaults?.entity,
-          entity,
+          entity
         );
 
         return merge(
@@ -227,19 +227,20 @@ export class PlotlyGraph extends HTMLElement {
           { lambda: entity.lambda ? window.eval(entity.lambda) : undefined }
         );
       }),
-
-      layout: {
-        yaxis: config.defaults?.yaxis,
-        yaxis2: config.defaults?.yaxis,
-        yaxis3: config.defaults?.yaxis,
-        yaxis4: config.defaults?.yaxis,
-        yaxis5: config.defaults?.yaxis,
-        yaxis6: config.defaults?.yaxis,
-        yaxis7: config.defaults?.yaxis,
-        yaxis8: config.defaults?.yaxis,
-        yaxis9: config.defaults?.yaxis,
-        ...config.layout,
-      },
+      layout: merge(
+        {
+          yaxis: merge({}, config.defaults?.yaxes),
+          yaxis2: merge({}, config.defaults?.yaxes),
+          yaxis3: merge({}, config.defaults?.yaxes),
+          yaxis4: merge({}, config.defaults?.yaxes),
+          yaxis5: merge({}, config.defaults?.yaxes),
+          yaxis6: merge({}, config.defaults?.yaxes),
+          yaxis7: merge({}, config.defaults?.yaxes),
+          yaxis8: merge({}, config.defaults?.yaxes),
+          yaxis9: merge({}, config.defaults?.yaxes),
+        },
+        config.layout
+      ),
       config: {
         ...config.config,
       },
@@ -331,7 +332,7 @@ export class PlotlyGraph extends HTMLElement {
           console.error(e);
         }
       }
-      const customdatum = { unit_of_measurement: unit, name };
+      const customdatum = { unit_of_measurement: unit, name, attributes };
       const customdata = xs.map(() => customdatum);
       const mergedTrace = merge(
         {

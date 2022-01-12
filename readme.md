@@ -290,7 +290,7 @@ defaults:
     fill: tozeroy
     line:
       width: 2
-  yaxis:
+  yaxes:
     fixedrange: true # disables vertical zoom & scroll
 ```
 
