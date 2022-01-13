@@ -356,6 +356,7 @@ export class PlotlyGraph extends HTMLElement {
           mode: "text+markers",
           legendgroup: "group" + traceIdx,
           showlegend: false,
+          hoverinfo: "skip",
           textposition: "middle right",
           marker: {
             color: mergedTrace.line!.color,
@@ -378,6 +379,7 @@ export class PlotlyGraph extends HTMLElement {
             marker: {
               color: "transparent",
             },
+            hoverinfo: "skip",
             showlegend: false,
             x: [+Date.now() + timeMargin],
             y: mergedTrace.y.slice(-1),

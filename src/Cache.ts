@@ -38,7 +38,8 @@ async function fetchSingleRange(
     } catch (e) {
       console.error(e);
       retries++;
-      if (retries > 10) return null;
+      if (retries > 50) return null;
+      await sleep(100)
     }
   }
   if (!list) return null;
