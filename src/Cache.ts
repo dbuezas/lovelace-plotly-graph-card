@@ -39,7 +39,7 @@ async function fetchSingleRange(
       console.error(e);
       retries++;
       if (retries > 50) return null;
-      await sleep(100)
+      await sleep(100);
     }
   }
   if (!list) return null;
@@ -63,20 +63,26 @@ export default class Cache {
   ranges: Record<string, TimestampRange[]> = {};
   histories: Record<string, History> = {};
   attributes: Record<string, History[0]["attributes"]> = {};
-  busy = Promise.resolve();
+  busy: Promise<unknown> = Promise.resolve();
   clearCache() {
     this.ranges = {};
     this.histories = {};
   }
-  async update(
+  async *update(
     range: TimestampRange,
     removeOutsideRange: boolean,
     entityNames: string[],
     hass: HomeAssistant
   ) {
-    return (this.busy = this.busy
-      .catch(() => {})
-      .then(() => this._update(range, removeOutsideRange, entityNames, hass)));
+    const that = this;
+    console.log("hola1");
+
+    console.log("hola");
+    const it = that._update(range, removeOutsideRange, entityNames, hass);
+    for await (const i of it) {
+      console.log(i);
+      yield;
+    }
   }
 
   private removeOutsideRange(range: TimestampRange) {
@@ -106,7 +112,7 @@ export default class Cache {
       return newHistory;
     });
   }
-  private async _update(
+  private async *_update(
     range: TimestampRange,
     removeOutsideRange: boolean,
     entityNames: string[],
@@ -118,33 +124,28 @@ export default class Cache {
     for (const entity of entityNames) {
       this.ranges[entity] ??= [];
     }
-    const fetchedHistoriesP = Promise.all(
-      entityNames.flatMap((entityId) => {
-        const rangesToFetch = subtractRanges([range], this.ranges[entityId]);
-        return rangesToFetch.map((aRange) =>
-          fetchSingleRange(hass, entityId, aRange)
-        );
-      })
-    );
-    const fetchedHistories = (await fetchedHistoriesP).filter(isTruthy);
-    // add to existing histories
-    for (const fetchedHistory of fetchedHistories) {
-      const { entityId } = fetchedHistory;
-      const h = (this.histories[entityId] ??= []);
-      h.push(...fetchedHistory.history);
-      h.sort((a, b) => a.last_changed - b.last_changed);
-      // remove the rogue datapoint home assistant creates when there is no new data
-      const [prev, last] = h.slice(-2);
-      const isRepeated =
-        prev?.last_changed === last?.last_changed - 1 &&
-        prev?.state === last?.state;
-      if (isRepeated) {
-        // remove the old one
-        h.splice(h.length - 2, 1);
+    for (const entityId of entityNames) {
+      const rangesToFetch = subtractRanges([range], this.ranges[entityId]);
+      for (const aRange of rangesToFetch) {
+        const fetchedHistory = await fetchSingleRange(hass, entityId, aRange);
+        if (!fetchedHistory) continue;
+        const h = (this.histories[entityId] ??= []);
+        h.push(...fetchedHistory.history);
+        h.sort((a, b) => a.last_changed - b.last_changed);
+        // remove the rogue datapoint home assistant creates when there is no new data
+        const [prev, last] = h.slice(-2);
+        const isRepeated =
+          prev?.last_changed === last?.last_changed - 1 &&
+          prev?.state === last?.state;
+        if (isRepeated) {
+          // remove the old one
+          h.splice(h.length - 2, 1);
+        }
+        this.attributes[entityId] = fetchedHistory.attributes;
+        this.ranges[entityId].push(fetchedHistory.range);
+        this.ranges[entityId] = compactRanges(this.ranges[entityId]);
+        yield entityId;
       }
-      this.attributes[entityId] = fetchedHistory.attributes;
-      this.ranges[entityId].push(fetchedHistory.range);
-      this.ranges[entityId] = compactRanges(this.ranges[entityId]);
     }
   }
 }

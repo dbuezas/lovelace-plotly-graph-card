@@ -265,8 +265,8 @@ export class PlotlyGraph extends HTMLElement {
       )
     );
     while (!this.hass) await sleep(100);
-    await this.cache.update(range, !this.isBrowsing, entityNames, this.hass);
-    await this.plot();
+    const it = this.cache.update(range, !this.isBrowsing, entityNames, this.hass);
+    for await (const i of it) await this.plot();
   };
   getAllUnitsOfMeasurement() {
     const all = this.config.entities.map(({ entity }) =>
@@ -307,7 +307,7 @@ export class PlotlyGraph extends HTMLElement {
 
     return entities.flatMap((trace, traceIdx) => {
       const entity_id = trace.entity;
-      const history = histories[entity_id] || {};
+      const history = histories[entity_id] || [];
       const attribute = attributes[entity_id] || {};
       const unit = this.getUnitOfMeasurement(entity_id);
       const yaxis_idx = units.indexOf(unit);
