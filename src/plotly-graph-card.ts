@@ -307,7 +307,7 @@ export class PlotlyGraph extends HTMLElement {
 
     return entities.flatMap((trace, traceIdx) => {
       const entity_id = trace.entity;
-      const history = histories[entity_id] || {};
+      const history = histories[entity_id] || [];
       const attribute = attributes[entity_id] || {};
       const unit = this.getUnitOfMeasurement(entity_id);
       const yaxis_idx = units.indexOf(unit);
@@ -375,6 +375,7 @@ export class PlotlyGraph extends HTMLElement {
             mergedTrace.show_value.right_margin *
             ((this.config.hours_to_show * 1000 * 60 * 60) / 100);
           traces.push({
+            ...mergedTrace,
             legendgroup: "group" + traceIdx,
             marker: {
               color: "transparent",
