@@ -20,7 +20,7 @@ You may find some extra info there in this link
 
 Find more advanced examples in [Show & Tell](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/categories/show-and-tell)
 
-## Installation [HACS](https://hacs.xyz/)
+## Installation via [HACS](https://hacs.xyz/)
 
 * Search for `Plotly Graph Card`.
 
