@@ -20,13 +20,9 @@ You may find some extra info there in this link
 
 Find more advanced examples in [Show & Tell](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/categories/show-and-tell)
 
-## Install through HACS
+## Installation [HACS](https://hacs.xyz/)
 
-1. Go to `HACS` / `Frontend` / `click [⋮] on the top right` / `Custom Repositories`
-2. Paste the url of this repo
-3. Select `Lovelace` as Category
-4. Close the popup
-5. Click install under in the new `Plotly Graph Card` box.
+* Search for `Plotly Graph Card`.
 
 ## Card Config
 
