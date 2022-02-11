@@ -62,6 +62,7 @@ entities:
 
 layout:
   plot_bgcolor: lightgray
+  height: 400
 config:
   scrollZoom: false
 
