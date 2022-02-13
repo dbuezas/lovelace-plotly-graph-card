@@ -449,7 +449,7 @@ export class PlotlyGraph extends HTMLElement {
   }
   static getStubConfig() {
     return {
-      entities: [{ entity: "sun.sun" }],
+      entities: [{ entity: "sun.sun::elevation" }],
       hours_to_show: 24,
       refresh_interval: 10,
     };
@@ -470,7 +470,7 @@ window.customCards = window.customCards || [];
 //@ts-ignore
 window.customCards.push({
   type: componentName,
-  name: "Plotoly Graph Card",
+  name: "Plotly Graph Card",
   preview: true, // Optional - defaults to false
   description: "Plotly in HA", // Optional
 });
