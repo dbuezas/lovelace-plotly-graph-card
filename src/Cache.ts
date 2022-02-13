@@ -20,7 +20,7 @@ async function fetchSingleRange(
   const start = new Date(startT);
   const end = new Date(endT);
   const [entityId2, attribute] = entityIdWithAttribute.split("::");
-  const minimal_response = !!attribute ? "&minimal_response" : "";
+  const minimal_response = !attribute ? "&minimal_response" : "";
   const uri =
     `history/period/${start.toISOString()}?` +
     `filter_entity_id=${entityId2}&` +
