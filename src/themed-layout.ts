@@ -79,7 +79,7 @@ export default function getThemedLayout(
   };
 
   return merge(
-    { layout: { legend: { traceorder: "normal" } } },
+    { legend: { traceorder: "normal" } },
     no_theme ? {} : theme,
     no_default_layout ? {} : defaultLayout
   );
