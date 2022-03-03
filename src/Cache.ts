@@ -4,8 +4,6 @@ import { isTruthy } from "./style-hack";
 import { TimestampRange, History } from "./types";
 import { sleep } from "./utils";
 
-type Histories = Record<string, History>;
-
 export function mapValues<T, S>(
   o: Record<string, T>,
   fn: (value: T, key: string) => S

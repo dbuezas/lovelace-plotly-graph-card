@@ -13,6 +13,7 @@ import isProduction from "./is-production";
 import { sleep } from "./utils";
 import { Datum } from "plotly.js";
 import colorSchemes from "./color-schemes";
+import {parseISO} from 'date-fns'
 
 const componentName = isProduction ? "plotly-graph" : "plotly-graph-dev";
 
@@ -143,7 +144,7 @@ export class PlotlyGraph extends HTMLElement {
     return [+new Date() - ms, +new Date()] as [number, number];
   }
   getVisibleRange() {
-    return this.contentEl.layout.xaxis!.range!.map((date) => +new Date(date));
+    return this.contentEl.layout.xaxis!.range!.map((date) => +parseISO(date));
   }
   async enterBrowsingMode() {
     this.isBrowsing = true;
@@ -449,7 +450,7 @@ export class PlotlyGraph extends HTMLElement {
   }
   static getStubConfig() {
     return {
-      entities: [{ entity: "sun.sun::elevation" }],
+      entities: [{ entity: "sun.sun" }],
       hours_to_show: 24,
       refresh_interval: 10,
     };
