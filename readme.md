@@ -138,7 +138,10 @@ entities:
   - sensor.temperature1
   - sensor.temperature2
 color_scheme: dutch_field
-# color_scheme: 1 # or use numbers instead 0 to 24 available
+# or use numbers instead 0 to 24 available:
+# color_scheme: 1 
+# or pass your color scheme
+# color_scheme: ["#1b9e77","#d95f02","#7570b3","#e7298a","#66a61e","#e6ab02","#a6761d","red"]
 ```
 
 ### Attribute values
@@ -335,6 +338,8 @@ Update data every `refresh_interval` seconds. Use `0` or delete the line to disa
 - run `npm start`
 - From a dashboard in edit mode, go to `Manage resources` and add `http://127.0.0.1:8000/plotly-graph-card.js` as url with resource type JavaScript
 - ATTENTION: The development card is `type: custom:plotly-graph-dev`
+- Either use Safari or Disbale [chrome://flags/#block-insecure-private-network-requests](chrome://flags/#block-insecure-private-network-requests): Chrome doesn't allow public network resources from requesting private-network resources - unless the public-network resource is secure (HTTPS) and the private-network resource provides appropriate (yet-undefined) CORS headers. More [here](https://stackoverflow.com/questions/66534759/chrome-cors-error-on-request-to-localhost-dev-server-from-remote-site)
+
 
 # Build
 

@@ -1,11 +1,11 @@
 import { Datum } from "plotly.js";
-import { ColorSchemeNames } from "./color-schemes";
+import { ColorSchemeArray, ColorSchemeNames } from "./color-schemes";
 
 export type InputConfig = {
   type: "custom:plotly-graph-card";
   hours_to_show?: number;
   refresh_interval?: number; // in seconds
-  color_scheme?: ColorSchemeNames;
+  color_scheme?: ColorSchemeNames | ColorSchemeArray | number;
   title?: string;
   entities: (Partial<Plotly.PlotData> & {
     entity: string;

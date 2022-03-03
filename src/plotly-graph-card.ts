@@ -12,8 +12,8 @@ import getThemedLayout from "./themed-layout";
 import isProduction from "./is-production";
 import { sleep } from "./utils";
 import { Datum } from "plotly.js";
-import colorSchemes from "./color-schemes";
-import {parseISO} from 'date-fns'
+import colorSchemes, { isColorSchemeArray } from "./color-schemes";
+import { parseISO } from "date-fns";
 
 const componentName = isProduction ? "plotly-graph" : "plotly-graph-dev";
 
@@ -195,10 +195,11 @@ export class PlotlyGraph extends HTMLElement {
         },
       };
     }
-    const colorScheme =
-      colorSchemes[schemeName] ||
-      colorSchemes[Object.keys(colorSchemes)[schemeName]] ||
-      colorSchemes.category10;
+    const colorScheme = isColorSchemeArray(schemeName)
+      ? schemeName
+      : colorSchemes[schemeName] ||
+        colorSchemes[Object.keys(colorSchemes)[schemeName]] ||
+        colorSchemes.category10;
     const newConfig: Config = {
       hours_to_show: config.hours_to_show ?? 1,
       refresh_interval: config.refresh_interval ?? 0,
@@ -347,9 +348,13 @@ export class PlotlyGraph extends HTMLElement {
       );
       const traces: Plotly.Data[] = [mergedTrace];
       if (mergedTrace.show_value) {
-        merge(mergedTrace, {
-          legendgroup: "group" + traceIdx,
-        }, mergedTrace);
+        merge(
+          mergedTrace,
+          {
+            legendgroup: "group" + traceIdx,
+          },
+          mergedTrace
+        );
         traces.push({
           // @ts-expect-error (texttemplate missing in plotly typings)
           texttemplate: `%{y}%{customdata.unit_of_measurement}`, // here so it can be overwritten
