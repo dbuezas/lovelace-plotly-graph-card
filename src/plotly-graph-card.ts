@@ -349,13 +349,12 @@ export class PlotlyGraph extends HTMLElement {
       if (mergedTrace.show_value) {
         merge(mergedTrace, {
           legendgroup: "group" + traceIdx,
-        });
+        }, mergedTrace);
         traces.push({
           // @ts-expect-error (texttemplate missing in plotly typings)
           texttemplate: `%{y}%{customdata.unit_of_measurement}`, // here so it can be overwritten
           ...mergedTrace,
           mode: "text+markers",
-          legendgroup: "group" + traceIdx,
           showlegend: false,
           hoverinfo: "skip",
           textposition: "middle right",
@@ -377,7 +376,6 @@ export class PlotlyGraph extends HTMLElement {
             ((this.config.hours_to_show * 1000 * 60 * 60) / 100);
           traces.push({
             ...mergedTrace,
-            legendgroup: "group" + traceIdx,
             marker: {
               color: "transparent",
             },
