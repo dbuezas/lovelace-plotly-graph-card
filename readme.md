@@ -346,4 +346,4 @@ Update data every `refresh_interval` seconds. Use `0` or delete the line to disa
 - git push
 - click on releases/new draft from tag in github
 
-Proper HACS integration and automated release pending.
+Automated release pending.
