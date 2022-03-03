@@ -348,13 +348,7 @@ export class PlotlyGraph extends HTMLElement {
       );
       const traces: Plotly.Data[] = [mergedTrace];
       if (mergedTrace.show_value) {
-        merge(
-          mergedTrace,
-          {
-            legendgroup: "group" + traceIdx,
-          },
-          mergedTrace
-        );
+        mergedTrace.legendgroup ??= "group" + traceIdx;
         traces.push({
           // @ts-expect-error (texttemplate missing in plotly typings)
           texttemplate: `%{y}%{customdata.unit_of_measurement}`, // here so it can be overwritten
