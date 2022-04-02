@@ -23,6 +23,8 @@ export type InputConfig = {
   config?: Partial<Plotly.Config>;
   no_theme?: boolean;
   no_default_layout?: boolean;
+  significant_changes_only?: boolean; // defaults to false
+  minimal_response?: boolean; // defaults to true
 };
 export type Config = {
   hours_to_show: number;
@@ -39,9 +41,12 @@ export type Config = {
   config: Partial<Plotly.Config>;
   no_theme: boolean;
   no_default_layout: boolean;
+  significant_changes_only: boolean,
+  minimal_response: boolean
 };
 export type Timestamp = number;
 export type History = {
+  duplicate_datapoint?: true
   entity_id: string;
   last_changed: Timestamp;
   last_updated: Timestamp;

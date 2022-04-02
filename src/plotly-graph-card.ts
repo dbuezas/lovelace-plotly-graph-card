@@ -248,6 +248,8 @@ export class PlotlyGraph extends HTMLElement {
       },
       no_theme: config.no_theme ?? false,
       no_default_layout: config.no_default_layout ?? false,
+      significant_changes_only: config.significant_changes_only ?? false,
+      minimal_response: config.significant_changes_only ?? true,
     };
 
     const was = this.config;
@@ -267,7 +269,14 @@ export class PlotlyGraph extends HTMLElement {
       )
     );
     while (!this.hass) await sleep(100);
-    await this.cache.update(range, !this.isBrowsing, entityNames, this.hass);
+    await this.cache.update(
+      range,
+      !this.isBrowsing,
+      entityNames,
+      this.hass,
+      this.config.minimal_response,
+      this.config.significant_changes_only
+    );
     await this.plot();
   };
   getAllUnitsOfMeasurement() {

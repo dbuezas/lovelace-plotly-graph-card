@@ -13,18 +13,23 @@ export function mapValues<T, S>(
 async function fetchSingleRange(
   hass: HomeAssistant,
   entityIdWithAttribute: string,
-  [startT, endT]: number[]
+  [startT, endT]: number[],
+  significant_changes_only: boolean,
+  minimal_response: boolean
 ) {
   const start = new Date(startT);
   const end = new Date(endT);
   const [entityId2, attribute] = entityIdWithAttribute.split("::");
-  const minimal_response = !attribute ? "&minimal_response" : "";
+  const minimal_response_query =
+    minimal_response && !attribute ? "minimal_response&" : "";
+  const significant_changes_only_query =
+    significant_changes_only && !attribute ? "1" : "0";
   const uri =
     `history/period/${start.toISOString()}?` +
     `filter_entity_id=${entityId2}&` +
-    `significant_changes_only=1` +
-    minimal_response +
-    `&end_time=${end.toISOString()}`;
+    `significant_changes_only=${significant_changes_only_query}&` +
+    minimal_response_query +
+    `end_time=${end.toISOString()}`;
   let list: History | undefined;
   let succeeded = false;
   let retries = 0;
@@ -37,13 +42,30 @@ async function fetchSingleRange(
       console.error(e);
       retries++;
       if (retries > 50) return null;
-      await sleep(100)
+      await sleep(100);
     }
   }
-  if (!list) return null;
+  if (!list || list.length == 0) return null;
+
+  /*
+  home assistant will "invent" a datapoiont at startT with the previous known value, except if there is actually one at startT.
+  To avoid these duplicates, the "fetched range" is capped to end at the last known point instead of endT.
+  This ensures that the next fetch will start with a duplicate of the last known datapoint, which can then be removed.
+  On top of that, in order to ensure that the last known point is extended to endT, I duplicate the last datapoint
+  and set its date to endT.
+  */
+  const last = list[list.length - 1];
+  const dup = JSON.parse(JSON.stringify(last));
+  list[0].duplicate_datapoint = true;
+  dup.duplicate_datapoint = true;
+  dup.last_changed = Math.min(endT, Date.now());
+  list.push(dup);
   return {
     entityId: entityIdWithAttribute,
-    range: [startT, Math.min(+new Date(), endT)], // cap range to now
+    range: [
+      startT,
+      +new Date(attribute ? last.last_updated : last.last_changed),
+    ], // cap range to now
     attributes: {
       unit_of_measurement: "",
       ...list[0].attributes,
@@ -70,11 +92,23 @@ export default class Cache {
     range: TimestampRange,
     removeOutsideRange: boolean,
     entityNames: string[],
-    hass: HomeAssistant
+    hass: HomeAssistant,
+    significant_changes_only: boolean,
+    minimal_response: boolean
   ) {
+    entityNames = Array.from(new Set(entityNames)); // remove duplicates
     return (this.busy = this.busy
       .catch(() => {})
-      .then(() => this._update(range, removeOutsideRange, entityNames, hass)));
+      .then(() =>
+        this._update(
+          range,
+          removeOutsideRange,
+          entityNames,
+          hass,
+          significant_changes_only,
+          minimal_response
+        )
+      ));
   }
 
   private removeOutsideRange(range: TimestampRange) {
@@ -108,7 +142,9 @@ export default class Cache {
     range: TimestampRange,
     removeOutsideRange: boolean,
     entityNames: string[],
-    hass: HomeAssistant
+    hass: HomeAssistant,
+    significant_changes_only: boolean,
+    minimal_response: boolean
   ) {
     if (removeOutsideRange) {
       this.removeOutsideRange(range);
@@ -120,7 +156,13 @@ export default class Cache {
       entityNames.flatMap((entityId) => {
         const rangesToFetch = subtractRanges([range], this.ranges[entityId]);
         return rangesToFetch.map((aRange) =>
-          fetchSingleRange(hass, entityId, aRange)
+          fetchSingleRange(
+            hass,
+            entityId,
+            aRange,
+            significant_changes_only,
+            minimal_response
+          )
         );
       })
     );
@@ -128,18 +170,13 @@ export default class Cache {
     // add to existing histories
     for (const fetchedHistory of fetchedHistories) {
       const { entityId } = fetchedHistory;
-      const h = (this.histories[entityId] ??= []);
+      let h = (this.histories[entityId] ??= []);
       h.push(...fetchedHistory.history);
       h.sort((a, b) => a.last_changed - b.last_changed);
-      // remove the rogue datapoint home assistant creates when there is no new data
-      const [prev, last] = h.slice(-2);
-      const isRepeated =
-        prev?.last_changed === last?.last_changed - 1 &&
-        prev?.state === last?.state;
-      if (isRepeated) {
-        // remove the old one
-        h.splice(h.length - 2, 1);
-      }
+      h = h.filter(
+        (x, i) => i == 0 || i == h.length - 1 || !x.duplicate_datapoint
+      );
+      this.histories[entityId] = h;
       this.attributes[entityId] = fetchedHistory.attributes;
       this.ranges[entityId].push(fetchedHistory.range);
       this.ranges[entityId] = compactRanges(this.ranges[entityId]);

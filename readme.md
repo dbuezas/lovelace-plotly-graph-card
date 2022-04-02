@@ -22,7 +22,7 @@ Find more advanced examples in [Show & Tell](https://github.com/dbuezas/lovelace
 
 ## Installation via [HACS](https://hacs.xyz/)
 
-* Search for `Plotly Graph Card`.
+- Search for `Plotly Graph Card`.
 
 ## Card Config
 
@@ -139,7 +139,7 @@ entities:
   - sensor.temperature2
 color_scheme: dutch_field
 # or use numbers instead 0 to 24 available:
-# color_scheme: 1 
+# color_scheme: 1
 # or pass your color scheme
 # color_scheme: ["#1b9e77","#d95f02","#7570b3","#e7298a","#66a61e","#e6ab02","#a6761d","red"]
 ```
@@ -322,6 +322,33 @@ no_theme: true
 To define general configurations like enabling scroll to zoom, disabling the modebar, etc.
 Anything from https://plotly.com/javascript/configuration-options/.
 
+## significant_changes_only
+
+When true, will tell HA to only fetch datapoints with a different state as the one before.
+More here: https://developers.home-assistant.io/docs/api/rest/ under `/api/history/period/<timestamp>`
+
+Caveats:
+1. zana-37 repoorts that `minimal_response: false` needs to be set to get all non-significant datapoints [here](https://github.com/dbuezas/lovelace-plotly-graph-card/issues/34#issuecomment-1085083597).
+2. This configuration will be ignored (will be true) while fetching [Attribute Values](#Attribute-Values).
+
+```yaml
+significant_changes_only: true # defaults to false
+```
+
+## minimal_response
+
+When true, tell HA to only return last_changed and state for states other than the first and last state (much faster).
+More here: https://developers.home-assistant.io/docs/api/rest/ under `/api/history/period/<timestamp>`
+
+Caveats:
+1. This configuration will be ignored (will be true) while fetching [Attribute Values](#Attribute-Values).
+
+```yaml
+minimal_response: false # defaults to true
+```
+
+Update data every `refresh_interval` seconds. Use `0` or delete the line to disable updates
+
 ## hours_to_show:
 
 How many hours are shown.
@@ -339,7 +366,6 @@ Update data every `refresh_interval` seconds. Use `0` or delete the line to disa
 - From a dashboard in edit mode, go to `Manage resources` and add `http://127.0.0.1:8000/plotly-graph-card.js` as url with resource type JavaScript
 - ATTENTION: The development card is `type: custom:plotly-graph-dev`
 - Either use Safari or Disbale [chrome://flags/#block-insecure-private-network-requests](chrome://flags/#block-insecure-private-network-requests): Chrome doesn't allow public network resources from requesting private-network resources - unless the public-network resource is secure (HTTPS) and the private-network resource provides appropriate (yet-undefined) CORS headers. More [here](https://stackoverflow.com/questions/66534759/chrome-cors-error-on-request-to-localhost-dev-server-from-remote-site)
-
 
 # Build
 
