@@ -176,6 +176,7 @@ export default class Cache {
       h = h.filter(
         (x, i) => i == 0 || i == h.length - 1 || !x.duplicate_datapoint
       );
+      h = h.filter((_, i) => h[i].last_changed !== h[i + 1]?.last_changed);
       this.histories[entityId] = h;
       this.attributes[entityId] = fetchedHistory.attributes;
       this.ranges[entityId].push(fetchedHistory.range);
