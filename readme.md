@@ -277,6 +277,20 @@ note: `ys[0]` represents the first "known" value, which is the value furthest to
     })
 ```
 
+## lambda modyfiers 
+You can write lambdas in any entity attribute or sub attribute too using the `lambda` modyfier
+
+```yaml
+type: custom:plotly-graph
+entities:
+  - entity: sensor.temperature
+    x: |- 
+      lambda ({xs, ys, history, histories, traceIdx, attributes, entities}) => ys 
+    y: |- 
+      lambda ({xs, ys, history, histories, traceIdx, attributes, entities}) => xs 
+
+```
+
 ## Default trace & axis styling
 
 default configurations for all entities and all yaxes (e.g yaxis, yaxis2, yaxis3, etc).

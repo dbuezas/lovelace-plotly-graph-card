@@ -10,7 +10,7 @@ import { TimestampRange } from "./types";
 import Cache from "./Cache";
 import getThemedLayout from "./themed-layout";
 import isProduction from "./is-production";
-import { sleep } from "./utils";
+import { mapTraverse, sleep } from "./utils";
 import { Datum } from "plotly.js";
 import colorSchemes, { isColorSchemeArray } from "./color-schemes";
 import { parseISO } from "date-fns";
@@ -394,7 +394,9 @@ export class PlotlyGraph extends HTMLElement {
           });
         }
       }
-      return traces;
+      const withLambdas = mapTraverse(traces, {ys: ysIn, xs: xsIn, history, histories, traceIdx, attributes, entities});
+
+      return withLambdas;
     });
   }
 
