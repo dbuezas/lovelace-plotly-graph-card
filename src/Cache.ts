@@ -58,13 +58,13 @@ async function fetchSingleRange(
   const dup = JSON.parse(JSON.stringify(last));
   list[0].duplicate_datapoint = true;
   dup.duplicate_datapoint = true;
-  dup.last_changed = Math.min(endT, Date.now());
+  dup.last_updated = Math.min(endT, Date.now());
   list.push(dup);
   return {
     entityId: entityIdWithAttribute,
     range: [
       startT,
-      +new Date(attribute ? last.last_updated : last.last_changed),
+      +new Date(last.last_updated),
     ], // cap range to now
     attributes: {
       unit_of_measurement: "",
@@ -73,9 +73,7 @@ async function fetchSingleRange(
     history: list.map((entry) => ({
       ...entry,
       state: attribute ? entry.attributes[attribute] : entry.state,
-      last_changed: +new Date(
-        attribute ? entry.last_updated : entry.last_changed
-      ),
+      last_updated: +new Date(entry.last_updated || entry.last_changed),
     })),
   };
 }
@@ -122,17 +120,17 @@ export default class Cache {
     let last: History[0];
     this.histories = mapValues(this.histories, (history) => {
       const newHistory = history.filter((datum) => {
-        if (datum.last_changed <= range[0]) first = datum;
-        else if (!last && datum.last_changed >= range[1]) last = datum;
+        if (datum.last_updated <= range[0]) first = datum;
+        else if (!last && datum.last_updated >= range[1]) last = datum;
         else return true;
         return false;
       });
       if (first) {
-        first.last_changed = range[0];
+        first.last_updated = range[0];
         newHistory.unshift(first);
       }
       if (last) {
-        last.last_changed = range[1];
+        last.last_updated = range[1];
         newHistory.push(last);
       }
       return newHistory;
@@ -172,11 +170,11 @@ export default class Cache {
       const { entityId } = fetchedHistory;
       let h = (this.histories[entityId] ??= []);
       h.push(...fetchedHistory.history);
-      h.sort((a, b) => a.last_changed - b.last_changed);
+      h.sort((a, b) => a.last_updated - b.last_updated);
       h = h.filter(
         (x, i) => i == 0 || i == h.length - 1 || !x.duplicate_datapoint
       );
-      h = h.filter((_, i) => h[i].last_changed !== h[i + 1]?.last_changed);
+      h = h.filter((_, i) => h[i].last_updated !== h[i + 1]?.last_updated);
       this.histories[entityId] = h;
       this.attributes[entityId] = fetchedHistory.attributes;
       this.ranges[entityId].push(fetchedHistory.range);

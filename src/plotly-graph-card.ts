@@ -323,7 +323,7 @@ export class PlotlyGraph extends HTMLElement {
       const unit = this.getUnitOfMeasurement(entity_id);
       const yaxis_idx = units.indexOf(unit);
       const name = trace.name || attribute.friendly_name || entity_id;
-      const xsIn = history.map(({ last_changed }) => new Date(last_changed));
+      const xsIn = history.map(({ last_updated }) => new Date(last_updated));
       const ysIn: Datum[] = history.map(({ state }) =>
         state === "unavailable" ? null : state
       );
