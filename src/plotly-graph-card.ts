@@ -60,6 +60,7 @@ export class PlotlyGraph extends HTMLElement {
               padding: ${padding}px;
               height: 100%;
               box-sizing: border-box;
+              background: transparent;
             }
             button#reset.hidden{
               display: none;
