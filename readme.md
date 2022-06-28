@@ -224,9 +224,9 @@ note: `ys[0]` represents the first "known" value, which is the value furthest to
           return ys.map((y, index) => {
             const x = xs[index];
             const dateDelta = x - last.x;
-            accumulator += (y - last.y) / dateDelta;
+            const yDelta = (y - last.y) / dateDelta;
             last = { x, y };
-            return accumulator;
+            return yDelta;
           })
         }
 ```
