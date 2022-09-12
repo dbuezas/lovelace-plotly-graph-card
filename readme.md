@@ -184,16 +184,16 @@ entities:
 type: custom:plotly-graph
 entities:
   - entity: sensor.my_sensor
-     lambda: |-
-        (ys) => ys.map(y => y/ys[ys.length-1])
+    lambda: |-
+      (ys) => ys.map(y => y/ys[ys.length-1])
 ```
 
 #### Normalisation wrt to first fetched value
 
 ```yaml
   - entity: sensor.my_sensor
-     lambda: |-
-        (ys) => ys.map(y => y/ys[0])
+    lambda: |-
+      (ys) => ys.map(y => y/ys[0])
 ```
 
 note: `ys[0]` represents the first "known" value, which is the value furthest to the past among the downloaded data. This value will change if you scroll, zoom out, change the hours_to_show, or just let time pass.
@@ -202,55 +202,55 @@ note: `ys[0]` represents the first "known" value, which is the value furthest to
 
 ```yaml
   - entity: sensor.my_sensor
-     unit_of_measurement: "total pulses"
-     lambda: |-
-        (ys) => {
-          let accumulator = 0;
-          return ys.map(y => accumulator + y)
-        }
+    unit_of_measurement: "total pulses"
+    lambda: |-
+      (ys) => {
+        let accumulator = 0;
+        return ys.map(y => accumulator + y)
+      }
 ```
 
 #### Derivative
 
 ```yaml
   - entity: sensor.my_sensor
-     unit_of_measurement: "pulses / second"
-     lambda: |-
-        (ys, xs) => {
-          let last = {
-            x: new Date(),
-            y: 0,
-          }
-          return ys.map((y, index) => {
-            const x = xs[index];
-            const dateDelta = x - last.x;
-            const yDelta = (y - last.y) / dateDelta;
-            last = { x, y };
-            return yDelta;
-          })
+    unit_of_measurement: "pulses / second"
+    lambda: |-
+      (ys, xs) => {
+        let last = {
+          x: new Date(),
+          y: 0,
         }
+        return ys.map((y, index) => {
+          const x = xs[index];
+          const dateDelta = x - last.x;
+          const yDelta = (y - last.y) / dateDelta;
+          last = { x, y };
+          return yDelta;
+        })
+      }
 ```
 
 #### Right hand riemann integration
 
 ```yaml
   - entity: sensor.my_sensor
-     unit_of_measurement: "kWh"
-     lambda: |-
-        (ys, xs) => {
-          let accumulator = 0;
-          let last = {
-            x: new Date(),
-            y: 0,
-          }
-          return ys.map((y, index) => {
-            const x = xs[index]
-            const dateDelta = x - last.x;
-            accumulator += last.y * dateDelta;
-            last = { x, y };
-            return accumulator;
-          })
+    unit_of_measurement: "kWh"
+    lambda: |-
+      (ys, xs) => {
+        let accumulator = 0;
+        let last = {
+          x: new Date(),
+          y: 0,
         }
+        return ys.map((y, index) => {
+          const x = xs[index]
+          const dateDelta = x - last.x;
+          accumulator += last.y * dateDelta;
+          last = { x, y };
+          return accumulator;
+        })
+      }
 ```
 
 #### Access all entity attributes inside lambda
