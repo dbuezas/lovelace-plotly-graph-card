@@ -154,14 +154,13 @@ export class PlotlyGraph extends HTMLElement {
   exitBrowsingMode = async () => {
     this.isBrowsing = false;
     this.buttonEl.classList.add("hidden");
-    await this.fetch(this.getAutoFetchRange());
     this.withoutRelayout(async () => {
       await Plotly.relayout(this.contentEl, {
-        "xaxis.autorange": true,
-        "yaxis.autorange": true,
+        uirevision: Math.random(), 
       });
       await Plotly.restyle(this.contentEl, { visible: true });
     });
+    await this.fetch(this.getAutoFetchRange());
   };
   onRestyle = async () => {
     // trace visibility changed, fetch missing traces
