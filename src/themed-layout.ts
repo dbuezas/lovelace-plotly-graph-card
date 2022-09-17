@@ -7,6 +7,7 @@ const defaultExtraYAxes: Partial<Plotly.LayoutAxis> = {
   side: "right",
   overlaying: "y",
   showgrid: false,
+  visible: false,
 }
 
 const defaultLayout: Partial<Plotly.Layout> = {
@@ -18,7 +19,11 @@ const defaultLayout: Partial<Plotly.Layout> = {
   yaxis: {
     automargin: true,
   },
-  yaxis2: { ...defaultExtraYAxes },
+  yaxis2: {
+    automargin: true,
+    side: "right",
+    overlaying: "y",
+  },
   yaxis3: { ...defaultExtraYAxes },
   yaxis4: { ...defaultExtraYAxes },
   yaxis5: { ...defaultExtraYAxes },
