@@ -3,7 +3,7 @@ import { HATheme } from "./types";
 
 
 const defaultExtraYAxes: Partial<Plotly.LayoutAxis> = {
-  automargin: true,
+  // automargin: true, // it makes zooming very jumpy
   side: "right",
   overlaying: "y",
   showgrid: false,
@@ -14,13 +14,13 @@ const defaultLayout: Partial<Plotly.Layout> = {
   height: 285,
   dragmode: "pan",
   xaxis: {
-    automargin: true,
+    // automargin: true, // it makes zooming very jumpy
   },
   yaxis: {
-    automargin: true,
+    // automargin: true, // it makes zooming very jumpy
   },
   yaxis2: {
-    automargin: true,
+    // automargin: true, // it makes zooming very jumpy
     side: "right",
     overlaying: "y",
   },
@@ -57,7 +57,7 @@ const defaultLayout: Partial<Plotly.Layout> = {
     b: 50,
     t: 30,
     l: 60,
-    r: 20,
+    r: 60,
   },
   legend: {
     orientation: "h",
