@@ -86,9 +86,7 @@ export class PlotlyGraph extends HTMLElement {
       this.buttonEl.addEventListener("click", this.exitBrowsingMode);
       insertStyleHack(shadow.querySelector("style")!);
       this.contentEl.style.visibility = "hidden";
-      this.withoutRelayout(() =>
-        Plotly.newPlot(this.contentEl, [], { height: 10 })
-      );
+      this.withoutRelayout(() => Plotly.newPlot(this.contentEl, [], {}));
     }
     this.setupListeners();
     this.fetch(this.getAutoFetchRange())
@@ -102,14 +100,11 @@ export class PlotlyGraph extends HTMLElement {
   }
   setupListeners() {
     const updateCardSize = async () => {
-      this.contentEl.style.position = "absolute";
       const width = this.cardEl.offsetWidth - padding * 2;
+      this.contentEl.style.position = "absolute";
       const height =
         this.cardEl.offsetHeight -
-        padding * 2 -
-        // 1 pixel is left unfilled, so that something can get smaller when the
-        // window changes sizes
-        1;
+        padding * 2;
       this.contentEl.style.position = "";
       this.size = { width };
       if (height > 100) {
@@ -156,7 +151,7 @@ export class PlotlyGraph extends HTMLElement {
     this.buttonEl.classList.add("hidden");
     this.withoutRelayout(async () => {
       await Plotly.relayout(this.contentEl, {
-        uirevision: Math.random(), 
+        uirevision: Math.random(),
       });
       await Plotly.restyle(this.contentEl, { visible: true });
     });
@@ -184,12 +179,6 @@ export class PlotlyGraph extends HTMLElement {
       config = {
         ...config,
         layout: {
-          margin: {
-            t: 30,
-          },
-          legend: {
-            y: -0.2,
-          },
           ...config.layout,
           title: config.title,
         },
@@ -399,7 +388,6 @@ export class PlotlyGraph extends HTMLElement {
   }
 
   getLayout(): Plotly.Layout {
-    const { attributes } = this.cache;
     const units = this.getAllUnitsOfMeasurement();
 
     const yAxisTitles = Object.fromEntries(

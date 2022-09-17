@@ -1,29 +1,53 @@
 import merge from "lodash/merge";
 import { HATheme } from "./types";
 
+
+const defaultExtraYAxes: Partial<Plotly.LayoutAxis> = {
+  automargin: true,
+  side: "right",
+  overlaying: "y",
+  showgrid: false,
+}
+
 const defaultLayout: Partial<Plotly.Layout> = {
   height: 285,
   dragmode: "pan",
-  yaxis2: {
-    side: "right",
-    overlaying: "y",
-    showgrid: false,
+  xaxis: {
+    automargin: true,
   },
-  yaxis3: {
-    side: "right",
-    overlaying: "y",
-    visible: false,
+  yaxis: {
+    automargin: true,
   },
-  yaxis4: {
-    side: "right",
-    overlaying: "y",
-    visible: false,
-  },
-  yaxis5: {
-    side: "right",
-    overlaying: "y",
-    visible: false,
-  },
+  yaxis2: { ...defaultExtraYAxes },
+  yaxis3: { ...defaultExtraYAxes },
+  yaxis4: { ...defaultExtraYAxes },
+  yaxis5: { ...defaultExtraYAxes },
+  yaxis6: { ...defaultExtraYAxes },
+  yaxis7: { ...defaultExtraYAxes },
+  yaxis8: { ...defaultExtraYAxes },
+  yaxis9: { ...defaultExtraYAxes },
+  // @ts-ignore (the types are missing yaxes > 9)
+  yaxis10: { ...defaultExtraYAxes }, 
+  yaxis11: { ...defaultExtraYAxes },
+  yaxis12: { ...defaultExtraYAxes },
+  yaxis13: { ...defaultExtraYAxes },
+  yaxis14: { ...defaultExtraYAxes },
+  yaxis15: { ...defaultExtraYAxes },
+  yaxis16: { ...defaultExtraYAxes },
+  yaxis17: { ...defaultExtraYAxes },
+  yaxis18: { ...defaultExtraYAxes },
+  yaxis19: { ...defaultExtraYAxes },
+  yaxis20: { ...defaultExtraYAxes },
+  yaxis21: { ...defaultExtraYAxes },
+  yaxis22: { ...defaultExtraYAxes },
+  yaxis23: { ...defaultExtraYAxes },
+  yaxis24: { ...defaultExtraYAxes },
+  yaxis25: { ...defaultExtraYAxes },
+  yaxis26: { ...defaultExtraYAxes },
+  yaxis27: { ...defaultExtraYAxes },
+  yaxis28: { ...defaultExtraYAxes },
+  yaxis29: { ...defaultExtraYAxes },
+  yaxis30: { ...defaultExtraYAxes },
   margin: {
     b: 50,
     t: 30,
@@ -32,7 +56,6 @@ const defaultLayout: Partial<Plotly.Layout> = {
   },
   legend: {
     orientation: "h",
-    // xanchor: "left",
     bgcolor: "transparent",
     x: 0,
     y: 1.2,
@@ -51,7 +74,6 @@ const themeAxisStyle = {
   gridcolor: "rgba(127,127,127,.3)",
   linecolor: "rgba(127,127,127,.3)",
   zerolinecolor: "rgba(127,127,127,.3)",
-  // automargin: true,
 };
 
 export default function getThemedLayout(
@@ -76,6 +98,27 @@ export default function getThemedLayout(
     yaxis7: { ...themeAxisStyle },
     yaxis8: { ...themeAxisStyle },
     yaxis9: { ...themeAxisStyle },
+    yaxis10: { ...themeAxisStyle },
+    yaxis11: { ...themeAxisStyle },
+    yaxis12: { ...themeAxisStyle },
+    yaxis13: { ...themeAxisStyle },
+    yaxis14: { ...themeAxisStyle },
+    yaxis15: { ...themeAxisStyle },
+    yaxis16: { ...themeAxisStyle },
+    yaxis17: { ...themeAxisStyle },
+    yaxis18: { ...themeAxisStyle },
+    yaxis19: { ...themeAxisStyle },
+    yaxis20: { ...themeAxisStyle },
+    yaxis21: { ...themeAxisStyle },
+    yaxis22: { ...themeAxisStyle },
+    yaxis23: { ...themeAxisStyle },
+    yaxis24: { ...themeAxisStyle },
+    yaxis25: { ...themeAxisStyle },
+    yaxis26: { ...themeAxisStyle },
+    yaxis27: { ...themeAxisStyle },
+    yaxis28: { ...themeAxisStyle },
+    yaxis29: { ...themeAxisStyle },
+    yaxis30: { ...themeAxisStyle },
   };
 
   return merge(
