@@ -45,12 +45,24 @@ export type Config = {
   minimal_response: boolean
 };
 export type Timestamp = number;
+// https://github.com/home-assistant/frontend/blob/dev/src/data/recorder.ts
+export type Statistic = {
+  start: string;
+  end: string;
+  last_reset?: string;
+  max?: number;
+  mean?: number;
+  min?: number;
+  sum?: number;
+  state?: number;
+}
 export type History = {
   duplicate_datapoint?: true
   entity_id: string;
   last_changed: Timestamp;
   last_updated: Timestamp;
   state: string;
+  statistics?: Statistic;
   attributes: {
     friendly_name?: string;
     unit_of_measurement?: string;
