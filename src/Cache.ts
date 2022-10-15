@@ -62,19 +62,18 @@ async function fetchSingleRange(
   list.push(dup);
   return {
     entityId: entityIdWithAttribute,
-    range: [
-      startT,
-      +new Date(last.last_updated),
-    ], // cap range to now
+    range: [startT, +new Date(dup.last_updated)], // cap range to now
     attributes: {
       unit_of_measurement: "",
       ...list[0].attributes,
     },
-    history: list.map((entry) => ({
-      ...entry,
-      state: attribute ? entry.attributes[attribute] : entry.state,
-      last_updated: +new Date(entry.last_updated || entry.last_changed),
-    })),
+    history: list
+      .map((entry) => ({
+        ...entry,
+        state: attribute ? entry.attributes[attribute] : entry.state,
+        last_updated: +new Date(entry.last_updated || entry.last_changed),
+      }))
+      .filter(({ last_updated }) => last_updated),
   };
 }
 export default class Cache {
