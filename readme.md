@@ -154,6 +154,21 @@ entities:
   - entity: climate.kitchen::temperature
 ```
 
+### Statistics support
+
+Fetch and plot long-term statistics of an entity by adding
+`::statistics::[<type>[::<period>]]` to the entity name where:
+- `<type>` is one of `min`, `mean`, `max` or `sum` and defaults to `mean`
+- `<period> is one of `5minute`, `hour`, `day`, `month` and defaults to `hour`
+
+Note that `5minute` period statistics are limited in time as normal recorder history is, contrary to other periods which keep data for years. The `::` at the end of `::statistics::` is mandatory even if `<type>` and `<period>` are ommitted to disambiguate with an attribute named `statistics` (in that case do not forget to quote the value so that YAML does not try to interpret the `::` suffix.
+
+```yaml
+entities:
+  - entity: 'sensor.temperature::statistics::'
+  - entity: sensor.battery::statistics::mean::day
+```
+
 ## Extra entity attributes:
 
 ```yaml
