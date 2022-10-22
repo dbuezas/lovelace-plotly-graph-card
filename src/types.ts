@@ -1,5 +1,10 @@
 import { Datum } from "plotly.js";
 import { ColorSchemeArray, ColorSchemeNames } from "./color-schemes";
+import {
+  StatisticPeriod,
+  StatisticType,
+  StatisticValue,
+} from "./recorder-types";
 
 export type InputConfig = {
   type: "custom:plotly-graph-card";
@@ -45,24 +50,14 @@ export type Config = {
   minimal_response: boolean
 };
 export type Timestamp = number;
-// https://github.com/home-assistant/frontend/blob/dev/src/data/recorder.ts
-export type Statistic = {
-  start: string;
-  end: string;
-  last_reset?: string;
-  max?: number;
-  mean?: number;
-  min?: number;
-  sum?: number;
-  state?: number;
-}
+
 export type History = {
-  duplicate_datapoint?: true
+  duplicate_datapoint?: true;
   entity_id: string;
   last_changed: Timestamp;
   last_updated: Timestamp;
-  state: string;
-  statistics?: Statistic;
+  state: string | number;
+  statistics?: StatisticValue;
   attributes: {
     friendly_name?: string;
     unit_of_measurement?: string;

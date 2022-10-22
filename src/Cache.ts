@@ -1,8 +1,10 @@
 import { HomeAssistant } from "custom-card-helpers";
 import { compactRanges, subtractRanges } from "./date-ranges";
+import fetchStatistics from "./fetch-statistics";
+import fetchStates from "./fetch-states";
+import { StatisticPeriod, StatisticType } from "./recorder-types";
 import { isTruthy } from "./style-hack";
 import { TimestampRange, History } from "./types";
-import { sleep } from "./utils";
 
 export function mapValues<T, S>(
   o: Record<string, T>,
@@ -19,106 +21,29 @@ async function fetchSingleRange(
 ) {
   const start = new Date(startT);
   const end = new Date(endT);
-  const [entityId2, attribute, statType, statPeriod] = entityIdWithAttribute.split("::");
-  if (attribute == "statistics" && statType != undefined) {
-    const statType2 = statType || "mean";
-    if (!["min", "mean", "max", "sum"].includes(statType2)) return null;
-    const statPeriod2 = statPeriod || "hour";
-    if (!["5minute", "hour", "day", "month"].includes(statPeriod2)) return null;
-    let statistics : Statistic[] | undefined;
-    let succeeded = false;
-    let retries = 0;
-    while (!succeeded) {
-      try {
-        const response : Statistic[][] = await hass.callWS({
-          type: 'recorder/statistics_during_period',
-          start_time: start.toISOString(),
-          end_time: end.toISOString(),
-          statistic_ids: [entityId2],
-          period: statPeriod2,
-        });
-        statistics = response[entityId2]
-        succeeded = true;
-      } catch (e) {
-        console.error(e);
-        retries++;
-          if (retries > 50) return null;
-          await sleep(100);
-      }
-    }
-    if (!statistics || statistics.length == 0) return null;
-    let result: History = [];
-    statistics.forEach ( (entry) => {
-      const lu = ((new Date(entry.start).getTime()) + (new Date(entry.end).getTime()))/2;
-      result.push({
-        entity_id: entityId2,
-        last_updated: lu,
-        last_changed: lu,
-        state: entry[statType2] || "",
-        statistics: entry,
-      })
-    });
-    return {
-      entityId: entityIdWithAttribute,
-      range: [startT, endT],
-      history: result,
-    };
-  } else {
-    const minimal_response_query =
-      minimal_response && !attribute ? "minimal_response&" : "";
-    const significant_changes_only_query =
-      significant_changes_only && !attribute ? "1" : "0";
-    const uri =
-      `history/period/${start.toISOString()}?` +
-      `filter_entity_id=${entityId2}&` +
-      `significant_changes_only=${significant_changes_only_query}&` +
-      minimal_response_query +
-      `end_time=${end.toISOString()}`;
-    let list: History | undefined;
-    let succeeded = false;
-    let retries = 0;
-    while (!succeeded) {
-      try {
-        const lists: History[] = (await hass.callApi("GET", uri)) || [];
-        list = lists[0];
-        succeeded = true;
-      } catch (e) {
-        console.error(e);
-        retries++;
-        if (retries > 50) return null;
-        await sleep(100);
-      }
-    }
-    if (!list || list.length == 0) return null;
+  const [entityId, attribute, statistic, period] = entityIdWithAttribute.split(
+    "::"
+  ) as [string, string?, StatisticType?, StatisticPeriod?];
 
-    /*
-    home assistant will "invent" a datapoiont at startT with the previous known value, except if there is actually one at startT.
-    To avoid these duplicates, the "fetched range" is capped to end at the last known point instead of endT.
-    This ensures that the next fetch will start with a duplicate of the last known datapoint, which can then be removed.
-    On top of that, in order to ensure that the last known point is extended to endT, I duplicate the last datapoint
-    and set its date to endT.
-    */
-    const last = list[list.length - 1];
-    const dup = JSON.parse(JSON.stringify(last));
-    list[0].duplicate_datapoint = true;
-    dup.duplicate_datapoint = true;
-    dup.last_updated = Math.min(endT, Date.now());
-    list.push(dup);
-    return {
-      entityId: entityIdWithAttribute,
-      range: [startT, +new Date(dup.last_updated)], // cap range to now
-      attributes: {
-        unit_of_measurement: "",
-        ...list[0].attributes,
-      },
-      history: list
-        .map((entry) => ({
-          ...entry,
-          state: attribute ? entry.attributes[attribute] : entry.state,
-          last_updated: +new Date(entry.last_updated || entry.last_changed),
-        }))
-        .filter(({ last_updated }) => last_updated),
-    };
+  if (attribute === "statistics" && statistic) {
+    return await fetchStatistics(
+      hass,
+      entityIdWithAttribute,
+      entityId,
+      [start, end],
+      statistic,
+      period
+    );
+  } else {
+    return await fetchStates(
+      hass,
+      entityId,
+      entityIdWithAttribute,
+      [start, end],
+      attribute,
+      significant_changes_only,
+      minimal_response
+    );
   }
 }
 export default class Cache {
