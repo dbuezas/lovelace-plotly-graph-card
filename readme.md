@@ -157,16 +157,18 @@ entities:
 ### Statistics support
 
 Fetch and plot long-term statistics of an entity by adding
-`::statistics::[<type>[::<period>]]` to the entity name where:
-- `<type>` is one of `min`, `mean`, `max` or `sum` and defaults to `mean`
-- `<period> is one of `5minute`, `hour`, `day`, `month` and defaults to `hour`
+`::statistics::<type>[::<period>]` to the entity name where:
 
-Note that `5minute` period statistics are limited in time as normal recorder history is, contrary to other periods which keep data for years. The `::` at the end of `::statistics::` is mandatory even if `<type>` and `<period>` are ommitted to disambiguate with an attribute named `statistics` (in that case do not forget to quote the value so that YAML does not try to interpret the `::` suffix.
+- `<type>` is one of `min`, `mean`, `max` or `sum`
+- `<period>` is one of `5minute`, `hour`, `day`, `month`and defaults to`hour`
+
+Note that `5minute` period statistics are limited in time as normal recorder history is, contrary to other periods which keep data for years.
 
 ```yaml
 entities:
-  - entity: 'sensor.temperature::statistics::'
-  - entity: sensor.battery::statistics::mean::day
+  - entity: "sensor.temperature::statistics::mean"
+  - entity: "sensor.temperature::statistics::min::hour"
+  - entity: "sensor.temperature::statistics::max::day"
 ```
 
 ## Extra entity attributes:
@@ -343,6 +345,7 @@ When true, will tell HA to only fetch datapoints with a different state as the o
 More here: https://developers.home-assistant.io/docs/api/rest/ under `/api/history/period/<timestamp>`
 
 Caveats:
+
 1. zana-37 repoorts that `minimal_response: false` needs to be set to get all non-significant datapoints [here](https://github.com/dbuezas/lovelace-plotly-graph-card/issues/34#issuecomment-1085083597).
 2. This configuration will be ignored (will be true) while fetching [Attribute Values](#Attribute-Values).
 
@@ -356,6 +359,7 @@ When true, tell HA to only return last_changed and state for states other than t
 More here: https://developers.home-assistant.io/docs/api/rest/ under `/api/history/period/<timestamp>`
 
 Caveats:
+
 1. This configuration will be ignored (will be true) while fetching [Attribute Values](#Attribute-Values).
 
 ```yaml
