@@ -2,7 +2,6 @@ import { HomeAssistant } from "custom-card-helpers";
 import {
   StatisticPeriod,
   Statistics,
-  StatisticsMetaData,
   StatisticType,
   StatisticValue,
 } from "./recorder-types";

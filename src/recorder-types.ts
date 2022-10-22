@@ -11,15 +11,6 @@ export interface StatisticValue {
   state: number | null;
 }
 
-export interface StatisticsMetaData {
-  statistics_unit_of_measurement: string | null;
-  statistic_id: string;
-  source: string;
-  name?: string | null;
-  has_sum: boolean;
-  has_mean: boolean;
-  unit_class: string | null;
-}
 export interface Statistics {
   [statisticId: string]: StatisticValue[];
 }
