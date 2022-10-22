@@ -160,7 +160,7 @@ Fetch and plot long-term statistics of an entity by adding
 `::statistics::<type>[::<period>]` to the entity name where:
 
 - `<type>` is one of `min`, `mean`, `max` or `sum`
-- `<period>` is one of `5minute`, `hour`, `day`, `month`and defaults to`hour`
+- `<period>` is one of `5minute`, `hour`, `day`, `month`and defaults to`5minute`
 
 Note that `5minute` period statistics are limited in time as normal recorder history is, contrary to other periods which keep data for years.
 
