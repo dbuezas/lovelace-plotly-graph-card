@@ -206,6 +206,7 @@ export class PlotlyGraph extends HTMLElement {
       refresh_interval: config.refresh_interval ?? 0,
 
       entities: config.entities.map((entityIn, entityIdx) => {
+        if (typeof entityIn === "string") entityIn = { entity: entityIn };
         if ("statistic" in entityIn || "period" in entityIn) {
           const validStatistic = ["mean", "min", "max", "sum"].includes(
             entityIn.statistic || ""
@@ -233,11 +234,9 @@ export class PlotlyGraph extends HTMLElement {
             },
           },
           config.defaults?.entity,
-          typeof entityIn === "string" ? { entity: entityIn } : entityIn,
+          entityIn,
           {
             show_value: entityIn.show_value ?? false,
-          },
-          {
             lambda: entityIn.lambda ? window.eval(entityIn.lambda) : undefined,
           }
         );
