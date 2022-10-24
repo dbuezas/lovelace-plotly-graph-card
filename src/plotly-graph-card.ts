@@ -207,23 +207,8 @@ export class PlotlyGraph extends HTMLElement {
 
       entities: config.entities.map((entityIn, entityIdx) => {
         if (typeof entityIn === "string") entityIn = { entity: entityIn };
-        if ("statistic" in entityIn || "period" in entityIn) {
-          const validStatistic = ["mean", "min", "max", "sum"].includes(
-            entityIn.statistic || ""
-          );
-          if (!validStatistic) entityIn.statistic = "mean";
-          const validPeriod = ["5minute", "hour", "day", "month"].includes(
-            entityIn.period || ""
-          );
-          if (!validPeriod) entityIn.period = "hour";
-        }
-        const [oldAPI_entity, oldAPI_attribute] = entityIn.entity.split("::");
-        if (oldAPI_attribute) {
-          entityIn.entity = oldAPI_entity;
-          entityIn.attribute = oldAPI_attribute;
-        }
 
-        return merge(
+        const entityOut = merge(
           {
             hovertemplate: `<b>%{customdata.name}</b><br><i>%{x}</i><br>%{y}%{customdata.unit_of_measurement}<extra></extra>`,
             mode: "lines",
@@ -240,6 +225,22 @@ export class PlotlyGraph extends HTMLElement {
             lambda: entityIn.lambda ? window.eval(entityIn.lambda) : undefined,
           }
         );
+        if ("statistic" in entityOut || "period" in entityOut) {
+          const validStatistic = ["mean", "min", "max", "sum"].includes(
+            entityOut.statistic || ""
+          );
+          if (!validStatistic) entityOut.statistic = "mean";
+          const validPeriod = ["5minute", "hour", "day", "month"].includes(
+            entityOut.period || ""
+          );
+          if (!validPeriod) entityOut.period = "hour";
+        }
+        const [oldAPI_entity, oldAPI_attribute] = entityOut.entity.split("::");
+        if (oldAPI_attribute) {
+          entityOut.entity = oldAPI_entity;
+          entityOut.attribute = oldAPI_attribute;
+        }
+        return entityOut;
       }),
       layout: merge(
         {
