@@ -122,9 +122,19 @@ For now only the only allowed chart types are:
     - see https://plotly.com/javascript/reference/scatter/#scatter-line for more
 
 ```yaml
+type: custom:plotly-graph
 entities:
   - entity: sensor.temperature
   - entity: sensor.humidity
+```
+
+Alternatively:
+
+```yaml
+type: custom:plotly-graph
+entities:
+  - sensor.temperature
+  - sensor.humidity
 ```
 
 ## Color schemes
@@ -146,17 +156,35 @@ color_scheme: dutch_field
 
 ### Attribute values
 
-Plot the attributes of an entity by adding `::atribute_name` to the entity name
+Plot the attributes of an entity
 
 ```yaml
+type: custom:plotly-graph
 entities:
-  - entity: climate.living::temperature
-  - entity: climate.kitchen::temperature
+  - entity: climate.living
+    attribute: temperature
+  - entity: climate.kitchen
+    attribute: temperature
 ```
+
+### Statistics support
+
+Fetch and plot long-term statistics of an entity
+
+```yaml
+type: custom:plotly-graph
+entities:
+  - entity: sensor.temperature
+    statistic: max # `min`, `mean`, `max` or `sum`
+    period: 5minute # `5minute`, `hour`, `day`, `month`
+```
+
+Note that `5minute` period statistics are limited in time as normal recorder history is, contrary to other periods which keep data for years.
 
 ## Extra entity attributes:
 
 ```yaml
+type: custom:plotly-graph
 entities:
   - entity: sensor.temperature_in_celsius
     name: living temperature in Farenheit # Overrides the entity name
@@ -191,9 +219,9 @@ entities:
 #### Normalisation wrt to first fetched value
 
 ```yaml
-  - entity: sensor.my_sensor
-    lambda: |-
-      (ys) => ys.map(y => y/ys[0])
+- entity: sensor.my_sensor
+  lambda: |-
+    (ys) => ys.map(y => y/ys[0])
 ```
 
 note: `ys[0]` represents the first "known" value, which is the value furthest to the past among the downloaded data. This value will change if you scroll, zoom out, change the hours_to_show, or just let time pass.
@@ -201,62 +229,63 @@ note: `ys[0]` represents the first "known" value, which is the value furthest to
 #### Accumulated value
 
 ```yaml
-  - entity: sensor.my_sensor
-    unit_of_measurement: "total pulses"
-    lambda: |-
-      (ys) => {
-        let accumulator = 0;
-        return ys.map(y => accumulator + y)
-      }
+- entity: sensor.my_sensor
+  unit_of_measurement: "total pulses"
+  lambda: |-
+    (ys) => {
+      let accumulator = 0;
+      return ys.map(y => accumulator + y)
+    }
 ```
 
 #### Derivative
 
 ```yaml
-  - entity: sensor.my_sensor
-    unit_of_measurement: "pulses / second"
-    lambda: |-
-      (ys, xs) => {
-        let last = {
-          x: new Date(),
-          y: 0,
-        }
-        return ys.map((y, index) => {
-          const x = xs[index];
-          const dateDelta = x - last.x;
-          const yDelta = (y - last.y) / dateDelta;
-          last = { x, y };
-          return yDelta;
-        })
+- entity: sensor.my_sensor
+  unit_of_measurement: "pulses / second"
+  lambda: |-
+    (ys, xs) => {
+      let last = {
+        x: new Date(),
+        y: 0,
       }
+      return ys.map((y, index) => {
+        const x = xs[index];
+        const dateDelta = x - last.x;
+        const yDelta = (y - last.y) / dateDelta;
+        last = { x, y };
+        return yDelta;
+      })
+    }
 ```
 
 #### Right hand riemann integration
 
 ```yaml
-  - entity: sensor.my_sensor
-    unit_of_measurement: "kWh"
-    lambda: |-
-      (ys, xs) => {
-        let accumulator = 0;
-        let last = {
-          x: new Date(),
-          y: 0,
-        }
-        return ys.map((y, index) => {
-          const x = xs[index]
-          const dateDelta = x - last.x;
-          accumulator += last.y * dateDelta;
-          last = { x, y };
-          return accumulator;
-        })
+- entity: sensor.my_sensor
+  unit_of_measurement: "kWh"
+  lambda: |-
+    (ys, xs) => {
+      let accumulator = 0;
+      let last = {
+        x: new Date(),
+        y: 0,
       }
+      return ys.map((y, index) => {
+        const x = xs[index]
+        const dateDelta = x - last.x;
+        accumulator += last.y * dateDelta;
+        last = { x, y };
+        return accumulator;
+      })
+    }
 ```
 
 #### Access all entity attributes inside lambda
 
 ```yaml
-- entity: climate.wintergarten_floor::valve
+- entity: climate.wintergarten_floor
+  attribute: valve
   unit_of_measurement: °C
   lambda: |-
     (ys, xs, entity) => 
@@ -282,6 +311,7 @@ note: `ys[0]` represents the first "known" value, which is the value furthest to
 default configurations for all entities and all yaxes (e.g yaxis, yaxis2, yaxis3, etc).
 
 ```yaml
+type: custom:plotly-graph
 entities:
   - sensor.temperature1
   - sensor.temperature2
@@ -304,6 +334,7 @@ Anything from https://plotly.com/javascript/reference/layout/.
 Use this if you want to use plotly default layout instead. Very useful for heavy customization while following pure plotly examples.
 
 ```yaml
+type: custom:plotly-graph
 entities:
   - entity: sensor.temperature_in_celsius
 no_default_layout: true
@@ -312,6 +343,7 @@ no_default_layout: true
 ### disable Home Assistant themes:
 
 ```yaml
+type: custom:plotly-graph
 entities:
   - entity: sensor.temperature_in_celsius
 no_theme: true
@@ -328,6 +360,7 @@ When true, will tell HA to only fetch datapoints with a different state as the o
 More here: https://developers.home-assistant.io/docs/api/rest/ under `/api/history/period/<timestamp>`
 
 Caveats:
+
 1. zana-37 repoorts that `minimal_response: false` needs to be set to get all non-significant datapoints [here](https://github.com/dbuezas/lovelace-plotly-graph-card/issues/34#issuecomment-1085083597).
 2. This configuration will be ignored (will be true) while fetching [Attribute Values](#Attribute-Values).
 
@@ -341,6 +374,7 @@ When true, tell HA to only return last_changed and state for states other than t
 More here: https://developers.home-assistant.io/docs/api/rest/ under `/api/history/period/<timestamp>`
 
 Caveats:
+
 1. This configuration will be ignored (will be true) while fetching [Attribute Values](#Attribute-Values).
 
 ```yaml

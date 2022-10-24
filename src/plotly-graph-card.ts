@@ -5,9 +5,15 @@ import EventEmitter from "events";
 import { version } from "../package.json";
 import insertStyleHack from "./style-hack";
 import Plotly from "./plotly";
-import { Config, InputConfig } from "./types";
+import {
+  Config,
+  EntityConfig,
+  InputConfig,
+  isEntityIdAttrConfig,
+  isEntityIdStatisticsConfig,
+} from "./types";
 import { TimestampRange } from "./types";
-import Cache from "./Cache";
+import Cache from "./cache/Cache";
 import getThemedLayout from "./themed-layout";
 import isProduction from "./is-production";
 import { sleep } from "./utils";
@@ -29,12 +35,13 @@ export class PlotlyGraph extends HTMLElement {
     data: (Plotly.PlotData & { entity: string })[];
     layout: Plotly.Layout;
   };
+  msgEl!: HTMLElement;
   cardEl!: HTMLElement;
   buttonEl!: HTMLButtonElement;
   config!: Config;
   cache = new Cache();
   size: { width?: number; height?: number } = {};
-  hass!: HomeAssistant; // set externally
+  hass?: HomeAssistant; // set externally
   isBrowsing = false;
   isInternalRelayout = 0;
 
@@ -76,10 +83,17 @@ export class PlotlyGraph extends HTMLElement {
               border: 0px;
               border-radius: 3px;
             }
+            #msg {
+              position: absolute;
+              color: red;
+              background: rgba(0, 0, 0, 0.4);
+            }
           </style>
+          <span id="msg"> </span>
           <div id="plotly"> </div>
           <button id="reset" class="hidden">reset</button>
         </ha-card>`;
+      this.msgEl = shadow.querySelector("#msg")!;
       this.cardEl = shadow.querySelector("ha-card")!;
       this.contentEl = shadow.querySelector("div#plotly")!;
       this.buttonEl = shadow.querySelector("button#reset")!;
@@ -102,9 +116,7 @@ export class PlotlyGraph extends HTMLElement {
     const updateCardSize = async () => {
       const width = this.cardEl.offsetWidth - padding * 2;
       this.contentEl.style.position = "absolute";
-      const height =
-        this.cardEl.offsetHeight -
-        padding * 2;
+      const height = this.cardEl.offsetHeight - padding * 2;
       this.contentEl.style.position = "";
       this.size = { width };
       if (height > 100) {
@@ -194,9 +206,23 @@ export class PlotlyGraph extends HTMLElement {
       refresh_interval: config.refresh_interval ?? 0,
 
       entities: config.entities.map((entityIn, entityIdx) => {
-        let entity =
-          typeof entityIn === "string" ? { entity: entityIn } : entityIn;
-        entity = merge(
+        if ("statistic" in entityIn || "period" in entityIn) {
+          const validStatistic = ["mean", "min", "max", "sum"].includes(
+            entityIn.statistic || ""
+          );
+          if (!validStatistic) entityIn.statistic = "mean";
+          const validPeriod = ["5minute", "hour", "day", "month"].includes(
+            entityIn.period || ""
+          );
+          if (!validPeriod) entityIn.period = "hour";
+        }
+        const [oldAPI_entity, oldAPI_attribute] = entityIn.entity.split("::");
+        if (oldAPI_attribute) {
+          entityIn.entity = oldAPI_entity;
+          entityIn.attribute = oldAPI_attribute;
+        }
+
+        return merge(
           {
             hovertemplate: `<b>%{customdata.name}</b><br><i>%{x}</i><br>%{y}%{customdata.unit_of_measurement}<extra></extra>`,
             mode: "lines",
@@ -207,15 +233,13 @@ export class PlotlyGraph extends HTMLElement {
             },
           },
           config.defaults?.entity,
-          entity
-        );
-
-        return merge(
-          entity,
+          typeof entityIn === "string" ? { entity: entityIn } : entityIn,
           {
-            show_value: entity.show_value ?? false,
+            show_value: entityIn.show_value ?? false,
           },
-          { lambda: entity.lambda ? window.eval(entity.lambda) : undefined }
+          {
+            lambda: entityIn.lambda ? window.eval(entityIn.lambda) : undefined,
+          }
         );
       }),
       layout: merge(
@@ -229,6 +253,27 @@ export class PlotlyGraph extends HTMLElement {
           yaxis7: merge({}, config.defaults?.yaxes),
           yaxis8: merge({}, config.defaults?.yaxes),
           yaxis9: merge({}, config.defaults?.yaxes),
+          yaxis10: merge({}, config.defaults?.yaxes),
+          yaxis11: merge({}, config.defaults?.yaxes),
+          yaxis12: merge({}, config.defaults?.yaxes),
+          yaxis13: merge({}, config.defaults?.yaxes),
+          yaxis14: merge({}, config.defaults?.yaxes),
+          yaxis15: merge({}, config.defaults?.yaxes),
+          yaxis16: merge({}, config.defaults?.yaxes),
+          yaxis17: merge({}, config.defaults?.yaxes),
+          yaxis18: merge({}, config.defaults?.yaxes),
+          yaxis19: merge({}, config.defaults?.yaxes),
+          yaxis20: merge({}, config.defaults?.yaxes),
+          yaxis21: merge({}, config.defaults?.yaxes),
+          yaxis22: merge({}, config.defaults?.yaxes),
+          yaxis23: merge({}, config.defaults?.yaxes),
+          yaxis24: merge({}, config.defaults?.yaxes),
+          yaxis25: merge({}, config.defaults?.yaxes),
+          yaxis26: merge({}, config.defaults?.yaxes),
+          yaxis27: merge({}, config.defaults?.yaxes),
+          yaxis28: merge({}, config.defaults?.yaxes),
+          yaxis29: merge({}, config.defaults?.yaxes),
+          yaxis30: merge({}, config.defaults?.yaxes),
         },
         config.layout
       ),
@@ -238,7 +283,7 @@ export class PlotlyGraph extends HTMLElement {
       no_theme: config.no_theme ?? false,
       no_default_layout: config.no_default_layout ?? false,
       significant_changes_only: config.significant_changes_only ?? false,
-      minimal_response: config.significant_changes_only ?? true,
+      minimal_response: config.minimal_response ?? true,
     };
 
     const was = this.config;
@@ -251,34 +296,36 @@ export class PlotlyGraph extends HTMLElement {
     await this.fetch(this.getAutoFetchRange());
   }
   fetch = async (range: TimestampRange) => {
-    let entityNames = this.config.entities.map(({ entity }) => entity) || [];
-    entityNames = entityNames.filter((entityId) =>
-      this.contentEl.data.every(
-        (trace) => trace.entity !== entityId || trace.visible !== "legendonly"
-      )
+    const visibleEntities = this.config.entities.filter(
+      (_, i) => this.contentEl.data[i]?.visible !== "legendonly"
     );
     while (!this.hass) await sleep(100);
-    await this.cache.update(
-      range,
-      !this.isBrowsing,
-      entityNames,
-      this.hass,
-      this.config.minimal_response,
-      this.config.significant_changes_only
-    );
+    try {
+      await this.cache.update(
+        range,
+        !this.isBrowsing,
+        visibleEntities,
+        this.hass,
+        this.config.minimal_response,
+        this.config.significant_changes_only
+      );
+      this.msgEl.innerText = "";
+    } catch (e: any) {
+      this.msgEl.innerText = e.message;
+      console.error(e);
+    }
     await this.plot();
   };
   getAllUnitsOfMeasurement() {
-    const all = this.config.entities.map(({ entity }) =>
+    const all = this.config.entities.map((entity) =>
       this.getUnitOfMeasurement(entity)
     );
     return Array.from(new Set(all));
   }
-  getUnitOfMeasurement(entityName: string) {
+  getUnitOfMeasurement(entity: EntityConfig) {
     return (
-      this.config.entities.find((trace) => trace.entity === entityName)
-        ?.unit_of_measurement ||
-      this.cache.attributes[entityName]?.unit_of_measurement ||
+      entity.unit_of_measurement ||
+      this.hass?.states[entity.entity]?.attributes?.unit_of_measurement ||
       ""
     );
   }
@@ -301,17 +348,18 @@ export class PlotlyGraph extends HTMLElement {
 
   getData(): Plotly.Data[] {
     const entities = this.config.entities;
-    const { histories, attributes } = this.cache;
 
     const units = this.getAllUnitsOfMeasurement();
 
     return entities.flatMap((trace, traceIdx) => {
       const entity_id = trace.entity;
-      const history = histories[entity_id] || [];
-      const attribute = attributes[entity_id] || {};
-      const unit = this.getUnitOfMeasurement(entity_id);
+      const history = this.cache.getHistory(trace);
+      const attributes = this.hass?.states[entity_id]?.attributes || {};
+      const unit = this.getUnitOfMeasurement(trace);
       const yaxis_idx = units.indexOf(unit);
-      const name = trace.name || attribute.friendly_name || entity_id;
+      let name = trace.name || attributes.friendly_name || entity_id;
+      if (isEntityIdAttrConfig(trace)) name += ` (${trace.attribute}) `;
+      if (isEntityIdStatisticsConfig(trace)) name += ` (${trace.statistic}) `;
       const xsIn = history.map(({ last_updated }) => new Date(last_updated));
       const ysIn: Datum[] = history.map(({ state }) =>
         state === "unavailable" ? null : state

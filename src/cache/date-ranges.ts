@@ -1,5 +1,5 @@
 import { json } from "stream/consumers";
-import { TimestampRange } from "./types";
+import { TimestampRange } from "../types";
 
 const subtract_single_single = (
   [a_start, a_end]: TimestampRange,
@@ -24,9 +24,9 @@ const subtract_single_single = (
     return [[a_start, b_start - 1]];
   else {
     throw new Error(
-      `Error computing range subtraction. Please report an issue in the repo of this card and share this:`+
-      JSON.stringify([a_start, a_end]) +
-      JSON.stringify([b_start, b_end])
+      `Error computing range subtraction. Please report an issue in the repo of this card and share this:` +
+        JSON.stringify([a_start, a_end]) +
+        JSON.stringify([b_start, b_end])
     );
   }
 };
