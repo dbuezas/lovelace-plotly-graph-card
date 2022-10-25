@@ -204,14 +204,14 @@ export class PlotlyGraph extends HTMLElement {
     const newConfig: Config = {
       hours_to_show: config.hours_to_show ?? 1,
       refresh_interval: config.refresh_interval ?? 0,
-
       entities: config.entities.map((entityIn, entityIdx) => {
         if (typeof entityIn === "string") entityIn = { entity: entityIn };
 
-        const entityOut = merge(
+        const entity = merge(
           {
             hovertemplate: `<b>%{customdata.name}</b><br><i>%{x}</i><br>%{y}%{customdata.unit_of_measurement}<extra></extra>`,
             mode: "lines",
+            show_value: false,
             line: {
               width: 1,
               shape: "hv",
@@ -219,28 +219,27 @@ export class PlotlyGraph extends HTMLElement {
             },
           },
           config.defaults?.entity,
-          entityIn,
-          {
-            show_value: entityIn.show_value ?? false,
-            lambda: entityIn.lambda ? window.eval(entityIn.lambda) : undefined,
-          }
+          entityIn
         );
-        if ("statistic" in entityOut || "period" in entityOut) {
+        if (entity.lambda) {
+          entity.lambda = window.eval(entity.lambda);
+        }
+        if ("statistic" in entity || "period" in entity) {
           const validStatistic = ["mean", "min", "max", "sum"].includes(
-            entityOut.statistic || ""
+            entity.statistic || ""
           );
-          if (!validStatistic) entityOut.statistic = "mean";
+          if (!validStatistic) entity.statistic = "mean";
           const validPeriod = ["5minute", "hour", "day", "month"].includes(
-            entityOut.period || ""
+            entity.period || ""
           );
-          if (!validPeriod) entityOut.period = "hour";
+          if (!validPeriod) entity.period = "hour";
         }
-        const [oldAPI_entity, oldAPI_attribute] = entityOut.entity.split("::");
+        const [oldAPI_entity, oldAPI_attribute] = entity.entity.split("::");
         if (oldAPI_attribute) {
-          entityOut.entity = oldAPI_entity;
-          entityOut.attribute = oldAPI_attribute;
+          entity.entity = oldAPI_entity;
+          entity.attribute = oldAPI_attribute;
         }
-        return entityOut;
+        return entity as EntityConfig;
       }),
       layout: merge(
         {
