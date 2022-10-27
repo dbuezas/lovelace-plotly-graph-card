@@ -349,8 +349,9 @@ export class PlotlyGraph extends HTMLElement {
     const entities = this.config.entities;
 
     const units = this.getAllUnitsOfMeasurement();
-
-    return entities.flatMap((trace, traceIdx) => {
+    const show_value_traces: Plotly.Data[] = [];
+    const real_traces: Plotly.Data[] = [];
+    entities.forEach((trace, traceIdx) => {
       const entity_id = trace.entity;
       const history = this.cache.getHistory(trace);
       const attributes = this.hass?.states[entity_id]?.attributes || {};
@@ -391,10 +392,10 @@ export class PlotlyGraph extends HTMLElement {
         },
         trace
       );
-      const traces: Plotly.Data[] = [mergedTrace];
+      real_traces.push(mergedTrace);
       if (mergedTrace.show_value) {
         mergedTrace.legendgroup ??= "group" + traceIdx;
-        traces.push({
+        show_value_traces.push({
           // @ts-expect-error (texttemplate missing in plotly typings)
           texttemplate: `%{y}%{customdata.unit_of_measurement}`, // here so it can be overwritten
           ...mergedTrace,
@@ -418,7 +419,7 @@ export class PlotlyGraph extends HTMLElement {
           const timeMargin =
             mergedTrace.show_value.right_margin *
             ((this.config.hours_to_show * 1000 * 60 * 60) / 100);
-          traces.push({
+          show_value_traces.push({
             ...mergedTrace,
             marker: {
               color: "transparent",
@@ -430,8 +431,10 @@ export class PlotlyGraph extends HTMLElement {
           });
         }
       }
-      return traces;
     });
+    // Preserving the original sequence of real_traces is important for `fill: tonexty`
+    // https://github.com/dbuezas/lovelace-plotly-graph-card/issues/87
+    return [...real_traces, ...show_value_traces];
   }
 
   getLayout(): Plotly.Layout {
