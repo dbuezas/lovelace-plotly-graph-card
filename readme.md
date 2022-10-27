@@ -196,6 +196,9 @@ entities:
     texttemplate: >- # custom format for show_value
       <b>%{y}</b>%{customdata.unit_of_measurement}<br>
       %{customdata.name}
+      # to show only 2 decimals: "%{y:.2f}"
+      # see more here: https://plotly.com/javascript/reference/pie/#pie-texttemplate
+
     hovertemplate: >- # custom format for tooltip
       <b>%{customdata.name}</b><br><i>%{x}</i><br>
       %{y}%{customdata.unit_of_measurement}
