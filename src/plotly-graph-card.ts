@@ -398,7 +398,7 @@ export class PlotlyGraph extends HTMLElement {
         mergedTrace.legendgroup ??= "group" + traceIdx;
         show_value_traces.push({
           // @ts-expect-error (texttemplate missing in plotly typings)
-          texttemplate: `%{y}%{customdata.unit_of_measurement}`, // here so it can be overwritten
+          texttemplate: `%{y:.2~f}%{customdata.unit_of_measurement}`, // here so it can be overwritten
           ...mergedTrace,
           mode: "text+markers",
           showlegend: false,
