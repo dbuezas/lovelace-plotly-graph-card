@@ -274,7 +274,7 @@ export class PlotlyGraph extends HTMLElement {
           yaxis29: merge({}, config.defaults?.yaxes),
           yaxis30: merge({}, config.defaults?.yaxes),
         },
-        config.layout?.title ? { margin: { t: 70 } } : {},
+        config.layout?.title ? { margin: { t: 75 } } : {},
         config.layout
       ),
       config: {
