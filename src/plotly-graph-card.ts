@@ -101,7 +101,7 @@ export class PlotlyGraph extends HTMLElement {
           <span id="msg"> </span>
           <div id="title"> </div>
           <div id="plotly"> </div>
-          <button id="reset" class="hidden">reset</button>
+          <button id="reset" class="hidden">↻</button>
         </ha-card>`;
       this.msgEl = shadow.querySelector("#msg")!;
       this.cardEl = shadow.querySelector("ha-card")!;
@@ -135,7 +135,7 @@ export class PlotlyGraph extends HTMLElement {
         // Masonry lets the cards grow by themselves.
         // if height > 100 ==> Panel ==> use available height
         // else ==> Mansonry ==> let the height be determined by defaults
-        this.size.height = height;
+        this.size.height = height - this.titleEl.offsetHeight;
       }
       this.withoutRelayout(async () => {
         const layout = this.getLayout();
@@ -198,24 +198,13 @@ export class PlotlyGraph extends HTMLElement {
   async setConfig(config: InputConfig) {
     config = JSON.parse(JSON.stringify(config));
     const schemeName = config.color_scheme ?? "category10";
-    if (false && config.title) {
-      config = {
-        ...config,
-        layout: {
-          ...config.layout,
-          title: {
-            text: config.title,
-          },
-        },
-      };
-    }
     const colorScheme = isColorSchemeArray(schemeName)
       ? schemeName
       : colorSchemes[schemeName] ||
         colorSchemes[Object.keys(colorSchemes)[schemeName]] ||
         colorSchemes.category10;
     const newConfig: Config = {
-      title: config.title ?? "",
+      title: config.title,
       hours_to_show: config.hours_to_show ?? 1,
       refresh_interval: config.refresh_interval ?? 0,
       entities: config.entities.map((entityIn, entityIdx) => {
@@ -463,7 +452,6 @@ export class PlotlyGraph extends HTMLElement {
       this.config.no_default_layout ? {} : yAxisTitles,
       this.getThemedLayout(),
       this.size,
-      //this.config.layout?.title ? { margin: { t: 60 } } : {},
       this.config.layout
     );
     return layout;
@@ -485,7 +473,7 @@ export class PlotlyGraph extends HTMLElement {
     if (!this.config) return;
     if (!this.hass) return;
     if (!this.isConnected) return;
-    this.titleEl.innerText = this.config.title;
+    this.titleEl.innerText = this.config.title || "";
     const refresh_interval = this.config.refresh_interval;
     clearTimeout(this.handles.refreshTimeout!);
     if (refresh_interval > 0) {
@@ -494,11 +482,15 @@ export class PlotlyGraph extends HTMLElement {
         refresh_interval * 1000
       );
     }
+    const layout = this.getLayout();
+    if (layout.paper_bgcolor) {
+      this.titleEl.style.background = layout.paper_bgcolor as string;
+    }
     await this.withoutRelayout(() =>
       Plotly.react(
         this.contentEl,
         this.getData(),
-        this.getLayout(),
+        layout,
         this.getPlotlyConfig()
       )
     );

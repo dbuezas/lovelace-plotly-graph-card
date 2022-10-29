@@ -52,6 +52,7 @@ export type EntityConfig = EntityIdConfig & {
 } & Partial<Plotly.PlotData>;
 
 export type Config = {
+  title?: string;
   hours_to_show: number;
   refresh_interval: number; // in seconds
   entities: EntityConfig[];
