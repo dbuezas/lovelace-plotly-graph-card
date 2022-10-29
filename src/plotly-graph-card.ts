@@ -75,7 +75,7 @@ export class PlotlyGraph extends HTMLElement {
             button#reset {
               position: absolute;
               display: block;
-              top: 13px;
+              top: 12px;
               left: 15px;
               height: 19px;
               color: rgb(114, 114, 114);
@@ -91,7 +91,7 @@ export class PlotlyGraph extends HTMLElement {
           </style>
           <span id="msg"> </span>
           <div id="plotly"> </div>
-          <button id="reset" class="hidden">reset</button>
+          <button id="reset" class="hidden">↻</button>
         </ha-card>`;
       this.msgEl = shadow.querySelector("#msg")!;
       this.cardEl = shadow.querySelector("ha-card")!;
@@ -187,15 +187,6 @@ export class PlotlyGraph extends HTMLElement {
   async setConfig(config: InputConfig) {
     config = JSON.parse(JSON.stringify(config));
     const schemeName = config.color_scheme ?? "category10";
-    if (config.title) {
-      config = {
-        ...config,
-        layout: {
-          ...config.layout,
-          title: config.title,
-        },
-      };
-    }
     const colorScheme = isColorSchemeArray(schemeName)
       ? schemeName
       : colorSchemes[schemeName] ||
@@ -274,12 +265,12 @@ export class PlotlyGraph extends HTMLElement {
           yaxis29: merge({}, config.defaults?.yaxes),
           yaxis30: merge({}, config.defaults?.yaxes),
         },
-        config.layout?.title ? { margin: { t: 70 } } : {},
+        config.title
+          ? { title: { text: config.title }, margin: { t: 40 } }
+          : {},
         config.layout
       ),
-      config: {
-        ...config.config,
-      },
+      config: config.config || {},
       no_theme: config.no_theme ?? false,
       no_default_layout: config.no_default_layout ?? false,
       significant_changes_only: config.significant_changes_only ?? false,

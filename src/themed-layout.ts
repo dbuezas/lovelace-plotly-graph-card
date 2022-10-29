@@ -1,14 +1,13 @@
 import merge from "lodash/merge";
 import { HATheme } from "./types";
 
-
 const defaultExtraYAxes: Partial<Plotly.LayoutAxis> = {
   // automargin: true, // it makes zooming very jumpy
   side: "right",
   overlaying: "y",
   showgrid: false,
   visible: false,
-}
+};
 
 const defaultLayout: Partial<Plotly.Layout> = {
   height: 285,
@@ -33,7 +32,7 @@ const defaultLayout: Partial<Plotly.Layout> = {
   yaxis8: { ...defaultExtraYAxes },
   yaxis9: { ...defaultExtraYAxes },
   // @ts-ignore (the types are missing yaxes > 9)
-  yaxis10: { ...defaultExtraYAxes }, 
+  yaxis10: { ...defaultExtraYAxes },
   yaxis11: { ...defaultExtraYAxes },
   yaxis12: { ...defaultExtraYAxes },
   yaxis13: { ...defaultExtraYAxes },
@@ -56,15 +55,23 @@ const defaultLayout: Partial<Plotly.Layout> = {
   yaxis30: { ...defaultExtraYAxes },
   margin: {
     b: 50,
-    t: 30,
+    t: 20,
     l: 60,
     r: 60,
   },
+
   legend: {
     orientation: "h",
     bgcolor: "transparent",
     x: 0,
-    y: 1.2,
+    y: 1,
+    yanchor: "top",
+  },
+  title: {
+    y: 1,
+    pad: {
+      t: 15,
+    },
   },
   ...{
     // modebar is missing from the Layout Typings
