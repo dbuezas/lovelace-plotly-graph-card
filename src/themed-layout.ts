@@ -63,9 +63,6 @@ const defaultLayout: Partial<Plotly.Layout> = {
   legend: {
     orientation: "h",
     bgcolor: "transparent",
-    x: 0,
-    y: 1,
-    yanchor: "top",
   },
   title: {
     y: 1,
