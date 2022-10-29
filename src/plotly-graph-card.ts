@@ -38,6 +38,7 @@ export class PlotlyGraph extends HTMLElement {
   msgEl!: HTMLElement;
   cardEl!: HTMLElement;
   buttonEl!: HTMLButtonElement;
+  titleEl!: HTMLElement;
   config!: Config;
   cache = new Cache();
   size: { width?: number; height?: number } = {};
@@ -69,6 +70,14 @@ export class PlotlyGraph extends HTMLElement {
               box-sizing: border-box;
               background: transparent;
             }
+            ha-card > #title{
+              text-align: center;
+              background: var(--card-background-color);
+              color: var(--secondary-text-color);
+              margin: 0;
+              padding-top: 10px;
+              font-size: 1.2em;
+            }
             button#reset.hidden{
               display: none;
             }
@@ -90,13 +99,15 @@ export class PlotlyGraph extends HTMLElement {
             }
           </style>
           <span id="msg"> </span>
+          <div id="title"> </div>
           <div id="plotly"> </div>
-          <button id="reset" class="hidden">reset</button>
+          <button id="reset" class="hidden">↻</button>
         </ha-card>`;
       this.msgEl = shadow.querySelector("#msg")!;
       this.cardEl = shadow.querySelector("ha-card")!;
       this.contentEl = shadow.querySelector("div#plotly")!;
       this.buttonEl = shadow.querySelector("button#reset")!;
+      this.titleEl = shadow.querySelector("ha-card > #title")!;
       this.buttonEl.addEventListener("click", this.exitBrowsingMode);
       insertStyleHack(shadow.querySelector("style")!);
       this.contentEl.style.visibility = "hidden";
@@ -124,7 +135,7 @@ export class PlotlyGraph extends HTMLElement {
         // Masonry lets the cards grow by themselves.
         // if height > 100 ==> Panel ==> use available height
         // else ==> Mansonry ==> let the height be determined by defaults
-        this.size.height = height;
+        this.size.height = height - this.titleEl.offsetHeight;
       }
       this.withoutRelayout(async () => {
         const layout = this.getLayout();
@@ -187,21 +198,13 @@ export class PlotlyGraph extends HTMLElement {
   async setConfig(config: InputConfig) {
     config = JSON.parse(JSON.stringify(config));
     const schemeName = config.color_scheme ?? "category10";
-    if (config.title) {
-      config = {
-        ...config,
-        layout: {
-          ...config.layout,
-          title: config.title,
-        },
-      };
-    }
     const colorScheme = isColorSchemeArray(schemeName)
       ? schemeName
       : colorSchemes[schemeName] ||
         colorSchemes[Object.keys(colorSchemes)[schemeName]] ||
         colorSchemes.category10;
     const newConfig: Config = {
+      title: config.title,
       hours_to_show: config.hours_to_show ?? 1,
       refresh_interval: config.refresh_interval ?? 0,
       entities: config.entities.map((entityIn, entityIdx) => {
@@ -274,7 +277,6 @@ export class PlotlyGraph extends HTMLElement {
           yaxis29: merge({}, config.defaults?.yaxes),
           yaxis30: merge({}, config.defaults?.yaxes),
         },
-        config.layout?.title ? { margin: { t: 70 } } : {},
         config.layout
       ),
       config: {
@@ -471,6 +473,7 @@ export class PlotlyGraph extends HTMLElement {
     if (!this.config) return;
     if (!this.hass) return;
     if (!this.isConnected) return;
+    this.titleEl.innerText = this.config.title || "";
     const refresh_interval = this.config.refresh_interval;
     clearTimeout(this.handles.refreshTimeout!);
     if (refresh_interval > 0) {
@@ -479,11 +482,15 @@ export class PlotlyGraph extends HTMLElement {
         refresh_interval * 1000
       );
     }
+    const layout = this.getLayout();
+    if (layout.paper_bgcolor) {
+      this.titleEl.style.background = layout.paper_bgcolor as string;
+    }
     await this.withoutRelayout(() =>
       Plotly.react(
         this.contentEl,
         this.getData(),
-        this.getLayout(),
+        layout,
         this.getPlotlyConfig()
       )
     );
