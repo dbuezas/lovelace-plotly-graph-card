@@ -421,3 +421,5 @@ Update data every `refresh_interval` seconds. Use `0` or delete the line to disa
 - click on releases/new draft from tag in github
 
 Automated release pending.
+
+[!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/dbuezas)
