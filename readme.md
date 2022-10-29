@@ -1,3 +1,6 @@
+[!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/dbuezas)
+[![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg?style=for-the-badge)](https://github.com/hacs/integration)
+
 # Plotly Graph Card
 
 <img src="demo.gif" width="300" align="left">
@@ -422,4 +425,4 @@ Update data every `refresh_interval` seconds. Use `0` or delete the line to disa
 
 Automated release pending.
 
-[!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/dbuezas)
+
