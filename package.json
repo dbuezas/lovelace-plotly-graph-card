@@ -7,7 +7,7 @@
     "start": "esbuild src/plotly-graph-card.ts --servedir=dist --outdir=dist --bundle --sourcemap=inline",
     "build": "esbuild src/plotly-graph-card.ts --outdir=dist --bundle --minify",
     "test": "jest",
-    "test:watch": "jest --watchAll",
+    "test:watch": "jest --watchAll --silent=false",
     "version": "npm run build && git add ."
   },
   "author": "",
@@ -18,11 +18,13 @@
     "@types/plotly.js": "^1.54.16",
     "esbuild": "^0.13.4",
     "pretier": "0.0.1",
+    "@types/d3": "^7.4.0",
     "ts-jest": "^27.0.6"
   },
   "dependencies": {
     "@types/lodash": "^4.14.175",
     "custom-card-helpers": "^1.8.0",
+    "d3": "^7.6.1",
     "date-fns": "^2.28.0",
     "deepmerge": "^4.2.2",
     "lodash": "^4.17.21",

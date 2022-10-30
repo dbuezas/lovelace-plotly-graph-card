@@ -1,3 +1,4 @@
+import { scaleTime } from "d3";
 import { HomeAssistant } from "custom-card-helpers";
 import merge from "lodash/merge";
 import mapValues from "lodash/mapValues";
@@ -446,9 +447,17 @@ export class PlotlyGraph extends HTMLElement {
     const yAxisTitles = Object.fromEntries(
       units.map((unit, i) => ["yaxis" + (i == 0 ? "" : i + 1), { title: unit }])
     );
-
+    const tickvals = scaleTime().domain(this.getVisibleRange()).ticks(5);
+    const ticktext = tickvals.map(scaleTime().tickFormat());
+    console.log(this.hass?.locale?.language, this.hass?.locale?.number_format);
     const layout = merge(
       { uirevision: true },
+      {
+        xaxis: {
+          ticktext,
+          tickvals,
+        },
+      },
       this.config.no_default_layout ? {} : yAxisTitles,
       this.getThemedLayout(),
       this.size,
