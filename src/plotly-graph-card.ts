@@ -20,7 +20,11 @@ import { sleep } from "./utils";
 import { Datum } from "plotly.js";
 import colorSchemes, { isColorSchemeArray } from "./color-schemes";
 import { parseISO } from "date-fns";
-import { STATISTIC_PERIODS, STATISTIC_TYPES } from "./recorder-types";
+import {
+  STATISTIC_PERIODS,
+  STATISTIC_TYPES,
+  StatisticPeriod,
+} from "./recorder-types";
 
 const componentName = isProduction ? "plotly-graph" : "plotly-graph-dev";
 
@@ -211,7 +215,8 @@ export class PlotlyGraph extends HTMLElement {
       entities: config.entities.map((entityIn, entityIdx) => {
         if (typeof entityIn === "string") entityIn = { entity: entityIn };
 
-        const entity = merge(
+        // being lazy on types here. The merged object is temporarily not a real Config
+        const entity: any = merge(
           {
             hovertemplate: `<b>%{customdata.name}</b><br><i>%{x}</i><br>%{y}%{customdata.unit_of_measurement}<extra></extra>`,
             mode: "lines",
@@ -231,7 +236,10 @@ export class PlotlyGraph extends HTMLElement {
         if ("statistic" in entity || "period" in entity) {
           const validStatistic = STATISTIC_TYPES.includes(entity.statistic!);
           if (!validStatistic) entity.statistic = "mean";
-          const validPeriod = STATISTIC_PERIODS.includes(entity.period!);
+          const validPeriod = STATISTIC_PERIODS.includes(entity.period);
+          if ((entity.period = "auto")) {
+            entity.autoPeriod = true;
+          }
           if (!validPeriod) entity.period = "hour";
         }
         const [oldAPI_entity, oldAPI_attribute] = entity.entity.split("::");
@@ -295,6 +303,31 @@ export class PlotlyGraph extends HTMLElement {
     await this.fetch(this.getAutoFetchRange());
   }
   fetch = async (range: TimestampRange) => {
+    for (const entity of this.config.entities) {
+      if ((entity as any).autoPeriod) {
+        if (isEntityIdStatisticsConfig(entity) && entity.autoPeriod) {
+          const spanInMinutes = (range[1] - range[0]) / 1000 / 60;
+          const MIN_POINTS_PER_RANGE = 10;
+          const period2minutes: [StatisticPeriod, number][] = [
+            // needs to be sorted in ascending order
+            ["5minute", 5],
+            ["hour", 60],
+            ["day", 60 * 24],
+            // ["week", 60 * 24 * 7], not supported yet in HA
+            ["month", 60 * 24 * 30],
+          ];
+          let period = period2minutes[0][0];
+          for (const [aPeriod, minutesPerPoint] of period2minutes) {
+            const pointsInSpan = spanInMinutes / minutesPerPoint;
+            if (pointsInSpan > MIN_POINTS_PER_RANGE) period = aPeriod;
+          }
+          entity.period = period;
+          this.config.layout = merge(this.config.layout, {
+            xaxis: { title: `Period: ${period}` },
+          });
+        }
+      }
+    }
     const visibleEntities = this.config.entities.filter(
       (_, i) => this.contentEl.data[i]?.visible !== "legendonly"
     );

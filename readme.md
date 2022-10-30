@@ -189,10 +189,13 @@ entities:
     # for entities with state_class=total (such as utility meters):
     statistic: state # `state` or `sum`
 
-    period: 5minute # `5minute`, `hour`, `day`, `week`, `month`
+    period: 5minute # `5minute`, `hour`, `day`, `week`, `month`, `auto` # `auto` varies the period depending on the zoom level
+
 ```
 
 Note that `5minute` period statistics are limited in time as normal recorder history is, contrary to other periods which keep data for years.
+
+The option `auto` makes the period relative to the currently visible time range. It picks the longest period, such that there are at least 500 datapoints in screen.
 
 ## Extra entity attributes:
 
