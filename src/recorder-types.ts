@@ -14,6 +14,14 @@ export interface StatisticValue {
 export interface Statistics {
   [statisticId: string]: StatisticValue[];
 }
-export type StatisticType = "state" | "sum" | "min" | "max" | "mean";
+export const STATISTIC_TYPES = ["state", "sum", "min", "max", "mean"] as const;
+export type StatisticType = typeof STATISTIC_TYPES[number];
 
-export type StatisticPeriod = "5minute" | "hour" | "day" | "month";
+export const STATISTIC_PERIODS = [
+  "5minute",
+  "hour",
+  "day",
+  "week",
+  "month",
+] as const;
+export type StatisticPeriod = typeof STATISTIC_PERIODS[number];

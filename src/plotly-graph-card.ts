@@ -20,6 +20,7 @@ import { sleep } from "./utils";
 import { Datum } from "plotly.js";
 import colorSchemes, { isColorSchemeArray } from "./color-schemes";
 import { parseISO } from "date-fns";
+import { STATISTIC_PERIODS, STATISTIC_TYPES } from "./recorder-types";
 
 const componentName = isProduction ? "plotly-graph" : "plotly-graph-dev";
 
@@ -228,13 +229,9 @@ export class PlotlyGraph extends HTMLElement {
           entity.lambda = window.eval(entity.lambda);
         }
         if ("statistic" in entity || "period" in entity) {
-          const validStatistic = ["mean", "min", "max", "sum"].includes(
-            entity.statistic || ""
-          );
+          const validStatistic = STATISTIC_TYPES.includes(entity.statistic!);
           if (!validStatistic) entity.statistic = "mean";
-          const validPeriod = ["5minute", "hour", "day", "month"].includes(
-            entity.period || ""
-          );
+          const validPeriod = STATISTIC_PERIODS.includes(entity.period!);
           if (!validPeriod) entity.period = "hour";
         }
         const [oldAPI_entity, oldAPI_attribute] = entity.entity.split("::");

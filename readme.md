@@ -184,8 +184,12 @@ Fetch and plot long-term statistics of an entity
 type: custom:plotly-graph
 entities:
   - entity: sensor.temperature
-    statistic: max # `min`, `mean`, `max` or `sum`
-    period: 5minute # `5minute`, `hour`, `day`, `month`
+    # for entities with state_class=measurement (normal sensors, like temperature):
+    statistic: max # `min`, `mean` of `max`
+    # for entities with state_class=total (such as utility meters):
+    statistic: state # `state` or `sum`
+
+    period: 5minute # `5minute`, `hour`, `day`, `week`, `month`
 ```
 
 Note that `5minute` period statistics are limited in time as normal recorder history is, contrary to other periods which keep data for years.
@@ -424,5 +428,3 @@ Update data every `refresh_interval` seconds. Use `0` or delete the line to disa
 - click on releases/new draft from tag in github
 
 Automated release pending.
-
-
