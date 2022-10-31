@@ -92,7 +92,11 @@ export default class Cache {
   }
   getHistory(entity: EntityConfig) {
     let key = getEntityKey(entity);
-    return this.histories[key] || [];
+    const history = this.histories[key] || [];
+    return history.map((datum) => ({
+      ...datum,
+      timestamp: datum.timestamp + entity.offset,
+    }));
   }
   async update(
     range: TimestampRange,
@@ -106,12 +110,20 @@ export default class Cache {
       .catch(() => {})
       .then(async () => {
         if (removeOutsideRange) {
+          // @TODO: consider offsets
           this.removeOutsideRange(range);
         }
-        const promises = entities.flatMap(async (entity) => {
+        const promises = entities.map(async (entity) => {
           const entityKey = getEntityKey(entity);
           this.ranges[entityKey] ??= [];
-          const rangesToFetch = subtractRanges([range], this.ranges[entityKey]);
+          const offsetRange = [
+            range[0] - entity.offset,
+            range[1] - entity.offset,
+          ];
+          const rangesToFetch = subtractRanges(
+            [offsetRange],
+            this.ranges[entityKey]
+          );
           for (const aRange of rangesToFetch) {
             const fetchedHistory = await fetchSingleRange(
               hass,
