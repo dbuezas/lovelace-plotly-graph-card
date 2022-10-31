@@ -237,7 +237,7 @@ export class PlotlyGraph extends HTMLElement {
           const validStatistic = STATISTIC_TYPES.includes(entity.statistic!);
           if (!validStatistic) entity.statistic = "mean";
           const validPeriod = STATISTIC_PERIODS.includes(entity.period);
-          if ((entity.period = "auto")) {
+          if (entity.period === "auto") {
             entity.autoPeriod = true;
           }
           if (!validPeriod) entity.period = "hour";
@@ -307,7 +307,7 @@ export class PlotlyGraph extends HTMLElement {
       if ((entity as any).autoPeriod) {
         if (isEntityIdStatisticsConfig(entity) && entity.autoPeriod) {
           const spanInMinutes = (range[1] - range[0]) / 1000 / 60;
-          const MIN_POINTS_PER_RANGE = 10;
+          const MIN_POINTS_PER_RANGE = 500;
           const period2minutes: [StatisticPeriod, number][] = [
             // needs to be sorted in ascending order
             ["5minute", 5],
