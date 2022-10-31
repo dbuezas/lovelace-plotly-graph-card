@@ -44,7 +44,7 @@ export class PlotlyGraph extends HTMLElement {
   cardEl!: HTMLElement;
   buttonEl!: HTMLButtonElement;
   titleEl!: HTMLElement;
-  config!: Config;
+  parsed_config!: Config;
   cache = new Cache();
   size: { width?: number; height?: number } = {};
   hass?: HomeAssistant; // set externally
@@ -165,7 +165,7 @@ export class PlotlyGraph extends HTMLElement {
     )!;
   }
   getAutoFetchRange() {
-    const ms = this.config.hours_to_show * 60 * 60 * 1000;
+    const ms = this.parsed_config.hours_to_show * 60 * 60 * 1000;
     return [+new Date() - ms, +new Date()] as [number, number];
   }
   getVisibleRange() {
@@ -203,6 +203,7 @@ export class PlotlyGraph extends HTMLElement {
   // render an error card.
   async setConfig(config: InputConfig) {
     config = JSON.parse(JSON.stringify(config));
+    this.config = config
     const schemeName = config.color_scheme ?? "category10";
     const colorScheme = isColorSchemeArray(schemeName)
       ? schemeName
@@ -294,9 +295,9 @@ export class PlotlyGraph extends HTMLElement {
       minimal_response: config.minimal_response ?? true,
     };
 
-    const was = this.config;
-    this.config = newConfig;
-    const is = this.config;
+    const was = this.parsed_config;
+    this.parsed_config = newConfig;
+    const is = this.parsed_config;
     if (!this.contentEl) return;
     if (is.hours_to_show !== was.hours_to_show) {
       this.exitBrowsingMode();
@@ -304,7 +305,7 @@ export class PlotlyGraph extends HTMLElement {
     await this.fetch(this.getAutoFetchRange());
   }
   fetch = async (range: TimestampRange) => {
-    for (const entity of this.config.entities) {
+    for (const entity of this.parsed_config.entities) {
       if ((entity as any).autoPeriod) {
         if (isEntityIdStatisticsConfig(entity) && entity.autoPeriod) {
           const spanInMinutes = (range[1] - range[0]) / 1000 / 60;
@@ -322,13 +323,13 @@ export class PlotlyGraph extends HTMLElement {
             if (pointsInSpan > MIN_POINTS_PER_RANGE) period = aPeriod;
           }
           entity.period = period;
-          this.config.layout = merge(this.config.layout, {
+          this.parsed_config.layout = merge(this.parsed_config.layout, {
             xaxis: { title: `Period: ${period}` },
           });
         }
       }
     }
-    const visibleEntities = this.config.entities.filter(
+    const visibleEntities = this.parsed_config.entities.filter(
       (_, i) => this.contentEl.data[i]?.visible !== "legendonly"
     );
     while (!this.hass) await sleep(100);
@@ -338,8 +339,8 @@ export class PlotlyGraph extends HTMLElement {
         !this.isBrowsing,
         visibleEntities,
         this.hass,
-        this.config.minimal_response,
-        this.config.significant_changes_only
+        this.parsed_config.minimal_response,
+        this.parsed_config.significant_changes_only
       );
       this.msgEl.innerText = "";
     } catch (e: any) {
@@ -349,7 +350,7 @@ export class PlotlyGraph extends HTMLElement {
     await this.plot();
   };
   getAllUnitsOfMeasurement() {
-    const all = this.config.entities.map((entity) =>
+    const all = this.parsed_config.entities.map((entity) =>
       this.getUnitOfMeasurement(entity)
     );
     return Array.from(new Set(all));
@@ -373,13 +374,13 @@ export class PlotlyGraph extends HTMLElement {
     haTheme = mapValues(haTheme, (_, key) => styles.getPropertyValue(key));
     return getThemedLayout(
       haTheme,
-      this.config.no_theme,
-      this.config.no_default_layout
+      this.parsed_config.no_theme,
+      this.parsed_config.no_default_layout
     );
   }
 
   getData(): Plotly.Data[] {
-    const entities = this.config.entities;
+    const entities = this.parsed_config.entities;
 
     const units = this.getAllUnitsOfMeasurement();
     const show_value_traces: Plotly.Data[] = [];
@@ -451,7 +452,7 @@ export class PlotlyGraph extends HTMLElement {
         ) {
           const timeMargin =
             mergedTrace.show_value.right_margin *
-            ((this.config.hours_to_show * 1000 * 60 * 60) / 100);
+            ((this.parsed_config.hours_to_show * 1000 * 60 * 60) / 100);
           show_value_traces.push({
             ...mergedTrace,
             marker: {
@@ -479,10 +480,10 @@ export class PlotlyGraph extends HTMLElement {
 
     const layout = merge(
       { uirevision: true },
-      this.config.no_default_layout ? {} : yAxisTitles,
+      this.parsed_config.no_default_layout ? {} : yAxisTitles,
       this.getThemedLayout(),
       this.size,
-      this.config.layout
+      this.parsed_config.layout
     );
     return layout;
   }
@@ -496,15 +497,15 @@ export class PlotlyGraph extends HTMLElement {
         "lasso2d",
         "select2d",
       ],
-      ...this.config.config,
+      ...this.parsed_config.config,
     };
   }
   async plot() {
-    if (!this.config) return;
+    if (!this.parsed_config) return;
     if (!this.hass) return;
     if (!this.isConnected) return;
-    this.titleEl.innerText = this.config.title || "";
-    const refresh_interval = this.config.refresh_interval;
+    this.titleEl.innerText = this.parsed_config.title || "";
+    const refresh_interval = this.parsed_config.refresh_interval;
     clearTimeout(this.handles.refreshTimeout!);
     if (refresh_interval > 0) {
       this.handles.refreshTimeout = window.setTimeout(
