@@ -180,11 +180,24 @@ entities:
 
 Fetch and plot long-term statistics of an entity
 
+#### for entities with state_class=measurement (normal sensors, like temperature)
+
 ```yaml
 type: custom:plotly-graph
 entities:
   - entity: sensor.temperature
-    # for entities with state_class=measurement (normal sensors, like temperature):
+    statistic: max # `min`, `mean` of `max`
+    period: 5minute # `5minute`, `hour`, `day`, `week`, `month`, `auto` # `auto` varies the period depending on the zoom level
+```
+
+The option `auto` makes the period relative to the currently visible time range. It picks the longest period, such that there are at least 100 datapoints in screen.
+
+#### for entities with state_class=measurement (normal sensors, like temperature)
+
+```yaml
+type: custom:plotly-graph
+entities:
+  - entity: sensor.temperature
     statistic: max # `min`, `mean` of `max`
     # for entities with state_class=total (such as utility meters):
     statistic: state # `state` or `sum`
@@ -193,9 +206,22 @@ entities:
 
 ```
 
-Note that `5minute` period statistics are limited in time as normal recorder history is, contrary to other periods which keep data for years.
+#### step function for auto period
 
-The option `auto` makes the period relative to the currently visible time range. It picks the longest period, such that there are at least 500 datapoints in screen.
+```yaml
+type: custom:plotly-graph
+entities:
+  - entity: sensor.temperature
+    statistic: mean
+    period:
+      0: 5minute
+      24h: hour # when the visible range is ≥ 1 day, use the `hour` period
+      7d: day # from 7 days on, use `day`
+      # 6M: week # not yet supported in HA
+      1y: month # from 1 year on, use `month
+```
+
+Note that `5minute` period statistics are limited in time as normal recorder history is, contrary to other periods which keep data for years.
 
 ## Extra entity attributes:
 
