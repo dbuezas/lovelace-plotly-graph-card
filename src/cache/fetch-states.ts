@@ -34,7 +34,11 @@ async function fetchStates(
     list = lists[0];
   } catch (e: any) {
     console.error(e);
-    throw new Error(`Error fetching ${entity.entity}: ${e.msg}`);
+    throw new Error(
+      `Error fetching states of ${entity.entity}: ${JSON.stringify(
+        e.message || ""
+      )}`
+    );
   }
   if (!list) list = []; //throw new Error(`Error fetching ${entity.entity}`); // shutup typescript
   return {

@@ -20,7 +20,11 @@ async function fetchStatistics(
     statistics = (await statsP)[entity.entity];
   } catch (e: any) {
     console.error(e);
-    throw new Error(`Error fetching ${entity.entity}: ${e.msg}`);
+    throw new Error(
+      `Error fetching statistics of ${entity.entity}: ${JSON.stringify(
+        e.message || ""
+      )}`
+    );
   }
   if (!statistics) statistics = []; //throw new Error(`Error fetching ${entity.entity}`);
   return {

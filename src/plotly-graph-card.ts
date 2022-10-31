@@ -100,6 +100,7 @@ export class PlotlyGraph extends HTMLElement {
             #msg {
               position: absolute;
               color: red;
+              top: 0;
               background: rgba(0, 0, 0, 0.4);
             }
           </style>
@@ -342,8 +343,8 @@ export class PlotlyGraph extends HTMLElement {
       );
       this.msgEl.innerText = "";
     } catch (e: any) {
-      this.msgEl.innerText = e.message;
       console.error(e);
+      this.msgEl.innerText = JSON.stringify(e.message || "");
     }
     await this.plot();
   };
