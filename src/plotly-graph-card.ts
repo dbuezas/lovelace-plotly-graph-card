@@ -25,6 +25,7 @@ import {
   STATISTIC_TYPES,
   StatisticPeriod,
 } from "./recorder-types";
+import { parseTimeDuration } from "./duration/duration";
 
 const componentName = isProduction ? "plotly-graph" : "plotly-graph-dev";
 
@@ -42,7 +43,7 @@ export class PlotlyGraph extends HTMLElement {
   };
   msgEl!: HTMLElement;
   cardEl!: HTMLElement;
-  buttonEl!: HTMLButtonElement;
+  resetButtonEl!: HTMLButtonElement;
   titleEl!: HTMLElement;
   config!: Config;
   cache = new Cache();
@@ -63,10 +64,10 @@ export class PlotlyGraph extends HTMLElement {
     this.handles.restyleListener!.off("plotly_restyle", this.onRestyle);
     clearTimeout(this.handles.refreshTimeout!);
   }
-  connectedCallback() {
-    if (!this.contentEl) {
-      const shadow = this.attachShadow({ mode: "open" });
-      shadow.innerHTML = `
+  constructor() {
+    super();
+    const shadow = this.attachShadow({ mode: "open" });
+    shadow.innerHTML = `
         <ha-card>
           <style>
             ha-card{
@@ -109,20 +110,21 @@ export class PlotlyGraph extends HTMLElement {
           <span id="msg"> </span>
           <button id="reset" class="hidden">↻</button>
         </ha-card>`;
-      this.msgEl = shadow.querySelector("#msg")!;
-      this.cardEl = shadow.querySelector("ha-card")!;
-      this.contentEl = shadow.querySelector("div#plotly")!;
-      this.buttonEl = shadow.querySelector("button#reset")!;
-      this.titleEl = shadow.querySelector("ha-card > #title")!;
-      this.buttonEl.addEventListener("click", this.exitBrowsingMode);
-      insertStyleHack(shadow.querySelector("style")!);
-      this.contentEl.style.visibility = "hidden";
-      this.withoutRelayout(() => Plotly.newPlot(this.contentEl, [], {}));
-    }
+    this.msgEl = shadow.querySelector("#msg")!;
+    this.cardEl = shadow.querySelector("ha-card")!;
+    this.contentEl = shadow.querySelector("div#plotly")!;
+    this.resetButtonEl = shadow.querySelector("button#reset")!;
+    this.titleEl = shadow.querySelector("ha-card > #title")!;
+    this.resetButtonEl.addEventListener("click", this.exitBrowsingMode);
+    insertStyleHack(shadow.querySelector("style")!);
+    this.contentEl.style.visibility = "hidden";
+    this.withoutRelayout(() => Plotly.newPlot(this.contentEl, [], {}));
+  }
+  connectedCallback() {
     this.setupListeners();
-    this.fetch(this.getAutoFetchRange())
-      .then(() => this.fetch(this.getAutoFetchRange())) // again so home assistant extends until end of time axis
-      .then(() => (this.contentEl.style.visibility = ""));
+    this.fetch(this.getAutoFetchRange()).then(
+      () => (this.contentEl.style.visibility = "")
+    );
   }
   async withoutRelayout(fn: Function) {
     this.isInternalRelayout++;
@@ -166,23 +168,25 @@ export class PlotlyGraph extends HTMLElement {
   }
   getAutoFetchRange() {
     const ms = this.config.hours_to_show * 60 * 60 * 1000;
-    return [+new Date() - ms, +new Date()] as [number, number];
+    return [
+      +new Date() - ms + this.config.offset,
+      +new Date() + this.config.offset,
+    ] as [number, number];
   }
   getVisibleRange() {
     return this.contentEl.layout.xaxis!.range!.map((date) => +parseISO(date));
   }
   async enterBrowsingMode() {
     this.isBrowsing = true;
-    this.buttonEl.classList.remove("hidden");
+    this.resetButtonEl.classList.remove("hidden");
   }
   exitBrowsingMode = async () => {
     this.isBrowsing = false;
-    this.buttonEl.classList.add("hidden");
+    this.resetButtonEl.classList.add("hidden");
     this.withoutRelayout(async () => {
       await Plotly.relayout(this.contentEl, {
-        uirevision: Math.random(),
+        uirevision: Math.random(), // to trigger the autoranges in all yaxes
       });
-      await Plotly.restyle(this.contentEl, { visible: true });
     });
     await this.fetch(this.getAutoFetchRange());
   };
@@ -202,6 +206,18 @@ export class PlotlyGraph extends HTMLElement {
   // The user supplied configuration. Throw an exception and Lovelace will
   // render an error card.
   async setConfig(config: InputConfig) {
+    try {
+      this.msgEl.innerText = "";
+      return await this._setConfig(config);
+    } catch (e: any) {
+      console.error(e);
+      this.msgEl.innerText = JSON.stringify(e.message || "").replace(
+        /\\"/g,
+        '"'
+      );
+    }
+  }
+  async _setConfig(config: InputConfig) {
     config = JSON.parse(JSON.stringify(config));
     const schemeName = config.color_scheme ?? "category10";
     const colorScheme = isColorSchemeArray(schemeName)
@@ -213,6 +229,7 @@ export class PlotlyGraph extends HTMLElement {
       title: config.title,
       hours_to_show: config.hours_to_show ?? 1,
       refresh_interval: config.refresh_interval ?? 0,
+      offset: parseTimeDuration(config.offset),
       entities: config.entities.map((entityIn, entityIdx) => {
         if (typeof entityIn === "string") entityIn = { entity: entityIn };
 
@@ -231,6 +248,7 @@ export class PlotlyGraph extends HTMLElement {
           config.defaults?.entity,
           entityIn
         );
+        entity.offset = parseTimeDuration(entityIn.offset);
         if (entity.lambda) {
           entity.lambda = window.eval(entity.lambda);
         }
@@ -297,8 +315,7 @@ export class PlotlyGraph extends HTMLElement {
     const was = this.config;
     this.config = newConfig;
     const is = this.config;
-    if (!this.contentEl) return;
-    if (is.hours_to_show !== was.hours_to_show) {
+    if (is.hours_to_show !== was?.hours_to_show || is.offset !== was?.offset) {
       this.exitBrowsingMode();
     }
     await this.fetch(this.getAutoFetchRange());
@@ -476,9 +493,15 @@ export class PlotlyGraph extends HTMLElement {
     const yAxisTitles = Object.fromEntries(
       units.map((unit, i) => ["yaxis" + (i == 0 ? "" : i + 1), { title: unit }])
     );
-
     const layout = merge(
       { uirevision: true },
+      {
+        xaxis: {
+          range: this.isBrowsing
+            ? this.getVisibleRange()
+            : this.getAutoFetchRange(),
+        },
+      },
       this.config.no_default_layout ? {} : yAxisTitles,
       this.getThemedLayout(),
       this.size,

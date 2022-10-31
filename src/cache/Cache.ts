@@ -40,27 +40,7 @@ async function fetchSingleRange(
     );
   }
 
-  const { history, range } = historyInRange;
-  /*
-  home assistant will "invent" a datapoiont at startT with the previous known value, except if there is actually one at startT.
-  To avoid these duplicates, the "fetched range" is capped to end at the last known point instead of endT.
-  This ensures that the next fetch will start with a duplicate of the last known datapoint, which can then be removed.
-  On top of that, in order to ensure that the last known point is extended to endT, I duplicate the last datapoint
-  and set its date to endT.
-  */
-  if (history.length) {
-    const last = history[history.length - 1];
-    const dup = JSON.parse(JSON.stringify(last));
-    history[0].duplicate_datapoint = true;
-    dup.duplicate_datapoint = true;
-    dup.last_updated = Math.min(+end, Date.now());
-    history.push(dup);
-  }
-  Math.min(+end, Date.now());
-  return {
-    range: [range[0], Math.min(range[1], Date.now())],
-    history,
-  };
+  return historyInRange;
 }
 
 export function getEntityKey(entity: EntityIdConfig) {
@@ -83,7 +63,12 @@ export default class Cache {
   }
   getHistory(entity: EntityIdConfig) {
     let key = getEntityKey(entity);
-    return this.histories[key] || [];
+    const history = this.histories[key] || [];
+    return history.map((datum) => ({
+      ...datum,
+      last_changed: datum.last_changed + entity.offset,
+      last_updated: datum.last_updated + entity.offset,
+    }));
   }
   async update(
     range: TimestampRange,
@@ -97,12 +82,20 @@ export default class Cache {
       .catch(() => {})
       .then(async () => {
         if (removeOutsideRange) {
+          // @TODO: consider offsets
           this.removeOutsideRange(range);
         }
-        const promises = entities.flatMap(async (entity) => {
+        const promises = entities.map(async (entity) => {
           const entityKey = getEntityKey(entity);
           this.ranges[entityKey] ??= [];
-          const rangesToFetch = subtractRanges([range], this.ranges[entityKey]);
+          const offsetRange = [
+            range[0] - entity.offset,
+            range[1] - entity.offset,
+          ];
+          const rangesToFetch = subtractRanges(
+            [offsetRange],
+            this.ranges[entityKey]
+          );
           for (const aRange of rangesToFetch) {
             const fetchedHistory = await fetchSingleRange(
               hass,
