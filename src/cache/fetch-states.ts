@@ -29,20 +29,12 @@ async function fetchStates(
     minimal_response_query +
     `end_time=${end.toISOString()}`;
   let list: History | undefined;
-  let succeeded = false;
-  let retries = 0;
-  while (!succeeded) {
-    try {
-      const lists: History[] = (await hass.callApi("GET", uri)) || [];
-      list = lists[0];
-      succeeded = true;
-    } catch (e: any) {
-      console.error(e);
-      retries++;
-      if (retries > 5)
-        throw new Error(`Error fetching ${entity.entity}: ${e.msg}`);
-      await sleep(100);
-    }
+  try {
+    const lists: History[] = (await hass.callApi("GET", uri)) || [];
+    list = lists[0];
+  } catch (e: any) {
+    console.error(e);
+    throw new Error(`Error fetching ${entity.entity}: ${e.msg}`);
   }
   if (!list) list = []; //throw new Error(`Error fetching ${entity.entity}`); // shutup typescript
   return {

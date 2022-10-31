@@ -9,26 +9,18 @@ async function fetchStatistics(
   [start, end]: [Date, Date]
 ): Promise<HistoryInRange> {
   let statistics: StatisticValue[] | null = null;
-  let succeeded = false;
-  let retries = 0;
-  while (!succeeded) {
-    try {
-      const statsP = hass.callWS<Statistics>({
-        type: "recorder/statistics_during_period",
-        start_time: start.toISOString(),
-        end_time: end.toISOString(),
-        statistic_ids: [entity.entity],
-        period: entity.period,
-      });
-      statistics = (await statsP)[entity.entity];
-      succeeded = true;
-    } catch (e: any) {
-      console.error(e);
-      retries++;
-      if (retries > 5)
-        throw new Error(`Error fetching ${entity.entity}: ${e.msg}`);
-      await sleep(100);
-    }
+  try {
+    const statsP = hass.callWS<Statistics>({
+      type: "recorder/statistics_during_period",
+      start_time: start.toISOString(),
+      end_time: end.toISOString(),
+      statistic_ids: [entity.entity],
+      period: entity.period,
+    });
+    statistics = (await statsP)[entity.entity];
+  } catch (e: any) {
+    console.error(e);
+    throw new Error(`Error fetching ${entity.entity}: ${e.msg}`);
   }
   if (!statistics) statistics = []; //throw new Error(`Error fetching ${entity.entity}`);
   return {
