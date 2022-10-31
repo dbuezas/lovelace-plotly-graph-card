@@ -1,5 +1,6 @@
 import { Datum } from "plotly.js";
 import { ColorSchemeArray, ColorSchemeNames } from "./color-schemes";
+import { TimeDurationStr } from "./duration/duration";
 import {
   AutoPeriodConfig,
   StatisticPeriod,
@@ -15,6 +16,7 @@ export type InputConfig = {
   refresh_interval?: number | "auto"; // in seconds
   color_scheme?: ColorSchemeNames | ColorSchemeArray | number;
   title?: string;
+  offset?: TimeDurationStr;
   entities: ({
     entity: string;
     attribute?: string;
@@ -27,6 +29,7 @@ export type InputConfig = {
       | {
           right_margin: number;
         };
+    offset?: TimeDurationStr;
   } & Partial<Plotly.PlotData>)[];
   defaults?: {
     entity?: Partial<Plotly.PlotData>;
@@ -52,12 +55,14 @@ export type EntityConfig = EntityIdConfig & {
     | {
         right_margin: number;
       };
+  offset: number;
 } & Partial<Plotly.PlotData>;
 
 export type Config = {
   title?: string;
   hours_to_show: number;
   refresh_interval: number | "auto"; // in seconds
+  offset: number;
   entities: EntityConfig[];
   layout: Partial<Plotly.Layout>;
   config: Partial<Plotly.Config>;

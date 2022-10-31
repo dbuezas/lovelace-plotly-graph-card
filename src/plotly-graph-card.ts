@@ -49,10 +49,14 @@ function patchLonelyDatapoints(xs: Datum[], ys: Datum[]) {
   }
 }
 
-function extendLastDatapointToPresent(xs: Datum[], ys: Datum[]) {
+function extendLastDatapointToPresent(
+  xs: Datum[],
+  ys: Datum[],
+  offset: number
+) {
   if (xs.length === 0) return;
   const last = JSON.parse(JSON.stringify(ys[ys.length - 1]));
-  xs.push(new Date());
+  xs.push(new Date(Date.now() + offset));
   ys.push(last);
 }
 
@@ -252,7 +256,10 @@ export class PlotlyGraph extends HTMLElement {
   }
   getAutoFetchRange() {
     const ms = this.parsed_config.hours_to_show * 60 * 60 * 1000;
-    return [+new Date() - ms, +new Date()] as [number, number];
+    return [
+      +new Date() - ms + this.parsed_config.offset,
+      +new Date() + this.parsed_config.offset,
+    ] as [number, number];
   }
   getAutoFetchRangeWithValueMargins() {
     const [start, end] = this.getAutoFetchRange();
@@ -368,6 +375,7 @@ export class PlotlyGraph extends HTMLElement {
       title: config.title,
       hours_to_show: config.hours_to_show ?? 1,
       refresh_interval: config.refresh_interval ?? "auto",
+      offset: parseTimeDuration(config.offset ?? "0s"),
       entities: config.entities.map((entityIn, entityIdx) => {
         if (typeof entityIn === "string") entityIn = { entity: entityIn };
 
@@ -386,6 +394,7 @@ export class PlotlyGraph extends HTMLElement {
           config.defaults?.entity,
           entityIn
         );
+        entity.offset = parseTimeDuration(entityIn.offset ?? "0s");
         if (entity.lambda) {
           entity.lambda = window.eval(entity.lambda);
         }
@@ -487,8 +496,7 @@ export class PlotlyGraph extends HTMLElement {
     const was = this.parsed_config;
     this.parsed_config = newConfig;
     const is = this.parsed_config;
-    if (!this.contentEl) return;
-    if (is.hours_to_show !== was?.hours_to_show) {
+    if (is.hours_to_show !== was?.hours_to_show || is.offset !== was?.offset) {
       this.exitBrowsingMode();
     }
     await this.fetch();
@@ -593,7 +601,7 @@ export class PlotlyGraph extends HTMLElement {
 
       let xs: Datum[] = xsIn;
       let ys = ysIn;
-      extendLastDatapointToPresent(xs, ys);
+      extendLastDatapointToPresent(xs, ys, trace.offset);
       if (trace.lambda) {
         try {
           const r = trace.lambda(ysIn, xsIn, history);
