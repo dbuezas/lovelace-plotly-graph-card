@@ -307,16 +307,15 @@ export class PlotlyGraph extends HTMLElement {
       if ((entity as any).autoPeriod) {
         if (isEntityIdStatisticsConfig(entity) && entity.autoPeriod) {
           const spanInMinutes = (range[1] - range[0]) / 1000 / 60;
-          const MIN_POINTS_PER_RANGE = 500;
+          const MIN_POINTS_PER_RANGE = 100;
+          let period: StatisticPeriod = "5minute";
           const period2minutes: [StatisticPeriod, number][] = [
             // needs to be sorted in ascending order
-            ["5minute", 5],
             ["hour", 60],
             ["day", 60 * 24],
             // ["week", 60 * 24 * 7], not supported yet in HA
             ["month", 60 * 24 * 30],
           ];
-          let period = period2minutes[0][0];
           for (const [aPeriod, minutesPerPoint] of period2minutes) {
             const pointsInSpan = spanInMinutes / minutesPerPoint;
             if (pointsInSpan > MIN_POINTS_PER_RANGE) period = aPeriod;
