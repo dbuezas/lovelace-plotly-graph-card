@@ -103,9 +103,9 @@ export class PlotlyGraph extends HTMLElement {
               background: rgba(0, 0, 0, 0.4);
             }
           </style>
-          <span id="msg"> </span>
           <div id="title"> </div>
           <div id="plotly"> </div>
+          <span id="msg"> </span>
           <button id="reset" class="hidden">↻</button>
         </ha-card>`;
       this.msgEl = shadow.querySelector("#msg")!;
