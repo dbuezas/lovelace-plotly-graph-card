@@ -266,6 +266,17 @@ entities:
       <extra></extra>
 ```
 
+### Offsets
+
+```yaml
+type: custom:plotly-graph
+offset: 6h
+entities:
+  - entity: sensor.weather_24h_forecast
+    offset: -1d
+  - entity: sensor.actual_temperature
+```
+
 ### `lambda:` transforms
 
 `lambda` takes a js function (as a string) to pre process the data before plotting it. Here you can do things like normalisation, integration. For example:
