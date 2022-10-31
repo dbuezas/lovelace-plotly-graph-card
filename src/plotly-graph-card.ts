@@ -56,7 +56,7 @@ export class PlotlyGraph extends HTMLElement {
   };
   msgEl!: HTMLElement;
   cardEl!: HTMLElement;
-  buttonEl!: HTMLButtonElement;
+  resetButtonEl!: HTMLButtonElement;
   titleEl!: HTMLElement;
   config!: InputConfig;
   parsed_config!: Config;
@@ -78,8 +78,8 @@ export class PlotlyGraph extends HTMLElement {
     this.handles.restyleListener!.off("plotly_restyle", this.onRestyle);
     clearTimeout(this.handles.refreshTimeout!);
   }
-  connectedCallback() {
-    if (!this.contentEl) {
+  constructor() {
+    super();
       const shadow = this.attachShadow({ mode: "open" });
       shadow.innerHTML = `
         <ha-card>
@@ -127,17 +127,18 @@ export class PlotlyGraph extends HTMLElement {
       this.msgEl = shadow.querySelector("#msg")!;
       this.cardEl = shadow.querySelector("ha-card")!;
       this.contentEl = shadow.querySelector("div#plotly")!;
-      this.buttonEl = shadow.querySelector("button#reset")!;
+    this.resetButtonEl = shadow.querySelector("button#reset")!;
       this.titleEl = shadow.querySelector("ha-card > #title")!;
-      this.buttonEl.addEventListener("click", this.exitBrowsingMode);
+    this.resetButtonEl.addEventListener("click", this.exitBrowsingMode);
       insertStyleHack(shadow.querySelector("style")!);
       this.contentEl.style.visibility = "hidden";
       this.withoutRelayout(() => Plotly.newPlot(this.contentEl, [], {}));
     }
+  connectedCallback() {
     this.setupListeners();
-    this.fetch(this.getAutoFetchRange())
-      .then(() => this.fetch(this.getAutoFetchRange())) // again so home assistant extends until end of time axis
-      .then(() => (this.contentEl.style.visibility = ""));
+    this.fetch(this.getAutoFetchRange()).then(
+      () => (this.contentEl.style.visibility = "")
+    );
   }
   async withoutRelayout(fn: Function) {
     this.isInternalRelayout++;
@@ -188,17 +189,16 @@ export class PlotlyGraph extends HTMLElement {
   }
   async enterBrowsingMode() {
     this.isBrowsing = true;
-    this.buttonEl.classList.remove("hidden");
+    this.resetButtonEl.classList.remove("hidden");
   }
   exitBrowsingMode = async () => {
     this.isBrowsing = false;
-    this.buttonEl.classList.add("hidden");
+    this.resetButtonEl.classList.add("hidden");
     this.withoutRelayout(async () => {
       await Plotly.relayout(this.contentEl, {
-        uirevision: Math.random(),
+        uirevision: Math.random(), // to trigger the autoranges in all yaxes
         xaxis: { range: this.getAutoFetchRange() },
       });
-      await Plotly.restyle(this.contentEl, { visible: true });
     });
     await this.fetch(this.getAutoFetchRange());
   };
@@ -218,6 +218,18 @@ export class PlotlyGraph extends HTMLElement {
   // The user supplied configuration. Throw an exception and Lovelace will
   // render an error card.
   async setConfig(config: InputConfig) {
+    try {
+      this.msgEl.innerText = "";
+      return await this._setConfig(config);
+    } catch (e: any) {
+      console.error(e);
+      this.msgEl.innerText = JSON.stringify(e.message || "").replace(
+        /\\"/g,
+        '"'
+      );
+    }
+  }
+  async _setConfig(config: InputConfig) {
     config = JSON.parse(JSON.stringify(config));
     this.config = config;
     const schemeName = config.color_scheme ?? "category10";
@@ -507,9 +519,15 @@ export class PlotlyGraph extends HTMLElement {
     const yAxisTitles = Object.fromEntries(
       units.map((unit, i) => ["yaxis" + (i == 0 ? "" : i + 1), { title: unit }])
     );
-
     const layout = merge(
       { uirevision: true },
+      {
+        xaxis: {
+          range: this.isBrowsing
+            ? this.getVisibleRange()
+            : this.getAutoFetchRange(),
+        },
+      },
       this.parsed_config.no_default_layout ? {} : yAxisTitles,
       this.getThemedLayout(),
       this.size,
