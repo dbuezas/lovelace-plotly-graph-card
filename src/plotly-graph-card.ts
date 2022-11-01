@@ -30,6 +30,18 @@ import { parseTimeDuration } from "./duration/duration";
 
 const componentName = isProduction ? "plotly-graph" : "plotly-graph-dev";
 
+function patchLonelyDatapoints(xs: Datum[], ys: Datum[]) {
+  /* Ghost traces when data has single non-unavailable states sandwiched between unavailable ones
+     see: https://github.com/dbuezas/lovelace-plotly-graph-card/issues/103
+  */
+  for (let i = 1; i < xs.length - 1; i++) {
+    if (ys[i - 1] === null && ys[i] !== null && ys[i + 1] === null) {
+      ys.splice(i, 0, ys[i]);
+      xs.splice(i, 0, xs[i]);
+    }
+  }
+}
+
 console.info(
   `%c ${componentName.toUpperCase()} %c ${version} ${process.env.NODE_ENV}`,
   "color: orange; font-weight: bold; background: black",
@@ -429,6 +441,7 @@ export class PlotlyGraph extends HTMLElement {
           console.error(e);
         }
       }
+      patchLonelyDatapoints(xs, ys);
       const customdatum = { unit_of_measurement: unit, name, attributes };
       const customdata = xs.map(() => customdatum);
       const mergedTrace = merge(
