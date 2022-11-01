@@ -474,7 +474,7 @@ export class PlotlyGraph extends HTMLElement {
             },
             hoverinfo: "skip",
             showlegend: false,
-            x: [+Date.now() + timeMargin],
+            x: [new Date(Date.now() + timeMargin)],
             y: mergedTrace.y.slice(-1),
           });
         }
