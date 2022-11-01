@@ -183,6 +183,7 @@ export class PlotlyGraph extends HTMLElement {
     this.withoutRelayout(async () => {
       await Plotly.relayout(this.contentEl, {
         uirevision: Math.random(),
+        xaxis: { range: this.getAutoFetchRange() },
       });
       await Plotly.restyle(this.contentEl, { visible: true });
     });
