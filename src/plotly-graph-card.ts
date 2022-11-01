@@ -50,14 +50,14 @@ console.info(
 
 const padding = 1;
 export class PlotlyGraph extends HTMLElement {
-  contentEl!: Plotly.PlotlyHTMLElement & {
+  contentEl: Plotly.PlotlyHTMLElement & {
     data: (Plotly.PlotData & { entity: string })[];
     layout: Plotly.Layout;
   };
-  msgEl!: HTMLElement;
-  cardEl!: HTMLElement;
-  resetButtonEl!: HTMLButtonElement;
-  titleEl!: HTMLElement;
+  msgEl: HTMLElement;
+  cardEl: HTMLElement;
+  resetButtonEl: HTMLButtonElement;
+  titleEl: HTMLElement;
   config!: InputConfig;
   parsed_config!: Config;
   cache = new Cache();
