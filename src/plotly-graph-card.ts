@@ -44,6 +44,7 @@ export class PlotlyGraph extends HTMLElement {
   cardEl!: HTMLElement;
   buttonEl!: HTMLButtonElement;
   titleEl!: HTMLElement;
+  config!: InputConfig;
   parsed_config!: Config;
   cache = new Cache();
   size: { width?: number; height?: number } = {};
@@ -203,7 +204,7 @@ export class PlotlyGraph extends HTMLElement {
   // render an error card.
   async setConfig(config: InputConfig) {
     config = JSON.parse(JSON.stringify(config));
-    this.config = config
+    this.config = config;
     const schemeName = config.color_scheme ?? "category10";
     const colorScheme = isColorSchemeArray(schemeName)
       ? schemeName
