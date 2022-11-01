@@ -335,7 +335,7 @@ export class PlotlyGraph extends HTMLElement {
             .sort(([durationA], [durationB]) => durationA - durationB);
 
           for (const [fromMS, aPeriod] of mapping) {
-            if (timeSpan > fromMS) entity.period = aPeriod;
+            if (timeSpan >= fromMS) entity.period = aPeriod;
           }
           this.config.layout = merge(this.config.layout, {
             xaxis: { title: `Period: ${entity.period}` },
