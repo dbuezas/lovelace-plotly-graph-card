@@ -21,9 +21,8 @@ const defaultLayout: Partial<Plotly.Layout> = {
   },
   yaxis2: {
     // automargin: true, // it makes zooming very jumpy
-    side: "right",
-    showgrid: false,
-    overlaying: "y",
+    ...defaultExtraYAxes,
+    visible: true,
   },
   yaxis3: { ...defaultExtraYAxes },
   yaxis4: { ...defaultExtraYAxes },
