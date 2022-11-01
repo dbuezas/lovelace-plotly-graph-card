@@ -31,7 +31,7 @@ const defaultLayout: Partial<Plotly.Layout> = {
   yaxis7: { ...defaultExtraYAxes },
   yaxis8: { ...defaultExtraYAxes },
   yaxis9: { ...defaultExtraYAxes },
-  // @ts-ignore (the types are missing yaxes > 9)
+  // @ts-expect-error (the types are missing yaxes > 9)
   yaxis10: { ...defaultExtraYAxes },
   yaxis11: { ...defaultExtraYAxes },
   yaxis12: { ...defaultExtraYAxes },

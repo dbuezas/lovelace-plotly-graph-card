@@ -475,7 +475,6 @@ export class PlotlyGraph extends HTMLElement {
       if (mergedTrace.show_value) {
         mergedTrace.legendgroup ??= "group" + traceIdx;
         show_value_traces.push({
-          // @ts-expect-error (texttemplate missing in plotly typings)
           texttemplate: `%{y:.2~f}%{customdata.unit_of_measurement}`, // here so it can be overwritten
           ...mergedTrace,
           mode: "text+markers",
@@ -600,9 +599,9 @@ export class PlotlyGraph extends HTMLElement {
     return historyGraphCard.constructor.getConfigElement();
   }
 }
-//@ts-ignore
+//@ts-expect-error
 window.customCards = window.customCards || [];
-//@ts-ignore
+//@ts-expect-error
 window.customCards.push({
   type: componentName,
   name: "Plotly Graph Card",

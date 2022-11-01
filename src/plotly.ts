@@ -3,7 +3,6 @@
 
 window.global = window;
 var Plotly = require("plotly.js/lib/core") as typeof import("plotly.js");
-//@ts-ignore
 Plotly.register([
   // traces
   require("plotly.js/lib/bar"),
