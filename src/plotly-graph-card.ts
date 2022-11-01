@@ -185,7 +185,10 @@ export class PlotlyGraph extends HTMLElement {
     return [+new Date() - ms, +new Date()] as [number, number];
   }
   getVisibleRange() {
-    return this.contentEl.layout.xaxis!.range!.map((date) => +parseISO(date));
+    return this.contentEl.layout.xaxis!.range!.map((date) =>
+      // if autoscale is used after scrolling, plotly returns the dates as numbers instead of strings
+      Number.isFinite(date) ? date : +parseISO(date)
+    );
   }
   async enterBrowsingMode() {
     this.isBrowsing = true;
