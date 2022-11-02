@@ -24,9 +24,23 @@ import {
   STATISTIC_PERIODS,
   STATISTIC_TYPES,
   StatisticPeriod,
+  isAutoPeriodConfig as getIsAutoPeriodConfig,
 } from "./recorder-types";
+import { parseTimeDuration } from "./duration/duration";
 
 const componentName = isProduction ? "plotly-graph" : "plotly-graph-dev";
+
+function patchLonelyDatapoints(xs: Datum[], ys: Datum[]) {
+  /* Ghost traces when data has single non-unavailable states sandwiched between unavailable ones
+     see: https://github.com/dbuezas/lovelace-plotly-graph-card/issues/103
+  */
+  for (let i = 1; i < xs.length - 1; i++) {
+    if (ys[i - 1] === null && ys[i] !== null && ys[i + 1] === null) {
+      ys.splice(i, 0, ys[i]);
+      xs.splice(i, 0, xs[i]);
+    }
+  }
+}
 
 console.info(
   `%c ${componentName.toUpperCase()} %c ${version} ${process.env.NODE_ENV}`,
@@ -182,6 +196,7 @@ export class PlotlyGraph extends HTMLElement {
     this.withoutRelayout(async () => {
       await Plotly.relayout(this.contentEl, {
         uirevision: Math.random(),
+        xaxis: { range: this.getAutoFetchRange() },
       });
       await Plotly.restyle(this.contentEl, { visible: true });
     });
@@ -239,10 +254,23 @@ export class PlotlyGraph extends HTMLElement {
         if ("statistic" in entity || "period" in entity) {
           const validStatistic = STATISTIC_TYPES.includes(entity.statistic!);
           if (!validStatistic) entity.statistic = "mean";
-          const validPeriod = STATISTIC_PERIODS.includes(entity.period);
+          console.log(entity.period);
+          // @TODO: cleanup how this is done
           if (entity.period === "auto") {
-            entity.autoPeriod = true;
+            entity.autoPeriod = {
+              "0": "5minute",
+              "1d": "hour",
+              "7d": "day",
+              // "28d": "week",
+              "12M": "month",
+            };
           }
+          const isAutoPeriodConfig = getIsAutoPeriodConfig(entity.period);
+
+          if (isAutoPeriodConfig) {
+            entity.autoPeriod = entity.period;
+          }
+          const validPeriod = STATISTIC_PERIODS.includes(entity.period);
           if (!validPeriod) entity.period = "hour";
         }
         const [oldAPI_entity, oldAPI_attribute] = entity.entity.split("::");
@@ -309,23 +337,23 @@ export class PlotlyGraph extends HTMLElement {
     for (const entity of this.parsed_config.entities) {
       if ((entity as any).autoPeriod) {
         if (isEntityIdStatisticsConfig(entity) && entity.autoPeriod) {
-          const spanInMinutes = (range[1] - range[0]) / 1000 / 60;
-          const MIN_POINTS_PER_RANGE = 100;
-          let period: StatisticPeriod = "5minute";
-          const period2minutes: [StatisticPeriod, number][] = [
-            // needs to be sorted in ascending order
-            ["hour", 60],
-            ["day", 60 * 24],
-            // ["week", 60 * 24 * 7], not supported yet in HA
-            ["month", 60 * 24 * 30],
-          ];
-          for (const [aPeriod, minutesPerPoint] of period2minutes) {
-            const pointsInSpan = spanInMinutes / minutesPerPoint;
-            if (pointsInSpan > MIN_POINTS_PER_RANGE) period = aPeriod;
+          entity.period = "5minute";
+          const timeSpan = range[1] - range[0];
+          const mapping = Object.entries(entity.autoPeriod)
+            .map(
+              ([duration, period]) =>
+                [parseTimeDuration(duration as any), period] as [
+                  number,
+                  StatisticPeriod
+                ]
+            )
+            .sort(([durationA], [durationB]) => durationA - durationB);
+
+          for (const [fromMS, aPeriod] of mapping) {
+            if (timeSpan >= fromMS) entity.period = aPeriod;
           }
-          entity.period = period;
           this.parsed_config.layout = merge(this.parsed_config.layout, {
-            xaxis: { title: `Period: ${period}` },
+            xaxis: { title: `Period: ${entity.period}` },
           });
         }
       }
@@ -415,6 +443,7 @@ export class PlotlyGraph extends HTMLElement {
           console.error(e);
         }
       }
+      patchLonelyDatapoints(xs, ys);
       const customdatum = { unit_of_measurement: unit, name, attributes };
       const customdata = xs.map(() => customdatum);
       const mergedTrace = merge(
@@ -461,7 +490,7 @@ export class PlotlyGraph extends HTMLElement {
             },
             hoverinfo: "skip",
             showlegend: false,
-            x: [+Date.now() + timeMargin],
+            x: [new Date(Date.now() + timeMargin)],
             y: mergedTrace.y.slice(-1),
           });
         }

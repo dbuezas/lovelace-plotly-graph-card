@@ -1,6 +1,7 @@
 import { Datum } from "plotly.js";
 import { ColorSchemeArray, ColorSchemeNames } from "./color-schemes";
 import {
+  AutoPeriodConfig,
   StatisticPeriod,
   StatisticType,
   StatisticValue,
@@ -16,7 +17,7 @@ export type InputConfig = {
     entity: string;
     attribute?: string;
     statistic?: StatisticType;
-    period?: StatisticPeriod | "auto";
+    period?: StatisticPeriod | "auto" | AutoPeriodConfig;
     unit_of_measurement?: string;
     lambda?: string;
     show_value?:
@@ -74,7 +75,7 @@ export type EntityIdStatisticsConfig = {
   entity: string;
   statistic: StatisticType;
   period: StatisticPeriod;
-  autoPeriod: boolean;
+  autoPeriod: AutoPeriodConfig;
 };
 export type EntityIdConfig =
   | EntityIdStateConfig

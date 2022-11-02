@@ -1,6 +1,6 @@
 {
   "name": "plotly-graph-card",
-  "version": "1.5.3",
+  "version": "1.6.1",
   "description": "",
   "main": "index.js",
   "scripts": {
