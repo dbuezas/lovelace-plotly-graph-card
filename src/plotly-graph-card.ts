@@ -343,7 +343,7 @@ export class PlotlyGraph extends HTMLElement {
     this.parsed_config = newConfig;
     const is = this.parsed_config;
     if (!this.contentEl) return;
-    if (is.hours_to_show !== was.hours_to_show) {
+    if (is.hours_to_show !== was?.hours_to_show) {
       this.exitBrowsingMode();
     }
     await this.fetch(this.getAutoFetchRange());
