@@ -24,7 +24,7 @@ import {
   STATISTIC_PERIODS,
   STATISTIC_TYPES,
   StatisticPeriod,
-  isAutoPeriodConfig as getIsAutoPeriodConfig,
+  getIsAutoPeriodConfig,
 } from "./recorder-types";
 import { parseTimeDuration } from "./duration/duration";
 
@@ -80,8 +80,8 @@ export class PlotlyGraph extends HTMLElement {
   }
   constructor() {
     super();
-      const shadow = this.attachShadow({ mode: "open" });
-      shadow.innerHTML = `
+    const shadow = this.attachShadow({ mode: "open" });
+    shadow.innerHTML = `
         <ha-card>
           <style>
             ha-card{
@@ -124,16 +124,16 @@ export class PlotlyGraph extends HTMLElement {
           <span id="msg"> </span>
           <button id="reset" class="hidden">↻</button>
         </ha-card>`;
-      this.msgEl = shadow.querySelector("#msg")!;
-      this.cardEl = shadow.querySelector("ha-card")!;
-      this.contentEl = shadow.querySelector("div#plotly")!;
+    this.msgEl = shadow.querySelector("#msg")!;
+    this.cardEl = shadow.querySelector("ha-card")!;
+    this.contentEl = shadow.querySelector("div#plotly")!;
     this.resetButtonEl = shadow.querySelector("button#reset")!;
-      this.titleEl = shadow.querySelector("ha-card > #title")!;
+    this.titleEl = shadow.querySelector("ha-card > #title")!;
     this.resetButtonEl.addEventListener("click", this.exitBrowsingMode);
-      insertStyleHack(shadow.querySelector("style")!);
-      this.contentEl.style.visibility = "hidden";
-      this.withoutRelayout(() => Plotly.newPlot(this.contentEl, [], {}));
-    }
+    insertStyleHack(shadow.querySelector("style")!);
+    this.contentEl.style.visibility = "hidden";
+    this.withoutRelayout(() => Plotly.newPlot(this.contentEl, [], {}));
+  }
   connectedCallback() {
     this.setupListeners();
     this.fetch(this.getAutoFetchRange()).then(

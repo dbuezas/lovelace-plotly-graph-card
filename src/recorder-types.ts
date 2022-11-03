@@ -30,7 +30,7 @@ export const STATISTIC_PERIODS = [
 export type StatisticPeriod = typeof STATISTIC_PERIODS[number];
 export type AutoPeriodConfig = Record<TimeDurationStr, StatisticPeriod>;
 
-export function isAutoPeriodConfig(val: any): val is AutoPeriodConfig {
+export function getIsAutoPeriodConfig(val: any): val is AutoPeriodConfig {
   const isObject =
     typeof val === "object" && val !== null && !Array.isArray(val);
   if (!isObject) return false;
