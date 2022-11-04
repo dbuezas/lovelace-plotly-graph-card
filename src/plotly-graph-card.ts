@@ -16,7 +16,7 @@ import { TimestampRange } from "./types";
 import Cache from "./cache/Cache";
 import getThemedLayout from "./themed-layout";
 import isProduction from "./is-production";
-import { sleep } from "./utils";
+import { getIsPureObject, sleep } from "./utils";
 import { Datum } from "plotly.js";
 import colorSchemes, { isColorSchemeArray } from "./color-schemes";
 import { parseISO } from "date-fns";
@@ -24,7 +24,6 @@ import {
   STATISTIC_PERIODS,
   STATISTIC_TYPES,
   StatisticPeriod,
-  getIsAutoPeriodConfig,
 } from "./recorder-types";
 import { parseTimeDuration } from "./duration/duration";
 
@@ -229,6 +228,7 @@ export class PlotlyGraph extends HTMLElement {
       return await this._setConfig(config);
     } catch (e: any) {
       console.error(e);
+      clearTimeout(this.handles.refreshTimeout!);
       if (typeof e.message === "string") {
         this.msgEl.innerText = e.message;
       } else {
@@ -291,7 +291,7 @@ export class PlotlyGraph extends HTMLElement {
             );
           // @TODO: cleanup how this is done
           if (entity.period === "auto") {
-            entity.autoPeriod = {
+            entity.period = {
               "0": "5minute",
               "1d": "hour",
               "7d": "day",
@@ -300,11 +300,25 @@ export class PlotlyGraph extends HTMLElement {
             };
             entity.period = undefined;
           }
-          const isAutoPeriodConfig = getIsAutoPeriodConfig(entity.period);
-
-          if (isAutoPeriodConfig) {
+          if (getIsPureObject(entity.period)) {
             entity.autoPeriod = entity.period;
             entity.period = undefined;
+            let lastDuration = -1;
+            for (const durationStr in entity.autoPeriod) {
+              const period = entity.autoPeriod[durationStr];
+              const duration = parseTimeDuration(durationStr as any); // will throw if not a valud duration
+              if (!STATISTIC_PERIODS.includes(period as any)) {
+                throw new Error(
+                  `Error parsing automatic period config: "${period}" not expected. Must be ${STATISTIC_PERIODS}`
+                );
+              }
+              if (duration <= lastDuration) {
+                throw new Error(
+                  `Error parsing automatic period config: ranges must be sorted in ascending order, "${durationStr}" not expected`
+                );
+              }
+              lastDuration = duration;
+            }
           }
           const validPeriod = STATISTIC_PERIODS.includes(entity.period);
           if (entity.period === undefined) entity.period = "hour";
@@ -379,17 +393,19 @@ export class PlotlyGraph extends HTMLElement {
         if (isEntityIdStatisticsConfig(entity) && entity.autoPeriod) {
           entity.period = "5minute";
           const timeSpan = range[1] - range[0];
-          const mapping = Object.entries(entity.autoPeriod)
-            .map(
-              ([duration, period]) =>
-                [parseTimeDuration(duration as any), period] as [
-                  number,
-                  StatisticPeriod
-                ]
-            )
-            .sort(([durationA], [durationB]) => durationA - durationB);
+          const mapping = Object.entries(entity.autoPeriod).map(
+            ([duration, period]) =>
+              [parseTimeDuration(duration as any), period] as [
+                number,
+                StatisticPeriod
+              ]
+          );
 
           for (const [fromMS, aPeriod] of mapping) {
+            /*
+              the durations are validated to be sorted in ascendinig order
+              when the config is parsed
+            */
             if (timeSpan >= fromMS) entity.period = aPeriod;
           }
           this.parsed_config.layout = merge(this.parsed_config.layout, {

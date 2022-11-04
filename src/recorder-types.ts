@@ -1,6 +1,5 @@
 // https://github.com/home-assistant/frontend/blob/dev/src/data/recorder.ts
-import { keys } from "lodash";
-import { parseTimeDuration, TimeDurationStr } from "./duration/duration";
+import { TimeDurationStr } from "./duration/duration";
 
 export interface StatisticValue {
   statistic_id: string;
@@ -29,20 +28,3 @@ export const STATISTIC_PERIODS = [
 ] as const;
 export type StatisticPeriod = typeof STATISTIC_PERIODS[number];
 export type AutoPeriodConfig = Record<TimeDurationStr, StatisticPeriod>;
-
-export function getIsAutoPeriodConfig(val: any): val is AutoPeriodConfig {
-  const isObject =
-    typeof val === "object" && val !== null && !Array.isArray(val);
-  if (!isObject) return false;
-  const entries = Object.entries(val);
-  if (entries.length === 0) return false;
-  return entries.every(([duration, period]) => {
-    if (!STATISTIC_PERIODS.includes(period as any)) return false;
-    try {
-      parseTimeDuration(duration as any);
-    } catch (e) {
-      return false;
-    }
-    return true;
-  });
-}
