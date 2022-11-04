@@ -118,6 +118,8 @@ export class PlotlyGraph extends HTMLElement {
               color: red;
               top: 0;
               background: rgba(0, 0, 0, 0.4);
+              overflow-wrap: break-word;
+              width: 100%;
             }
           </style>
           <div id="title"> </div>
@@ -227,10 +229,14 @@ export class PlotlyGraph extends HTMLElement {
       return await this._setConfig(config);
     } catch (e: any) {
       console.error(e);
-      this.msgEl.innerText = JSON.stringify(e.message || "").replace(
-        /\\"/g,
-        '"'
-      );
+      if (typeof e.message === "string") {
+        this.msgEl.innerText = e.message;
+      } else {
+        this.msgEl.innerText = JSON.stringify(e.message || "").replace(
+          /\\"/g,
+          '"'
+        );
+      }
     }
   }
   async _setConfig(config: InputConfig) {
@@ -241,7 +247,16 @@ export class PlotlyGraph extends HTMLElement {
       ? schemeName
       : colorSchemes[schemeName] ||
         colorSchemes[Object.keys(colorSchemes)[schemeName]] ||
-        colorSchemes.category10;
+        null;
+    if (colorScheme === null) {
+      throw new Error(
+        `color_scheme: "${
+          config.color_scheme
+        }" is not valid. Valid are an array of colors (see readme) or ${Object.keys(
+          colorSchemes
+        )}`
+      );
+    }
     const newConfig: Config = {
       title: config.title,
       hours_to_show: config.hours_to_show ?? 1,
@@ -269,8 +284,11 @@ export class PlotlyGraph extends HTMLElement {
         }
         if ("statistic" in entity || "period" in entity) {
           const validStatistic = STATISTIC_TYPES.includes(entity.statistic!);
-          if (!validStatistic) entity.statistic = "mean";
-          console.log(entity.period);
+          if (entity.statistic === undefined) entity.statistic = "mean";
+          else if (!validStatistic)
+            throw new Error(
+              `statistic: "${entity.statistic}" is not valid. Use ${STATISTIC_TYPES}`
+            );
           // @TODO: cleanup how this is done
           if (entity.period === "auto") {
             entity.autoPeriod = {
@@ -285,9 +303,14 @@ export class PlotlyGraph extends HTMLElement {
 
           if (isAutoPeriodConfig) {
             entity.autoPeriod = entity.period;
+            entity.period = undefined;
           }
           const validPeriod = STATISTIC_PERIODS.includes(entity.period);
-          if (!validPeriod) entity.period = "hour";
+          if (entity.period === undefined) entity.period = "hour";
+          else if (!validPeriod)
+            throw new Error(
+              `period: "${entity.period}" is not valid. Use ${STATISTIC_PERIODS}`
+            );
         }
         const [oldAPI_entity, oldAPI_attribute] = entity.entity.split("::");
         if (oldAPI_attribute) {
