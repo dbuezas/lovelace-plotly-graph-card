@@ -200,8 +200,8 @@ export class PlotlyGraph extends HTMLElement {
     this.resetButtonEl.classList.add("hidden");
     this.withoutRelayout(async () => {
       await Plotly.relayout(this.contentEl, {
-        uirevision: Math.random(), // to trigger the autoranges in all yaxes
-        xaxis: { range: this.getAutoFetchRange() },
+        uirevision: Math.random(), // to trigger the autoranges in all y-yaxes
+        xaxis: { range: this.getAutoFetchRange() }, // to reset xaxis to hours_to_show quickly, before refetching
       });
     });
     await this.fetch(this.getAutoFetchRange());
