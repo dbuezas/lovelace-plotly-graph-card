@@ -24,18 +24,19 @@ import {
   STATISTIC_PERIODS,
   STATISTIC_TYPES,
   StatisticPeriod,
-  isAutoPeriodConfig as getIsAutoPeriodConfig,
+  getIsAutoPeriodConfig,
 } from "./recorder-types";
 import { parseTimeDuration } from "./duration/duration";
 
 const componentName = isProduction ? "plotly-graph" : "plotly-graph-dev";
 
+const isDefined = (y: any) => y !== null && y !== undefined;
 function patchLonelyDatapoints(xs: Datum[], ys: Datum[]) {
   /* Ghost traces when data has single non-unavailable states sandwiched between unavailable ones
      see: https://github.com/dbuezas/lovelace-plotly-graph-card/issues/103
   */
   for (let i = 1; i < xs.length - 1; i++) {
-    if (ys[i - 1] === null && ys[i] !== null && ys[i + 1] === null) {
+    if (!isDefined(ys[i - 1]) && isDefined(ys[i]) && !isDefined(ys[i + 1])) {
       ys.splice(i, 0, ys[i]);
       xs.splice(i, 0, xs[i]);
     }
@@ -50,14 +51,14 @@ console.info(
 
 const padding = 1;
 export class PlotlyGraph extends HTMLElement {
-  contentEl!: Plotly.PlotlyHTMLElement & {
+  contentEl: Plotly.PlotlyHTMLElement & {
     data: (Plotly.PlotData & { entity: string })[];
     layout: Plotly.Layout;
   };
-  msgEl!: HTMLElement;
-  cardEl!: HTMLElement;
-  buttonEl!: HTMLButtonElement;
-  titleEl!: HTMLElement;
+  msgEl: HTMLElement;
+  cardEl: HTMLElement;
+  resetButtonEl: HTMLButtonElement;
+  titleEl: HTMLElement;
   config!: InputConfig;
   parsed_config!: Config;
   cache = new Cache();
@@ -78,10 +79,10 @@ export class PlotlyGraph extends HTMLElement {
     this.handles.restyleListener!.off("plotly_restyle", this.onRestyle);
     clearTimeout(this.handles.refreshTimeout!);
   }
-  connectedCallback() {
-    if (!this.contentEl) {
-      const shadow = this.attachShadow({ mode: "open" });
-      shadow.innerHTML = `
+  constructor() {
+    super();
+    const shadow = this.attachShadow({ mode: "open" });
+    shadow.innerHTML = `
         <ha-card>
           <style>
             ha-card{
@@ -124,20 +125,21 @@ export class PlotlyGraph extends HTMLElement {
           <span id="msg"> </span>
           <button id="reset" class="hidden">↻</button>
         </ha-card>`;
-      this.msgEl = shadow.querySelector("#msg")!;
-      this.cardEl = shadow.querySelector("ha-card")!;
-      this.contentEl = shadow.querySelector("div#plotly")!;
-      this.buttonEl = shadow.querySelector("button#reset")!;
-      this.titleEl = shadow.querySelector("ha-card > #title")!;
-      this.buttonEl.addEventListener("click", this.exitBrowsingMode);
-      insertStyleHack(shadow.querySelector("style")!);
-      this.contentEl.style.visibility = "hidden";
-      this.withoutRelayout(() => Plotly.newPlot(this.contentEl, [], {}));
-    }
+    this.msgEl = shadow.querySelector("#msg")!;
+    this.cardEl = shadow.querySelector("ha-card")!;
+    this.contentEl = shadow.querySelector("div#plotly")!;
+    this.resetButtonEl = shadow.querySelector("button#reset")!;
+    this.titleEl = shadow.querySelector("ha-card > #title")!;
+    this.resetButtonEl.addEventListener("click", this.exitBrowsingMode);
+    insertStyleHack(shadow.querySelector("style")!);
+    this.contentEl.style.visibility = "hidden";
+    this.withoutRelayout(() => Plotly.newPlot(this.contentEl, [], {}));
+  }
+  connectedCallback() {
     this.setupListeners();
-    this.fetch(this.getAutoFetchRange())
-      .then(() => this.fetch(this.getAutoFetchRange())) // again so home assistant extends until end of time axis
-      .then(() => (this.contentEl.style.visibility = ""));
+    this.fetch(this.getAutoFetchRange()).then(
+      () => (this.contentEl.style.visibility = "")
+    );
   }
   async withoutRelayout(fn: Function) {
     this.isInternalRelayout++;
@@ -184,21 +186,23 @@ export class PlotlyGraph extends HTMLElement {
     return [+new Date() - ms, +new Date()] as [number, number];
   }
   getVisibleRange() {
-    return this.contentEl.layout.xaxis!.range!.map((date) => +parseISO(date));
+    return this.contentEl.layout.xaxis!.range!.map((date) =>
+      // if autoscale is used after scrolling, plotly returns the dates as numbers instead of strings
+      Number.isFinite(date) ? date : +parseISO(date)
+    );
   }
   async enterBrowsingMode() {
     this.isBrowsing = true;
-    this.buttonEl.classList.remove("hidden");
+    this.resetButtonEl.classList.remove("hidden");
   }
   exitBrowsingMode = async () => {
     this.isBrowsing = false;
-    this.buttonEl.classList.add("hidden");
+    this.resetButtonEl.classList.add("hidden");
     this.withoutRelayout(async () => {
       await Plotly.relayout(this.contentEl, {
-        uirevision: Math.random(),
-        xaxis: { range: this.getAutoFetchRange() },
+        uirevision: Math.random(), // to trigger the autoranges in all y-yaxes
+        xaxis: { range: this.getAutoFetchRange() }, // to reset xaxis to hours_to_show quickly, before refetching
       });
-      await Plotly.restyle(this.contentEl, { visible: true });
     });
     await this.fetch(this.getAutoFetchRange());
   };
@@ -218,6 +222,18 @@ export class PlotlyGraph extends HTMLElement {
   // The user supplied configuration. Throw an exception and Lovelace will
   // render an error card.
   async setConfig(config: InputConfig) {
+    try {
+      this.msgEl.innerText = "";
+      return await this._setConfig(config);
+    } catch (e: any) {
+      console.error(e);
+      this.msgEl.innerText = JSON.stringify(e.message || "").replace(
+        /\\"/g,
+        '"'
+      );
+    }
+  }
+  async _setConfig(config: InputConfig) {
     config = JSON.parse(JSON.stringify(config));
     this.config = config;
     const schemeName = config.color_scheme ?? "category10";
@@ -328,7 +344,7 @@ export class PlotlyGraph extends HTMLElement {
     this.parsed_config = newConfig;
     const is = this.parsed_config;
     if (!this.contentEl) return;
-    if (is.hours_to_show !== was.hours_to_show) {
+    if (is.hours_to_show !== was?.hours_to_show) {
       this.exitBrowsingMode();
     }
     await this.fetch(this.getAutoFetchRange());
@@ -460,7 +476,6 @@ export class PlotlyGraph extends HTMLElement {
       if (mergedTrace.show_value) {
         mergedTrace.legendgroup ??= "group" + traceIdx;
         show_value_traces.push({
-          // @ts-expect-error (texttemplate missing in plotly typings)
           texttemplate: `%{y:.2~f}%{customdata.unit_of_measurement}`, // here so it can be overwritten
           ...mergedTrace,
           mode: "text+markers",
@@ -507,9 +522,15 @@ export class PlotlyGraph extends HTMLElement {
     const yAxisTitles = Object.fromEntries(
       units.map((unit, i) => ["yaxis" + (i == 0 ? "" : i + 1), { title: unit }])
     );
-
     const layout = merge(
       { uirevision: true },
+      {
+        xaxis: {
+          range: this.isBrowsing
+            ? this.getVisibleRange()
+            : this.getAutoFetchRange(),
+        },
+      },
       this.parsed_config.no_default_layout ? {} : yAxisTitles,
       this.getThemedLayout(),
       this.size,
@@ -579,9 +600,9 @@ export class PlotlyGraph extends HTMLElement {
     return historyGraphCard.constructor.getConfigElement();
   }
 }
-//@ts-ignore
+//@ts-expect-error
 window.customCards = window.customCards || [];
-//@ts-ignore
+//@ts-expect-error
 window.customCards.push({
   type: componentName,
   name: "Plotly Graph Card",

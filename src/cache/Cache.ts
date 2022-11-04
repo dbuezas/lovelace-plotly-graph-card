@@ -6,7 +6,7 @@ import {
   TimestampRange,
   History,
   isEntityIdAttrConfig,
-  EntityIdConfig,
+  EntityConfig,
   isEntityIdStateConfig,
   isEntityIdStatisticsConfig,
   HistoryInRange,
@@ -20,7 +20,7 @@ export function mapValues<T, S>(
 }
 async function fetchSingleRange(
   hass: HomeAssistant,
-  entity: EntityIdConfig,
+  entity: EntityConfig,
   [startT, endT]: number[],
   significant_changes_only: boolean,
   minimal_response: boolean
@@ -63,7 +63,7 @@ async function fetchSingleRange(
   };
 }
 
-export function getEntityKey(entity: EntityIdConfig) {
+export function getEntityKey(entity: EntityConfig) {
   if (isEntityIdAttrConfig(entity)) {
     return `${entity.entity}::${entity.attribute}`;
   } else if (isEntityIdStatisticsConfig(entity)) {
@@ -81,14 +81,14 @@ export default class Cache {
     this.ranges = {};
     this.histories = {};
   }
-  getHistory(entity: EntityIdConfig) {
+  getHistory(entity: EntityConfig) {
     let key = getEntityKey(entity);
     return this.histories[key] || [];
   }
   async update(
     range: TimestampRange,
     removeOutsideRange: boolean,
-    entities: EntityIdConfig[],
+    entities: EntityConfig[],
     hass: HomeAssistant,
     significant_changes_only: boolean,
     minimal_response: boolean

@@ -40,14 +40,14 @@ async function fetchStates(
       )}`
     );
   }
-  if (!list) list = []; //throw new Error(`Error fetching ${entity.entity}`); // shutup typescript
+  if (!list) list = [];
   return {
     range: [+start, +end],
     history: list
       .map((entry) => ({
         ...entry,
         state: isEntityIdAttrConfig(entity)
-          ? entry.attributes[entity.attribute]
+          ? entry.attributes[entity.attribute] || null
           : entry.state,
         last_updated: +new Date(entry.last_updated || entry.last_changed),
       }))

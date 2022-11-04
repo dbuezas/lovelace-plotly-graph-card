@@ -13,6 +13,7 @@ const defaultLayout: Partial<Plotly.Layout> = {
   height: 285,
   dragmode: "pan",
   xaxis: {
+    autorange: false,
     // automargin: true, // it makes zooming very jumpy
   },
   yaxis: {
@@ -20,9 +21,8 @@ const defaultLayout: Partial<Plotly.Layout> = {
   },
   yaxis2: {
     // automargin: true, // it makes zooming very jumpy
-    side: "right",
-    showgrid: false,
-    overlaying: "y",
+    ...defaultExtraYAxes,
+    visible: true,
   },
   yaxis3: { ...defaultExtraYAxes },
   yaxis4: { ...defaultExtraYAxes },
@@ -31,7 +31,7 @@ const defaultLayout: Partial<Plotly.Layout> = {
   yaxis7: { ...defaultExtraYAxes },
   yaxis8: { ...defaultExtraYAxes },
   yaxis9: { ...defaultExtraYAxes },
-  // @ts-ignore (the types are missing yaxes > 9)
+  // @ts-expect-error (the types are missing yaxes > 9)
   yaxis10: { ...defaultExtraYAxes },
   yaxis11: { ...defaultExtraYAxes },
   yaxis12: { ...defaultExtraYAxes },
