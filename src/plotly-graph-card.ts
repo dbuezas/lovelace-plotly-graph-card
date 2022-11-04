@@ -298,6 +298,7 @@ export class PlotlyGraph extends HTMLElement {
               // "28d": "week",
               "12M": "month",
             };
+            entity.period = undefined;
           }
           const isAutoPeriodConfig = getIsAutoPeriodConfig(entity.period);
 
