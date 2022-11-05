@@ -426,8 +426,6 @@ Caveats:
 minimal_response: false # defaults to true
 ```
 
-Update data every `refresh_interval` seconds. Use `0` or delete the line to disable updates
-
 ## hours_to_show:
 
 How many hours are shown.
@@ -435,7 +433,15 @@ Exactly the same as the history card, except decimal values (e.g `0.1`) do actua
 
 ## refresh_interval:
 
-Update data every `refresh_interval` seconds. Use `0` or delete the line to disable updates
+Update data every `refresh_interval` seconds.
+
+Examples:
+
+```yaml
+refresh_interval: auto # (default) update automatically when an entity changes its state.
+refresh_interval: 0 # never update.
+refresh_interval: 5 # update every 5 seconds
+```
 
 # Development
 

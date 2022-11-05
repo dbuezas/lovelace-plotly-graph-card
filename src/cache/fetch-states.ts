@@ -2,12 +2,11 @@ import { HomeAssistant } from "custom-card-helpers";
 import {
   EntityIdAttrConfig,
   EntityIdStateConfig,
+  HassEntity,
   History,
-  HistoryInRange,
   isEntityIdAttrConfig,
   isEntityIdStateConfig,
 } from "../types";
-import { sleep } from "../utils";
 
 async function fetchStates(
   hass: HomeAssistant,
@@ -15,7 +14,10 @@ async function fetchStates(
   [start, end]: [Date, Date],
   significant_changes_only?: boolean,
   minimal_response?: boolean
-): Promise<HistoryInRange> {
+): Promise<History> {
+  const no_attributes_query = isEntityIdStateConfig(entity)
+    ? "no_attributes&"
+    : "";
   const minimal_response_query =
     minimal_response && isEntityIdStateConfig(entity)
       ? "minimal_response&"
@@ -26,11 +28,12 @@ async function fetchStates(
     `history/period/${start.toISOString()}?` +
     `filter_entity_id=${entity.entity}&` +
     `significant_changes_only=${significant_changes_only_query}&` +
+    `${no_attributes_query}&` +
     minimal_response_query +
     `end_time=${end.toISOString()}`;
-  let list: History | undefined;
+  let list: HassEntity[] | undefined;
   try {
-    const lists: History[] = (await hass.callApi("GET", uri)) || [];
+    const lists: HassEntity[][] = (await hass.callApi("GET", uri)) || [];
     list = lists[0];
   } catch (e: any) {
     console.error(e);
@@ -41,17 +44,14 @@ async function fetchStates(
     );
   }
   if (!list) list = [];
-  return {
-    range: [+start, +end],
-    history: list
-      .map((entry) => ({
-        ...entry,
-        state: isEntityIdAttrConfig(entity)
-          ? entry.attributes[entity.attribute] || null
-          : entry.state,
-        last_updated: +new Date(entry.last_updated || entry.last_changed),
-      }))
-      .filter(({ last_updated }) => last_updated),
-  };
+  return list
+    .map((entry) => ({
+      ...entry,
+      value: isEntityIdAttrConfig(entity)
+        ? entry.attributes[entity.attribute] || null
+        : entry.state,
+      timestamp: +new Date(entry.last_updated || entry.last_changed),
+    }))
+    .filter(({ timestamp }) => timestamp);
 }
 export default fetchStates;

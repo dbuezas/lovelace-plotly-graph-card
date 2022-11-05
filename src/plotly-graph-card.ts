@@ -62,7 +62,7 @@ export class PlotlyGraph extends HTMLElement {
   parsed_config!: Config;
   cache = new Cache();
   size: { width?: number; height?: number } = {};
-  hass?: HomeAssistant; // set externally
+  _hass?: HomeAssistant;
   isBrowsing = false;
   isInternalRelayout = 0;
 
@@ -135,6 +135,42 @@ export class PlotlyGraph extends HTMLElement {
     insertStyleHack(shadow.querySelector("style")!);
     this.contentEl.style.visibility = "hidden";
     this.withoutRelayout(() => Plotly.newPlot(this.contentEl, [], {}));
+  }
+  get hass() {
+    return this._hass;
+  }
+  set hass(hass) {
+    window.hass = hass;
+    if (!hass) {
+      // shouldn't happen, this is only to let typescript know hass != undefined
+      return;
+    }
+    if (this.parsed_config?.refresh_interval === "auto") {
+      let shouldPlot = false;
+      for (const entity of this.parsed_config.entities) {
+        const newState = hass.states[entity.entity];
+        const oldState = this._hass?.states[entity.entity];
+        if (newState && oldState !== newState) {
+          const start = +new Date(
+            oldState?.last_updated || newState.last_updated
+          );
+          const end = +new Date(newState.last_updated);
+          const range: [number, number] = [start, end];
+          this.cache.add(
+            entity,
+            [{ ...newState, timestamp: end, value: newState.state }],
+            range
+          );
+          shouldPlot = true;
+        }
+      }
+      if (shouldPlot) {
+        if (!this.isBrowsing)
+          this.cache.removeOutsideRange(this.getAutoFetchRange());
+        this.plot();
+      }
+    }
+    this._hass = hass;
   }
   connectedCallback() {
     this.setupListeners();
@@ -270,10 +306,19 @@ export class PlotlyGraph extends HTMLElement {
         )}`
       );
     }
+    if (
+      typeof config.refresh_interval !== "number" &&
+      config.refresh_interval !== undefined &&
+      config.refresh_interval !== "auto"
+    ) {
+      throw new Error(
+        `refresh_interval: "${config.refresh_interval}" is not valid. Must be either "auto" or a number (in seconds). `
+      );
+    }
     const newConfig: Config = {
       title: config.title,
       hours_to_show: config.hours_to_show ?? 1,
-      refresh_interval: config.refresh_interval ?? 0,
+      refresh_interval: config.refresh_interval ?? "auto",
       entities: config.entities.map((entityIn, entityIdx) => {
         if (typeof entityIn === "string") entityIn = { entity: entityIn };
 
@@ -492,9 +537,9 @@ export class PlotlyGraph extends HTMLElement {
       let name = trace.name || attributes.friendly_name || entity_id;
       if (isEntityIdAttrConfig(trace)) name += ` (${trace.attribute}) `;
       if (isEntityIdStatisticsConfig(trace)) name += ` (${trace.statistic}) `;
-      const xsIn = history.map(({ last_updated }) => new Date(last_updated));
-      const ysIn: Datum[] = history.map(({ state }) =>
-        state === "unavailable" ? null : state
+      const xsIn = history.map(({ timestamp }) => new Date(timestamp));
+      const ysIn: Datum[] = history.map(({ value }) =>
+        value === "unavailable" ? null : value
       );
 
       let xs: Datum[] = xsIn;
@@ -593,7 +638,7 @@ export class PlotlyGraph extends HTMLElement {
     this.titleEl.innerText = this.parsed_config.title || "";
     const refresh_interval = this.parsed_config.refresh_interval;
     clearTimeout(this.handles.refreshTimeout!);
-    if (refresh_interval > 0) {
+    if (refresh_interval !== "auto" && refresh_interval > 0) {
       this.handles.refreshTimeout = window.setTimeout(
         () => this.fetch(this.getAutoFetchRange()),
         refresh_interval * 1000
@@ -603,6 +648,7 @@ export class PlotlyGraph extends HTMLElement {
     if (layout.paper_bgcolor) {
       this.titleEl.style.background = layout.paper_bgcolor as string;
     }
+
     await this.withoutRelayout(() =>
       Plotly.react(
         this.contentEl,

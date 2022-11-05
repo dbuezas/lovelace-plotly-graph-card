@@ -7,10 +7,12 @@ import {
   StatisticValue,
 } from "./recorder-types";
 
+import { HassEntity } from "home-assistant-js-websocket";
+export { HassEntity } from "home-assistant-js-websocket";
 export type InputConfig = {
   type: "custom:plotly-graph-card";
   hours_to_show?: number;
-  refresh_interval?: number; // in seconds
+  refresh_interval?: number | "auto"; // in seconds
   color_scheme?: ColorSchemeNames | ColorSchemeArray | number;
   title?: string;
   entities: ({
@@ -55,7 +57,7 @@ export type EntityConfig = EntityIdConfig & {
 export type Config = {
   title?: string;
   hours_to_show: number;
-  refresh_interval: number; // in seconds
+  refresh_interval: number | "auto"; // in seconds
   entities: EntityConfig[];
   layout: Partial<Plotly.Layout>;
   config: Partial<Plotly.Config>;
@@ -102,16 +104,12 @@ export function isEntityIdStatisticsConfig(
 }
 
 export type Timestamp = number;
-
-export type History = {
-  duplicate_datapoint?: true;
-  entity_id: string;
-  last_changed: Timestamp;
-  last_updated: Timestamp;
-  state: string | number;
-  attributes: Object;
-  statistics?: StatisticValue;
-}[];
+export type EntityState = (HassEntity | StatisticValue) & {
+  fake_boundary_datapoint?: true;
+  timestamp: Timestamp;
+  value: number | string;
+};
+export type History = EntityState[];
 export type HistoryInRange = {
   range: [number, number];
   history: History;
