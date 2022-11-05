@@ -10,6 +10,7 @@ import {
   EntityConfig,
   InputConfig,
   isEntityIdAttrConfig,
+  isEntityIdStateConfig,
   isEntityIdStatisticsConfig,
 } from "./types";
 import { TimestampRange } from "./types";
@@ -156,9 +157,17 @@ export class PlotlyGraph extends HTMLElement {
           );
           const end = +new Date(newState.last_updated);
           const range: [number, number] = [start, end];
+          let value: string | number = "unavailable";
+          if (isEntityIdAttrConfig(entity)) {
+            value = newState.attributes[entity.attribute];
+          } else if (isEntityIdStateConfig(entity)) {
+            value = newState.state;
+          } else if (isEntityIdStatisticsConfig(entity)) {
+            throw new Error("not impl yet. should trigger fetch");
+          }
           this.cache.add(
             entity,
-            [{ ...newState, timestamp: end, value: newState.state }],
+            [{ ...newState, timestamp: end, value }],
             range
           );
           shouldPlot = true;
