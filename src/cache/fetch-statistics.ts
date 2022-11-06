@@ -1,12 +1,12 @@
 import { HomeAssistant } from "custom-card-helpers";
 import { Statistics, StatisticValue } from "../recorder-types";
-import { EntityIdStatisticsConfig, History } from "../types";
+import { EntityIdStatisticsConfig, EntityState } from "../types";
 
 async function fetchStatistics(
   hass: HomeAssistant,
   entity: EntityIdStatisticsConfig,
   [start, end]: [Date, Date]
-): Promise<History> {
+): Promise<EntityState[]> {
   let statistics: StatisticValue[] | null = null;
   try {
     const statsP = hass.callWS<Statistics>({

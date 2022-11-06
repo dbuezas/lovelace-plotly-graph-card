@@ -657,7 +657,6 @@ export class PlotlyGraph extends HTMLElement {
     if (layout.paper_bgcolor) {
       this.titleEl.style.background = layout.paper_bgcolor as string;
     }
-
     await this.withoutRelayout(() =>
       Plotly.react(
         this.contentEl,

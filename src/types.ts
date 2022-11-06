@@ -45,7 +45,7 @@ export type EntityConfig = EntityIdConfig & {
   lambda?: (
     y: Datum[],
     x: Date[],
-    raw_entity: History
+    raw_entity: EntityState[]
   ) => Datum[] | { x?: Datum[]; y?: Datum[] };
   show_value:
     | boolean
@@ -109,10 +109,9 @@ export type EntityState = (HassEntity | StatisticValue) & {
   timestamp: Timestamp;
   value: number | string;
 };
-export type History = EntityState[];
 export type HistoryInRange = {
   range: [number, number];
-  history: History;
+  history: EntityState[];
 };
 export type TimestampRange = Timestamp[]; // [Timestamp, Timestamp];
 

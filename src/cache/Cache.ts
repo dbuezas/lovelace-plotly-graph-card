@@ -4,7 +4,6 @@ import fetchStatistics from "./fetch-statistics";
 import fetchStates from "./fetch-states";
 import {
   TimestampRange,
-  History,
   isEntityIdAttrConfig,
   EntityConfig,
   isEntityIdStateConfig,
@@ -28,7 +27,7 @@ async function fetchSingleRange(
 ): Promise<HistoryInRange> {
   const start = new Date(startT - 1);
   const end = new Date(endT);
-  let history: History;
+  let history: EntityState[];
   if (isEntityIdStatisticsConfig(entity)) {
     history = await fetchStatistics(hass, entity, [start, end]);
   } else {
@@ -64,7 +63,6 @@ async function fetchSingleRange(
     dup.timestamp = Math.min(+end, Date.now());
     history.push(dup);
   }
-  console.log("fetched", history);
   return {
     range,
     history,
@@ -83,7 +81,7 @@ export function getEntityKey(entity: EntityConfig) {
 }
 export default class Cache {
   ranges: Record<string, TimestampRange[]> = {};
-  histories: Record<string, History> = {};
+  histories: Record<string, EntityState[]> = {};
   busy = Promise.resolve(); // mutex
 
   add(entity: EntityConfig, states: EntityState[], range: [number, number]) {
@@ -99,7 +97,6 @@ export default class Cache {
     this.ranges[entityKey] ??= [];
     this.ranges[entityKey].push(range);
     this.ranges[entityKey] = compactRanges(this.ranges[entityKey]);
-    console.log(h);
   }
 
   clearCache() {
@@ -153,8 +150,8 @@ export default class Cache {
       ])
     );
     this.histories = mapValues(this.histories, (history) => {
-      let first: History[0] | undefined;
-      let last: History[0] | undefined;
+      let first: EntityState | undefined;
+      let last: EntityState | undefined;
       const newHistory = history.filter((datum) => {
         if (datum.timestamp <= range[0]) first = datum;
         else if (!last && datum.timestamp >= range[1]) last = datum;
@@ -162,11 +159,9 @@ export default class Cache {
         return false;
       });
       if (first) {
-        // first.timestamp = range[0];
         newHistory.unshift(first);
       }
       if (last) {
-        // last.timestamp = range[1];
         newHistory.push(last);
       }
       return newHistory;

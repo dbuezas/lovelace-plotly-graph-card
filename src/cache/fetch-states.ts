@@ -2,8 +2,8 @@ import { HomeAssistant } from "custom-card-helpers";
 import {
   EntityIdAttrConfig,
   EntityIdStateConfig,
+  EntityState,
   HassEntity,
-  History,
   isEntityIdAttrConfig,
   isEntityIdStateConfig,
 } from "../types";
@@ -14,7 +14,7 @@ async function fetchStates(
   [start, end]: [Date, Date],
   significant_changes_only?: boolean,
   minimal_response?: boolean
-): Promise<History> {
+): Promise<EntityState[]> {
   const no_attributes_query = isEntityIdStateConfig(entity)
     ? "no_attributes&"
     : "";
