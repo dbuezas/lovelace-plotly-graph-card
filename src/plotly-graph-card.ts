@@ -89,6 +89,11 @@ export class PlotlyGraph extends HTMLElement {
   }
   constructor() {
     super();
+    if (!isProduction) {
+      // for dev purposes
+      // @ts-expect-error
+      window.plotlyGraphCard = this;
+    }
     const shadow = this.attachShadow({ mode: "open" });
     shadow.innerHTML = `
         <ha-card>
@@ -155,6 +160,7 @@ export class PlotlyGraph extends HTMLElement {
     }
     if (this.parsed_config?.refresh_interval === "auto") {
       let shouldPlot = false;
+      let shouldFetch = false;
       for (const entity of this.parsed_config.entities) {
         const newState = hass.states[entity.entity];
         const oldState = this._hass?.states[entity.entity];
@@ -164,21 +170,26 @@ export class PlotlyGraph extends HTMLElement {
           );
           const end = +new Date(newState.last_updated);
           const range: [number, number] = [start, end];
-          let value: string | number = "unavailable";
+          let value: string | undefined;
           if (isEntityIdAttrConfig(entity)) {
             value = newState.attributes[entity.attribute];
           } else if (isEntityIdStateConfig(entity)) {
             value = newState.state;
           } else if (isEntityIdStatisticsConfig(entity)) {
-            throw new Error("not impl yet. should trigger fetch");
+            shouldFetch = true;
           }
-          this.cache.add(
-            entity,
-            [{ ...newState, timestamp: end, value }],
-            range
-          );
-          shouldPlot = true;
+          if (value !== undefined) {
+            this.cache.add(
+              entity,
+              [{ ...newState, timestamp: end, value }],
+              range
+            );
+            shouldPlot = true;
+          }
         }
+      }
+      if (shouldFetch) {
+        this.fetch();
       }
       if (shouldPlot) {
         if (!this.isBrowsing)
@@ -190,9 +201,7 @@ export class PlotlyGraph extends HTMLElement {
   }
   connectedCallback() {
     this.setupListeners();
-    this.fetch(this.getAutoFetchRange()).then(
-      () => (this.contentEl.style.visibility = "")
-    );
+    this.fetch().then(() => (this.contentEl.style.visibility = ""));
   }
   async withoutRelayout(fn: Function) {
     this.isInternalRelayout++;
@@ -270,19 +279,19 @@ export class PlotlyGraph extends HTMLElement {
         xaxis: { range: this.getAutoFetchRangeWithValueMargins() }, // to reset xaxis to hours_to_show quickly, before refetching
       });
     });
-    await this.fetch(this.getAutoFetchRange());
+    await this.fetch();
   };
   onRestyle = async () => {
     // trace visibility changed, fetch missing traces
     if (this.isInternalRelayout) return;
     this.enterBrowsingMode();
-    await this.fetch(this.getVisibleRange());
+    await this.fetch();
   };
   onRelayout = async () => {
     // user panned/zoomed
     if (this.isInternalRelayout) return;
     this.enterBrowsingMode();
-    await this.fetch(this.getVisibleRange());
+    await this.fetch();
   };
 
   // The user supplied configuration. Throw an exception and Lovelace will
@@ -459,9 +468,12 @@ export class PlotlyGraph extends HTMLElement {
     if (is.hours_to_show !== was?.hours_to_show) {
       this.exitBrowsingMode();
     }
-    await this.fetch(this.getAutoFetchRange());
+    await this.fetch();
   }
-  fetch = async (range: TimestampRange) => {
+  fetch = async () => {
+    const range = this.isBrowsing
+      ? this.getVisibleRange()
+      : this.getAutoFetchRange();
     for (const entity of this.parsed_config.entities) {
       if ((entity as any).autoPeriod) {
         if (isEntityIdStatisticsConfig(entity) && entity.autoPeriod) {
@@ -658,7 +670,7 @@ export class PlotlyGraph extends HTMLElement {
     clearTimeout(this.handles.refreshTimeout!);
     if (refresh_interval !== "auto" && refresh_interval > 0) {
       this.handles.refreshTimeout = window.setTimeout(
-        () => this.fetch(this.getAutoFetchRange()),
+        () => this.fetch(),
         refresh_interval * 1000
       );
     }
