@@ -10,6 +10,7 @@ import {
   EntityConfig,
   InputConfig,
   isEntityIdAttrConfig,
+  isEntityIdStateConfig,
   isEntityIdStatisticsConfig,
 } from "./types";
 import { TimestampRange } from "./types";
@@ -30,6 +31,7 @@ import { parseTimeDuration } from "./duration/duration";
 const componentName = isProduction ? "plotly-graph" : "plotly-graph-dev";
 
 const isDefined = (y: any) => y !== null && y !== undefined;
+
 function patchLonelyDatapoints(xs: Datum[], ys: Datum[]) {
   /* Ghost traces when data has single non-unavailable states sandwiched between unavailable ones
      see: https://github.com/dbuezas/lovelace-plotly-graph-card/issues/103
@@ -40,6 +42,13 @@ function patchLonelyDatapoints(xs: Datum[], ys: Datum[]) {
       xs.splice(i, 0, xs[i]);
     }
   }
+}
+
+function extendLastDatapointToPresent(xs: Datum[], ys: Datum[]) {
+  if (xs.length === 0) return;
+  const last = JSON.parse(JSON.stringify(ys[ys.length - 1]));
+  xs.push(new Date());
+  ys.push(last);
 }
 
 console.info(
@@ -62,7 +71,7 @@ export class PlotlyGraph extends HTMLElement {
   parsed_config!: Config;
   cache = new Cache();
   size: { width?: number; height?: number } = {};
-  hass?: HomeAssistant; // set externally
+  _hass?: HomeAssistant;
   isBrowsing = false;
   isInternalRelayout = 0;
 
@@ -80,6 +89,11 @@ export class PlotlyGraph extends HTMLElement {
   }
   constructor() {
     super();
+    if (!isProduction) {
+      // for dev purposes
+      // @ts-expect-error
+      window.plotlyGraphCard = this;
+    }
     const shadow = this.attachShadow({ mode: "open" });
     shadow.innerHTML = `
         <ha-card>
@@ -136,11 +150,58 @@ export class PlotlyGraph extends HTMLElement {
     this.contentEl.style.visibility = "hidden";
     this.withoutRelayout(() => Plotly.newPlot(this.contentEl, [], {}));
   }
+  get hass() {
+    return this._hass;
+  }
+  set hass(hass) {
+    if (!hass) {
+      // shouldn't happen, this is only to let typescript know hass != undefined
+      return;
+    }
+    if (this.parsed_config?.refresh_interval === "auto") {
+      let shouldPlot = false;
+      let shouldFetch = false;
+      for (const entity of this.parsed_config.entities) {
+        const newState = hass.states[entity.entity];
+        const oldState = this._hass?.states[entity.entity];
+        if (newState && oldState !== newState) {
+          const start = +new Date(
+            oldState?.last_updated || newState.last_updated
+          );
+          const end = +new Date(newState.last_updated);
+          const range: [number, number] = [start, end];
+          let value: string | undefined;
+          if (isEntityIdAttrConfig(entity)) {
+            value = newState.attributes[entity.attribute];
+          } else if (isEntityIdStateConfig(entity)) {
+            value = newState.state;
+          } else if (isEntityIdStatisticsConfig(entity)) {
+            shouldFetch = true;
+          }
+          if (value !== undefined) {
+            this.cache.add(
+              entity,
+              [{ ...newState, timestamp: end, value }],
+              range
+            );
+            shouldPlot = true;
+          }
+        }
+      }
+      if (shouldFetch) {
+        this.fetch();
+      }
+      if (shouldPlot) {
+        if (!this.isBrowsing)
+          this.cache.removeOutsideRange(this.getAutoFetchRange());
+        this.plot();
+      }
+    }
+    this._hass = hass;
+  }
   connectedCallback() {
     this.setupListeners();
-    this.fetch(this.getAutoFetchRange()).then(
-      () => (this.contentEl.style.visibility = "")
-    );
+    this.fetch().then(() => (this.contentEl.style.visibility = ""));
   }
   async withoutRelayout(fn: Function) {
     this.isInternalRelayout++;
@@ -218,19 +279,19 @@ export class PlotlyGraph extends HTMLElement {
         xaxis: { range: this.getAutoFetchRangeWithValueMargins() }, // to reset xaxis to hours_to_show quickly, before refetching
       });
     });
-    await this.fetch(this.getAutoFetchRange());
+    await this.fetch();
   };
   onRestyle = async () => {
     // trace visibility changed, fetch missing traces
     if (this.isInternalRelayout) return;
     this.enterBrowsingMode();
-    await this.fetch(this.getVisibleRange());
+    await this.fetch();
   };
   onRelayout = async () => {
     // user panned/zoomed
     if (this.isInternalRelayout) return;
     this.enterBrowsingMode();
-    await this.fetch(this.getVisibleRange());
+    await this.fetch();
   };
 
   // The user supplied configuration. Throw an exception and Lovelace will
@@ -270,10 +331,19 @@ export class PlotlyGraph extends HTMLElement {
         )}`
       );
     }
+    if (
+      typeof config.refresh_interval !== "number" &&
+      config.refresh_interval !== undefined &&
+      config.refresh_interval !== "auto"
+    ) {
+      throw new Error(
+        `refresh_interval: "${config.refresh_interval}" is not valid. Must be either "auto" or a number (in seconds). `
+      );
+    }
     const newConfig: Config = {
       title: config.title,
       hours_to_show: config.hours_to_show ?? 1,
-      refresh_interval: config.refresh_interval ?? 0,
+      refresh_interval: config.refresh_interval ?? "auto",
       entities: config.entities.map((entityIn, entityIdx) => {
         if (typeof entityIn === "string") entityIn = { entity: entityIn };
 
@@ -398,9 +468,12 @@ export class PlotlyGraph extends HTMLElement {
     if (is.hours_to_show !== was?.hours_to_show) {
       this.exitBrowsingMode();
     }
-    await this.fetch(this.getAutoFetchRange());
+    await this.fetch();
   }
-  fetch = async (range: TimestampRange) => {
+  fetch = async () => {
+    const range = this.isBrowsing
+      ? this.getVisibleRange()
+      : this.getAutoFetchRange();
     for (const entity of this.parsed_config.entities) {
       if ((entity as any).autoPeriod) {
         if (isEntityIdStatisticsConfig(entity) && entity.autoPeriod) {
@@ -492,13 +565,14 @@ export class PlotlyGraph extends HTMLElement {
       let name = trace.name || attributes.friendly_name || entity_id;
       if (isEntityIdAttrConfig(trace)) name += ` (${trace.attribute}) `;
       if (isEntityIdStatisticsConfig(trace)) name += ` (${trace.statistic}) `;
-      const xsIn = history.map(({ last_updated }) => new Date(last_updated));
-      const ysIn: Datum[] = history.map(({ state }) =>
-        state === "unavailable" ? null : state
+      const xsIn = history.map(({ timestamp }) => new Date(timestamp));
+      const ysIn: Datum[] = history.map(({ value }) =>
+        value === "unavailable" ? null : value
       );
 
       let xs: Datum[] = xsIn;
       let ys = ysIn;
+      extendLastDatapointToPresent(xs, ys);
       if (trace.lambda) {
         try {
           const r = trace.lambda(ysIn, xsIn, history);
@@ -513,6 +587,7 @@ export class PlotlyGraph extends HTMLElement {
         }
       }
       patchLonelyDatapoints(xs, ys);
+
       const customdatum = { unit_of_measurement: unit, name, attributes };
       const customdata = xs.map(() => customdatum);
       const mergedTrace = merge(
@@ -593,9 +668,9 @@ export class PlotlyGraph extends HTMLElement {
     this.titleEl.innerText = this.parsed_config.title || "";
     const refresh_interval = this.parsed_config.refresh_interval;
     clearTimeout(this.handles.refreshTimeout!);
-    if (refresh_interval > 0) {
+    if (refresh_interval !== "auto" && refresh_interval > 0) {
       this.handles.refreshTimeout = window.setTimeout(
-        () => this.fetch(this.getAutoFetchRange()),
+        () => this.fetch(),
         refresh_interval * 1000
       );
     }

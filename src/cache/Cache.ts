@@ -4,12 +4,12 @@ import fetchStatistics from "./fetch-statistics";
 import fetchStates from "./fetch-states";
 import {
   TimestampRange,
-  History,
   isEntityIdAttrConfig,
   EntityConfig,
   isEntityIdStateConfig,
   isEntityIdStatisticsConfig,
   HistoryInRange,
+  EntityState,
 } from "../types";
 
 export function mapValues<T, S>(
@@ -25,13 +25,14 @@ async function fetchSingleRange(
   significant_changes_only: boolean,
   minimal_response: boolean
 ): Promise<HistoryInRange> {
-  const start = new Date(startT);
+  const start = new Date(startT - 1);
+  endT = Math.min(endT, Date.now());
   const end = new Date(endT);
-  let historyInRange: HistoryInRange;
+  let history: EntityState[];
   if (isEntityIdStatisticsConfig(entity)) {
-    historyInRange = await fetchStatistics(hass, entity, [start, end]);
+    history = await fetchStatistics(hass, entity, [start, end]);
   } else {
-    historyInRange = await fetchStates(
+    history = await fetchStates(
       hass,
       entity,
       [start, end],
@@ -40,25 +41,19 @@ async function fetchSingleRange(
     );
   }
 
-  const { history, range } = historyInRange;
   /*
-  home assistant will "invent" a datapoiont at startT with the previous known value, except if there is actually one at startT.
-  To avoid these duplicates, the "fetched range" is capped to end at the last known point instead of endT.
-  This ensures that the next fetch will start with a duplicate of the last known datapoint, which can then be removed.
-  On top of that, in order to ensure that the last known point is extended to endT, I duplicate the last datapoint
-  and set its date to endT.
+    home assistant will "invent" a datapoiont at startT with the previous
+    known value, except if there is actually one at startT.
+    To avoid these duplicates, the "fetched range" starts at startT-1,
+    but the first point is marked to be deleted (fake_boundary_datapoint).
+    Delettion occurs when merging the fetched range inside the cached history.
   */
+  let range: [number, number] = [startT, endT];
   if (history.length) {
-    const last = history[history.length - 1];
-    const dup = JSON.parse(JSON.stringify(last));
-    history[0].duplicate_datapoint = true;
-    dup.duplicate_datapoint = true;
-    dup.last_updated = Math.min(+end, Date.now());
-    history.push(dup);
+    history[0].fake_boundary_datapoint = true;
   }
-  Math.min(+end, Date.now());
   return {
-    range: [range[0], Math.min(range[1], Date.now())],
+    range,
     history,
   };
 }
@@ -75,8 +70,22 @@ export function getEntityKey(entity: EntityConfig) {
 }
 export default class Cache {
   ranges: Record<string, TimestampRange[]> = {};
-  histories: Record<string, History> = {};
+  histories: Record<string, EntityState[]> = {};
   busy = Promise.resolve(); // mutex
+
+  add(entity: EntityConfig, states: EntityState[], range: [number, number]) {
+    const entityKey = getEntityKey(entity);
+    let h = (this.histories[entityKey] ??= []);
+    h.push(...states);
+    h.sort((a, b) => a.timestamp - b.timestamp);
+    h = h.filter((x, i) => i == 0 || !x.fake_boundary_datapoint);
+    h = h.filter((_, i) => h[i - 1]?.timestamp !== h[i].timestamp);
+    this.histories[entityKey] = h;
+    this.ranges[entityKey] ??= [];
+    this.ranges[entityKey].push(range);
+    this.ranges[entityKey] = compactRanges(this.ranges[entityKey]);
+  }
+
   clearCache() {
     this.ranges = {};
     this.histories = {};
@@ -112,18 +121,7 @@ export default class Cache {
               minimal_response
             );
             if (fetchedHistory === null) continue;
-            let h = (this.histories[entityKey] ??= []);
-            h.push(...fetchedHistory.history);
-            h.sort((a, b) => a.last_updated - b.last_updated);
-            h = h.filter(
-              (x, i) => i == 0 || i == h.length - 1 || !x.duplicate_datapoint
-            );
-            h = h.filter(
-              (_, i) => h[i].last_updated !== h[i + 1]?.last_updated
-            );
-            this.histories[entityKey] = h;
-            this.ranges[entityKey].push(fetchedHistory.range);
-            this.ranges[entityKey] = compactRanges(this.ranges[entityKey]);
+            this.add(entity, fetchedHistory.history, fetchedHistory.range);
           }
         });
 
@@ -131,7 +129,7 @@ export default class Cache {
       }));
   }
 
-  private removeOutsideRange(range: TimestampRange) {
+  removeOutsideRange(range: TimestampRange) {
     this.ranges = mapValues(this.ranges, (ranges) =>
       subtractRanges(ranges, [
         [Number.NEGATIVE_INFINITY, range[0] - 1],
@@ -139,20 +137,18 @@ export default class Cache {
       ])
     );
     this.histories = mapValues(this.histories, (history) => {
-      let first: History[0] | undefined;
-      let last: History[0] | undefined;
+      let first: EntityState | undefined;
+      let last: EntityState | undefined;
       const newHistory = history.filter((datum) => {
-        if (datum.last_updated <= range[0]) first = datum;
-        else if (!last && datum.last_updated >= range[1]) last = datum;
+        if (datum.timestamp <= range[0]) first = datum;
+        else if (!last && datum.timestamp >= range[1]) last = datum;
         else return true;
         return false;
       });
       if (first) {
-        first.last_updated = range[0];
         newHistory.unshift(first);
       }
       if (last) {
-        last.last_updated = range[1];
         newHistory.push(last);
       }
       return newHistory;
