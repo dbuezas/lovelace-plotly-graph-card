@@ -26,6 +26,7 @@ async function fetchSingleRange(
   minimal_response: boolean
 ): Promise<HistoryInRange> {
   const start = new Date(startT - 1);
+  endT = Math.min(endT, Date.now());
   const end = new Date(endT);
   let history: EntityState[];
   if (isEntityIdStatisticsConfig(entity)) {
@@ -47,9 +48,8 @@ async function fetchSingleRange(
     but the first point is marked to be deleted (fake_boundary_datapoint).
     Delettion occurs when merging the fetched range inside the cached history.
   */
-  let range: [number, number] = [startT, startT];
+  let range: [number, number] = [startT, endT];
   if (history.length) {
-    range = [startT, history[history.length - 1].timestamp];
     history[0].fake_boundary_datapoint = true;
   }
   return {
