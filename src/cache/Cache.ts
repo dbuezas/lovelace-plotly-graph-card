@@ -56,6 +56,13 @@ async function fetchSingleRange(
   if (history.length) {
     range = [startT, history[history.length - 1].timestamp];
     history[0].fake_boundary_datapoint = true;
+
+    const last = history[history.length - 1];
+    const dup = JSON.parse(JSON.stringify(last));
+
+    dup.fake_boundary_datapoint = true;
+    dup.timestamp = Math.min(+end, Date.now());
+    history.push(dup);
   }
   console.log("fetched", history);
   return {
@@ -85,8 +92,7 @@ export default class Cache {
     h.push(...states);
     h.sort((a, b) => a.timestamp - b.timestamp);
     h = h.filter(
-      (x, i) => i == 0 || !x.fake_boundary_datapoint
-      // (x, i) => i == 0 || i == h.length - 1 || !x.fake_boundary_datapoint
+      (x, i) => i == 0 || i == h.length - 1 || !x.fake_boundary_datapoint
     );
     h = h.filter((_, i) => h[i - 1]?.timestamp !== h[i].timestamp);
     this.histories[entityKey] = h;
