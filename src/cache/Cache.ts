@@ -41,27 +41,16 @@ async function fetchSingleRange(
   }
 
   /*
-  home assistant will "invent" a datapoiont at startT with the previous known value, except if there is actually one at startT.
-  To avoid these duplicates, the "fetched range" is capped to end at the last known point instead of endT.
-  This ensures that the next fetch will start with a duplicate of the last known datapoint, which can then be removed.
-  On top of that, in order to ensure that the last known point is extended to endT, I duplicate the last datapoint
-  and set its date to endT.
+    home assistant will "invent" a datapoiont at startT with the previous
+    known value, except if there is actually one at startT.
+    To avoid these duplicates, the "fetched range" starts at startT-1,
+    but the first point is marked to be deleted (fake_boundary_datapoint).
+    Delettion occurs when merging the fetched range inside the cached history.
   */
-  /* @TODO: confirm if the following is still relevant.
-      If it is, then HA's invented datapoint needs to be handled, and the completion to Date.now() should be handled
-      while plotting instead of inside the cache (or not handled at all)
-   */
   let range: [number, number] = [startT, startT];
   if (history.length) {
     range = [startT, history[history.length - 1].timestamp];
     history[0].fake_boundary_datapoint = true;
-
-    const last = history[history.length - 1];
-    const dup = JSON.parse(JSON.stringify(last));
-
-    dup.fake_boundary_datapoint = true;
-    dup.timestamp = Math.min(+end, Date.now());
-    history.push(dup);
   }
   return {
     range,
@@ -89,9 +78,7 @@ export default class Cache {
     let h = (this.histories[entityKey] ??= []);
     h.push(...states);
     h.sort((a, b) => a.timestamp - b.timestamp);
-    h = h.filter(
-      (x, i) => i == 0 || i == h.length - 1 || !x.fake_boundary_datapoint
-    );
+    h = h.filter((x, i) => i == 0 || !x.fake_boundary_datapoint);
     h = h.filter((_, i) => h[i - 1]?.timestamp !== h[i].timestamp);
     this.histories[entityKey] = h;
     this.ranges[entityKey] ??= [];
