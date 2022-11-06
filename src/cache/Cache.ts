@@ -138,9 +138,9 @@ export default class Cache {
         [range[1] + 1, Number.POSITIVE_INFINITY],
       ])
     );
-    let first: History[0];
-    let last: History[0];
     this.histories = mapValues(this.histories, (history) => {
+      let first: History[0] | undefined;
+      let last: History[0] | undefined;
       const newHistory = history.filter((datum) => {
         if (datum.last_updated <= range[0]) first = datum;
         else if (!last && datum.last_updated >= range[1]) last = datum;
