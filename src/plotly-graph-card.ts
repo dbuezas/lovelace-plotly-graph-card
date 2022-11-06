@@ -186,6 +186,19 @@ export class PlotlyGraph extends HTMLElement {
     const ms = this.parsed_config.hours_to_show * 60 * 60 * 1000;
     return [+new Date() - ms, +new Date()] as [number, number];
   }
+  getAutoFetchRangeWithValueMargins() {
+    const [start, end] = this.getAutoFetchRange();
+    const padPercent = Math.max(
+      ...this.parsed_config.entities.map(({ show_value }) => {
+        if (show_value === false) return 0 / 100;
+        if (show_value === true) return 10 / 100;
+        return show_value.right_margin / 100;
+      })
+    );
+    const msToShow = this.parsed_config.hours_to_show * 1000 * 60 * 60;
+    const msPad = (msToShow / (1 - padPercent)) * padPercent;
+    return [start, end + msPad];
+  }
   getVisibleRange() {
     return this.contentEl.layout.xaxis!.range!.map((date) =>
       // if autoscale is used after scrolling, plotly returns the dates as numbers instead of strings
@@ -202,7 +215,7 @@ export class PlotlyGraph extends HTMLElement {
     this.withoutRelayout(async () => {
       await Plotly.relayout(this.contentEl, {
         uirevision: Math.random(), // to trigger the autoranges in all y-yaxes
-        xaxis: { range: this.getAutoFetchRange() }, // to reset xaxis to hours_to_show quickly, before refetching
+        xaxis: { range: this.getAutoFetchRangeWithValueMargins() }, // to reset xaxis to hours_to_show quickly, before refetching
       });
     });
     await this.fetch(this.getAutoFetchRange());
@@ -531,24 +544,6 @@ export class PlotlyGraph extends HTMLElement {
           x: mergedTrace.x.slice(-1),
           y: mergedTrace.y.slice(-1),
         });
-        if (
-          typeof mergedTrace.show_value === "object" &&
-          "right_margin" in mergedTrace.show_value
-        ) {
-          const timeMargin =
-            mergedTrace.show_value.right_margin *
-            ((this.parsed_config.hours_to_show * 1000 * 60 * 60) / 100);
-          show_value_traces.push({
-            ...mergedTrace,
-            marker: {
-              color: "transparent",
-            },
-            hoverinfo: "skip",
-            showlegend: false,
-            x: [new Date(Date.now() + timeMargin)],
-            y: mergedTrace.y.slice(-1),
-          });
-        }
       }
     });
     // Preserving the original sequence of real_traces is important for `fill: tonexty`
@@ -568,7 +563,7 @@ export class PlotlyGraph extends HTMLElement {
         xaxis: {
           range: this.isBrowsing
             ? this.getVisibleRange()
-            : this.getAutoFetchRange(),
+            : this.getAutoFetchRangeWithValueMargins(),
         },
       },
       this.parsed_config.no_default_layout ? {} : yAxisTitles,
