@@ -97,9 +97,13 @@ export class PlotlyGraph extends HTMLElement {
         <ha-card>
           <style>
             ha-card{
-              height: 100%;
               overflow: hidden;
               background: transparent;
+              width: 100%;
+              height: calc(100% - 5px);
+            }
+            ha-card > #plotly{
+              width: 100px;
             }
             ha-card > #title{
               text-align: center;
