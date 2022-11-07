@@ -13,7 +13,6 @@ import {
   isEntityIdStateConfig,
   isEntityIdStatisticsConfig,
 } from "./types";
-import { TimestampRange } from "./types";
 import Cache from "./cache/Cache";
 import getThemedLayout from "./themed-layout";
 import isProduction from "./is-production";
@@ -36,7 +35,7 @@ function patchLonelyDatapoints(xs: Datum[], ys: Datum[]) {
   /* Ghost traces when data has single non-unavailable states sandwiched between unavailable ones
      see: https://github.com/dbuezas/lovelace-plotly-graph-card/issues/103
   */
-  for (let i = 1; i < xs.length - 1; i++) {
+  for (let i = 0; i < xs.length; i++) {
     if (!isDefined(ys[i - 1]) && isDefined(ys[i]) && !isDefined(ys[i + 1])) {
       ys.splice(i, 0, ys[i]);
       xs.splice(i, 0, xs[i]);
