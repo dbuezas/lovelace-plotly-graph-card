@@ -13,7 +13,6 @@ import {
   isEntityIdStateConfig,
   isEntityIdStatisticsConfig,
 } from "./types";
-import { TimestampRange } from "./types";
 import Cache from "./cache/Cache";
 import getThemedLayout from "./themed-layout";
 import isProduction from "./is-production";
@@ -36,7 +35,7 @@ function patchLonelyDatapoints(xs: Datum[], ys: Datum[]) {
   /* Ghost traces when data has single non-unavailable states sandwiched between unavailable ones
      see: https://github.com/dbuezas/lovelace-plotly-graph-card/issues/103
   */
-  for (let i = 1; i < xs.length - 1; i++) {
+  for (let i = 0; i < xs.length; i++) {
     if (!isDefined(ys[i - 1]) && isDefined(ys[i]) && !isDefined(ys[i + 1])) {
       ys.splice(i, 0, ys[i]);
       xs.splice(i, 0, xs[i]);
@@ -57,7 +56,6 @@ console.info(
   "color: white; font-weight: bold; background: dimgray"
 );
 
-const padding = 1;
 export class PlotlyGraph extends HTMLElement {
   contentEl: Plotly.PlotlyHTMLElement & {
     data: (Plotly.PlotData & { entity: string })[];
@@ -99,10 +97,13 @@ export class PlotlyGraph extends HTMLElement {
         <ha-card>
           <style>
             ha-card{
-              padding: ${padding}px;
-              height: 100%;
-              box-sizing: border-box;
+              overflow: hidden;
               background: transparent;
+              width: 100%;
+              height: calc(100% - 5px);
+            }
+            ha-card > #plotly{
+              width: 100px;
             }
             ha-card > #title{
               text-align: center;
@@ -210,9 +211,9 @@ export class PlotlyGraph extends HTMLElement {
   }
   setupListeners() {
     const updateCardSize = async () => {
-      const width = this.cardEl.offsetWidth - padding * 2;
+      const width = this.cardEl.offsetWidth;
       this.contentEl.style.position = "absolute";
-      const height = this.cardEl.offsetHeight - padding * 2;
+      const height = this.cardEl.offsetHeight;
       this.contentEl.style.position = "";
       this.size = { width };
       if (height > 100) {
@@ -588,6 +589,14 @@ export class PlotlyGraph extends HTMLElement {
       }
       patchLonelyDatapoints(xs, ys);
 
+      if (xs.length === 0 && ys.length === 0) {
+        /*
+          Traces with no data are removed from the legend by plotly. 
+          Setting them to have null element prevents that.
+        */
+        xs = [null];
+        ys = [null];
+      }
       const customdatum = { unit_of_measurement: unit, name, attributes };
       const customdata = xs.map(() => customdatum);
       const mergedTrace = merge(
