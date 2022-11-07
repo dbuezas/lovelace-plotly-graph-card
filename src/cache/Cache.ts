@@ -25,18 +25,19 @@ async function fetchSingleRange(
   significant_changes_only: boolean,
   minimal_response: boolean
 ): Promise<HistoryInRange> {
-  // We fetch slightly more than requested. The reason is the following:
+  // We fetch slightly more than requested (i.e the range visible in the screen). The reason is the following:
   // When fetching data in a range `[startT,endT]`, Home Assistant adds a fictitious datapoint at
   // the start of the fetched period containing a copy of the first datapoint that occurred before
   // `startT`, except if there is actually one at `startT`.
-  // We fetch slightly more than requested (`[startT-1,endT]`) and we mark the datapoint at
-  // `startT-1` to be deleted (`fake_boundary_datapoint`). When merging the fetched data with the
-  // cached one, we keep the fictitious datapoint only if it's placed at the start, otherwise it's
-  // discarded. We don't really know whether the datapoint is fictitious or it's a real datapoint
-  // that happened to be exactly at `startT-1`, therefore we purposely fetch it outside cached range
-  // (which is `[startT,endT]`). Since it is not cached by our caching system, it will be requested
-  // again in following fetches. If it's a real datapoint, it will be returned with new fetches,
-  // otherwise it won't (which means that it was fictitious).
+  // We fetch slightly more than requested/visible (`[startT-1,endT]`) and we mark the datapoint at
+  // `startT-1` to be deleted (`fake_boundary_datapoint`). When merging the fetched data into the
+  // cache, we keep the fictitious datapoint only if it's placed at the start (see `add` function), otherwise it's
+  // discarded.
+  // In general, we don't really know whether the datapoint is fictitious or it's a real datapoint
+  // that happened to be exactly at `startT-1`, therefore we purposely fetch it outside the requested range
+  // (which is `[startT,endT]`) and we leave it out of the "known cached ranges".
+  // If it happens to be a a real datapoint, it will be fetched properly when the user scrolls/zooms bring it into
+  // the visible part of the screen.
   //
   // Examples:
   //
@@ -47,7 +48,7 @@ async function fetchSingleRange(
   //       _________       1st fetch
   //       * +   +
   //       ^
-  //       '-- point at the edge, kept
+  //       '-- point kept because it is out of the visible range
   //
   // _______               2nd fetch
   // *   + * +   +
