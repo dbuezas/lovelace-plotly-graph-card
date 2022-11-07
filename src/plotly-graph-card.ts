@@ -56,7 +56,6 @@ console.info(
   "color: white; font-weight: bold; background: dimgray"
 );
 
-const padding = 1;
 export class PlotlyGraph extends HTMLElement {
   contentEl: Plotly.PlotlyHTMLElement & {
     data: (Plotly.PlotData & { entity: string })[];
@@ -98,9 +97,8 @@ export class PlotlyGraph extends HTMLElement {
         <ha-card>
           <style>
             ha-card{
-              padding: ${padding}px;
               height: 100%;
-              box-sizing: border-box;
+              overflow: hidden;
               background: transparent;
             }
             ha-card > #title{
@@ -209,9 +207,9 @@ export class PlotlyGraph extends HTMLElement {
   }
   setupListeners() {
     const updateCardSize = async () => {
-      const width = this.cardEl.offsetWidth - padding * 2;
+      const width = this.cardEl.offsetWidth;
       this.contentEl.style.position = "absolute";
-      const height = this.cardEl.offsetHeight - padding * 2;
+      const height = this.cardEl.offsetHeight;
       this.contentEl.style.position = "";
       this.size = { width };
       if (height > 100) {
