@@ -25,6 +25,42 @@ async function fetchSingleRange(
   significant_changes_only: boolean,
   minimal_response: boolean
 ): Promise<HistoryInRange> {
+  // We fetch slightly more than requested. The reason is the following:
+  // When fetching data in a range `[startT,endT]`, Home Assistant adds a fictitious datapoint at
+  // the start of the fetched period containing a copy of the first datapoint that occurred before
+  // `startT`, except if there is actually one at `startT`.
+  // We fetch slightly more than requested (`[startT-1,endT]`) and we mark the datapoint at
+  // `startT-1` to be deleted (`fake_boundary_datapoint`). When merging the fetched data with the
+  // cached one, we keep the fictitious datapoint only if it's placed at the start, otherwise it's
+  // discarded. We don't really know whether the datapoint is fictitious or it's a real datapoint
+  // that happened to be exactly at `startT-1`, therefore we purposely fetch it outside cached range
+  // (which is `[startT,endT]`). Since it is not cached by our caching system, it will be requested
+  // again in following fetches. If it's a real datapoint, it will be returned with new fetches,
+  // otherwise it won't (which means that it was fictitious).
+  //
+  // Examples:
+  //
+  // * = fictitious
+  // + = real
+  // _ = fetched range
+  //
+  //       _________       1st fetch
+  //       * +   +
+  //       ^
+  //       '-- point at the edge, kept
+  //
+  // _______               2nd fetch
+  // *   + * +   +
+  // ^     ^
+  // |     '--- discarded as it was fictitious
+  // '--- point at the edge, kept
+  //
+  //              ________ 3rd fetch
+  // *   +   +   +*  +   +
+  // ^            ^
+  // |            '--- discarded as it is fictitious
+  // '--- point at the edge, kept
+
   const start = new Date(startT - 1);
   endT = Math.min(endT, Date.now());
   const end = new Date(endT);
@@ -41,13 +77,6 @@ async function fetchSingleRange(
     );
   }
 
-  /*
-    home assistant will "invent" a datapoiont at startT with the previous
-    known value, except if there is actually one at startT.
-    To avoid these duplicates, the "fetched range" starts at startT-1,
-    but the first point is marked to be deleted (fake_boundary_datapoint).
-    Delettion occurs when merging the fetched range inside the cached history.
-  */
   let range: [number, number] = [startT, endT];
   if (history.length) {
     history[0].fake_boundary_datapoint = true;
