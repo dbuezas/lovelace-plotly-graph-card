@@ -585,6 +585,14 @@ export class PlotlyGraph extends HTMLElement {
       }
       patchLonelyDatapoints(xs, ys);
 
+      if (xs.length === 0 && ys.length === 0) {
+        /*
+          Traces with no data are removed from the legend by plotly. 
+          Setting them to have null element prevents that.
+        */
+        xs = [null];
+        ys = [null];
+      }
       const customdatum = { unit_of_measurement: unit, name, attributes };
       const customdata = xs.map(() => customdatum);
       const mergedTrace = merge(
