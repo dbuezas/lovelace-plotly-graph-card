@@ -48,12 +48,12 @@ async function fetchSingleRange(
   //       _________       1st fetch
   //       * +   +
   //       ^
-  //       '-- point kept because it is out of the visible range
+  //       '-- point kept because it's at the start-edge of the trace and it's outside the visible range
   //
   // _______               2nd fetch
   // *   + * +   +
   // ^     ^
-  // |     '--- discarded as it was fictitious
+  // |     '--- discarded as it was fictitious and not at the start-edge
   // '--- point at the edge, kept
   //
   //              ________ 3rd fetch
