@@ -29,14 +29,15 @@ import { parseTimeDuration } from "./duration/duration";
 
 const componentName = isProduction ? "plotly-graph" : "plotly-graph-dev";
 
-const isDefined = (y: any) => y !== null && y !== undefined;
+const isNumber = (y: any) => !Number.isNaN(parseFloat(y));
 
 function patchLonelyDatapoints(xs: Datum[], ys: Datum[]) {
-  /* Ghost traces when data has single non-unavailable states sandwiched between unavailable ones
+  /* Ghost traces when data has single numeric value sandwiched between unavailable, unknown, etc ones
      see: https://github.com/dbuezas/lovelace-plotly-graph-card/issues/103
+     and: https://github.com/dbuezas/lovelace-plotly-graph-card/issues/124
   */
   for (let i = 0; i < xs.length; i++) {
-    if (!isDefined(ys[i - 1]) && isDefined(ys[i]) && !isDefined(ys[i + 1])) {
+    if (!isNumber(ys[i - 1]) && isNumber(ys[i]) && !isNumber(ys[i + 1])) {
       ys.splice(i, 0, ys[i]);
       xs.splice(i, 0, xs[i]);
     }
@@ -567,9 +568,7 @@ export class PlotlyGraph extends HTMLElement {
       if (isEntityIdAttrConfig(trace)) name += ` (${trace.attribute}) `;
       if (isEntityIdStatisticsConfig(trace)) name += ` (${trace.statistic}) `;
       const xsIn = history.map(({ timestamp }) => new Date(timestamp));
-      const ysIn: Datum[] = history.map(({ value }) =>
-        value === "unavailable" ? null : value
-      );
+      const ysIn: Datum[] = history.map(({ value }) => value);
 
       let xs: Datum[] = xsIn;
       let ys = ysIn;
