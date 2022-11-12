@@ -8,10 +8,12 @@ import Plotly from "./plotly";
 import {
   Config,
   EntityConfig,
+  EntityState,
   InputConfig,
   isEntityIdAttrConfig,
   isEntityIdStateConfig,
   isEntityIdStatisticsConfig,
+  TimestampRange,
 } from "./types";
 import Cache from "./cache/Cache";
 import getThemedLayout from "./themed-layout";
@@ -58,6 +60,23 @@ function extendLastDatapointToPresent(
   const last = JSON.parse(JSON.stringify(ys[ys.length - 1]));
   xs.push(new Date(Date.now() + offset));
   ys.push(last);
+}
+function removeOutOfRange(xs: Datum[], ys: Datum[], range: TimestampRange) {
+  let first = -1;
+  let last = -1;
+
+  for (let i = 0; i < xs.length; i++) {
+    if (xs[i]! < range[0]) first = i;
+    if (xs[i]! > range[1]) last = i;
+  }
+  if (last > -1) {
+    xs = xs.splice(last);
+    ys = ys.splice(last);
+  }
+  if (first > -1) {
+    xs = xs.splice(0, first);
+    ys = ys.splice(0, first);
+  }
 }
 
 console.info(
@@ -303,12 +322,9 @@ export class PlotlyGraph extends HTMLElement {
     this.isBrowsing = false;
     this.resetButtonEl.classList.add("hidden");
     this.withoutRelayout(async () => {
-      await Plotly.relayout(this.contentEl, {
-        uirevision: Math.random(), // to trigger the autoranges in all y-yaxes
-        xaxis: { range: this.getAutoFetchRangeWithValueMargins() }, // to reset xaxis to hours_to_show quickly, before refetching
-      });
+      await this.plot(); // to reset xaxis to hours_to_show quickly, before refetching
+      await this.fetch();
     });
-    await this.fetch();
   };
   onRestyle = async () => {
     // trace visibility changed, fetch missing traces
@@ -602,6 +618,10 @@ export class PlotlyGraph extends HTMLElement {
       if (trace.extend_to_present) {
         extendLastDatapointToPresent(xs, ys, trace.offset);
       }
+      if (!this.isBrowsing) {
+        // to ensure the y axis autorange containst the yaxis
+        removeOutOfRange(xs, ys, this.getAutoFetchRangeWithValueMargins());
+      }
 
       if (trace.lambda) {
         try {
@@ -671,7 +691,11 @@ export class PlotlyGraph extends HTMLElement {
       units.map((unit, i) => ["yaxis" + (i == 0 ? "" : i + 1), { title: unit }])
     );
     const layout = merge(
-      { uirevision: true },
+      {
+        uirevision: this.isBrowsing
+          ? this.contentEl.layout.uirevision
+          : Math.random(), // to trigger the autoranges in all y-yaxes
+      },
       {
         xaxis: {
           range: this.isBrowsing
