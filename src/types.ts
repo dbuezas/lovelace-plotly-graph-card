@@ -56,6 +56,7 @@ export type EntityConfig = EntityIdConfig & {
         right_margin: number;
       };
   offset: number;
+  extend_to_present: boolean;
 } & Partial<Plotly.PlotData>;
 
 export type Config = {

@@ -277,6 +277,24 @@ entities:
   - entity: sensor.actual_temperature
 ```
 
+### Extend_to_present
+
+The boolean `extend_to_present` will take the last known datapoint and "expand" it to the present by creating a duplicate and setting its date to `now`.
+This is useful to make the plot look fuller.
+It's recommended to turn it off when using `offset`s, or when setting the mode of the trace to `markers`.
+Defaults to `true` for state history, and `false` for statistics.
+
+```yaml
+type: custom:plotly-graph
+entities:
+  - entity: sensor.weather_24h_forecast
+    mode: "markers"
+    extend_to_present: false # true by default for state history
+  - entity: sensor.actual_temperature
+    statistics: mean
+    extend_to_present: true # false by default for statistics
+```
+
 ### `lambda:` transforms
 
 `lambda` takes a js function (as a string) to pre process the data before plotting it. Here you can do things like normalisation, integration. For example:

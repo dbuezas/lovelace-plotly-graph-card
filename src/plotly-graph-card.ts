@@ -439,6 +439,7 @@ export class PlotlyGraph extends HTMLElement {
             throw new Error(
               `period: "${entity.period}" is not valid. Use ${STATISTIC_PERIODS}`
             );
+          entity.extend_to_present ??= !!entity.statistic;
         }
         const [oldAPI_entity, oldAPI_attribute] = entity.entity.split("::");
         if (oldAPI_attribute) {
@@ -598,7 +599,10 @@ export class PlotlyGraph extends HTMLElement {
 
       let xs: Datum[] = xsIn;
       let ys = ysIn;
-      extendLastDatapointToPresent(xs, ys, trace.offset);
+      if (trace.extend_to_present) {
+        extendLastDatapointToPresent(xs, ys, trace.offset);
+      }
+
       if (trace.lambda) {
         try {
           const r = trace.lambda(ysIn, xsIn, history);
