@@ -203,8 +203,6 @@ export class PlotlyGraph extends HTMLElement {
         this.fetch();
       }
       if (shouldPlot) {
-        if (!this.isBrowsing)
-          this.cache.removeOutsideRange(this.getAutoFetchRange());
         this.plot();
       }
     }
@@ -538,7 +536,6 @@ export class PlotlyGraph extends HTMLElement {
     try {
       await this.cache.update(
         range,
-        !this.isBrowsing,
         visibleEntities,
         this.hass,
         this.parsed_config.minimal_response,
