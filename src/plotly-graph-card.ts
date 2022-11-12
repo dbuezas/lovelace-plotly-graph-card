@@ -263,10 +263,28 @@ export class PlotlyGraph extends HTMLElement {
     return [start, end + msPad];
   }
   getVisibleRange() {
-    return this.contentEl.layout.xaxis!.range!.map((date) =>
-      // if autoscale is used after scrolling, plotly returns the dates as numbers instead of strings
-      Number.isFinite(date) ? date : +parseISO(date)
-    );
+    console.log(this.contentEl.layout.xaxis!.range);
+    return this.contentEl.layout.xaxis!.range!.map((date) => {
+      // if autoscale is used after scrolling, plotly returns the dates as timestamps (numbers) instead of iso strings
+      if (Number.isFinite(date)) return date;
+      if (date.startsWith("-")) {
+        /*
+         The function parseISO can't handle negative dates.
+         To work around that, I'm parsing it without the minus, and then manually calculating the timestamp from that.
+         The arithmetic has a twist because timestamps start on 1970 and not on year zero,
+         so the distance to a the year zero has to be calculated by subtracting the "zero year" timestamp.
+         positive_date = -date (which is negative)
+         timestamp = (year 0) - (time from year 0)
+         timestamp = (year 0) - (positive_date - year 0)
+         timestamp = 2 * (year 0) - positive_date
+         timestamp = 2 * (year 0) - (-date)
+        */
+        return (
+          2 * +parseISO("0000-01-01 00:00:00.000") - +parseISO(date.slice(1))
+        );
+      }
+      return +parseISO(date);
+    });
   }
   async enterBrowsingMode() {
     this.isBrowsing = true;

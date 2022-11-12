@@ -98,6 +98,8 @@ export function getEntityKey(entity: EntityConfig) {
   }
   throw new Error(`Entity malformed:${JSON.stringify(entity)}`);
 }
+
+const MIN_SAFE_TIMESTAMP = Date.parse("0001-01-02T00:00:00.000Z");
 export default class Cache {
   ranges: Record<string, TimestampRange[]> = {};
   histories: Record<string, EntityState[]> = {};
@@ -132,6 +134,7 @@ export default class Cache {
     significant_changes_only: boolean,
     minimal_response: boolean
   ) {
+    range = range.map((n) => Math.max(MIN_SAFE_TIMESTAMP, n)); // HA API can't handle negative years
     return (this.busy = this.busy
       .catch(() => {})
       .then(async () => {
