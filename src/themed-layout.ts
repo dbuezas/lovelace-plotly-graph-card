@@ -14,6 +14,7 @@ const defaultLayout: Partial<Plotly.Layout> = {
   dragmode: "pan",
   xaxis: {
     autorange: false,
+    type: "date",
     // automargin: true, // it makes zooming very jumpy
   },
   yaxis: {
