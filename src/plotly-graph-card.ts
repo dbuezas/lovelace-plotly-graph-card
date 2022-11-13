@@ -268,7 +268,6 @@ export class PlotlyGraph extends HTMLElement {
     return [start, end + msPad];
   }
   getVisibleRange() {
-    console.log(this.contentEl.layout.xaxis!.range);
     return this.contentEl.layout.xaxis!.range!.map((date) => {
       // if autoscale is used after scrolling, plotly returns the dates as timestamps (numbers) instead of iso strings
       if (Number.isFinite(date)) return date;
@@ -400,13 +399,12 @@ export class PlotlyGraph extends HTMLElement {
           // @TODO: cleanup how this is done
           if (entity.period === "auto") {
             entity.period = {
-              "0": "5minute",
+              "0s": "5minute",
               "1d": "hour",
               "7d": "day",
-              // "28d": "week",
+              "28d": "week",
               "12M": "month",
             };
-            entity.period = undefined;
           }
           if (getIsPureObject(entity.period)) {
             entity.autoPeriod = entity.period;
