@@ -314,15 +314,16 @@ export class PlotlyGraph extends HTMLElement {
       return +parseISO(date);
     });
   }
-  async enterBrowsingMode() {
+  enterBrowsingMode = () => {
     this.isBrowsing = true;
     this.resetButtonEl.classList.remove("hidden");
-  }
+  };
   exitBrowsingMode = async () => {
     this.isBrowsing = false;
     this.resetButtonEl.classList.add("hidden");
     this.withoutRelayout(async () => {
       await this.plot(); // to reset xaxis to hours_to_show quickly, before refetching
+      this.cache.clearCache(); // so that when the user zooms out and autoranges, not more that what's visible will be autoranged
       await this.fetch();
     });
   };
