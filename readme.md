@@ -192,18 +192,37 @@ entities:
 
 The option `auto` makes the period relative to the currently visible time range. It picks the longest period, such that there are at least 100 datapoints in screen.
 
-#### for entities with state_class=measurement (normal sensors, like temperature)
+#### for entities with state_class=total (such as utility meters)
 
 ```yaml
 type: custom:plotly-graph
 entities:
   - entity: sensor.temperature
-    statistic: max # `min`, `mean` of `max`
-    # for entities with state_class=total (such as utility meters):
     statistic: state # `state` or `sum`
-
     period: 5minute # `5minute`, `hour`, `day`, `week`, `month`, `auto` # `auto` varies the period depending on the zoom level
+```
 
+#### automatic period
+
+The period will automatically adapt to the visible range.
+
+```yaml
+type: custom:plotly-graph
+entities:
+  - entity: sensor.temperature
+    statistic: mean
+    period: auto
+```
+
+equivalent to:
+
+```yaml
+period:
+  0s: 5minute
+  1d: hour
+  7d: day
+  28d: week
+  12M: month # note uppercase M
 ```
 
 #### step function for auto period
@@ -214,10 +233,10 @@ entities:
   - entity: sensor.temperature
     statistic: mean
     period:
-      0: 5minute
+      0s: 5minute
       24h: hour # when the visible range is ≥ 1 day, use the `hour` period
       7d: day # from 7 days on, use `day`
-      # 6M: week # not yet supported in HA
+      6M: week # from 6 months on, use weeks. Note Uppercase M! (lower case m means minutes)
       1y: month # from 1 year on, use `month
 ```
 
