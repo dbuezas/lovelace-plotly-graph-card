@@ -36,7 +36,12 @@ function patchLonelyDatapoints(xs: Datum[], ys: Datum[]) {
      see: https://github.com/dbuezas/lovelace-plotly-graph-card/issues/103
      and: https://github.com/dbuezas/lovelace-plotly-graph-card/issues/124
   */
-  for (let i = 0; i < xs.length; i++) {
+  if (ys.length === 1) {
+    // A single lonely point won't create ghosts, and this fix breaks bar charts with a single bar
+    // see: https://github.com/dbuezas/lovelace-plotly-graph-card/issues/129#issuecomment-1312730979
+    return;
+  }
+  for (let i = 0; i < ys.length; i++) {
     if (!isNumber(ys[i - 1]) && isNumber(ys[i]) && !isNumber(ys[i + 1])) {
       ys.splice(i, 0, ys[i]);
       xs.splice(i, 0, xs[i]);
