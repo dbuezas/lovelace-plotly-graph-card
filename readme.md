@@ -242,6 +242,92 @@ entities:
 
 Note that `5minute` period statistics are limited in time as normal recorder history is, contrary to other periods which keep data for years.
 
+## Offsets
+Offsets are useful to shift data in the temporal axis. For example, if you have a sensor that reports the forecasted temperature 3 hours from now, it means that the current value should be plotted in the future. With the `offset` attribute you can shift the data so it is placed in the correct position.
+Another possible use is to compare past data with the current one. For example, you can plot yesterday's temperature and the current one on top of each other.
+
+The `offset` flag can be specified in two places.
+**1)** When used at the top level of the configuration, it specifies how much "future" the graph shows by default. For example, if `hours_to_show` is 16 and `offset` is 3h, the graph shows the past 13 hours (16-3) plus the next 3 hours.
+**2)** When used at the trace level, it offsets the trace by the specified amount.
+
+
+```yaml
+type: custom:plotly-graph
+hours_to_show: 16
+offset: 3h
+entities:
+  - entity: sensor.current_temperature
+    line:
+      width: 3
+      color: orange
+  - entity: sensor.current_temperature
+    name: Temperature yesterday
+    offset: 1d
+    line:
+      width: 1
+      dash: dot
+      color: orange
+  - entity: sensor.temperature_12h_forecast
+    offset: 12h
+    name: Forecast temperature
+    line:
+      width: 1
+      dash: dot
+      color: grey
+```
+
+![Graph with offsets](docs/resources/offset-temperature.png)
+
+### Now line
+When using offsets, it is useful to have a line that indicates the current time. This can be done by using a lambda function that returns a line with the current time as x value and 0 and 1 as y values. The line is then hidden from the legend.
+
+```yaml
+type: custom:plotly-graph
+hours_to_show: 6
+offset: 3h
+entities:
+  - entity: sensor.forecast_temperature
+    yaxis: y1
+    offset: 3h
+  - entity: sensor.nothing_now
+    name: Now
+    yaxis: y9
+    showlegend: false
+    line:
+      width: 1
+      dash: dot
+      color: deepskyblue
+    lambda: |-
+      () => {
+        return {x:[Date.now(),Date.now()], y:[0,1]}
+      }
+layout:
+  yaxis9:
+    visible: false
+    fixedrange: true
+```
+
+![Graph with offsets and now-line](docs/resources/offset-nowline.png)
+
+## Duration
+Whenever a time duration can be specified, this is the notation to use:
+
+| Unit         | Suffix | Notes    |
+|--------------|--------|----------|
+| Milliseconds | `ms`   |          |
+| Seconds      | `s`    |          |
+| Minutes      | `m`    |          |
+| Hours        | `h`    |          |
+| Days         | `d`    |          |
+| Weeks        | `w`    |          |
+| Months       | `M`    | 30 days  |
+| Years        | `y`    | 365 days |
+
+Example:
+```yaml
+offset: 3h
+```
+
 ## Extra entity attributes:
 
 ```yaml
@@ -264,17 +350,6 @@ entities:
       <b>%{customdata.name}</b><br><i>%{x}</i><br>
       %{y}%{customdata.unit_of_measurement}
       <extra></extra>
-```
-
-### Offsets
-
-```yaml
-type: custom:plotly-graph
-offset: 6h
-entities:
-  - entity: sensor.weather_24h_forecast
-    offset: -1d
-  - entity: sensor.actual_temperature
 ```
 
 ### Extend_to_present
