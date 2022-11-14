@@ -456,7 +456,7 @@ export class PlotlyGraph extends HTMLElement {
             throw new Error(
               `period: "${entity.period}" is not valid. Use ${STATISTIC_PERIODS}`
             );
-          entity.extend_to_present ??= !!entity.statistic;
+          entity.extend_to_present ??= !entity.statistic;
         }
         const [oldAPI_entity, oldAPI_attribute] = entity.entity.split("::");
         if (oldAPI_attribute) {
