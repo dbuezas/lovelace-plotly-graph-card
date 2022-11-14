@@ -1,0 +1,22 @@
+name: Build on release
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Install dependencies
+      run: npm install
+
+    - name: Build
+      run: npm run build
+
+    - name: Upload release asset
+      uses: svenstaro/upload-release-action@v2
+      with:
+        file: dist/plotly-graph-card.js
