@@ -3,8 +3,8 @@
 
 # Plotly Graph Card
 
-<img src="demo.gif" width="300" align="left">
-<img src="demo2.gif" width="300" align="right">
+<img src="docs/resources/demo.gif" width="300" align="left">
+<img src="docs/resources/demo2.gif" width="300" align="right">
 
 <br clear="both"/>
 <br clear="both"/>
@@ -54,7 +54,7 @@ refresh_interval: 10
 
 ### Filling, line width, color
 
-![](example1.png)
+![](docs/resources/example1.png)
 
 ```yaml
 type: custom:plotly-graph
@@ -81,7 +81,7 @@ refresh_interval: 10 # in seconds
 
 ### Range Selector buttons
 
-![](rangeselector.apng)
+![](docs/resources/rangeselector.apng)
 
 ```yaml
 type: custom:plotly-graph
