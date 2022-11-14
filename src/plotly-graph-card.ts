@@ -208,6 +208,7 @@ export class PlotlyGraph extends HTMLElement {
           } else if (isEntityIdStatisticsConfig(entity)) {
             shouldFetch = true;
           }
+
           if (value !== undefined) {
             this.cache.add(
               entity,
@@ -220,8 +221,7 @@ export class PlotlyGraph extends HTMLElement {
       }
       if (shouldFetch) {
         this.fetch();
-      }
-      if (shouldPlot) {
+      } else if (shouldPlot) {
         this.plot();
       }
     }

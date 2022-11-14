@@ -48,7 +48,7 @@ export type EntityConfig = EntityIdConfig & {
   lambda?: (
     y: Datum[],
     x: Date[],
-    raw_entity: EntityState[]
+    raw_entity: CachedEntity[]
   ) => Datum[] | { x?: Datum[]; y?: Datum[] };
   show_value:
     | boolean
@@ -110,15 +110,19 @@ export function isEntityIdStatisticsConfig(
 }
 
 export type Timestamp = number;
-export type EntityState = (HassEntity | StatisticValue) & {
+
+export type CachedStateEntity = HassEntity & {
   fake_boundary_datapoint?: true;
   timestamp: Timestamp;
   value: number | string;
 };
-export type HistoryInRange = {
-  range: [number, number];
-  history: EntityState[];
+export type CachedStatisticsEntity = StatisticValue & {
+  fake_boundary_datapoint?: true;
+  timestamp: Timestamp;
+  value: number | string;
 };
+export type CachedEntity = CachedStateEntity | CachedStatisticsEntity;
+
 export type TimestampRange = Timestamp[]; // [Timestamp, Timestamp];
 
 export type HATheme = {
