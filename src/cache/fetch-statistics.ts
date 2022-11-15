@@ -29,7 +29,7 @@ async function fetchStatistics(
     .map((entry) => ({
       ...entry,
       timestamp: +new Date(entry.start),
-      value: "", //depends on the statistic, will be set in getHistory
+      value: null, //depends on the statistic, will be set in getHistory
     }))
     .filter(({ timestamp }) => timestamp);
 }
