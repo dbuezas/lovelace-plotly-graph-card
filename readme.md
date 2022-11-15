@@ -584,8 +584,5 @@ refresh_interval: 5 # update every 5 seconds
 
 # Release
 
-- `npm version minor`
-- git push
-- click on releases/new draft from tag in github
-
-Automated release pending.
+- Click on releases/new draft from tag in github
+- The bundle will be built by the CI action thanks to @zanna-37 in #143
