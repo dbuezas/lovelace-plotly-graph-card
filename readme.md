@@ -243,13 +243,13 @@ entities:
 Note that `5minute` period statistics are limited in time as normal recorder history is, contrary to other periods which keep data for years.
 
 ## Offsets
+
 Offsets are useful to shift data in the temporal axis. For example, if you have a sensor that reports the forecasted temperature 3 hours from now, it means that the current value should be plotted in the future. With the `offset` attribute you can shift the data so it is placed in the correct position.
 Another possible use is to compare past data with the current one. For example, you can plot yesterday's temperature and the current one on top of each other.
 
 The `offset` flag can be specified in two places.
 **1)** When used at the top level of the configuration, it specifies how much "future" the graph shows by default. For example, if `hours_to_show` is 16 and `offset` is 3h, the graph shows the past 13 hours (16-3) plus the next 3 hours.
 **2)** When used at the trace level, it offsets the trace by the specified amount.
-
 
 ```yaml
 type: custom:plotly-graph
@@ -279,6 +279,7 @@ entities:
 ![Graph with offsets](docs/resources/offset-temperature.png)
 
 ### Now line
+
 When using offsets, it is useful to have a line that indicates the current time. This can be done by using a lambda function that returns a line with the current time as x value and 0 and 1 as y values. The line is then hidden from the legend.
 
 ```yaml
@@ -310,10 +311,11 @@ layout:
 ![Graph with offsets and now-line](docs/resources/offset-nowline.png)
 
 ## Duration
+
 Whenever a time duration can be specified, this is the notation to use:
 
 | Unit         | Suffix | Notes    |
-|--------------|--------|----------|
+| ------------ | ------ | -------- |
 | Milliseconds | `ms`   |          |
 | Seconds      | `s`    |          |
 | Minutes      | `m`    |          |
@@ -324,6 +326,7 @@ Whenever a time duration can be specified, this is the notation to use:
 | Years        | `y`    | 365 days |
 
 Example:
+
 ```yaml
 offset: 3h
 ```
@@ -543,7 +546,7 @@ More here: https://developers.home-assistant.io/docs/api/rest/ under `/api/histo
 
 Caveats:
 
-1. This configuration will be ignored (will be true) while fetching [Attribute Values](#Attribute-Values).
+1. This configuration will be ignored (will be false) while fetching [Attribute Values](#Attribute-Values).
 
 ```yaml
 minimal_response: false # defaults to true
