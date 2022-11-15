@@ -124,11 +124,14 @@ export default class Cache {
   }
   getHistory(entity: EntityConfig) {
     let key = getEntityKey(entity);
-    return this.histories[key] || [];
+    const history = this.histories[key] || [];
+    return history.map((datum) => ({
+      ...datum,
+      timestamp: datum.timestamp + entity.offset,
+    }));
   }
   async update(
     range: TimestampRange,
-    removeOutsideRange: boolean,
     entities: EntityConfig[],
     hass: HomeAssistant,
     significant_changes_only: boolean,
@@ -138,13 +141,17 @@ export default class Cache {
     return (this.busy = this.busy
       .catch(() => {})
       .then(async () => {
-        if (removeOutsideRange) {
-          this.removeOutsideRange(range);
-        }
-        const promises = entities.flatMap(async (entity) => {
+        const promises = entities.map(async (entity) => {
           const entityKey = getEntityKey(entity);
           this.ranges[entityKey] ??= [];
-          const rangesToFetch = subtractRanges([range], this.ranges[entityKey]);
+          const offsetRange = [
+            range[0] - entity.offset,
+            range[1] - entity.offset,
+          ];
+          const rangesToFetch = subtractRanges(
+            [offsetRange],
+            this.ranges[entityKey]
+          );
           for (const aRange of rangesToFetch) {
             const fetchedHistory = await fetchSingleRange(
               hass,
@@ -160,31 +167,5 @@ export default class Cache {
 
         await Promise.all(promises);
       }));
-  }
-
-  removeOutsideRange(range: TimestampRange) {
-    this.ranges = mapValues(this.ranges, (ranges) =>
-      subtractRanges(ranges, [
-        [Number.NEGATIVE_INFINITY, range[0] - 1],
-        [range[1] + 1, Number.POSITIVE_INFINITY],
-      ])
-    );
-    this.histories = mapValues(this.histories, (history) => {
-      let first: EntityState | undefined;
-      let last: EntityState | undefined;
-      const newHistory = history.filter((datum) => {
-        if (datum.timestamp <= range[0]) first = datum;
-        else if (!last && datum.timestamp >= range[1]) last = datum;
-        else return true;
-        return false;
-      });
-      if (first) {
-        newHistory.unshift(first);
-      }
-      if (last) {
-        newHistory.push(last);
-      }
-      return newHistory;
-    });
   }
 }

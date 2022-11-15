@@ -8,10 +8,12 @@ import Plotly from "./plotly";
 import {
   Config,
   EntityConfig,
+  EntityState,
   InputConfig,
   isEntityIdAttrConfig,
   isEntityIdStateConfig,
   isEntityIdStatisticsConfig,
+  TimestampRange,
 } from "./types";
 import Cache from "./cache/Cache";
 import getThemedLayout from "./themed-layout";
@@ -49,11 +51,32 @@ function patchLonelyDatapoints(xs: Datum[], ys: Datum[]) {
   }
 }
 
-function extendLastDatapointToPresent(xs: Datum[], ys: Datum[]) {
+function extendLastDatapointToPresent(
+  xs: Datum[],
+  ys: Datum[],
+  offset: number
+) {
   if (xs.length === 0) return;
   const last = JSON.parse(JSON.stringify(ys[ys.length - 1]));
-  xs.push(new Date());
+  xs.push(new Date(Date.now() + offset));
   ys.push(last);
+}
+function removeOutOfRange(xs: Datum[], ys: Datum[], range: TimestampRange) {
+  let first = -1;
+  let last = -1;
+
+  for (let i = 0; i < xs.length; i++) {
+    if (xs[i]! < range[0]) first = i;
+    if (xs[i]! > range[1]) last = i;
+  }
+  if (last > -1) {
+    xs = xs.splice(last);
+    ys = ys.splice(last);
+  }
+  if (first > -1) {
+    xs = xs.splice(0, first);
+    ys = ys.splice(0, first);
+  }
 }
 
 console.info(
@@ -199,8 +222,6 @@ export class PlotlyGraph extends HTMLElement {
         this.fetch();
       }
       if (shouldPlot) {
-        if (!this.isBrowsing)
-          this.cache.removeOutsideRange(this.getAutoFetchRange());
         this.plot();
       }
     }
@@ -252,7 +273,10 @@ export class PlotlyGraph extends HTMLElement {
   }
   getAutoFetchRange() {
     const ms = this.parsed_config.hours_to_show * 60 * 60 * 1000;
-    return [+new Date() - ms, +new Date()] as [number, number];
+    return [
+      +new Date() - ms + this.parsed_config.offset,
+      +new Date() + this.parsed_config.offset,
+    ] as [number, number];
   }
   getAutoFetchRangeWithValueMargins() {
     const [start, end] = this.getAutoFetchRange();
@@ -290,20 +314,18 @@ export class PlotlyGraph extends HTMLElement {
       return +parseISO(date);
     });
   }
-  async enterBrowsingMode() {
+  enterBrowsingMode = () => {
     this.isBrowsing = true;
     this.resetButtonEl.classList.remove("hidden");
-  }
+  };
   exitBrowsingMode = async () => {
     this.isBrowsing = false;
     this.resetButtonEl.classList.add("hidden");
     this.withoutRelayout(async () => {
-      await Plotly.relayout(this.contentEl, {
-        uirevision: Math.random(), // to trigger the autoranges in all y-yaxes
-        xaxis: { range: this.getAutoFetchRangeWithValueMargins() }, // to reset xaxis to hours_to_show quickly, before refetching
-      });
+      await this.plot(); // to reset xaxis to hours_to_show quickly, before refetching
+      this.cache.clearCache(); // so that when the user zooms out and autoranges, not more that what's visible will be autoranged
+      await this.fetch();
     });
-    await this.fetch();
   };
   onRestyle = async () => {
     // trace visibility changed, fetch missing traces
@@ -368,6 +390,7 @@ export class PlotlyGraph extends HTMLElement {
       title: config.title,
       hours_to_show: config.hours_to_show ?? 1,
       refresh_interval: config.refresh_interval ?? "auto",
+      offset: parseTimeDuration(config.offset ?? "0s"),
       entities: config.entities.map((entityIn, entityIdx) => {
         if (typeof entityIn === "string") entityIn = { entity: entityIn };
 
@@ -386,6 +409,7 @@ export class PlotlyGraph extends HTMLElement {
           config.defaults?.entity,
           entityIn
         );
+        entity.offset = parseTimeDuration(entityIn.offset ?? "0s");
         if (entity.lambda) {
           entity.lambda = window.eval(entity.lambda);
         }
@@ -432,6 +456,7 @@ export class PlotlyGraph extends HTMLElement {
             throw new Error(
               `period: "${entity.period}" is not valid. Use ${STATISTIC_PERIODS}`
             );
+          entity.extend_to_present ??= !entity.statistic;
         }
         const [oldAPI_entity, oldAPI_attribute] = entity.entity.split("::");
         if (oldAPI_attribute) {
@@ -487,8 +512,7 @@ export class PlotlyGraph extends HTMLElement {
     const was = this.parsed_config;
     this.parsed_config = newConfig;
     const is = this.parsed_config;
-    if (!this.contentEl) return;
-    if (is.hours_to_show !== was?.hours_to_show) {
+    if (is.hours_to_show !== was?.hours_to_show || is.offset !== was?.offset) {
       this.exitBrowsingMode();
     }
     await this.fetch();
@@ -530,7 +554,6 @@ export class PlotlyGraph extends HTMLElement {
     try {
       await this.cache.update(
         range,
-        !this.isBrowsing,
         visibleEntities,
         this.hass,
         this.parsed_config.minimal_response,
@@ -593,7 +616,14 @@ export class PlotlyGraph extends HTMLElement {
 
       let xs: Datum[] = xsIn;
       let ys = ysIn;
-      extendLastDatapointToPresent(xs, ys);
+      if (trace.extend_to_present) {
+        extendLastDatapointToPresent(xs, ys, trace.offset);
+      }
+      if (!this.isBrowsing) {
+        // to ensure the y axis autorange containst the yaxis
+        removeOutOfRange(xs, ys, this.getAutoFetchRangeWithValueMargins());
+      }
+
       if (trace.lambda) {
         try {
           const r = trace.lambda(ysIn, xsIn, history);
@@ -662,7 +692,11 @@ export class PlotlyGraph extends HTMLElement {
       units.map((unit, i) => ["yaxis" + (i == 0 ? "" : i + 1), { title: unit }])
     );
     const layout = merge(
-      { uirevision: true },
+      {
+        uirevision: this.isBrowsing
+          ? this.contentEl.layout.uirevision
+          : Math.random(), // to trigger the autoranges in all y-yaxes
+      },
       {
         xaxis: {
           range: this.isBrowsing
