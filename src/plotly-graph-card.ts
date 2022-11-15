@@ -611,6 +611,7 @@ export class PlotlyGraph extends HTMLElement {
       if (isEntityIdStatisticsConfig(trace)) name += ` (${trace.statistic}) `;
       const xsIn = history.map(({ timestamp }) => new Date(timestamp));
       const ysIn: Datum[] = history.map(({ value }) =>
+        // see https://github.com/dbuezas/lovelace-plotly-graph-card/issues/146
         value === "unavailable" ? null : value
       );
 
