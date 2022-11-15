@@ -610,7 +610,9 @@ export class PlotlyGraph extends HTMLElement {
       if (isEntityIdAttrConfig(trace)) name += ` (${trace.attribute}) `;
       if (isEntityIdStatisticsConfig(trace)) name += ` (${trace.statistic}) `;
       const xsIn = history.map(({ timestamp }) => new Date(timestamp));
-      const ysIn: Datum[] = history.map(({ value }) => value);
+      const ysIn: Datum[] = history.map(({ value }) =>
+        value === "unavailable" ? null : value
+      );
 
       let xs: Datum[] = xsIn;
       let ys = ysIn;
