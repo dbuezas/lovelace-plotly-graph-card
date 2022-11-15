@@ -1,11 +1,10 @@
 import { HomeAssistant } from "custom-card-helpers";
 import {
+  CachedEntity,
   EntityIdAttrConfig,
   EntityIdStateConfig,
-  EntityState,
   HassEntity,
   isEntityIdAttrConfig,
-  isEntityIdStateConfig,
 } from "../types";
 
 async function fetchStates(
@@ -14,16 +13,14 @@ async function fetchStates(
   [start, end]: [Date, Date],
   significant_changes_only?: boolean,
   minimal_response?: boolean
-): Promise<EntityState[]> {
-  const no_attributes_query = isEntityIdStateConfig(entity)
-    ? "no_attributes&"
-    : "";
+): Promise<CachedEntity[]> {
+  const no_attributes_query = isEntityIdAttrConfig(entity)
+    ? ""
+    : "no_attributes&";
   const minimal_response_query =
-    minimal_response && isEntityIdStateConfig(entity)
-      ? "minimal_response&"
-      : "";
+    minimal_response && isEntityIdAttrConfig(entity) ? "" : "minimal_response&";
   const significant_changes_only_query =
-    significant_changes_only && isEntityIdStateConfig(entity) ? "1" : "0";
+    significant_changes_only && isEntityIdAttrConfig(entity) ? "0" : "1";
   const uri =
     `history/period/${start.toISOString()}?` +
     `filter_entity_id=${entity.entity}&` +
@@ -43,14 +40,11 @@ async function fetchStates(
       )}`
     );
   }
-  if (!list) list = [];
-  return list
+  return (list || [])
     .map((entry) => ({
       ...entry,
-      value: isEntityIdAttrConfig(entity)
-        ? entry.attributes[entity.attribute] || null
-        : entry.state,
       timestamp: +new Date(entry.last_updated || entry.last_changed),
+      value: "", // may be state or an attribute. Will be set when getting the history
     }))
     .filter(({ timestamp }) => timestamp);
 }

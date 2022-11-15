@@ -8,9 +8,12 @@ import {
   EntityConfig,
   isEntityIdStateConfig,
   isEntityIdStatisticsConfig,
-  HistoryInRange,
-  EntityState,
+  CachedEntity,
+  CachedStatisticsEntity,
+  CachedStateEntity,
 } from "../types";
+import { groupBy } from "lodash";
+import { StatisticValue } from "../recorder-types";
 
 export function mapValues<T, S>(
   o: Record<string, T>,
@@ -24,7 +27,10 @@ async function fetchSingleRange(
   [startT, endT]: number[],
   significant_changes_only: boolean,
   minimal_response: boolean
-): Promise<HistoryInRange> {
+): Promise<{
+  range: [number, number];
+  history: CachedEntity[];
+}> {
   // We fetch slightly more than requested (i.e the range visible in the screen). The reason is the following:
   // When fetching data in a range `[startT,endT]`, Home Assistant adds a fictitious datapoint at
   // the start of the fetched period containing a copy of the first datapoint that occurred before
@@ -65,7 +71,7 @@ async function fetchSingleRange(
   const start = new Date(startT - 1);
   endT = Math.min(endT, Date.now());
   const end = new Date(endT);
-  let history: EntityState[];
+  let history: CachedEntity[];
   if (isEntityIdStatisticsConfig(entity)) {
     history = await fetchStatistics(hass, entity, [start, end]);
   } else {
@@ -90,9 +96,9 @@ async function fetchSingleRange(
 
 export function getEntityKey(entity: EntityConfig) {
   if (isEntityIdAttrConfig(entity)) {
-    return `${entity.entity}::${entity.attribute}`;
+    return `${entity.entity}::attribute`;
   } else if (isEntityIdStatisticsConfig(entity)) {
-    return `${entity.entity}::statistics::${entity.statistic}::${entity.period}`;
+    return `${entity.entity}::statistics::${entity.period}`;
   } else if (isEntityIdStateConfig(entity)) {
     return entity.entity;
   }
@@ -102,10 +108,10 @@ export function getEntityKey(entity: EntityConfig) {
 const MIN_SAFE_TIMESTAMP = Date.parse("0001-01-02T00:00:00.000Z");
 export default class Cache {
   ranges: Record<string, TimestampRange[]> = {};
-  histories: Record<string, EntityState[]> = {};
+  histories: Record<string, CachedEntity[]> = {};
   busy = Promise.resolve(); // mutex
 
-  add(entity: EntityConfig, states: EntityState[], range: [number, number]) {
+  add(entity: EntityConfig, states: CachedEntity[], range: [number, number]) {
     const entityKey = getEntityKey(entity);
     let h = (this.histories[entityKey] ??= []);
     h.push(...states);
@@ -122,13 +128,33 @@ export default class Cache {
     this.ranges = {};
     this.histories = {};
   }
-  getHistory(entity: EntityConfig) {
+  getHistory(entity: EntityConfig): CachedEntity[] {
     let key = getEntityKey(entity);
     const history = this.histories[key] || [];
-    return history.map((datum) => ({
-      ...datum,
-      timestamp: datum.timestamp + entity.offset,
-    }));
+    if (isEntityIdStatisticsConfig(entity)) {
+      return (history as CachedStatisticsEntity[]).map((entry) => ({
+        ...entry,
+        timestamp: entry.timestamp + entity.offset,
+        value: entry[entity.statistic],
+      }));
+    }
+    if (isEntityIdAttrConfig(entity)) {
+      return (history as CachedStateEntity[]).map((entry) => ({
+        ...entry,
+        timestamp: entry.timestamp + entity.offset,
+        value: entry.attributes[entity.attribute],
+      }));
+    }
+    if (isEntityIdStateConfig(entity)) {
+      return (history as CachedStateEntity[]).map((entry) => ({
+        ...entry,
+        timestamp: entry.timestamp + entity.offset,
+        value: entry.state,
+      }));
+    }
+    throw new Error(
+      `Unrecognised fetch type for ${(entity as EntityConfig).entity}`
+    );
   }
   async update(
     range: TimestampRange,
@@ -137,31 +163,37 @@ export default class Cache {
     significant_changes_only: boolean,
     minimal_response: boolean
   ) {
-    range = range.map((n) => Math.max(MIN_SAFE_TIMESTAMP, n)); // HA API can't handle negative years
     return (this.busy = this.busy
       .catch(() => {})
       .then(async () => {
-        const promises = entities.map(async (entity) => {
-          const entityKey = getEntityKey(entity);
-          this.ranges[entityKey] ??= [];
-          const offsetRange = [
-            range[0] - entity.offset,
-            range[1] - entity.offset,
-          ];
-          const rangesToFetch = subtractRanges(
-            [offsetRange],
-            this.ranges[entityKey]
-          );
-          for (const aRange of rangesToFetch) {
-            const fetchedHistory = await fetchSingleRange(
-              hass,
-              entity,
-              aRange,
-              significant_changes_only,
-              minimal_response
+        range = range.map((n) => Math.max(MIN_SAFE_TIMESTAMP, n)); // HA API can't handle negative years
+        const parallelFetches = Object.values(groupBy(entities, getEntityKey));
+        const promises = parallelFetches.flatMap(async (entityGroup) => {
+          // Each entity in entityGroup will result in exactly the same fetch
+          // But these may differ once the offsets PR is merged
+          // Making these fetches sequentially ensures that the already fetched ranges of each
+          // request are not fetched more than once
+          for (const entity of entityGroup) {
+            const entityKey = getEntityKey(entity);
+            this.ranges[entityKey] ??= [];
+            const offsetRange = [
+              range[0] - entity.offset,
+              range[1] - entity.offset,
+            ];
+            const rangesToFetch = subtractRanges(
+              [offsetRange],
+              this.ranges[entityKey]
             );
-            if (fetchedHistory === null) continue;
-            this.add(entity, fetchedHistory.history, fetchedHistory.range);
+            for (const aRange of rangesToFetch) {
+              const fetchedHistory = await fetchSingleRange(
+                hass,
+                entity,
+                aRange,
+                significant_changes_only,
+                minimal_response
+              );
+              this.add(entity, fetchedHistory.history, fetchedHistory.range);
+            }
           }
         });
 

@@ -8,7 +8,6 @@ import Plotly from "./plotly";
 import {
   Config,
   EntityConfig,
-  EntityState,
   InputConfig,
   isEntityIdAttrConfig,
   isEntityIdStateConfig,
@@ -208,6 +207,7 @@ export class PlotlyGraph extends HTMLElement {
           } else if (isEntityIdStatisticsConfig(entity)) {
             shouldFetch = true;
           }
+
           if (value !== undefined) {
             this.cache.add(
               entity,
@@ -220,8 +220,7 @@ export class PlotlyGraph extends HTMLElement {
       }
       if (shouldFetch) {
         this.fetch();
-      }
-      if (shouldPlot) {
+      } else if (shouldPlot) {
         this.plot();
       }
     }
@@ -229,7 +228,6 @@ export class PlotlyGraph extends HTMLElement {
   }
   connectedCallback() {
     this.setupListeners();
-    this.fetch().then(() => (this.contentEl.style.visibility = ""));
   }
   async withoutRelayout(fn: Function) {
     this.isInternalRelayout++;
@@ -741,14 +739,15 @@ export class PlotlyGraph extends HTMLElement {
     if (layout.paper_bgcolor) {
       this.titleEl.style.background = layout.paper_bgcolor as string;
     }
-    await this.withoutRelayout(() =>
-      Plotly.react(
+    await this.withoutRelayout(async () => {
+      await Plotly.react(
         this.contentEl,
         this.getData(),
         layout,
         this.getPlotlyConfig()
-      )
-    );
+      );
+      this.contentEl.style.visibility = "";
+    });
   }
   // The height of your card. Home Assistant uses this to automatically
   // distribute all cards over the available columns.
