@@ -114,12 +114,12 @@ export type Timestamp = number;
 export type CachedStateEntity = HassEntity & {
   fake_boundary_datapoint?: true;
   timestamp: Timestamp;
-  value: number | string;
+  value: number | string | null;
 };
 export type CachedStatisticsEntity = StatisticValue & {
   fake_boundary_datapoint?: true;
   timestamp: Timestamp;
-  value: number | string;
+  value: number | string | null;
 };
 export type CachedEntity = CachedStateEntity | CachedStatisticsEntity;
 

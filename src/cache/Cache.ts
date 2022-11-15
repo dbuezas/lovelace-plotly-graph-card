@@ -98,7 +98,7 @@ export function getEntityKey(entity: EntityConfig) {
   if (isEntityIdAttrConfig(entity)) {
     return `${entity.entity}::attribute`;
   } else if (isEntityIdStatisticsConfig(entity)) {
-    return `${entity.entity}::statistics::${entity.statistic}::${entity.period}`;
+    return `${entity.entity}::statistics::${entity.period}`;
   } else if (isEntityIdStateConfig(entity)) {
     return entity.entity;
   }
@@ -132,7 +132,11 @@ export default class Cache {
     let key = getEntityKey(entity);
     const history = this.histories[key] || [];
     if (isEntityIdStatisticsConfig(entity)) {
-      return history as CachedStatisticsEntity[];
+      return (history as CachedStatisticsEntity[]).map((entry) => ({
+        ...entry,
+        timestamp: entry.timestamp + entity.offset,
+        value: entry[entity.statistic],
+      }));
     }
     if (isEntityIdAttrConfig(entity)) {
       return (history as CachedStateEntity[]).map((entry) => ({
@@ -159,12 +163,16 @@ export default class Cache {
     significant_changes_only: boolean,
     minimal_response: boolean
   ) {
-    range = range.map((n) => Math.max(MIN_SAFE_TIMESTAMP, n)); // HA API can't handle negative years
     return (this.busy = this.busy
       .catch(() => {})
       .then(async () => {
+        range = range.map((n) => Math.max(MIN_SAFE_TIMESTAMP, n)); // HA API can't handle negative years
         const parallelFetches = Object.values(groupBy(entities, getEntityKey));
         const promises = parallelFetches.flatMap(async (entityGroup) => {
+          // Each entity in entityGroup will result in exactly the same fetch
+          // But these may differ once the offsets PR is merged
+          // Making these fetches sequentially ensures that the already fetched ranges of each
+          // request are not fetched more than once
           for (const entity of entityGroup) {
             const entityKey = getEntityKey(entity);
             this.ranges[entityKey] ??= [];
@@ -185,7 +193,6 @@ export default class Cache {
                 minimal_response
               );
               this.add(entity, fetchedHistory.history, fetchedHistory.range);
-              console.log(entityKey, fetchedHistory.history);
             }
           }
         });

@@ -44,7 +44,7 @@ async function fetchStates(
     .map((entry) => ({
       ...entry,
       timestamp: +new Date(entry.last_updated || entry.last_changed),
-      value: entry.state,
+      value: "", // may be state or an attribute. Will be set when getting the history
     }))
     .filter(({ timestamp }) => timestamp);
 }
