@@ -18,9 +18,13 @@ async function fetchStates(
     ? ""
     : "no_attributes&";
   const minimal_response_query =
-    minimal_response && isEntityIdAttrConfig(entity) ? "" : "minimal_response&";
+    isEntityIdAttrConfig(entity) || minimal_response == false
+      ? ""
+      : "minimal_response&";
   const significant_changes_only_query =
-    significant_changes_only && isEntityIdAttrConfig(entity) ? "0" : "1";
+    isEntityIdAttrConfig(entity) || significant_changes_only == false
+      ? "0"
+      : "1";
   const uri =
     `history/period/${start.toISOString()}?` +
     `filter_entity_id=${entity.entity}&` +
