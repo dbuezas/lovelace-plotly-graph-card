@@ -3,8 +3,8 @@
 
 # Plotly Graph Card
 
-<img src="docs/resources/demo.gif" width="300" align="left">
-<img src="docs/resources/demo2.gif" width="300" align="right">
+<img src="https://user-images.githubusercontent.com/777196/202489269-184d2f30-e834-4bea-8104-5aedb7d6f2d0.gif" width="300" align="left">
+<img src="https://user-images.githubusercontent.com/777196/202489368-234c7fbd-b33d-4fd0-8885-80f9e704a191.gif" width="300" align="right">
 
 <br clear="both"/>
 <br clear="both"/>
