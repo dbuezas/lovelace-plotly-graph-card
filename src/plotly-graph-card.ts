@@ -368,8 +368,7 @@ export class PlotlyGraph extends HTMLElement {
         null;
     if (colorScheme === null) {
       throw new Error(
-        `color_scheme: "${
-          config.color_scheme
+        `color_scheme: "${config.color_scheme
         }" is not valid. Valid are an array of colors (see readme) or ${Object.keys(
           colorSchemes
         )}`
@@ -454,8 +453,8 @@ export class PlotlyGraph extends HTMLElement {
             throw new Error(
               `period: "${entity.period}" is not valid. Use ${STATISTIC_PERIODS}`
             );
-          entity.extend_to_present ??= !entity.statistic;
         }
+        entity.extend_to_present ??= !entity.statistic;
         const [oldAPI_entity, oldAPI_attribute] = entity.entity.split("::");
         if (oldAPI_attribute) {
           entity.entity = oldAPI_entity;
