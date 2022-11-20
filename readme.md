@@ -405,7 +405,10 @@ note: `ys[0]` represents the first "known" value, which is the value furthest to
   lambda: |-
     (ys) => {
       let accumulator = 0;
-      return ys.map(y => accumulator + y)
+      return ys.map(y => {
+        accumulator = accumulator + y;
+        return accumulator;
+      })
     }
 ```
 
