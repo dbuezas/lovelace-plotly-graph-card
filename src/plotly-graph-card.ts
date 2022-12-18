@@ -34,6 +34,7 @@ const isNumber = (y: any) => !Number.isNaN(parseFloat(y));
 
 function patchLonelyDatapoints(xs: Datum[], ys: Datum[]) {
   /* Ghost traces when data has single numeric value sandwiched between unavailable, unknown, etc ones
+     Plotly issue: https://github.com/plotly/plotly.js/issues/6407
      see: https://github.com/dbuezas/lovelace-plotly-graph-card/issues/103
      and: https://github.com/dbuezas/lovelace-plotly-graph-card/issues/124
   */
