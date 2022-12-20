@@ -57,7 +57,7 @@ function extendLastDatapointToPresent(
   offset: number
 ) {
   if (xs.length === 0) return;
-  const last = JSON.parse(JSON.stringify(ys[ys.length - 1]));
+  const last = ys[ys.length - 1];
   xs.push(new Date(Date.now() + offset));
   ys.push(last);
 }
