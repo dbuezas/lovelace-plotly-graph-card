@@ -407,7 +407,7 @@ export class PlotlyGraph extends HTMLElement {
           config.defaults?.entity,
           entityIn
         );
-        entity.offset = parseTimeDuration(entityIn.offset ?? "0s");
+        entity.offset = parseTimeDuration(entity.offset ?? "0s");
         if (entity.lambda) {
           entity.lambda = window.eval(entity.lambda);
         }
