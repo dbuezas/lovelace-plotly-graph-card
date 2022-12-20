@@ -70,12 +70,12 @@ function removeOutOfRange(xs: Datum[], ys: Datum[], range: TimestampRange) {
     if (xs[i]! > range[1]) last = i;
   }
   if (last > -1) {
-    xs = xs.splice(last);
-    ys = ys.splice(last);
+    xs.splice(last);
+    ys.splice(last);
   }
   if (first > -1) {
-    xs = xs.splice(0, first);
-    ys = ys.splice(0, first);
+    xs.splice(0, first);
+    ys.splice(0, first);
   }
 }
 
