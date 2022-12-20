@@ -1,4 +1,4 @@
-const timeUnits = {
+export const timeUnits = {
   ms: 1,
   s: 1000,
   m: 1000 * 60,

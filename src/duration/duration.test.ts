@@ -29,7 +29,7 @@ describe("data-ranges", () => {
     expect(parseTimeDuration("1.5s")).toBe(1.5 * s);
   });
   it("Should parse undefined", () => {
-    expect(parseTimeDuration(undefined)).toBe(0);
+    expect(() => parseTimeDuration(undefined)).toThrow();
   });
   it("Should throw when it can't parse", () => {
     // @ts-expect-error
