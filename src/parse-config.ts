@@ -1,5 +1,11 @@
 import { getIsPureObject } from "./utils";
-import { STATISTIC_PERIODS, STATISTIC_TYPES } from "./recorder-types";
+import {
+  AutoPeriodConfig,
+  StatisticPeriod,
+  StatisticType,
+  STATISTIC_PERIODS,
+  STATISTIC_TYPES,
+} from "./recorder-types";
 import colorSchemes, {
   ColorSchemeArray,
   isColorSchemeArray,
@@ -27,13 +33,75 @@ function parseColorScheme(config: InputConfig): ColorSchemeArray {
   return colorScheme;
 }
 
+function getIsAutoPeriodConfig(periodObj: any): periodObj is AutoPeriodConfig {
+  if (!getIsPureObject(periodObj)) return false;
+  let lastDuration = -1;
+  for (const durationStr in periodObj) {
+    const period = periodObj[durationStr];
+    const duration = parseTimeDuration(durationStr as any); // will throw if not a valud duration
+    if (!STATISTIC_PERIODS.includes(period as any)) {
+      throw new Error(
+        `Error parsing automatic period config: "${period}" not expected. Must be ${STATISTIC_PERIODS}`
+      );
+    }
+    if (duration <= lastDuration) {
+      throw new Error(
+        `Error parsing automatic period config: ranges must be sorted in ascending order, "${durationStr}" not expected`
+      );
+    }
+    lastDuration = duration;
+  }
+  return true;
+}
+function parseStatistics(entity: InputConfig["entities"][0]) {
+  if (!("statistic" in entity || "period" in entity)) return {};
+  const statistic: StatisticType = entity.statistic || "mean";
+
+  if (!STATISTIC_TYPES.includes(statistic))
+    throw new Error(
+      `statistic: "${entity.statistic}" is not valid. Use ${STATISTIC_TYPES}`
+    );
+  if (getIsAutoPeriodConfig(entity.period)) {
+    return {
+      statistic,
+      autoPeriod: entity.period,
+      period: undefined,
+    };
+  }
+  if (entity.period === "auto") {
+    return {
+      statistic,
+      autoPeriod: {
+        "0s": "5minute",
+        "1d": "hour",
+        "7d": "day",
+        "28d": "week",
+        "12M": "month",
+      },
+      period: undefined,
+    };
+  }
+  const period: StatisticPeriod = entity.period || "hour";
+  if (!STATISTIC_PERIODS.includes(period))
+    throw new Error(
+      `period: "${entity.period}" is not valid. Use ${STATISTIC_PERIODS}`
+    );
+  return {
+    statistic,
+    period,
+    autoPeriod: undefined,
+  };
+}
 function parseEntities(config: InputConfig): EntityConfig[] {
   const colorScheme = parseColorScheme(config);
   return config.entities.map((entityIn, entityIdx) => {
     if (typeof entityIn === "string") entityIn = { entity: entityIn };
-
-    // being lazy on types here. The merged object is temporarily not a real Config
-    const entity: any = merge(
+    const [oldAPI_entity, oldAPI_attribute] = entityIn.entity.split("::");
+    if (oldAPI_attribute) {
+      entityIn.entity = oldAPI_entity;
+      entityIn.attribute = oldAPI_attribute;
+    }
+    entityIn = merge(
       {
         hovertemplate: `<b>%{customdata.name}</b><br><i>%{x}</i><br>%{y}%{customdata.unit_of_measurement}<extra></extra>`,
         mode: "lines",
@@ -47,61 +115,16 @@ function parseEntities(config: InputConfig): EntityConfig[] {
       config.defaults?.entity,
       entityIn
     );
-    entity.offset = parseTimeDuration(entity.offset ?? "0s");
-    if (entity.lambda) {
-      entity.lambda = window.eval(entity.lambda);
-    }
-    if ("statistic" in entity || "period" in entity) {
-      const validStatistic = STATISTIC_TYPES.includes(entity.statistic!);
-      if (entity.statistic === undefined) entity.statistic = "mean";
-      else if (!validStatistic)
-        throw new Error(
-          `statistic: "${entity.statistic}" is not valid. Use ${STATISTIC_TYPES}`
-        );
-      // @TODO: cleanup how this is done
-      if (entity.period === "auto") {
-        entity.period = {
-          "0s": "5minute",
-          "1d": "hour",
-          "7d": "day",
-          "28d": "week",
-          "12M": "month",
-        };
-      }
-      if (getIsPureObject(entity.period)) {
-        entity.autoPeriod = entity.period;
-        entity.period = undefined;
-        let lastDuration = -1;
-        for (const durationStr in entity.autoPeriod) {
-          const period = entity.autoPeriod[durationStr];
-          const duration = parseTimeDuration(durationStr as any); // will throw if not a valud duration
-          if (!STATISTIC_PERIODS.includes(period as any)) {
-            throw new Error(
-              `Error parsing automatic period config: "${period}" not expected. Must be ${STATISTIC_PERIODS}`
-            );
-          }
-          if (duration <= lastDuration) {
-            throw new Error(
-              `Error parsing automatic period config: ranges must be sorted in ascending order, "${durationStr}" not expected`
-            );
-          }
-          lastDuration = duration;
-        }
-      }
-      const validPeriod = STATISTIC_PERIODS.includes(entity.period);
-      if (entity.period === undefined) entity.period = "hour";
-      else if (!validPeriod)
-        throw new Error(
-          `period: "${entity.period}" is not valid. Use ${STATISTIC_PERIODS}`
-        );
-    }
-    entity.extend_to_present ??= !entity.statistic;
-    const [oldAPI_entity, oldAPI_attribute] = entity.entity.split("::");
-    if (oldAPI_attribute) {
-      entity.entity = oldAPI_entity;
-      entity.attribute = oldAPI_attribute;
-    }
-    return entity as EntityConfig;
+
+    const statisticConfig = parseStatistics(entityIn);
+    return {
+      ...(entityIn as any), // ToDo: make this type safe
+      offset: parseTimeDuration(entityIn.offset ?? "0s"),
+      lambda: entityIn.lambda && window.eval(entityIn.lambda),
+      ...statisticConfig,
+      extend_to_present:
+        entityIn.extend_to_present ?? !statisticConfig.statistic,
+    };
   });
 }
 
