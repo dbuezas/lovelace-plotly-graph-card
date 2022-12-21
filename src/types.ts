@@ -30,6 +30,7 @@ export type InputConfig = {
           right_margin: number;
         };
     offset?: TimeDurationStr;
+    extend_to_present?: boolean;
   } & Partial<Plotly.PlotData>)[];
   defaults?: {
     entity?: Partial<Plotly.PlotData>;
