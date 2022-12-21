@@ -26,27 +26,6 @@ import parseConfig from "./parse-config";
 
 const componentName = isProduction ? "plotly-graph" : "plotly-graph-dev";
 
-const isNumber = (y: any) => !Number.isNaN(parseFloat(y));
-
-function patchLonelyDatapoints(xs: Datum[], ys: Datum[]) {
-  /* Ghost traces when data has single numeric value sandwiched between unavailable, unknown, etc ones
-     Plotly issue: https://github.com/plotly/plotly.js/issues/6407
-     see: https://github.com/dbuezas/lovelace-plotly-graph-card/issues/103
-     and: https://github.com/dbuezas/lovelace-plotly-graph-card/issues/124
-  */
-  if (ys.length === 1) {
-    // A single lonely point won't create ghosts, and this fix breaks bar charts with a single bar
-    // see: https://github.com/dbuezas/lovelace-plotly-graph-card/issues/129#issuecomment-1312730979
-    return;
-  }
-  for (let i = 0; i < ys.length; i++) {
-    if (!isNumber(ys[i - 1]) && isNumber(ys[i]) && !isNumber(ys[i + 1])) {
-      ys.splice(i, 0, ys[i]);
-      xs.splice(i, 0, xs[i]);
-    }
-  }
-}
-
 function extendLastDatapointToPresent(
   xs: Datum[],
   ys: Datum[],
@@ -489,7 +468,6 @@ export class PlotlyGraph extends HTMLElement {
           console.error(e);
         }
       }
-      patchLonelyDatapoints(xs, ys);
 
       if (xs.length === 0 && ys.length === 0) {
         /*
