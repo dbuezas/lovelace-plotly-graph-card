@@ -17,7 +17,7 @@ import {
 import Cache from "./cache/Cache";
 import getThemedLayout from "./themed-layout";
 import isProduction from "./is-production";
-import { sleep } from "./utils";
+import { debounce, sleep } from "./utils";
 import { Datum } from "plotly.js";
 import { parseISO } from "date-fns";
 import { StatisticPeriod } from "./recorder-types";
@@ -204,6 +204,7 @@ export class PlotlyGraph extends HTMLElement {
   }
   connectedCallback() {
     this.setupListeners();
+    this.fetch();
   }
   async withoutRelayout(fn: Function) {
     this.isInternalRelayout++;
@@ -342,10 +343,16 @@ export class PlotlyGraph extends HTMLElement {
     const is = this.parsed_config;
     if (is.hours_to_show !== was?.hours_to_show || is.offset !== was?.offset) {
       this.exitBrowsingMode();
+    } else {
+      await this.fetch();
     }
-    await this.fetch();
   }
-  fetch = async () => {
+  fetch = debounce(async () => {
+    if (!(this.parsed_config && this.hass && this.isConnected)) {
+      await sleep(10);
+      return this.fetch();
+    }
+
     const range = this.isBrowsing
       ? this.getVisibleRange()
       : this.getAutoFetchRange();
@@ -378,7 +385,6 @@ export class PlotlyGraph extends HTMLElement {
     const visibleEntities = this.parsed_config.entities.filter(
       (_, i) => this.contentEl.data[i]?.visible !== "legendonly"
     );
-    while (!this.hass) await sleep(100);
     try {
       await this.cache.update(
         range,
@@ -393,7 +399,7 @@ export class PlotlyGraph extends HTMLElement {
       this.msgEl.innerText = JSON.stringify(e.message || "");
     }
     await this.plot();
-  };
+  });
   getAllUnitsOfMeasurement() {
     const all = this.parsed_config.entities.map((entity) =>
       this.getUnitOfMeasurement(entity)
@@ -554,10 +560,11 @@ export class PlotlyGraph extends HTMLElement {
       ...this.parsed_config.config,
     };
   }
-  async plot() {
-    if (!this.parsed_config) return;
-    if (!this.hass) return;
-    if (!this.isConnected) return;
+  plot = debounce(async () => {
+    if (!(this.parsed_config && this.hass && this.isConnected)) {
+      await sleep(10);
+      return this.plot();
+    }
     this.titleEl.innerText = this.parsed_config.title || "";
     const refresh_interval = this.parsed_config.refresh_interval;
     clearTimeout(this.handles.refreshTimeout!);
@@ -580,7 +587,7 @@ export class PlotlyGraph extends HTMLElement {
       );
       this.contentEl.style.visibility = "";
     });
-  }
+  });
   // The height of your card. Home Assistant uses this to automatically
   // distribute all cards over the available columns.
   getCardSize() {
