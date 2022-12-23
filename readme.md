@@ -373,7 +373,48 @@ entities:
     extend_to_present: true # false by default for statistics
 ```
 
-### `lambda:` transforms
+### `filters:`
+
+Filters are used to process the data before plotting it. Heavily inspired by [ESPHome's sensor filters](https://esphome.io/components/sensor/index.html#sensor-filters).
+Filters are applied in order.
+
+```
+type: custom:plotly-graph
+entities:
+  - entity: sensor.temperature_in_celsius
+  filters:
+    - offset: 5 # adds 5 to each datapoint
+    - multiply: 2 # multiplies each datapoint by 2
+    - calibrate_linear: # linear regression
+      - 0.0 -> 0.0
+      - 40.0 -> 45.0
+      - 100.0 -> 102.5
+    - derivate: # computes rate of change per unit of time
+        unit: h # ms (milisecond), s (second), m (minute), h (hour), d (day), w (week), M (month), y (year)
+    - integrate: # computes area under the curve per unit of time using Right hand riemann integration
+        unit: h # ms (milisecond), s (second), m (minute), h (hour), d (day), w (week), M (month), y (year)
+    - sliding_window_moving_average:
+        window_size: 10
+        extended: false # use smaller window sizes on the extremes
+        centered: true # compensate for averaging lag
+    - median:
+        window_size: 10
+        extended: false
+        centered: true
+    - exponential_moving_average:
+        alpha: 0.1 # the lower the smoother
+    - map_y: Math.sqrt(y + 10*100) # map the y coordinate of each datapoint.
+    - map_x: new Date(x + 1000) # map the x coordinate (javascript date object) of each datapoint.
+    - set_var: arbitrary_name # store the result in a variable
+    - get_var: arbitrary_name # use a stored variable
+    - fn: |- # arbitrary function. Similar to lambdas
+        ({xs, ys, attributes, history}) => {
+          return { ys: ys.map(y => y*2) };
+        },
+    - filter: y > 0 && x > new Date(Date.now()-1000*60*60) # filter out datapoints for which this returns false.
+```
+
+### `lambda:` transforms (deprecated)
 
 `lambda` takes a js function (as a string) to pre process the data before plotting it. Here you can do things like normalisation, integration. For example:
 

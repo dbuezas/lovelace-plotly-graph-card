@@ -9,6 +9,7 @@ import {
 } from "./recorder-types";
 
 import { HassEntity } from "home-assistant-js-websocket";
+import { FilterFn } from "./filters/filters";
 export { HassEntity } from "home-assistant-js-websocket";
 export type InputConfig = {
   type: "custom:plotly-graph-card";
@@ -31,6 +32,7 @@ export type InputConfig = {
         };
     offset?: TimeDurationStr;
     extend_to_present?: boolean;
+    filters?: `${number} -> ${number}`[];
   } & Partial<Plotly.PlotData>)[];
   defaults?: {
     entity?: Partial<Plotly.PlotData>;
@@ -48,7 +50,7 @@ export type EntityConfig = EntityIdConfig & {
   unit_of_measurement?: string;
   lambda?: (
     y: Datum[],
-    x: Date[],
+    x: Datum[],
     raw_entity: CachedEntity[]
   ) => Datum[] | { x?: Datum[]; y?: Datum[] };
   show_value:
@@ -58,6 +60,7 @@ export type EntityConfig = EntityIdConfig & {
       };
   offset: number;
   extend_to_present: boolean;
+  filters: FilterFn[];
 } & Partial<Plotly.PlotData>;
 
 export type Config = {

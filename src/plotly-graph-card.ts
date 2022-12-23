@@ -7,7 +7,6 @@ import insertStyleHack from "./style-hack";
 import Plotly from "./plotly";
 import {
   Config,
-  EntityConfig,
   InputConfig,
   isEntityIdAttrConfig,
   isEntityIdStateConfig,
@@ -23,6 +22,7 @@ import { parseISO } from "date-fns";
 import { StatisticPeriod } from "./recorder-types";
 import { parseTimeDuration } from "./duration/duration";
 import parseConfig from "./parse-config";
+import { prepareData } from "./filters/filters";
 
 const componentName = isProduction ? "plotly-graph" : "plotly-graph-dev";
 
@@ -226,7 +226,7 @@ export class PlotlyGraph extends HTMLElement {
         this.size.height = height - this.titleEl.offsetHeight;
       }
       this.withoutRelayout(async () => {
-        const layout = this.getLayout();
+        const layout = this.getLayout([]);
         await Plotly.relayout(this.contentEl, {
           width: layout.width,
           height: layout.height,
@@ -400,19 +400,6 @@ export class PlotlyGraph extends HTMLElement {
     }
     await this.plot();
   });
-  getAllUnitsOfMeasurement() {
-    const all = this.parsed_config.entities.map((entity) =>
-      this.getUnitOfMeasurement(entity)
-    );
-    return Array.from(new Set(all));
-  }
-  getUnitOfMeasurement(entity: EntityConfig) {
-    return (
-      entity.unit_of_measurement ||
-      this.hass?.states[entity.entity]?.attributes?.unit_of_measurement ||
-      ""
-    );
-  }
   getThemedLayout() {
     const styles = window.getComputedStyle(this.contentEl);
     let haTheme = {
@@ -430,21 +417,17 @@ export class PlotlyGraph extends HTMLElement {
     );
   }
 
-  getData(): Plotly.Data[] {
+  getDataAndUnits(): { data: Plotly.Data[]; units: string[] } {
     const entities = this.parsed_config.entities;
-
-    const units = this.getAllUnitsOfMeasurement();
+    const units = [] as string[];
+    let vars = {};
     const show_value_traces: Plotly.Data[] = [];
     const real_traces: Plotly.Data[] = [];
     entities.forEach((trace, traceIdx) => {
       const entity_id = trace.entity;
       const history = this.cache.getHistory(trace);
-      const attributes = this.hass?.states[entity_id]?.attributes || {};
-      const unit = this.getUnitOfMeasurement(trace);
-      const yaxis_idx = units.indexOf(unit);
-      let name = trace.name || attributes.friendly_name || entity_id;
-      if (isEntityIdAttrConfig(trace)) name += ` (${trace.attribute}) `;
-      if (isEntityIdStatisticsConfig(trace)) name += ` (${trace.statistic}) `;
+      let attributes = { ...this.hass?.states[entity_id]?.attributes };
+      attributes.unit_of_measurement ??= "";
       const xsIn = history.map(({ timestamp }) => new Date(timestamp));
       const ysIn: Datum[] = history.map(({ value }) =>
         // see https://github.com/dbuezas/lovelace-plotly-graph-card/issues/146
@@ -460,10 +443,23 @@ export class PlotlyGraph extends HTMLElement {
         // to ensure the y axis autorange containst the yaxis
         removeOutOfRange(xs, ys, this.getAutoFetchRangeWithValueMargins());
       }
-
+      if (trace.filters) {
+        let data = prepareData({ xs, ys, attributes, vars, history });
+        try {
+          for (const filter of trace.filters) {
+            data = filter(data);
+          }
+        } catch (e) {
+          console.error(e);
+        }
+        if (data.xs) xs = data.xs;
+        if (data.ys) ys = data.ys;
+        if (data.attributes) attributes = data.attributes;
+        if (data.vars) vars = data.vars;
+      }
       if (trace.lambda) {
         try {
-          const r = trace.lambda(ysIn, xsIn, history);
+          const r = trace.lambda(ys, xs, history);
           if (Array.isArray(r)) {
             ys = r;
           } else {
@@ -483,8 +479,22 @@ export class PlotlyGraph extends HTMLElement {
         xs = [null];
         ys = [null];
       }
-      const customdatum = { unit_of_measurement: unit, name, attributes };
-      const customdata = xs.map((x, i) => ({ ...customdatum, x, y: ys[i] }));
+
+      const unit_of_measurement =
+        trace.unit_of_measurement || attributes?.unit_of_measurement || "";
+      if (!units.includes(unit_of_measurement)) units.push(unit_of_measurement);
+      const yaxis_idx = units.indexOf(unit_of_measurement);
+
+      let name = trace.name || attributes.friendly_name || entity_id;
+      if (isEntityIdAttrConfig(trace)) name += ` (${trace.attribute}) `;
+      if (isEntityIdStatisticsConfig(trace)) name += ` (${trace.statistic}) `;
+      const customdata = xs.map((x, i) => ({
+        unit_of_measurement,
+        name,
+        attributes,
+        x,
+        y: ys[i],
+      }));
       const mergedTrace = merge(
         {
           name,
@@ -518,12 +528,10 @@ export class PlotlyGraph extends HTMLElement {
     });
     // Preserving the original sequence of real_traces is important for `fill: tonexty`
     // https://github.com/dbuezas/lovelace-plotly-graph-card/issues/87
-    return [...real_traces, ...show_value_traces];
+    return { data: [...real_traces, ...show_value_traces], units };
   }
 
-  getLayout(): Plotly.Layout {
-    const units = this.getAllUnitsOfMeasurement();
-
+  getLayout(units: string[]): Plotly.Layout {
     const yAxisTitles = Object.fromEntries(
       units.map((unit, i) => ["yaxis" + (i == 0 ? "" : i + 1), { title: unit }])
     );
@@ -574,17 +582,13 @@ export class PlotlyGraph extends HTMLElement {
         refresh_interval * 1000
       );
     }
-    const layout = this.getLayout();
+    const { data, units } = this.getDataAndUnits();
+    const layout = this.getLayout(units);
     if (layout.paper_bgcolor) {
       this.titleEl.style.background = layout.paper_bgcolor as string;
     }
     await this.withoutRelayout(async () => {
-      await Plotly.react(
-        this.contentEl,
-        this.getData(),
-        layout,
-        this.getPlotlyConfig()
-      );
+      await Plotly.react(this.contentEl, data, layout, this.getPlotlyConfig());
       this.contentEl.style.visibility = "";
     });
   });
