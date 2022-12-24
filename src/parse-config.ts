@@ -119,6 +119,11 @@ function parseEntities(config: InputConfig): EntityConfig[] {
     );
 
     const statisticConfig = parseStatistics(entityIn);
+    if (entityIn.filters && !Array.isArray(entityIn.filters)) {
+      throw new Error(
+        "filters: should be an array, did you forget adding '-' before the filter name?"
+      );
+    }
     const parsedFilters = (entityIn.filters || []).map((obj) => {
       const filterName = Object.keys(obj)[0];
       const config = Object.values(obj)[0];
