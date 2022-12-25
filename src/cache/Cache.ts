@@ -115,9 +115,9 @@ export default class Cache {
     const entityKey = getEntityKey(entity);
     let h = (this.histories[entityKey] ??= []);
     h.push(...states);
-    h.sort((a, b) => a.timestamp - b.timestamp);
+    h.sort((a, b) => +a.x - +b.x);
     h = h.filter((x, i) => i == 0 || !x.fake_boundary_datapoint);
-    h = h.filter((_, i) => h[i - 1]?.timestamp !== h[i].timestamp);
+    h = h.filter((_, i) => +h[i - 1]?.x !== +h[i].x);
     this.histories[entityKey] = h;
     this.ranges[entityKey] ??= [];
     this.ranges[entityKey].push(range);
@@ -132,24 +132,26 @@ export default class Cache {
     let key = getEntityKey(entity);
     const history = this.histories[key] || [];
     if (isEntityIdStatisticsConfig(entity)) {
-      return (history as CachedStatisticsEntity[]).map((entry) => ({
-        ...entry,
-        timestamp: entry.timestamp + entity.offset,
-        value: entry[entity.statistic],
-      }));
+      return (history as CachedStatisticsEntity[]).map(
+        ({ x, raw_statistics }) => ({
+          raw_statistics,
+          x: new Date(+x + entity.offset),
+          y: raw_statistics[entity.statistic],
+        })
+      );
     }
     if (isEntityIdAttrConfig(entity)) {
-      return (history as CachedStateEntity[]).map((entry) => ({
-        ...entry,
-        timestamp: entry.timestamp + entity.offset,
-        value: entry.attributes[entity.attribute],
+      return (history as CachedStateEntity[]).map(({ x, raw_state }) => ({
+        raw_state,
+        x: new Date(+x + entity.offset),
+        y: raw_state.attributes[entity.attribute],
       }));
     }
     if (isEntityIdStateConfig(entity)) {
-      return (history as CachedStateEntity[]).map((entry) => ({
-        ...entry,
-        timestamp: entry.timestamp + entity.offset,
-        value: entry.state,
+      return (history as CachedStateEntity[]).map(({ x, raw_state }) => ({
+        raw_state,
+        x: new Date(+x + entity.offset),
+        y: raw_state.state,
       }));
     }
     throw new Error(

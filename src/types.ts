@@ -115,15 +115,16 @@ export function isEntityIdStatisticsConfig(
 
 export type Timestamp = number;
 
-export type CachedStateEntity = HassEntity & {
+export type CachedBaseEntity = {
   fake_boundary_datapoint?: true;
-  timestamp: Timestamp;
-  value: number | string | null;
+  x: Date;
+  y: number | string | null;
 };
-export type CachedStatisticsEntity = StatisticValue & {
-  fake_boundary_datapoint?: true;
-  timestamp: Timestamp;
-  value: number | string | null;
+export type CachedStateEntity = CachedBaseEntity & {
+  raw_state: HassEntity;
+};
+export type CachedStatisticsEntity = CachedBaseEntity & {
+  raw_statistics: StatisticValue;
 };
 export type CachedEntity = CachedStateEntity | CachedStatisticsEntity;
 

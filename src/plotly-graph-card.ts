@@ -167,19 +167,19 @@ export class PlotlyGraph extends HTMLElement {
       let shouldPlot = false;
       let shouldFetch = false;
       for (const entity of this.parsed_config.entities) {
-        const newState = hass.states[entity.entity];
+        const raw_state = hass.states[entity.entity];
         const oldState = this._hass?.states[entity.entity];
-        if (newState && oldState !== newState) {
-          const start = +new Date(
-            oldState?.last_updated || newState.last_updated
+        if (raw_state && oldState !== raw_state) {
+          const start = new Date(
+            oldState?.last_updated || raw_state.last_updated
           );
-          const end = +new Date(newState.last_updated);
-          const range: [number, number] = [start, end];
+          const end = new Date(raw_state.last_updated);
+          const range: [number, number] = [+start, +end];
           let value: string | undefined;
           if (isEntityIdAttrConfig(entity)) {
-            value = newState.attributes[entity.attribute];
+            value = raw_state.attributes[entity.attribute];
           } else if (isEntityIdStateConfig(entity)) {
-            value = newState.state;
+            value = raw_state.state;
           } else if (isEntityIdStatisticsConfig(entity)) {
             shouldFetch = true;
           }
@@ -187,7 +187,7 @@ export class PlotlyGraph extends HTMLElement {
           if (value !== undefined) {
             this.cache.add(
               entity,
-              [{ ...newState, timestamp: end, value }],
+              [{ raw_state, x: new Date(end), y: null }],
               range
             );
             shouldPlot = true;
@@ -428,10 +428,10 @@ export class PlotlyGraph extends HTMLElement {
       const history = this.cache.getHistory(trace);
       let attributes = { ...this.hass?.states[entity_id]?.attributes };
       attributes.unit_of_measurement ??= "";
-      const xsIn = history.map(({ timestamp }) => new Date(timestamp));
-      const ysIn: Datum[] = history.map(({ value }) =>
+      const xsIn = history.map(({ x }) => x);
+      const ysIn: Datum[] = history.map(({ y }) =>
         // see https://github.com/dbuezas/lovelace-plotly-graph-card/issues/146
-        value === "unavailable" ? null : value
+        y === "unavailable" ? null : y
       );
 
       let xs: Datum[] = xsIn;

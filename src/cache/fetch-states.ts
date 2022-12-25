@@ -45,11 +45,11 @@ async function fetchStates(
     );
   }
   return (list || [])
-    .map((entry) => ({
-      ...entry,
-      timestamp: +new Date(entry.last_updated || entry.last_changed),
-      value: null, // may be state or an attribute. Will be set when getting the history
+    .map((raw_state) => ({
+      raw_state,
+      x: new Date(raw_state.last_updated || raw_state.last_changed),
+      y: null, // may be state or an attribute. Will be set when getting the history
     }))
-    .filter(({ timestamp }) => timestamp);
+    .filter(({ x }) => x);
 }
 export default fetchStates;

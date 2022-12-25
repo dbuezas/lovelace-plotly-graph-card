@@ -26,11 +26,11 @@ async function fetchStatistics(
     );
   }
   return (statistics || [])
-    .map((entry) => ({
-      ...entry,
-      timestamp: +new Date(entry.start),
-      value: null, //depends on the statistic, will be set in getHistory
+    .map((raw_statistics) => ({
+      raw_statistics,
+      x: new Date(raw_statistics.start),
+      y: null, //depends on the statistic, will be set in getHistory
     }))
-    .filter(({ timestamp }) => timestamp);
+    .filter(({ x }) => x);
 }
 export default fetchStatistics;
