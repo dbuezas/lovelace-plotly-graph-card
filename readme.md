@@ -36,7 +36,7 @@ Find more advanced examples in [Show & Tell](https://github.com/dbuezas/lovelace
 1. Install [HACS](https://hacs.xyz/docs/configuration/basic)
 2. Search & Install `Plotly Graph Card`.
 
-### Manualy
+### Manually
 
 1. Go to [Releases](https://github.com/dbuezas/lovelace-plotly-graph-card/releases)
 2. Download `plotly-graph-card.js` and copy it to your Home Assistant config dir as `<config>/www/plotly-graph-card.js`
