@@ -11,9 +11,12 @@ import {
   CachedEntity,
   CachedStatisticsEntity,
   CachedStateEntity,
+  HassEntity,
+  EntityData,
 } from "../types";
 import { groupBy } from "lodash";
 import { StatisticValue } from "../recorder-types";
+import { Datum } from "plotly.js";
 
 export function mapValues<T, S>(
   o: Record<string, T>,
@@ -128,35 +131,36 @@ export default class Cache {
     this.ranges = {};
     this.histories = {};
   }
-  getHistory(entity: EntityConfig): CachedEntity[] {
+  getData(entity: EntityConfig): EntityData {
     let key = getEntityKey(entity);
     const history = this.histories[key] || [];
+    let ys = [] as (string | number | null)[];
     if (isEntityIdStatisticsConfig(entity)) {
-      return (history as CachedStatisticsEntity[]).map(
-        ({ x, raw_statistics }) => ({
-          raw_statistics,
-          x: new Date(+x + entity.offset),
-          y: raw_statistics[entity.statistic],
-        })
+      ys = (history as CachedStatisticsEntity[]).map(
+        ({ raw }) => raw[entity.statistic]
       );
-    }
-    if (isEntityIdAttrConfig(entity)) {
-      return (history as CachedStateEntity[]).map(({ x, raw_state }) => ({
-        raw_state,
-        x: new Date(+x + entity.offset),
-        y: raw_state.attributes[entity.attribute],
-      }));
-    }
-    if (isEntityIdStateConfig(entity)) {
-      return (history as CachedStateEntity[]).map(({ x, raw_state }) => ({
-        raw_state,
-        x: new Date(+x + entity.offset),
-        y: raw_state.state,
-      }));
-    }
-    throw new Error(
-      `Unrecognised fetch type for ${(entity as EntityConfig).entity}`
+    } else if (isEntityIdAttrConfig(entity)) {
+      ys = (history as CachedStateEntity[]).map(
+        ({ raw }) => raw.attributes[entity.attribute]
+      );
+    } else if (isEntityIdStateConfig(entity)) {
+      ys = (history as CachedStateEntity[]).map(({ raw }) => raw.state);
+    } else
+      throw new Error(
+        `Unrecognised fetch type for ${(entity as EntityConfig).entity}`
+      );
+    ys = ys.map((y) =>
+      // see https://github.com/dbuezas/lovelace-plotly-graph-card/issues/146
+      y === "unavailable" ? null : y
     );
+    const raw = history.map(({ raw }) => raw);
+    const xs = history.map(({ x }) => new Date(+x + entity.offset));
+    if (entity.extend_to_present && xs.length > 0) {
+      xs.push(new Date(Date.now() + entity.offset));
+      ys.push(ys[ys.length - 1]);
+      raw.push(raw[raw.length - 1]);
+    }
+    return { raw, xs, ys };
   }
   async update(
     range: TimestampRange,

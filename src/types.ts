@@ -121,12 +121,17 @@ export type CachedBaseEntity = {
   y: number | string | null;
 };
 export type CachedStateEntity = CachedBaseEntity & {
-  raw_state: HassEntity;
+  raw: HassEntity;
 };
 export type CachedStatisticsEntity = CachedBaseEntity & {
-  raw_statistics: StatisticValue;
+  raw: StatisticValue;
 };
 export type CachedEntity = CachedStateEntity | CachedStatisticsEntity;
+export type EntityData = {
+  raw: (HassEntity | StatisticValue)[];
+  xs: Date[];
+  ys: (number | string | null)[];
+};
 
 export type TimestampRange = Timestamp[]; // [Timestamp, Timestamp];
 

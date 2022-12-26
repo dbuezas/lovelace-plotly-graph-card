@@ -1,14 +1,14 @@
 import { Datum } from "plotly.js";
 import { linearRegressionLine, linearRegression } from "simple-statistics";
 import { timeUnits } from "../duration/duration";
-import { CachedEntity } from "../types";
+import { StatisticValue } from "../recorder-types";
+import { CachedEntity, HassEntity } from "../types";
 
 const castFloat = (y: any) => parseFloat(y);
 const myEval = typeof window != "undefined" ? window.eval : global.eval;
 export const prepareData = ({
   ys,
   xs,
-  ...rest
 }: {
   ys: Datum[];
   xs: Datum[];
@@ -17,45 +17,42 @@ export const prepareData = ({
   history: CachedEntity[];
 }) =>
   ({
-    ...rest,
     ys: ys.map(castFloat).filter(Number.isFinite),
     xs: xs
       .filter((_, i) => Number.isFinite(castFloat(ys[i])))
       .map((x) => new Date(x as any)),
-  } as Trace);
-type Trace = {
+  } as FilterData);
+type FilterData = {
   xs: Date[];
   ys: number[];
+  raw: (HassEntity | StatisticValue)[];
   attributes: Record<string, string>;
   vars: Record<any, any>;
 };
-export type FilterFn = (p: Trace) => Trace;
+export type FilterFn = (p: FilterData) => Partial<FilterData>;
 
 const filters = {
   offset:
     (val: number) =>
-    ({ ys, ...rest }) => ({
-      ...rest,
+    ({ ys }) => ({
       ys: ys.map((y) => y + val),
     }),
   multiply:
     (val: number) =>
-    ({ ys, ...rest }) => ({
-      ...rest,
+    ({ ys }) => ({
       ys: ys.map((y) => y * val),
     }),
   calibrate_linear:
     (mapping: `${number} -> ${number}`[]) =>
-    ({ ys, ...rest }) => {
+    ({ ys }) => {
       const map = linearRegressionLine(
         linearRegression(mapping.map((str) => str.split("->").map(parseFloat)))
       );
-      return { ...rest, ys: ys.map(map) };
+      return { ys: ys.map(map) };
     },
   derivate:
     (unit: keyof typeof timeUnits = "h") =>
-    ({ xs, ys, attributes, ...rest }) => ({
-      ...rest,
+    ({ xs, ys, attributes }) => ({
       attributes: {
         unit_of_measurement: `${attributes.unit_of_measurement}/${unit}`,
       },
@@ -70,10 +67,9 @@ const filters = {
     }),
   integrate:
     (unit: keyof typeof timeUnits = "h") =>
-    ({ xs, ys, attributes, ...rest }) => {
+    ({ xs, ys, attributes }) => {
       let yAcc = 0;
       return {
-        ...rest,
         attributes: {
           unit_of_measurement: `${attributes.unit_of_measurement}*${unit}`,
         },
@@ -90,7 +86,7 @@ const filters = {
     },
   sliding_window_moving_average:
     ({ window_size = 10, extended = false, centered = true } = {}) =>
-    ({ xs, ys, attributes, ...rest }) => {
+    ({ xs, ys, attributes }) => {
       const ys2: number[] = [];
       const xs2: Date[] = [];
       let acc = {
@@ -115,11 +111,11 @@ const filters = {
           ys2.push(acc.y / acc.count);
         }
       }
-      return { ys: ys2, xs: xs2, attributes, ...rest };
+      return { ys: ys2, xs: xs2, attributes };
     },
   median:
     ({ window_size = 10, extended = false, centered = true } = {}) =>
-    ({ xs, ys, attributes, ...rest }) => {
+    ({ xs, ys, attributes }) => {
       const ys2: number[] = [];
       const xs2: Date[] = [];
       let acc = {
@@ -143,54 +139,54 @@ const filters = {
           ys2.push((acc.ys[mid1] + acc.ys[mid2]) / 2);
         }
       }
-      return { ys: ys2, xs: xs2, attributes, ...rest };
+      return { ys: ys2, xs: xs2, attributes };
     },
   exponential_moving_average:
     ({ alpha = 0.1 } = {}) =>
-    ({ ys, ...rest }) => {
+    ({ ys }) => {
       let last = ys[0];
       return {
-        ...rest,
         ys: ys.map((y) => (last = last * (1 - alpha) + y * alpha)),
       };
     },
   map_y: (fnStr: string) => {
-    const fn = myEval(`(x,y)=>${fnStr}`);
-    return ({ xs, ys, ...rest }) => ({
-      ...rest,
+    const fn = myEval(`(x,y, raw)=>${fnStr}`);
+    return ({ xs, ys, raw }) => ({
       xs,
-      ys: ys.map((_, i) => fn(xs[i], ys[i])),
+      ys: ys.map((_, i) => fn(xs[i], ys[i], raw[i])),
     });
   },
   map_x: (fnStr: string) => {
-    const fn = myEval(`(x,y)=>${fnStr}`);
-    return ({ xs, ys, ...rest }) => ({
-      ...rest,
+    const fn = myEval(`(x,y, raw)=>${fnStr}`);
+    return ({ xs, ys, raw }) => ({
       ys,
-      xs: xs.map((_, i) => fn(xs[i], ys[i])),
+      xs: xs.map((_, i) => fn(xs[i], ys[i], raw[i])),
     });
   },
   set_var:
     (var_name: string) =>
-    ({ vars, ...rest }) => ({ vars: { ...vars, [var_name]: rest }, ...rest }),
+    ({ vars, ...rest }) => ({ vars: { ...vars, [var_name]: rest } }),
   get_var:
     (var_name: string) =>
     ({ vars }) => ({ vars, ...vars[var_name] }),
   fn: (fnStr: string) => myEval(fnStr),
   filter: (fnStr: string) => {
-    const fn = myEval(`(x,y)=>${fnStr}`);
-    return ({ ys, xs, ...rest }) => {
+    const fn = myEval(`(x,y, raw)=>${fnStr}`);
+    return ({ ys, xs, raw }) => {
       const xs2: Date[] = [];
       const ys2: number[] = [];
+      const raw2: (HassEntity | StatisticValue)[] = [];
       for (let i = 0; i < ys.length; i++) {
         const x = xs[i];
         const y = ys[i];
-        if (fn(x, y)) {
+        const r = raw[i];
+        if (fn(x, y, r)) {
           xs2.push(x);
           ys2.push(y);
+          raw2.push(r);
         }
       }
-      return { ...rest, ys: ys2, xs: xs2 };
+      return { ys: ys2, xs: xs2, raw: raw2 };
     };
   },
   /*

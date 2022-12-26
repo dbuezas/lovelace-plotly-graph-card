@@ -7,6 +7,7 @@ import insertStyleHack from "./style-hack";
 import Plotly from "./plotly";
 import {
   Config,
+  EntityData,
   InputConfig,
   isEntityIdAttrConfig,
   isEntityIdStateConfig,
@@ -17,40 +18,30 @@ import Cache from "./cache/Cache";
 import getThemedLayout from "./themed-layout";
 import isProduction from "./is-production";
 import { debounce, sleep } from "./utils";
-import { Datum } from "plotly.js";
 import { parseISO } from "date-fns";
 import { StatisticPeriod } from "./recorder-types";
 import { parseTimeDuration } from "./duration/duration";
 import parseConfig from "./parse-config";
-import { prepareData } from "./filters/filters";
 
 const componentName = isProduction ? "plotly-graph" : "plotly-graph-dev";
 
-function extendLastDatapointToPresent(
-  xs: Datum[],
-  ys: Datum[],
-  offset: number
-) {
-  if (xs.length === 0) return;
-  const last = ys[ys.length - 1];
-  xs.push(new Date(Date.now() + offset));
-  ys.push(last);
-}
-function removeOutOfRange(xs: Datum[], ys: Datum[], range: TimestampRange) {
+function removeOutOfRange(data: EntityData, range: TimestampRange) {
   let first = -1;
   let last = -1;
 
-  for (let i = 0; i < xs.length; i++) {
-    if (xs[i]! < range[0]) first = i;
-    if (xs[i]! > range[1]) last = i;
+  for (let i = 0; i < data.xs.length; i++) {
+    if (+data.xs[i]! < range[0]) first = i;
+    if (+data.xs[i]! > range[1]) last = i;
   }
   if (last > -1) {
-    xs.splice(last);
-    ys.splice(last);
+    data.xs.splice(last);
+    data.ys.splice(last);
+    data.raw.splice(last);
   }
   if (first > -1) {
-    xs.splice(0, first);
-    ys.splice(0, first);
+    data.xs.splice(0, first);
+    data.ys.splice(0, first);
+    data.raw.splice(0, first);
   }
 }
 
@@ -167,29 +158,23 @@ export class PlotlyGraph extends HTMLElement {
       let shouldPlot = false;
       let shouldFetch = false;
       for (const entity of this.parsed_config.entities) {
-        const raw_state = hass.states[entity.entity];
+        const raw = hass.states[entity.entity];
         const oldState = this._hass?.states[entity.entity];
-        if (raw_state && oldState !== raw_state) {
-          const start = new Date(
-            oldState?.last_updated || raw_state.last_updated
-          );
-          const end = new Date(raw_state.last_updated);
+        if (raw && oldState !== raw) {
+          const start = new Date(oldState?.last_updated || raw.last_updated);
+          const end = new Date(raw.last_updated);
           const range: [number, number] = [+start, +end];
           let value: string | undefined;
           if (isEntityIdAttrConfig(entity)) {
-            value = raw_state.attributes[entity.attribute];
+            value = raw.attributes[entity.attribute];
           } else if (isEntityIdStateConfig(entity)) {
-            value = raw_state.state;
+            value = raw.state;
           } else if (isEntityIdStatisticsConfig(entity)) {
             shouldFetch = true;
           }
 
           if (value !== undefined) {
-            this.cache.add(
-              entity,
-              [{ raw_state, x: new Date(end), y: null }],
-              range
-            );
+            this.cache.add(entity, [{ raw, x: new Date(end), y: null }], range);
             shouldPlot = true;
           }
         }
@@ -425,82 +410,71 @@ export class PlotlyGraph extends HTMLElement {
     const real_traces: Plotly.Data[] = [];
     entities.forEach((trace, traceIdx) => {
       const entity_id = trace.entity;
-      const history = this.cache.getHistory(trace);
-      let attributes = { ...this.hass?.states[entity_id]?.attributes };
+      const attributes = { ...this.hass?.states[entity_id]?.attributes };
       attributes.unit_of_measurement ??= "";
-      const xsIn = history.map(({ x }) => x);
-      const ysIn: Datum[] = history.map(({ y }) =>
-        // see https://github.com/dbuezas/lovelace-plotly-graph-card/issues/146
-        y === "unavailable" ? null : y
-      );
+      attributes.friendly_name ??= "";
+      let data = {
+        ...this.cache.getData(trace),
+        attributes,
+        vars,
+      };
 
-      let xs: Datum[] = xsIn;
-      let ys = ysIn;
-      if (trace.extend_to_present) {
-        extendLastDatapointToPresent(xs, ys, trace.offset);
-      }
-      if (!this.isBrowsing) {
-        // to ensure the y axis autorange containst the yaxis
-        removeOutOfRange(xs, ys, this.getAutoFetchRangeWithValueMargins());
-      }
       if (trace.filters) {
-        let data = prepareData({ xs, ys, attributes, vars, history });
         try {
           for (const filter of trace.filters) {
-            data = filter(data);
+            data = { ...data, ...filter(data) };
           }
         } catch (e) {
           console.error(e);
         }
-        if (data.xs) xs = data.xs;
-        if (data.ys) ys = data.ys;
-        if (data.attributes) attributes = data.attributes;
-        if (data.vars) vars = data.vars;
       }
       if (trace.lambda) {
         try {
-          const r = trace.lambda(ys, xs, history);
+          const r = trace.lambda(data.ys, data.xs, data.raw);
           if (Array.isArray(r)) {
-            ys = r;
+            data.ys = r;
           } else {
-            if (r.x) xs = r.x;
-            if (r.y) ys = r.y;
+            if (r.x) data.xs = r.x;
+            if (r.y) data.ys = r.y;
           }
         } catch (e) {
           console.error(e);
         }
       }
-
-      if (xs.length === 0 && ys.length === 0) {
+      if (!this.isBrowsing) {
+        // to ensure the y axis autoranges to the visible data
+        removeOutOfRange(data, this.getAutoFetchRangeWithValueMargins());
+      }
+      if (data.xs.length === 0 && data.ys.length === 0) {
         /*
           Traces with no data are removed from the legend by plotly. 
           Setting them to have null element prevents that.
         */
-        xs = [null];
-        ys = [null];
+        data.xs = [null];
+        data.ys = [null];
       }
 
       const unit_of_measurement =
-        trace.unit_of_measurement || attributes?.unit_of_measurement || "";
+        trace.unit_of_measurement || attributes.unit_of_measurement;
       if (!units.includes(unit_of_measurement)) units.push(unit_of_measurement);
       const yaxis_idx = units.indexOf(unit_of_measurement);
 
       let name = trace.name || attributes.friendly_name || entity_id;
       if (isEntityIdAttrConfig(trace)) name += ` (${trace.attribute}) `;
       if (isEntityIdStatisticsConfig(trace)) name += ` (${trace.statistic}) `;
-      const customdata = xs.map((x, i) => ({
+      const customdata = data.xs.map((x, i) => ({
         unit_of_measurement,
         name,
-        attributes,
+        raw: data.raw[i],
         x,
-        y: ys[i],
+        y: data.ys[i],
       }));
       const mergedTrace = merge(
         {
           name,
           customdata,
-          x: xs,
-          y: ys,
+          x: data.xs,
+          y: data.ys,
           yaxis: "y" + (yaxis_idx == 0 ? "" : yaxis_idx + 1),
         },
         trace

@@ -45,9 +45,9 @@ async function fetchStates(
     );
   }
   return (list || [])
-    .map((raw_state) => ({
-      raw_state,
-      x: new Date(raw_state.last_updated || raw_state.last_changed),
+    .map((raw) => ({
+      raw,
+      x: new Date(raw.last_updated || raw.last_changed),
       y: null, // may be state or an attribute. Will be set when getting the history
     }))
     .filter(({ x }) => x);
