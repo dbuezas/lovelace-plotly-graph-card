@@ -29,9 +29,17 @@ You may find some extra info there in this link
 
 Find more advanced examples in [Show & Tell](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/categories/show-and-tell)
 
-## Installation via [HACS](https://hacs.xyz/)
+## Installation 
+
+### Via [Home Assistant Community Store (HACS)](https://hacs.xyz/)
 
 - Search for `Plotly Graph Card`.
+
+### Manualy
+
+1. Go to [Releases](https://github.com/dbuezas/lovelace-plotly-graph-card/releases)
+2. Download `plotly-graph-card.js` and copy it to your Home Assistant config dir as `<config>/www/plotly-graph-card.js`
+3. Add a resource to your dashboard configuration with URL `/local/plotly-graph-card.js` and type `JavaScript Module` ([resource docs](https://developers.home-assistant.io/docs/frontend/custom-ui/registering-resources)).
 
 ## Card Config
 
