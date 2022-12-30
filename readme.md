@@ -528,7 +528,7 @@ Compute absolute humidity
   name: Absolute Hty
   unit_of_measurement: g/m³
   filters:
-    - map_y: (6.112 * Math.exp((17.67 * y)/(y+243.5)) * +vars.relative_humidity[i] * 2.1674)/(273.15+y);
+    - map_y: (6.112 * Math.exp((17.67 * y)/(y+243.5)) * +vars.relative_humidity.ys[i] * 2.1674)/(273.15+y);
 ```
 
 ### `lambda:` transforms (deprecated)
