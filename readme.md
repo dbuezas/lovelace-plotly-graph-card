@@ -378,7 +378,7 @@ entities:
 Filters are used to process the data before plotting it. Heavily inspired by [ESPHome's sensor filters](https://esphome.io/components/sensor/index.html#sensor-filters).
 Filters are applied in order.
 
-```
+```yaml
 type: custom:plotly-graph
 entities:
   - entity: sensor.temperature_in_celsius
@@ -387,7 +387,9 @@ entities:
     # The filters below will only be applied to numeric values. Missing (unavailable) and non-numerics will be left untouched
     - add: 5 # adds 5 to each datapoint
     - multiply: 2 # multiplies each datapoint by 2
-    - calibrate_linear: # Finds a linear approximation to the mapping linear regression.
+    - calibrate_linear:
+      # Left of the arrow are the measurements, right are the expected values.
+      # The mapping is then approximated through linear regression, and that correction is applied to the data.
       - 0.0 -> 0.0
       - 40.0 -> 45.0
       - 100.0 -> 102.5
