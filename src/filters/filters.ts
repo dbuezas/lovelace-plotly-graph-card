@@ -183,7 +183,7 @@ const filters = {
       };
     },
   map_y_numbers: (fnStr: string) => {
-    const fn = myEval(`(i, x, y, states, statistics, vars) => ${fnStr}`);
+    const fn = myEval(`(i, x, y, state, statistic, vars) => ${fnStr}`);
     return ({ xs, ys, states, statistics, vars }) => ({
       xs,
       ys: mapNumbers(ys, (y, i) =>
@@ -192,14 +192,14 @@ const filters = {
     });
   },
   map_y: (fnStr: string) => {
-    const fn = myEval(`(i, x, y, states, statistics) => ${fnStr}`);
+    const fn = myEval(`(i, x, y, state, statistic) => ${fnStr}`);
     return ({ xs, ys, states, statistics, vars }) => ({
       xs,
       ys: ys.map((_, i) => fn(i, xs[i], ys[i], states[i], statistics[i], vars)),
     });
   },
   map_x: (fnStr: string) => {
-    const fn = myEval(`(i, x, y, states, statistics, vars) => ${fnStr}`);
+    const fn = myEval(`(i, x, y, state, statistic, vars) => ${fnStr}`);
     return ({ xs, ys, states, statistics, vars }) => ({
       ys,
       xs: xs.map((_, i) => fn(i, xs[i], ys[i], states[i], statistics[i], vars)),
@@ -209,11 +209,11 @@ const filters = {
     (var_name: string) =>
     ({ vars, ...rest }) => ({ vars: { ...vars, [var_name]: rest } }),
   /*
-    example: fn("({xs, ys, states, statistics }) => ({xs: ys})")
+    example: map("({xs, ys, states, statistics }) => ({xs: ys})")
   */
-  fn: (fnStr: string) => myEval(fnStr),
+  map: (fnStr: string) => myEval(fnStr),
   filter: (fnStr: string) => {
-    const fn = myEval(`(i, x, y, states, statistics, vars) => ${fnStr}`);
+    const fn = myEval(`(i, x, y, state, statistic, vars) => ${fnStr}`);
     return ({ xs, ys, states, statistics, vars }) => {
       const mask = ys.map((_, i) =>
         fn(i, xs[i], ys[i], states[i], statistics[i], vars)
