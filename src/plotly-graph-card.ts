@@ -36,12 +36,14 @@ function removeOutOfRange(data: EntityData, range: TimestampRange) {
   if (last > -1) {
     data.xs.splice(last);
     data.ys.splice(last);
-    data.raw.splice(last);
+    data.states.splice(last);
+    data.statistics.splice(last);
   }
   if (first > -1) {
     data.xs.splice(0, first);
     data.ys.splice(0, first);
-    data.raw.splice(0, first);
+    data.states.splice(0, first);
+    data.statistics.splice(0, first);
   }
 }
 
@@ -158,23 +160,27 @@ export class PlotlyGraph extends HTMLElement {
       let shouldPlot = false;
       let shouldFetch = false;
       for (const entity of this.parsed_config.entities) {
-        const raw = hass.states[entity.entity];
+        const state = hass.states[entity.entity];
         const oldState = this._hass?.states[entity.entity];
-        if (raw && oldState !== raw) {
-          const start = new Date(oldState?.last_updated || raw.last_updated);
-          const end = new Date(raw.last_updated);
+        if (state && oldState !== state) {
+          const start = new Date(oldState?.last_updated || state.last_updated);
+          const end = new Date(state.last_updated);
           const range: [number, number] = [+start, +end];
           let value: string | undefined;
           if (isEntityIdAttrConfig(entity)) {
-            value = raw.attributes[entity.attribute];
+            value = state.attributes[entity.attribute];
           } else if (isEntityIdStateConfig(entity)) {
-            value = raw.state;
+            value = state.state;
           } else if (isEntityIdStatisticsConfig(entity)) {
             shouldFetch = true;
           }
 
           if (value !== undefined) {
-            this.cache.add(entity, [{ raw, x: new Date(end), y: null }], range);
+            this.cache.add(
+              entity,
+              [{ state, x: new Date(end), y: null }],
+              range
+            );
             shouldPlot = true;
           }
         }
@@ -425,12 +431,18 @@ export class PlotlyGraph extends HTMLElement {
             data = { ...data, ...filter(data) };
           }
         } catch (e) {
-          console.error(e);
+          throw new Error(`Error in filter `);
         }
       }
       if (trace.lambda) {
         try {
-          const r = trace.lambda(data.ys, data.xs, data.raw);
+          const history = data.ys.map((_, i) => ({
+            value: data.ys[i],
+            timestamp: +data.xs[i],
+            ...data.states[i],
+            ...data.statistics[i],
+          }));
+          const r = trace.lambda(data.ys, data.xs, history);
           if (Array.isArray(r)) {
             data.ys = r;
           } else {
@@ -450,7 +462,7 @@ export class PlotlyGraph extends HTMLElement {
           Traces with no data are removed from the legend by plotly. 
           Setting them to have null element prevents that.
         */
-        data.xs = [null];
+        data.xs = [new Date()];
         data.ys = [null];
       }
 
@@ -465,7 +477,8 @@ export class PlotlyGraph extends HTMLElement {
       const customdata = data.xs.map((x, i) => ({
         unit_of_measurement,
         name,
-        raw: data.raw[i],
+        states: data.states[i],
+        statistics: data.statistics[i],
         x,
         y: data.ys[i],
       }));

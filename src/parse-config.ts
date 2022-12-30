@@ -55,7 +55,7 @@ function getIsAutoPeriodConfig(periodObj: any): periodObj is AutoPeriodConfig {
   return true;
 }
 function parseStatistics(entity: InputConfig["entities"][0]) {
-  if (!("statistic" in entity || "period" in entity)) return {};
+  if (!entity.statistic && !entity.period) return {};
   const statistic: StatisticType = entity.statistic || "mean";
 
   if (!STATISTIC_TYPES.includes(statistic))
@@ -125,9 +125,14 @@ function parseEntities(config: InputConfig): EntityConfig[] {
       );
     }
     const parsedFilters = (entityIn.filters || []).map((obj) => {
-      const filterName = Object.keys(obj)[0];
-      const config = Object.values(obj)[0];
-
+      let filterName: string;
+      let config: any = null;
+      if (typeof obj === "string") {
+        filterName = obj;
+      } else {
+        filterName = Object.keys(obj)[0];
+        config = Object.values(obj)[0];
+      }
       const filter = filters[filterName];
       if (!filter) {
         throw new Error(

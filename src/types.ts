@@ -11,6 +11,8 @@ import {
 import { HassEntity } from "home-assistant-js-websocket";
 import { FilterFn } from "./filters/filters";
 export { HassEntity } from "home-assistant-js-websocket";
+
+export type YValue = number | string | null;
 export type InputConfig = {
   type: "custom:plotly-graph-card";
   hours_to_show?: number;
@@ -32,7 +34,7 @@ export type InputConfig = {
         };
     offset?: TimeDurationStr;
     extend_to_present?: boolean;
-    filters?: `${number} -> ${number}`[];
+    filters?: (Record<string, any> | string)[];
   } & Partial<Plotly.PlotData>)[];
   defaults?: {
     entity?: Partial<Plotly.PlotData>;
@@ -49,10 +51,13 @@ export type InputConfig = {
 export type EntityConfig = EntityIdConfig & {
   unit_of_measurement?: string;
   lambda?: (
-    y: Datum[],
-    x: Datum[],
-    raw_entity: CachedEntity[]
-  ) => Datum[] | { x?: Datum[]; y?: Datum[] };
+    y: YValue[],
+    x: Date[],
+    raw_entity: ((StatisticValue | HassEntity) & {
+      timestamp: number;
+      value: any;
+    })[]
+  ) => YValue[] | { x?: Date[]; y?: YValue[] };
   show_value:
     | boolean
     | {
@@ -118,19 +123,20 @@ export type Timestamp = number;
 export type CachedBaseEntity = {
   fake_boundary_datapoint?: true;
   x: Date;
-  y: number | string | null;
+  y: YValue;
 };
 export type CachedStateEntity = CachedBaseEntity & {
-  raw: HassEntity;
+  state: HassEntity;
 };
 export type CachedStatisticsEntity = CachedBaseEntity & {
-  raw: StatisticValue;
+  statistics: StatisticValue;
 };
 export type CachedEntity = CachedStateEntity | CachedStatisticsEntity;
 export type EntityData = {
-  raw: (HassEntity | StatisticValue)[];
+  states: HassEntity[];
+  statistics: StatisticValue[];
   xs: Date[];
-  ys: (number | string | null)[];
+  ys: YValue[];
 };
 
 export type TimestampRange = Timestamp[]; // [Timestamp, Timestamp];

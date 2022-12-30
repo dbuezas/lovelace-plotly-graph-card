@@ -13,10 +13,10 @@ import {
   CachedStateEntity,
   HassEntity,
   EntityData,
+  YValue,
 } from "../types";
 import { groupBy } from "lodash";
 import { StatisticValue } from "../recorder-types";
-import { Datum } from "plotly.js";
 
 export function mapValues<T, S>(
   o: Record<string, T>,
@@ -134,17 +134,21 @@ export default class Cache {
   getData(entity: EntityConfig): EntityData {
     let key = getEntityKey(entity);
     const history = this.histories[key] || [];
-    let ys = [] as (string | number | null)[];
+    const xs = history.map(({ x }) => new Date(+x + entity.offset));
+    let ys = [] as YValue[];
+    let states = [] as HassEntity[];
+    let statistics = [] as StatisticValue[];
     if (isEntityIdStatisticsConfig(entity)) {
-      ys = (history as CachedStatisticsEntity[]).map(
-        ({ raw }) => raw[entity.statistic]
+      statistics = (history as CachedStatisticsEntity[]).map(
+        ({ statistics }) => statistics
       );
+      ys = statistics.map((s) => s[entity.statistic]);
     } else if (isEntityIdAttrConfig(entity)) {
-      ys = (history as CachedStateEntity[]).map(
-        ({ raw }) => raw.attributes[entity.attribute]
-      );
+      states = (history as CachedStateEntity[]).map(({ state }) => state);
+      ys = states.map((s) => s.attributes[entity.attribute]);
     } else if (isEntityIdStateConfig(entity)) {
-      ys = (history as CachedStateEntity[]).map(({ raw }) => raw.state);
+      states = (history as CachedStateEntity[]).map(({ state }) => state);
+      ys = states.map((s) => s.state);
     } else
       throw new Error(
         `Unrecognised fetch type for ${(entity as EntityConfig).entity}`
@@ -153,14 +157,12 @@ export default class Cache {
       // see https://github.com/dbuezas/lovelace-plotly-graph-card/issues/146
       y === "unavailable" ? null : y
     );
-    const raw = history.map(({ raw }) => raw);
-    const xs = history.map(({ x }) => new Date(+x + entity.offset));
     if (entity.extend_to_present && xs.length > 0) {
       xs.push(new Date(Date.now() + entity.offset));
       ys.push(ys[ys.length - 1]);
-      raw.push(raw[raw.length - 1]);
+      states.push(states[states.length - 1]);
     }
-    return { raw, xs, ys };
+    return { states, statistics, xs, ys };
   }
   async update(
     range: TimestampRange,

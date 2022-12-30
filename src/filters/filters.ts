@@ -2,91 +2,121 @@ import { Datum } from "plotly.js";
 import { linearRegressionLine, linearRegression } from "simple-statistics";
 import { timeUnits } from "../duration/duration";
 import { StatisticValue } from "../recorder-types";
-import { CachedEntity, HassEntity } from "../types";
+import { HassEntity, YValue } from "../types";
 
 const castFloat = (y: any) => parseFloat(y);
 const myEval = typeof window != "undefined" ? window.eval : global.eval;
-export const prepareData = ({
-  ys,
-  xs,
-}: {
-  ys: Datum[];
-  xs: Datum[];
-  attributes: Record<string, string>;
-  vars: Record<any, any>;
-  history: CachedEntity[];
-}) =>
-  ({
-    ys: ys.map(castFloat).filter(Number.isFinite),
-    xs: xs
-      .filter((_, i) => Number.isFinite(castFloat(ys[i])))
-      .map((x) => new Date(x as any)),
-  } as FilterData);
+
 type FilterData = {
   xs: Date[];
-  ys: number[];
-  raw: (HassEntity | StatisticValue)[];
+  ys: YValue[];
+  states: HassEntity[];
+  statistics: StatisticValue[];
   attributes: Record<string, string>;
   vars: Record<any, any>;
 };
 export type FilterFn = (p: FilterData) => Partial<FilterData>;
 
+const mapNumbers = (ys: YValue[], fn: (y: number, i: number) => number) =>
+  ys.map((y, i) => {
+    const n = castFloat(y);
+    if (Number.isNaN(n)) return y;
+    return fn(n, i);
+  });
+
+/**
+ * Removes from all params the indexes for which ys is not numeric, and parses ys to numbers.
+ * WARNING: when used inside a filter, it is important to return all arrays. Otherwise the lengths
+ * between say ys and states won't be consistent
+ */
+const force_numeric: (p: FilterData) => { ys: number[] } & FilterData = ({
+  xs,
+  ys: ys2,
+  states,
+  statistics,
+  ...rest
+}) => {
+  const ys = ys2.map((y) => castFloat(y));
+  const mask = ys.map((y) => !isNaN(y));
+  return {
+    ys: ys.filter((_, i) => mask[i]),
+    xs: xs.filter((_, i) => mask[i]),
+    states: states.filter((_, i) => mask[i]),
+    statistics: statistics.filter((_, i) => mask[i]),
+    ...rest,
+  };
+};
+
 const filters = {
-  offset:
+  force_numeric: () => force_numeric,
+  add:
     (val: number) =>
     ({ ys }) => ({
-      ys: ys.map((y) => y + val),
+      ys: mapNumbers(ys, (y) => y + val),
     }),
   multiply:
     (val: number) =>
     ({ ys }) => ({
-      ys: ys.map((y) => y * val),
+      ys: mapNumbers(ys, (y) => y * val),
     }),
   calibrate_linear:
-    (mapping: `${number} -> ${number}`[]) =>
+    (mappingStr: `${number} -> ${number}`[]) =>
     ({ ys }) => {
-      const map = linearRegressionLine(
-        linearRegression(mapping.map((str) => str.split("->").map(parseFloat)))
-      );
-      return { ys: ys.map(map) };
+      const mapping = mappingStr.map((str) => str.split("->").map(parseFloat));
+      const mapper = linearRegressionLine(linearRegression(mapping));
+      return {
+        ys: mapNumbers(ys, mapper),
+      };
     },
   derivate:
     (unit: keyof typeof timeUnits = "h") =>
-    ({ xs, ys, attributes }) => ({
-      attributes: {
-        unit_of_measurement: `${attributes.unit_of_measurement}/${unit}`,
-      },
-      xs: xs.slice(1),
-      ys: ys
-        .map((_y, i) => {
-          const dateDelta = (+xs[i] - +xs[i - 1]) / timeUnits[unit];
-          const yDelta = (ys[i] - ys[i - 1]) / dateDelta;
+    ({ xs, ys, attributes }) => {
+      const last = {
+        x: +xs[0],
+        y: NaN,
+      };
+      return {
+        attributes: {
+          unit_of_measurement: `${attributes.unit_of_measurement}/${unit}`,
+        },
+        xs,
+        ys: mapNumbers(ys, (y, i) => {
+          const x = +xs[i];
+          const dateDelta = (x - last.x) / timeUnits[unit];
+          const yDelta = (y - last.y) / dateDelta;
+          last.y = y;
+          last.x = x;
           return yDelta;
-        })
-        .slice(1),
-    }),
+        }),
+      };
+    },
   integrate:
     (unit: keyof typeof timeUnits = "h") =>
     ({ xs, ys, attributes }) => {
       let yAcc = 0;
+      let last = {
+        x: NaN,
+      };
       return {
         attributes: {
           unit_of_measurement: `${attributes.unit_of_measurement}*${unit}`,
         },
-        xs: xs.slice(1),
-        ys: ys
-          .map((_y, i) => {
-            if (i === 0) return 0;
-            const dateDelta = (+xs[i] - +xs[i - 1]) / timeUnits[unit];
-            yAcc += ys[i] * dateDelta;
-            return yAcc;
-          })
-          .slice(1),
+        xs: xs,
+        ys: mapNumbers(ys, (y, i) => {
+          const x = +xs[i];
+          const dateDelta = (x - last.x) / timeUnits[unit];
+          const isFirst = isNaN(last.x);
+          last.x = x;
+          if (isFirst) return NaN;
+          yAcc += y * dateDelta;
+          return yAcc;
+        }),
       };
     },
   sliding_window_moving_average:
     ({ window_size = 10, extended = false, centered = true } = {}) =>
-    ({ xs, ys, attributes }) => {
+    (params) => {
+      const { xs, ys, ...rest } = force_numeric(params);
       const ys2: number[] = [];
       const xs2: Date[] = [];
       let acc = {
@@ -111,11 +141,12 @@ const filters = {
           ys2.push(acc.y / acc.count);
         }
       }
-      return { ys: ys2, xs: xs2, attributes };
+      return { xs, ys, ...rest };
     },
   median:
     ({ window_size = 10, extended = false, centered = true } = {}) =>
-    ({ xs, ys, attributes }) => {
+    (params) => {
+      const { xs, ys, ...rest } = force_numeric(params);
       const ys2: number[] = [];
       const xs2: Date[] = [];
       let acc = {
@@ -139,74 +170,61 @@ const filters = {
           ys2.push((acc.ys[mid1] + acc.ys[mid2]) / 2);
         }
       }
-      return { ys: ys2, xs: xs2, attributes };
+      return { ys: ys2, xs: xs2, ...rest };
     },
   exponential_moving_average:
     ({ alpha = 0.1 } = {}) =>
-    ({ ys }) => {
+    (params) => {
+      const { ys, ...rest } = force_numeric(params);
       let last = ys[0];
       return {
         ys: ys.map((y) => (last = last * (1 - alpha) + y * alpha)),
+        ...rest,
       };
     },
-  map_y: (fnStr: string) => {
-    const fn = myEval(`(x,y, raw)=>${fnStr}`);
-    return ({ xs, ys, raw }) => ({
+  map_y_numbers: (fnStr: string) => {
+    const fn = myEval(`(i, x, y, states, statistics, vars) => ${fnStr}`);
+    return ({ xs, ys, states, statistics, vars }) => ({
       xs,
-      ys: ys.map((_, i) => fn(xs[i], ys[i], raw[i])),
+      ys: mapNumbers(ys, (y, i) =>
+        fn(i, xs[i], y, states[i], statistics[i], vars)
+      ),
+    });
+  },
+  map_y: (fnStr: string) => {
+    const fn = myEval(`(i, x, y, states, statistics) => ${fnStr}`);
+    return ({ xs, ys, states, statistics, vars }) => ({
+      xs,
+      ys: ys.map((_, i) => fn(i, xs[i], ys[i], states[i], statistics[i], vars)),
     });
   },
   map_x: (fnStr: string) => {
-    const fn = myEval(`(x,y, raw)=>${fnStr}`);
-    return ({ xs, ys, raw }) => ({
+    const fn = myEval(`(i, x, y, states, statistics, vars) => ${fnStr}`);
+    return ({ xs, ys, states, statistics, vars }) => ({
       ys,
-      xs: xs.map((_, i) => fn(xs[i], ys[i], raw[i])),
+      xs: xs.map((_, i) => fn(i, xs[i], ys[i], states[i], statistics[i], vars)),
     });
   },
-  set_var:
+  store_var:
     (var_name: string) =>
     ({ vars, ...rest }) => ({ vars: { ...vars, [var_name]: rest } }),
-  get_var:
-    (var_name: string) =>
-    ({ vars }) => ({ vars, ...vars[var_name] }),
+  /*
+    example: fn("({xs, ys, states, statistics }) => ({xs: ys})")
+  */
   fn: (fnStr: string) => myEval(fnStr),
   filter: (fnStr: string) => {
-    const fn = myEval(`(x,y, raw)=>${fnStr}`);
-    return ({ ys, xs, raw }) => {
-      const xs2: Date[] = [];
-      const ys2: number[] = [];
-      const raw2: (HassEntity | StatisticValue)[] = [];
-      for (let i = 0; i < ys.length; i++) {
-        const x = xs[i];
-        const y = ys[i];
-        const r = raw[i];
-        if (fn(x, y, r)) {
-          xs2.push(x);
-          ys2.push(y);
-          raw2.push(r);
-        }
-      }
-      return { ys: ys2, xs: xs2, raw: raw2 };
+    const fn = myEval(`(i, x, y, states, statistics, vars) => ${fnStr}`);
+    return ({ xs, ys, states, statistics, vars }) => {
+      const mask = ys.map((_, i) =>
+        fn(i, xs[i], ys[i], states[i], statistics[i], vars)
+      );
+      return {
+        ys: ys.filter((_, i) => mask[i]),
+        xs: xs.filter((_, i) => mask[i]),
+        states: states.filter((_, i) => mask[i]),
+        statistics: statistics.filter((_, i) => mask[i]),
+      };
     };
   },
-  /*
-  # Example filters:
-  filters:
-    - offset: 2.0
-    - multiply: 1.2
-    - calibrate_linear:
-        - 0.0 -> 0.0
-        - 40.0 -> 45.0
-        - 100.0 -> 102.5
-    - median:
-        window_size: 5
-    - sliding_window_moving_average:
-        window_size: 15
-    -     const timeUnit = timeUnits[unit];
-  :
-        alpha: 0.1
-    - lambda: return x * (9.0/5.0) + 32.0;
-  
-  */
 } satisfies Record<string, (...args: any[]) => FilterFn>;
 export default filters;

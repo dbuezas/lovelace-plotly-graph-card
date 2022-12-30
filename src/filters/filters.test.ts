@@ -1,32 +1,24 @@
-import filters, { prepareData } from "./filters";
-const data_with_missing = {
+import filters from "./filters";
+const data = {
+  states: [],
+  statistics: [],
   ys: [0, 1, null, 2],
   xs: [
     "2022-12-20T18:07:28.000Z",
     "2022-12-20T18:07:29.000Z",
     "2022-12-20T18:07:29.500Z",
     "2022-12-20T18:07:30.000Z",
-  ],
+  ].map((s) => new Date(s)),
   attributes: {
     unit_of_measurement: "w",
   },
   history: [],
   vars: {},
 };
-const data = prepareData(data_with_missing);
-describe("prepareData", () => {
-  it("removes nulls", () => {
-    expect(data.ys).not.toContain(null);
-  });
-  it("parse dates", () => {
-    data.xs.forEach((element) => {
-      expect(element).toMatch(expect.any(Date));
-    });
-  });
-});
+
 describe("filters", () => {
   it("offset", () => {
-    expect(filters.offset(-1)(data)).toEqual({
+    expect(filters.add(-1)(data)).toEqual({
       attributes: {
         unit_of_measurement: "w",
       },
@@ -117,7 +109,7 @@ describe("filters", () => {
   });
   it("fn", () => {
     expect(
-      filters.fn(`({xs,ys,...rest}) => ({xs:ys, ys:xs,...rest})`)(data)
+      filters.map(`({xs,ys,...rest}) => ({xs:ys, ys:xs,...rest})`)(data)
     ).toEqual({
       attributes: {
         unit_of_measurement: "w",
