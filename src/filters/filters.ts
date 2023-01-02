@@ -79,6 +79,7 @@ const filters = {
       };
       return {
         meta: {
+          ...meta,
           unit_of_measurement: `${meta.unit_of_measurement}/${unit}`,
         },
         xs,
@@ -101,7 +102,8 @@ const filters = {
       };
       return {
         meta: {
-          unit_of_measurement: `${meta.unit_of_measurement}*${unit}`,
+          ...meta,
+          unit_of_measurement: `${meta.unit_of_measurement}${unit}`,
         },
         xs: xs,
         ys: mapNumbers(ys, (y, i) => {
