@@ -416,12 +416,12 @@ export class PlotlyGraph extends HTMLElement {
     const real_traces: Plotly.Data[] = [];
     entities.forEach((trace, traceIdx) => {
       const entity_id = trace.entity;
-      const attributes = { ...this.hass?.states[entity_id]?.attributes };
-      attributes.unit_of_measurement ??= "";
-      attributes.friendly_name ??= "";
+      const meta = {
+        ...this.hass?.states[entity_id]?.attributes,
+      };
       let data = {
         ...this.cache.getData(trace),
-        attributes,
+        meta,
         vars,
       };
 
@@ -467,11 +467,11 @@ export class PlotlyGraph extends HTMLElement {
       }
 
       const unit_of_measurement =
-        trace.unit_of_measurement || attributes.unit_of_measurement;
+        trace.unit_of_measurement || data.meta.unit_of_measurement || "";
       if (!units.includes(unit_of_measurement)) units.push(unit_of_measurement);
       const yaxis_idx = units.indexOf(unit_of_measurement);
 
-      let name = trace.name || attributes.friendly_name || entity_id;
+      let name = trace.name || data.meta.friendly_name || entity_id;
       if (isEntityIdAttrConfig(trace)) name += ` (${trace.attribute}) `;
       if (isEntityIdStatisticsConfig(trace)) name += ` (${trace.statistic}) `;
       const customdata = data.xs.map((x, i) => ({

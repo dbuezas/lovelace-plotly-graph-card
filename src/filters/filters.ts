@@ -12,7 +12,7 @@ type FilterData = {
   ys: YValue[];
   states: HassEntity[];
   statistics: StatisticValue[];
-  attributes: Record<string, string>;
+  meta: HassEntity["attributes"];
   vars: Record<any, any>;
 };
 export type FilterFn = (p: FilterData) => Partial<FilterData>;
@@ -70,14 +70,14 @@ const filters = {
     },
   derivate:
     (unit: keyof typeof timeUnits = "h") =>
-    ({ xs, ys, attributes }) => {
+    ({ xs, ys, meta }) => {
       const last = {
         x: +xs[0],
         y: NaN,
       };
       return {
-        attributes: {
-          unit_of_measurement: `${attributes.unit_of_measurement}/${unit}`,
+        meta: {
+          unit_of_measurement: `${meta.unit_of_measurement}/${unit}`,
         },
         xs,
         ys: mapNumbers(ys, (y, i) => {
@@ -92,14 +92,14 @@ const filters = {
     },
   integrate:
     (unit: keyof typeof timeUnits = "h") =>
-    ({ xs, ys, attributes }) => {
+    ({ xs, ys, meta }) => {
       let yAcc = 0;
       let last = {
         x: NaN,
       };
       return {
-        attributes: {
-          unit_of_measurement: `${attributes.unit_of_measurement}*${unit}`,
+        meta: {
+          unit_of_measurement: `${meta.unit_of_measurement}*${unit}`,
         },
         xs: xs,
         ys: mapNumbers(ys, (y, i) => {

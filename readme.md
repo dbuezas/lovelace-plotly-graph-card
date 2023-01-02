@@ -415,15 +415,15 @@ entities:
         alpha: 0.1 # between 0 an 1. The lower the alpha, the smoother the trace.
 
     # The filters below receive all datapoints as they come from home assistant. Y values are strings or null (unless previously mapped to numbers or any other type)
-    - map_y: y === "heat" ? 1 : 0 # map the y values of each datapoint. Variables `i` (index), `x`, `state`, `statistic` and `vars` are also in scope.
+    - map_y: y === "heat" ? 1 : 0 # map the y values of each datapoint. Variables `i` (index), `x`, `state`, `statistic` and `meta` and `vars` are also in scope.
     - map_x: new Date(+x + 1000) # map the x coordinate (javascript date object) of each datapoint. Same variables as map_y are in scope
     - map: |- # arbitrary function.
-        ({xs, ys, attributes, states, statistics}) => {
+        ({xs, ys, meta, states, statistics}) => {
           # either statistics or states will be available, depending on if "statistics" are fetched or not
-          # attributes
+          # attributes will be available inside states only if an attribute is picked in the trace
           return {
             ys: states.map(state => +state?.attributes?.current_temperature - state?.attributes?.target_temperature),
-            attributes: { unit_of_measurement: "delta" }
+            meta: { unit_of_measurement: "delta" }
           };
         },
     - filter: y !== null && +y > 0 && x > new Date(Date.now()-1000*60*60) # filter out datapoints for which this returns false. Also filters from xs, states and statistics. Same variables as map_y are in scope
