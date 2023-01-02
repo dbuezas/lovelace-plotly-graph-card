@@ -397,7 +397,7 @@ entities:
         unit: h # ms (milisecond), s (second), m (minute), h (hour), d (day), w (week), M (month), y (year)
     - integrate: # computes area under the curve per unit of time using Right hand riemann integration
         unit: h # ms (milisecond), s (second), m (minute), h (hour), d (day), w (week), M (month), y (year)
-    - map_y_numeric: Math.sqrt(y + 10*100) # map the y coordinate of each datapoint.
+    - map_y_numbers: Math.sqrt(y + 10*100) # map the y coordinate of each datapoint.
 
     # In the filters below, missing and non numeric datapoints will be discarded
     - sliding_window_moving_average:
