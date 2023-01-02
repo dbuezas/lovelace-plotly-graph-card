@@ -112,12 +112,12 @@ export function isEntityIdStateConfig(
 export function isEntityIdAttrConfig(
   entityConfig: EntityIdConfig
 ): entityConfig is EntityIdAttrConfig {
-  return "attribute" in entityConfig;
+  return !!entityConfig["attribute"];
 }
 export function isEntityIdStatisticsConfig(
   entityConfig: EntityIdConfig
 ): entityConfig is EntityIdStatisticsConfig {
-  return "period" in entityConfig;
+  return !!entityConfig["period"];
 }
 
 export type Timestamp = number;
