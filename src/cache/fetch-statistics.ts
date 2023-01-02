@@ -1,10 +1,6 @@
 import { HomeAssistant } from "custom-card-helpers";
 import { Statistics, StatisticValue } from "../recorder-types";
-import {
-  CachedEntity,
-  CachedStatisticsEntity,
-  EntityIdStatisticsConfig,
-} from "../types";
+import { CachedStatisticsEntity, EntityIdStatisticsConfig } from "../types";
 
 async function fetchStatistics(
   hass: HomeAssistant,

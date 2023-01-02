@@ -1,6 +1,5 @@
 import { HomeAssistant } from "custom-card-helpers";
 import {
-  CachedEntity,
   CachedStateEntity,
   EntityIdAttrConfig,
   EntityIdStateConfig,
