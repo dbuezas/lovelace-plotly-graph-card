@@ -27,6 +27,7 @@ export type InputConfig = {
     period?: StatisticPeriod | "auto" | AutoPeriodConfig;
     unit_of_measurement?: string;
     lambda?: string;
+    internal?: boolean;
     show_value?:
       | boolean
       | {
@@ -58,6 +59,7 @@ export type EntityConfig = EntityIdConfig & {
       value: any;
     })[]
   ) => YValue[] | { x?: Date[]; y?: YValue[] };
+  internal: boolean;
   show_value:
     | boolean
     | {

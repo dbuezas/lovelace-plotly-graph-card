@@ -531,6 +531,25 @@ Compute absolute humidity
     - map_y: (6.112 * Math.exp((17.67 * y)/(y+243.5)) * +vars.relative_humidity.ys[i] * 2.1674)/(273.15+y);
 ```
 
+### `internal:`
+
+setting it to `true` will remove it from the plot, but the data will still be fetch. Useful when the data is only used by a filter in a different trace
+
+```yaml
+type: custom:plotly-graph
+entities:
+  - entity: sensor.temperature1
+    internal: true
+    period: 5minute
+    filters:
+      store_var: temp1
+  - entity: sensor.temperature2
+    period: 5minute
+    name: sum of temperatures
+    filters:
+      map_y: y + vars.temp1[i].y
+```
+
 ### `lambda:` transforms (deprecated)
 
 Deprecated. Use filters instead.

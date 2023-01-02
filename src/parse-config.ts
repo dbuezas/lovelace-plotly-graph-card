@@ -143,6 +143,7 @@ function parseEntities(config: InputConfig): EntityConfig[] {
     });
     return {
       ...(entityIn as any), // ToDo: make this type safe
+      internal: !!entityIn.internal,
       offset: parseTimeDuration(entityIn.offset ?? "0s"),
       lambda: entityIn.lambda && window.eval(entityIn.lambda),
       filters: parsedFilters,
