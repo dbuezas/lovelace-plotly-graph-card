@@ -167,9 +167,10 @@ const filters = {
         if ((i >= window_size && i < ys.length) || extended) {
           if (centered) xs2.push(new Date(acc.x / acc.ys.length));
           else xs2.push(xs[i]);
-          const mid1 = Math.floor(acc.ys.length / 2);
-          const mid2 = Math.ceil(acc.ys.length / 2);
-          ys2.push((acc.ys[mid1] + acc.ys[mid2]) / 2);
+          const sorted = acc.ys.slice().sort();
+          const mid1 = Math.floor(sorted.length / 2);
+          const mid2 = Math.ceil(sorted.length / 2);
+          ys2.push((sorted[mid1] + sorted[mid2]) / 2);
         }
       }
       return { ys: ys2, xs: xs2, ...rest };
