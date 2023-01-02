@@ -429,9 +429,11 @@ export class PlotlyGraph extends HTMLElement {
         try {
           for (const filter of trace.filters) {
             data = { ...data, ...filter(data) };
+            vars = data.vars;
           }
         } catch (e) {
-          throw new Error(`Error in filter `);
+          console.error(e);
+          throw new Error(`Error in filter: ${e}`);
         }
       }
       if (trace.lambda) {
@@ -453,6 +455,7 @@ export class PlotlyGraph extends HTMLElement {
           console.error(e);
         }
       }
+      if (trace.internal) return;
       if (!this.isBrowsing) {
         // to ensure the y axis autoranges to the visible data
         removeOutOfRange(data, this.getAutoFetchRangeWithValueMargins());
@@ -492,8 +495,8 @@ export class PlotlyGraph extends HTMLElement {
         },
         trace
       );
-      if (!trace.internal) real_traces.push(mergedTrace);
-      if (!trace.internal && mergedTrace.show_value) {
+      real_traces.push(mergedTrace);
+      if (mergedTrace.show_value) {
         mergedTrace.legendgroup ??= "group" + traceIdx;
         show_value_traces.push({
           texttemplate: `%{y:.2~f}%{customdata.unit_of_measurement}`, // here so it can be overwritten

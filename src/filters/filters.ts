@@ -61,11 +61,13 @@ const filters = {
     }),
   calibrate_linear:
     (mappingStr: `${number} -> ${number}`[]) =>
-    ({ ys }) => {
+    ({ ys, meta }) => {
       const mapping = mappingStr.map((str) => str.split("->").map(parseFloat));
-      const mapper = linearRegressionLine(linearRegression(mapping));
+      const regression = linearRegression(mapping);
+      const mapper = linearRegressionLine(regression);
       return {
         ys: mapNumbers(ys, mapper),
+        meta: { ...meta, regression },
       };
     },
   derivate:
@@ -141,7 +143,7 @@ const filters = {
           ys2.push(acc.y / acc.count);
         }
       }
-      return { xs, ys, ...rest };
+      return { xs: xs2, ys: ys2, ...rest };
     },
   median:
     ({ window_size = 10, extended = false, centered = true } = {}) =>
@@ -192,7 +194,7 @@ const filters = {
     });
   },
   map_y: (fnStr: string) => {
-    const fn = myEval(`(i, x, y, state, statistic) => ${fnStr}`);
+    const fn = myEval(`(i, x, y, state, statistic, vars) => ${fnStr}`);
     return ({ xs, ys, states, statistics, vars }) => ({
       xs,
       ys: ys.map((_, i) => fn(i, xs[i], ys[i], states[i], statistics[i], vars)),
