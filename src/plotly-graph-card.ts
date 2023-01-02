@@ -479,9 +479,11 @@ export class PlotlyGraph extends HTMLElement {
       if (isEntityIdStatisticsConfig(trace)) name += ` (${trace.statistic}) `;
       const customdata = data.xs.map((x, i) => ({
         unit_of_measurement,
+        meta,
         name,
-        states: data.states[i],
-        statistics: data.statistics[i],
+        state: data.states[i],
+        statistic: data.statistics[i],
+        i,
         x,
         y: data.ys[i],
       }));
