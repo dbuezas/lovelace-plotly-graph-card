@@ -519,16 +519,47 @@ or alternatively,
 Compute absolute humidity
 
 ```yaml
-- entity: sensor.wintergarten_clima_humidity
-  period: 5minute # important so the datapoints align in the x axis
-  filters:
-    - store_var: relative_humidity
-- entity: sensor.wintergarten_clima_temperature
-  period: 5minute
-  name: Absolute Hty
-  unit_of_measurement: g/m³
-  filters:
-    - map_y: (6.112 * Math.exp((17.67 * y)/(y+243.5)) * +vars.relative_humidity.ys[i] * 2.1674)/(273.15+y);
+type: custom:plotly-graph-dev
+entities:
+  - entity: sensor.wintergarten_clima_humidity
+    period: 5minute # important so the datapoints align in the x axis
+    internal: true
+    filters:
+      - store_var: relative_humidity
+  - entity: sensor.wintergarten_clima_temperature
+    period: 5minute
+    name: Absolute Hty
+    unit_of_measurement: g/m³
+    filters:
+      - map_y: (6.112 * Math.exp((17.67 * y)/(y+243.5)) * +vars.relative_humidity.ys[i] * 2.1674)/(273.15+y);
+```
+
+Compute dew point
+
+```yaml
+type: custom:plotly-graph-dev
+entities:
+  - entity: sensor.openweathermap_humidity
+    internal: true
+    period: 5minute # important so the datapoints align in the x axis
+    filters:
+      - store_var: relative_humidity
+  - entity: sensor.openweathermap_temperature
+    period: 5minute
+    name: Dew point
+    filters:
+      - map_y: >-
+          {
+            // https://www.omnicalculator.com/physics/dew-point
+            const a = 17.625;
+            const b = 243.04;
+            const T = +y;
+            const RH = +vars.relative_humidity.ys[i];
+            const α = Math.log(RH/100) + a*T/(b+T);
+            const Ts = (b * α) / (a - α);
+            return Ts; 
+          }
+hours_to_show: 24
 ```
 
 ### `internal:`
