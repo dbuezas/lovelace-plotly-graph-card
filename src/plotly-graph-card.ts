@@ -483,6 +483,7 @@ export class PlotlyGraph extends HTMLElement {
         name,
         state: data.states[i],
         statistic: data.statistics[i],
+        vars: data.vars,
         i,
         x,
         y: data.ys[i],
