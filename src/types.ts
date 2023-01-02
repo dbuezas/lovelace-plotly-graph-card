@@ -21,7 +21,7 @@ export type InputConfig = {
   title?: string;
   offset?: TimeDurationStr;
   entities: ({
-    entity: string;
+    entity?: string;
     attribute?: string;
     statistic?: StatisticType;
     period?: StatisticPeriod | "auto" | AutoPeriodConfig;

@@ -182,6 +182,7 @@ export default class Cache {
           // Making these fetches sequentially ensures that the already fetched ranges of each
           // request are not fetched more than once
           for (const entity of entityGroup) {
+            if (!entity.entity) continue;
             const entityKey = getEntityKey(entity);
             this.ranges[entityKey] ??= [];
             const offsetRange = [
