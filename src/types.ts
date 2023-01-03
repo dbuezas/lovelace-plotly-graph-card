@@ -117,7 +117,7 @@ export function isEntityIdAttrConfig(
 export function isEntityIdStatisticsConfig(
   entityConfig: EntityIdConfig
 ): entityConfig is EntityIdStatisticsConfig {
-  return !!entityConfig["period"];
+  return !!entityConfig["statistic"];
 }
 
 export type Timestamp = number;
