@@ -214,9 +214,9 @@ const filters = {
     (var_name: string) =>
     ({ vars, ...rest }) => ({ vars: { ...vars, [var_name]: rest } }),
   /*
-    example: map("({xs, ys, states, statistics }) => ({xs: ys})")
+    example: fn("({xs, ys, states, statistics }) => ({xs: ys})")
   */
-  map: (fnStr: string) => myEval(fnStr),
+  fn: (fnStr: string) => myEval(fnStr),
   filter: (fnStr: string) => {
     const fn = myEval(`(i, x, y, state, statistic, vars) => ${fnStr}`);
     return ({ xs, ys, states, statistics, vars }) => {

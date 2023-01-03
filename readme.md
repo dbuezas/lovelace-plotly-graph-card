@@ -417,7 +417,7 @@ entities:
     # The filters below receive all datapoints as they come from home assistant. Y values are strings or null (unless previously mapped to numbers or any other type)
     - map_y: y === "heat" ? 1 : 0 # map the y values of each datapoint. Variables `i` (index), `x`, `state`, `statistic` and `meta` and `vars` are also in scope.
     - map_x: new Date(+x + 1000) # map the x coordinate (javascript date object) of each datapoint. Same variables as map_y are in scope
-    - map: |- # arbitrary function.
+    - fn: |- # arbitrary function.
         ({xs, ys, meta, states, statistics}) => {
           # either statistics or states will be available, depending on if "statistics" are fetched or not
           # attributes will be available inside states only if an attribute is picked in the trace
@@ -484,7 +484,7 @@ or alternatively,
 or alternatively,
 
 ```yaml
-- map: |-
+- fn: |-
     ({ys, states}) => ({
       ys: states.map((state, i) => state?.state === "heat" ? state.attributes?.current_temperature : 0),
     }),
@@ -502,7 +502,7 @@ or alternatively,
      - entity: sensor.temperature_in_celsius
        statistics: mean
        filters:
-         - map: |-
+         - fn: |-
              (params) => {
                console.log(params);
                const ys = [];
