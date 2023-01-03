@@ -168,16 +168,22 @@ export class PlotlyGraph extends HTMLElement {
           const start = new Date(oldState?.last_updated || state.last_updated);
           const end = new Date(state.last_updated);
           const range: [number, number] = [+start, +end];
-          let value: string | undefined;
-          if (isEntityIdAttrConfig(entity)) {
-            value = state.attributes[entity.attribute];
+          let shouldAddToCache = false;
+          if (entity.offset !== 0) {
+            // in entities with offset, the added datapoint may be far into the future.
+            // Therefore, adding it messes with autoranging.
+            // TODO: unify entity caches independent of offsets and keep track of what has actually been
+            // in the viewport
+            shouldFetch = true;
+          } else if (isEntityIdAttrConfig(entity)) {
+            shouldAddToCache = true;
           } else if (isEntityIdStateConfig(entity)) {
-            value = state.state;
+            shouldAddToCache = true;
           } else if (isEntityIdStatisticsConfig(entity)) {
             shouldFetch = true;
           }
 
-          if (value !== undefined) {
+          if (shouldAddToCache) {
             this.cache.add(
               entity,
               [{ state, x: new Date(end), y: null }],

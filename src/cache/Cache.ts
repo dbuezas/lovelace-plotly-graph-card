@@ -99,11 +99,11 @@ async function fetchSingleRange(
 
 export function getEntityKey(entity: EntityConfig) {
   if (isEntityIdAttrConfig(entity)) {
-    return `${entity.entity}::attribute`;
+    return `${entity.entity}::attribute::${entity.offset}`;
   } else if (isEntityIdStatisticsConfig(entity)) {
-    return `${entity.entity}::statistics::${entity.period}`;
+    return `${entity.entity}::statistics::${entity.period}::${entity.offset}`;
   } else if (isEntityIdStateConfig(entity)) {
-    return entity.entity;
+    return `${entity.entity}::${entity.offset}`;
   }
   throw new Error(`Entity malformed:${JSON.stringify(entity)}`);
 }
@@ -157,7 +157,7 @@ export default class Cache {
       // see https://github.com/dbuezas/lovelace-plotly-graph-card/issues/146
       y === "unavailable" ? null : y
     );
-    if (entity.extend_to_present && xs.length > 0) {
+    if (entity.extend_to_present && xs.length > 0 && entity.offset === 0) {
       xs.push(new Date(Date.now() + entity.offset));
       ys.push(ys[ys.length - 1]);
       states.push(states[states.length - 1]);
