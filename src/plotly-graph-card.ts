@@ -474,9 +474,10 @@ export class PlotlyGraph extends HTMLElement {
       if (!units.includes(unit_of_measurement)) units.push(unit_of_measurement);
       const yaxis_idx = units.indexOf(unit_of_measurement);
 
-      let name = trace.name || data.meta.friendly_name || entity_id;
+      let name = data.meta.friendly_name || entity_id;
       if (isEntityIdAttrConfig(trace)) name += ` (${trace.attribute}) `;
       if (isEntityIdStatisticsConfig(trace)) name += ` (${trace.statistic}) `;
+      if (trace.name) name = trace.name;
       const customdata = data.xs.map((x, i) => ({
         unit_of_measurement,
         meta,
