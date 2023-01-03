@@ -27,10 +27,18 @@ const componentName = isProduction ? "plotly-graph" : "plotly-graph-dev";
 
 function removeOutOfRange(data: EntityData, range: TimestampRange) {
   let first = -1;
-  let last = -1;
 
   for (let i = 0; i < data.xs.length; i++) {
     if (+data.xs[i]! < range[0]) first = i;
+  }
+  if (first > -1) {
+    data.xs.splice(0, first);
+    data.ys.splice(0, first);
+    data.states.splice(0, first);
+    data.statistics.splice(0, first);
+  }
+  let last = -1;
+  for (let i = data.xs.length - 1; i >= 0; i--) {
     if (+data.xs[i]! > range[1]) last = i;
   }
   if (last > -1) {
@@ -38,12 +46,6 @@ function removeOutOfRange(data: EntityData, range: TimestampRange) {
     data.ys.splice(last);
     data.states.splice(last);
     data.statistics.splice(last);
-  }
-  if (first > -1) {
-    data.xs.splice(0, first);
-    data.ys.splice(0, first);
-    data.states.splice(0, first);
-    data.statistics.splice(0, first);
   }
 }
 
