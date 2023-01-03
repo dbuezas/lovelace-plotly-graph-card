@@ -427,6 +427,7 @@ entities:
             meta: { unit_of_measurement: "delta" }
           };
         },
+    - resample: 5m # Rebuilds data so that the timestamps in xs are exact multiples of the specified interval, and without gaps. The parameter is the length of the interval and defaults to 5 minutes (see #duration for the format). This is useful when combining data from multiple entities, as the index of each datapoint will correspond to the same instant of time across them.
     - filter: y !== null && +y > 0 && x > new Date(Date.now()-1000*60*60) # filter out datapoints for which this returns false. Also filters from xs, states and statistics. Same variables as map_y are in scope
     - force_numeric # converts number-lookinig-strings to actual js numbers and removes the rest. Any filters used after this one will receive numbers, not strings or nulls. Also removes respective elements from xs, states and statistics parameters
 ```
@@ -523,15 +524,18 @@ Compute absolute humidity
 type: custom:plotly-graph-dev
 entities:
   - entity: sensor.wintergarten_clima_humidity
-    period: 5minute # important so the datapoints align in the x axis
     internal: true
     filters:
+      - resample: 5m # important so the datapoints align in the x axis
+      - map_y: parseFloat(y)
       - store_var: relative_humidity
   - entity: sensor.wintergarten_clima_temperature
     period: 5minute
     name: Absolute Hty
     unit_of_measurement: g/m³
     filters:
+      - resample: 5m
+      - map_y: parseFloat(y)
       - map_y: (6.112 * Math.exp((17.67 * y)/(y+243.5)) * +vars.relative_humidity.ys[i] * 2.1674)/(273.15+y);
 ```
 
@@ -544,18 +548,20 @@ entities:
     internal: true
     period: 5minute # important so the datapoints align in the x axis
     filters:
+      - map_y: parseFloat(y)
       - store_var: relative_humidity
   - entity: sensor.openweathermap_temperature
     period: 5minute
     name: Dew point
     filters:
+      - map_y: parseFloat(y)
       - map_y: >-
           {
             // https://www.omnicalculator.com/physics/dew-point
             const a = 17.625;
             const b = 243.04;
-            const T = +y;
-            const RH = +vars.relative_humidity.ys[i];
+            const T = y;
+            const RH = vars.relative_humidity.ys[i];
             const α = Math.log(RH/100) + a*T/(b+T);
             const Ts = (b * α) / (a - α);
             return Ts; 
