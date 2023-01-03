@@ -7,14 +7,12 @@ import insertStyleHack from "./style-hack";
 import Plotly from "./plotly";
 import {
   Config,
-  EntityData,
   InputConfig,
   isEntityIdAttrConfig,
   isEntityIdStateConfig,
   isEntityIdStatisticsConfig,
-  TimestampRange,
 } from "./types";
-import Cache from "./cache/Cache";
+import Cache, { removeOutOfRangeList } from "./cache/Cache";
 import getThemedLayout from "./themed-layout";
 import isProduction from "./is-production";
 import { debounce, sleep } from "./utils";
@@ -24,30 +22,6 @@ import { parseTimeDuration } from "./duration/duration";
 import parseConfig from "./parse-config";
 
 const componentName = isProduction ? "plotly-graph" : "plotly-graph-dev";
-
-function removeOutOfRange(data: EntityData, range: TimestampRange) {
-  let first = -1;
-
-  for (let i = 0; i < data.xs.length; i++) {
-    if (+data.xs[i]! < range[0]) first = i;
-  }
-  if (first > -1) {
-    data.xs.splice(0, first);
-    data.ys.splice(0, first);
-    data.states.splice(0, first);
-    data.statistics.splice(0, first);
-  }
-  let last = -1;
-  for (let i = data.xs.length - 1; i >= 0; i--) {
-    if (+data.xs[i]! > range[1]) last = i;
-  }
-  if (last > -1) {
-    data.xs.splice(last);
-    data.ys.splice(last);
-    data.states.splice(last);
-    data.statistics.splice(last);
-  }
-}
 
 console.info(
   `%c ${componentName.toUpperCase()} %c ${version} ${process.env.NODE_ENV}`,
@@ -190,7 +164,7 @@ export class PlotlyGraph extends HTMLElement {
       if (shouldFetch) {
         this.fetch();
       } else if (shouldPlot) {
-        this.plot();
+        this.fetch(true);
       }
     }
     this._hass = hass;
@@ -340,10 +314,10 @@ export class PlotlyGraph extends HTMLElement {
       await this.fetch();
     }
   }
-  fetch = debounce(async () => {
+  fetch = debounce(async (no_fetch: boolean = false) => {
     if (!(this.parsed_config && this.hass && this.isConnected)) {
       await sleep(10);
-      return this.fetch();
+      return this.fetch(no_fetch);
     }
 
     const range = this.isBrowsing
@@ -384,7 +358,8 @@ export class PlotlyGraph extends HTMLElement {
         visibleEntities,
         this.hass,
         this.parsed_config.minimal_response,
-        this.parsed_config.significant_changes_only
+        this.parsed_config.significant_changes_only,
+        no_fetch
       );
       this.msgEl.innerText = "";
     } catch (e: any) {
@@ -460,7 +435,9 @@ export class PlotlyGraph extends HTMLElement {
       if (trace.internal) return;
       if (!this.isBrowsing) {
         // to ensure the y axis autoranges to the visible data
-        removeOutOfRange(data, this.getAutoFetchRangeWithValueMargins());
+        data = removeOutOfRangeList(data, [
+          this.getAutoFetchRangeWithValueMargins(),
+        ]);
       }
       if (data.xs.length === 0 && data.ys.length === 0) {
         /*

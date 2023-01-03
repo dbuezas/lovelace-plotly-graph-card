@@ -97,7 +97,7 @@ async function fetchSingleRange(
   };
 }
 
-export function getEntityKey(entity: EntityConfig) {
+function getEntityKey(entity: EntityConfig) {
   if (isEntityIdAttrConfig(entity)) {
     return `${entity.entity}::attribute`;
   } else if (isEntityIdStatisticsConfig(entity)) {
@@ -107,9 +107,37 @@ export function getEntityKey(entity: EntityConfig) {
   }
   throw new Error(`Entity malformed:${JSON.stringify(entity)}`);
 }
+function getEntityQueriedRangesKey(entity: EntityConfig) {
+  return getEntityKey(entity) + "::" + entity.offset;
+}
+export function removeOutOfRangeList<T extends EntityData>(
+  data: T,
+  ranges: TimestampRange[]
+) {
+  let first = -1;
+  const out: T = {
+    ...data,
+    ys: [],
+    xs: [],
+    states: [],
+    statistics: [],
+  };
 
+  for (let i = 0; i < data.xs.length; i++) {
+    const x = data.xs[i];
+    const inRange = ranges.some(([from, to]) => from <= +x && +x <= to); // TODO: OPTIMIZE PERF
+    if (inRange) {
+      out.xs.push(data.xs[i]);
+      out.ys.push(data.ys[i]);
+      if (data.states) out.states.push(data.states[i]);
+      if (data.statistics) out.statistics.push(data.statistics[i]);
+    }
+  }
+  return out;
+}
 const MIN_SAFE_TIMESTAMP = Date.parse("0001-01-02T00:00:00.000Z");
 export default class Cache {
+  queriedRanges: Record<string, TimestampRange[]> = {};
   ranges: Record<string, TimestampRange[]> = {};
   histories: Record<string, CachedEntity[]> = {};
   busy = Promise.resolve(); // mutex
@@ -162,14 +190,19 @@ export default class Cache {
       ys.push(ys[ys.length - 1]);
       states.push(states[states.length - 1]);
     }
-    return { states, statistics, xs, ys };
+    const data = { states, statistics, xs, ys };
+    const entityRangeKey = getEntityQueriedRangesKey(entity);
+    this.queriedRanges[entityRangeKey] ??= [];
+
+    return removeOutOfRangeList(data, this.queriedRanges[entityRangeKey]);
   }
   async update(
     range: TimestampRange,
     entities: EntityConfig[],
     hass: HomeAssistant,
     significant_changes_only: boolean,
-    minimal_response: boolean
+    minimal_response: boolean,
+    no_fetch: boolean
   ) {
     return (this.busy = this.busy
       .catch(() => {})
@@ -193,16 +226,29 @@ export default class Cache {
               [offsetRange],
               this.ranges[entityKey]
             );
-            for (const aRange of rangesToFetch) {
-              const fetchedHistory = await fetchSingleRange(
-                hass,
-                entity,
-                aRange,
-                significant_changes_only,
-                minimal_response
-              );
-              this.add(entity, fetchedHistory.history, fetchedHistory.range);
+            if (!no_fetch) {
+              for (const aRange of rangesToFetch) {
+                const fetchedHistory = await fetchSingleRange(
+                  hass,
+                  entity,
+                  aRange,
+                  significant_changes_only,
+                  minimal_response
+                );
+                this.add(entity, fetchedHistory.history, fetchedHistory.range);
+              }
             }
+            const entityRangeKey = getEntityQueriedRangesKey(entity);
+            this.queriedRanges[entityRangeKey] ??= [];
+            const rangesToAdd = subtractRanges(
+              [range],
+              this.queriedRanges[entityRangeKey]
+            );
+            for (const rangeToAdd of rangesToAdd)
+              this.queriedRanges[entityRangeKey].push(rangeToAdd);
+            this.queriedRanges[entityRangeKey] = compactRanges(
+              this.queriedRanges[entityRangeKey]
+            );
           }
         });
 
