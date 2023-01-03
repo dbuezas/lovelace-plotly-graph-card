@@ -546,7 +546,7 @@ type: custom:plotly-graph-dev
 entities:
   - entity: sensor.openweathermap_humidity
     internal: true
-    period: 5minute # important so the datapoints align in the x axis
+    period: 5minute # important so the datapoints align in the x axis. Alternative to the resample filter using statistics
     filters:
       - map_y: parseFloat(y)
       - store_var: relative_humidity
