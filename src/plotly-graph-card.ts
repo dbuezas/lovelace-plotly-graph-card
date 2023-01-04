@@ -24,7 +24,15 @@ import { parseTimeDuration } from "./duration/duration";
 import parseConfig from "./parse-config";
 
 const componentName = isProduction ? "plotly-graph" : "plotly-graph-dev";
-
+const zoomedRange = (range: any[] | undefined, zoom: number) => {
+  if (!range) return undefined;
+  const center = (range[1] + range[0]) / 2;
+  if (isNaN(center)) return undefined; // probably a categorical axis. Don't zoom
+  const radius = (range[1] - range[0]) / zoom / 2;
+  return {
+    range: [center - radius, center + radius],
+  };
+};
 function removeOutOfRange(data: EntityData, range: TimestampRange) {
   let first = -1;
 
@@ -71,19 +79,25 @@ export class PlotlyGraph extends HTMLElement {
   _hass?: HomeAssistant;
   isBrowsing = false;
   isInternalRelayout = 0;
-
+  lastTouches?: TouchList;
   handles: {
     resizeObserver?: ResizeObserver;
     relayoutListener?: EventEmitter;
     restyleListener?: EventEmitter;
     refreshTimeout?: number;
   } = {};
+
   disconnectedCallback() {
     this.handles.resizeObserver!.disconnect();
     this.handles.relayoutListener!.off("plotly_relayout", this.onRelayout);
     this.handles.restyleListener!.off("plotly_restyle", this.onRestyle);
     clearTimeout(this.handles.refreshTimeout!);
+    this.resetButtonEl.removeEventListener("click", this.exitBrowsingMode);
+    this.contentEl.removeEventListener("touchmove", this.onTouchMove);
+    this.contentEl.removeEventListener("touchstart", this.onTouchStart);
+    this.contentEl.removeEventListener("touchend", this.onTouchEnd);
   }
+
   constructor() {
     super();
     if (!isProduction) {
@@ -145,7 +159,6 @@ export class PlotlyGraph extends HTMLElement {
     this.contentEl = shadow.querySelector("div#plotly")!;
     this.resetButtonEl = shadow.querySelector("button#reset")!;
     this.titleEl = shadow.querySelector("ha-card > #title")!;
-    this.resetButtonEl.addEventListener("click", this.exitBrowsingMode);
     insertStyleHack(shadow.querySelector("style")!);
     this.contentEl.style.visibility = "hidden";
     this.withoutRelayout(() => Plotly.newPlot(this.contentEl, [], {}));
@@ -244,7 +257,63 @@ export class PlotlyGraph extends HTMLElement {
       "plotly_restyle",
       this.onRestyle
     )!;
+    this.resetButtonEl.addEventListener("click", this.exitBrowsingMode);
+    this.contentEl.addEventListener("touchmove", this.onTouchMove, {
+      capture: true,
+    });
+    this.contentEl.addEventListener("touchstart", this.onTouchStart, {
+      capture: true,
+    });
+    this.contentEl.addEventListener("touchend", this.onTouchEnd, {
+      capture: true,
+    });
   }
+
+  onTouchStart = (e: TouchEvent) => {
+    if (e.touches.length !== 2) return;
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+    this.lastTouches = e.touches;
+  };
+
+  onTouchMove = async (e: TouchEvent) => {
+    if (e.touches.length !== 2) return;
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+    if (!this.lastTouches) {
+      this.lastTouches = e.touches;
+      return;
+    }
+    const ts_old = this.lastTouches;
+    const ts_new = e.touches;
+    const spread_old = Math.sqrt(
+      (ts_old[0].clientX - ts_old[1].clientX) ** 2 +
+        (ts_old[0].clientY - ts_old[1].clientY) ** 2
+    );
+    const spread_new = Math.sqrt(
+      (ts_new[0].clientX - ts_new[1].clientX) ** 2 +
+        (ts_new[0].clientY - ts_new[1].clientY) ** 2
+    );
+    const zoom = spread_new / spread_old;
+
+    this.lastTouches = e.touches;
+    await this.withoutRelayout(async () => {
+      const oldLayout = this.contentEl.layout;
+      const layout = {
+        xaxis: zoomedRange(oldLayout.xaxis?.range, zoom),
+        yaxis: zoomedRange(oldLayout.yaxis?.range, zoom),
+      };
+      for (let i = 2; i < 31; i++) {
+        layout[`xaxis${i}`] = zoomedRange(oldLayout[`xaxis${i}`]?.range, zoom);
+        layout[`yaxis${i}`] = zoomedRange(oldLayout[`yaxis${i}`]?.range, zoom);
+      }
+      await Plotly.relayout(this.contentEl, layout);
+    });
+  };
+  onTouchEnd = () => {
+    this.lastTouches = undefined;
+    this.onRelayout();
+  };
   getAutoFetchRange() {
     const ms = this.parsed_config.hours_to_show * 60 * 60 * 1000;
     return [
