@@ -162,9 +162,11 @@ export default class Cache {
       y === "unavailable" || y === "none" || y === "unknown" ? null : y
     );
     if (entity.extend_to_present && data.xs.length > 0 && entity.offset === 0) {
+      const last_i = data.xs.length - 1;
       data.xs.push(new Date(Date.now() + entity.offset));
-      data.ys.push(data.ys[data.ys.length - 1]);
-      data.states.push(data.states[data.states.length - 1]);
+      data.ys.push(data.ys[last_i]);
+      if (data.states.length) data.states.push(data.states[last_i]);
+      if (data.statistics.length) data.statistics.push(data.statistics[last_i]);
     }
     return data;
   }
