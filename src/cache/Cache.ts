@@ -134,35 +134,39 @@ export default class Cache {
   getData(entity: EntityConfig): EntityData {
     let key = getEntityKey(entity);
     const history = this.histories[key] || [];
-    const xs = history.map(({ x }) => new Date(+x + entity.offset));
-    let ys = [] as YValue[];
-    let states = [] as HassEntity[];
-    let statistics = [] as StatisticValue[];
+    const data: EntityData = {
+      xs: [],
+      ys: [],
+      states: [],
+      statistics: [],
+    };
+    data.xs = history.map(({ x }) => new Date(+x + entity.offset));
     if (isEntityIdStatisticsConfig(entity)) {
-      statistics = (history as CachedStatisticsEntity[]).map(
+      data.statistics = (history as CachedStatisticsEntity[]).map(
         ({ statistics }) => statistics
       );
-      ys = statistics.map((s) => s[entity.statistic]);
+      data.ys = data.statistics.map((s) => s[entity.statistic]);
     } else if (isEntityIdAttrConfig(entity)) {
-      states = (history as CachedStateEntity[]).map(({ state }) => state);
-      ys = states.map((s) => s.attributes[entity.attribute]);
+      data.states = (history as CachedStateEntity[]).map(({ state }) => state);
+      data.ys = data.states.map((s) => s.attributes[entity.attribute]);
     } else if (isEntityIdStateConfig(entity)) {
-      states = (history as CachedStateEntity[]).map(({ state }) => state);
-      ys = states.map((s) => s.state);
+      data.states = (history as CachedStateEntity[]).map(({ state }) => state);
+      data.ys = data.states.map((s) => s.state);
     } else
       throw new Error(
         `Unrecognised fetch type for ${(entity as EntityConfig).entity}`
       );
-    ys = ys.map((y) =>
+    data.ys = data.ys.map((y) =>
       // see https://github.com/dbuezas/lovelace-plotly-graph-card/issues/146
-      y === "unavailable" ? null : y
+      // and https://github.com/dbuezas/lovelace-plotly-graph-card/commit/3d915481002d03011bcc8409c2dcc6e6fb7c8674#r94899109
+      y === "unavailable" || y === "none" || y === "unknown" ? null : y
     );
-    if (entity.extend_to_present && xs.length > 0 && entity.offset === 0) {
-      xs.push(new Date(Date.now() + entity.offset));
-      ys.push(ys[ys.length - 1]);
-      states.push(states[states.length - 1]);
+    if (entity.extend_to_present && data.xs.length > 0 && entity.offset === 0) {
+      data.xs.push(new Date(Date.now() + entity.offset));
+      data.ys.push(data.ys[data.ys.length - 1]);
+      data.states.push(data.states[data.states.length - 1]);
     }
-    return { states, statistics, xs, ys };
+    return data;
   }
   async update(
     range: TimestampRange,
