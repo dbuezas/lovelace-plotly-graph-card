@@ -161,6 +161,10 @@ export default class Cache {
       // and https://github.com/dbuezas/lovelace-plotly-graph-card/commit/3d915481002d03011bcc8409c2dcc6e6fb7c8674#r94899109
       y === "unavailable" || y === "none" || y === "unknown" ? null : y
     );
+    /**
+     * ToDo: offset traces should also be extended, but only up to the limits of the fetched range
+     * Otherwise, the datapoint can go way into the future and mess up auto-ranging.
+     */
     if (entity.extend_to_present && data.xs.length > 0 && entity.offset === 0) {
       const last_i = data.xs.length - 1;
       data.xs.push(new Date(Date.now() + entity.offset));
