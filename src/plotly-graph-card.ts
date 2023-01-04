@@ -488,7 +488,7 @@ export class PlotlyGraph extends HTMLElement {
       if (trace.name) name = trace.name;
       const customdata = data.xs.map((x, i) => ({
         unit_of_measurement,
-        meta,
+        meta: data.meta,
         name,
         state: data.states[i],
         statistic: data.statistics[i],
