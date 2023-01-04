@@ -1,12 +1,12 @@
 import { HomeAssistant } from "custom-card-helpers";
 import { Statistics, StatisticValue } from "../recorder-types";
-import { CachedEntity, EntityIdStatisticsConfig } from "../types";
+import { CachedStatisticsEntity, EntityIdStatisticsConfig } from "../types";
 
 async function fetchStatistics(
   hass: HomeAssistant,
   entity: EntityIdStatisticsConfig,
   [start, end]: [Date, Date]
-): Promise<CachedEntity[]> {
+): Promise<CachedStatisticsEntity[]> {
   let statistics: StatisticValue[] | null = null;
   try {
     const statsP = hass.callWS<Statistics>({
@@ -26,11 +26,11 @@ async function fetchStatistics(
     );
   }
   return (statistics || [])
-    .map((entry) => ({
-      ...entry,
-      timestamp: +new Date(entry.start),
-      value: null, //depends on the statistic, will be set in getHistory
+    .map((statistics) => ({
+      statistics,
+      x: new Date(statistics.start),
+      y: null, //depends on the statistic, will be set in getHistory
     }))
-    .filter(({ timestamp }) => timestamp);
+    .filter(({ x }) => x);
 }
 export default fetchStatistics;

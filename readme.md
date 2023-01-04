@@ -294,6 +294,14 @@ entities:
 
 ![Graph with offsets](docs/resources/offset-temperature.png)
 
+### Caveats
+
+The following exceptions apply to traces with offsets:
+
+- They get their own cache, meaning that data will be fetched twice if the same entity is in the plot with a different (or no) offset.
+- Websocket state updates are not used to fill their cache (but a request to the server may be triggered)
+- `extend_to_present` is ignored (because extending to an offset present may be far into the future and that messes up with autorange)
+
 ### Now line
 
 When using offsets, it is useful to have a line that indicates the current time. This can be done by using a lambda function that returns a line with the current time as x value and 0 and 1 as y values. The line is then hidden from the legend.
@@ -389,112 +397,225 @@ entities:
     extend_to_present: true # false by default for statistics
 ```
 
-### `lambda:` transforms
+### `filters:`
 
-`lambda` takes a js function (as a string) to pre process the data before plotting it. Here you can do things like normalisation, integration. For example:
-
-#### Normalisation wrt to last
+Filters are used to process the data before plotting it. Heavily inspired by [ESPHome's sensor filters](https://esphome.io/components/sensor/index.html#sensor-filters).
+Filters are applied in order.
 
 ```yaml
 type: custom:plotly-graph
 entities:
-  - entity: sensor.my_sensor
-    lambda: |-
-      (ys) => ys.map(y => y/ys[ys.length-1])
+  - entity: sensor.temperature_in_celsius
+  filters:
+
+    # The filters below will only be applied to numeric values. Missing (unavailable) and non-numerics will be left untouched
+    - add: 5 # adds 5 to each datapoint
+    - multiply: 2 # multiplies each datapoint by 2
+    - calibrate_linear:
+      # Left of the arrow are the measurements, right are the expected values.
+      # The mapping is then approximated through linear regression, and that correction is applied to the data.
+      - 0.0 -> 0.0
+      - 40.0 -> 45.0
+      - 100.0 -> 102.5
+    - derivate: # computes rate of change per unit of time
+        unit: h # ms (milisecond), s (second), m (minute), h (hour), d (day), w (week), M (month), y (year)
+    - integrate: # computes area under the curve per unit of time using Right hand riemann integration
+        unit: h # ms (milisecond), s (second), m (minute), h (hour), d (day), w (week), M (month), y (year)
+    - map_y_numbers: Math.sqrt(y + 10*100) # map the y coordinate of each datapoint.
+
+    # In the filters below, missing and non numeric datapoints will be discarded
+    - sliding_window_moving_average:
+        # default parameters:
+        window_size: 10
+        extended: false # when true, smaller window sizes are used on the extremes.
+        centered: true # compensate for averaging lag by offsetting the x axis by half a window_size
+    - median:
+        # default parameters:
+        window_size: 10
+        extended: false
+        centered: true
+    - exponential_moving_average:
+        # default parameters:
+        alpha: 0.1 # between 0 an 1. The lower the alpha, the smoother the trace.
+
+    # The filters below receive all datapoints as they come from home assistant. Y values are strings or null (unless previously mapped to numbers or any other type)
+    - map_y: y === "heat" ? 1 : 0 # map the y values of each datapoint. Variables `i` (index), `x`, `state`, `statistic` and `meta` and `vars` are also in scope.
+    - map_x: new Date(+x + 1000) # map the x coordinate (javascript date object) of each datapoint. Same variables as map_y are in scope
+    - fn: |- # arbitrary function. Only the keys that are returned are replaced. Returning null or undefined, leaves the data unchanged (useful )
+
+        ({xs, ys, meta, states, statistics}) => {
+          # either statistics or states will be available, depending on if "statistics" are fetched or not
+          # attributes will be available inside states only if an attribute is picked in the trace
+          return {
+            ys: states.map(state => +state?.attributes?.current_temperature - state?.attributes?.target_temperature),
+            meta: { unit_of_measurement: "delta" }
+          };
+        },
+    - resample: 5m # Rebuilds data so that the timestamps in xs are exact multiples of the specified interval, and without gaps. The parameter is the length of the interval and defaults to 5 minutes (see #duration for the format). This is useful when combining data from multiple entities, as the index of each datapoint will correspond to the same instant of time across them.
+    - filter: y !== null && +y > 0 && x > new Date(Date.now()-1000*60*60) # filter out datapoints for which this returns false. Also filters from xs, states and statistics. Same variables as map_y are in scope
+    - force_numeric # converts number-lookinig-strings to actual js numbers and removes the rest. Any filters used after this one will receive numbers, not strings or nulls. Also removes respective elements from xs, states and statistics parameters
 ```
 
-#### Normalisation wrt to first fetched value
+#### Examples
+
+##### Celcious to farenheit
 
 ```yaml
-- entity: sensor.my_sensor
-  lambda: |-
-    (ys) => ys.map(y => y/ys[0])
+- entity: sensor.wintergarten_clima_temperature
+  unit_of_measurement: °F
+  filters: # °F = °C×(9/5)+32
+    - multiply: 1.8
+    - add: 32
 ```
 
-note: `ys[0]` represents the first "known" value, which is the value furthest to the past among the downloaded data. This value will change if you scroll, zoom out, change the hours_to_show, or just let time pass.
-
-#### Accumulated value
+alternatively,
 
 ```yaml
-- entity: sensor.my_sensor
-  unit_of_measurement: "total pulses"
-  lambda: |-
-    (ys) => {
-      let accumulator = 0;
-      return ys.map(y => {
-        accumulator = accumulator + y;
-        return accumulator;
-      })
-    }
+- entity: sensor.wintergarten_clima_temperature
+  unit_of_measurement: °F
+  filters: # °F = °C×(9/5)+32
+    - map_y_numbers: y * 9/5 + 32
 ```
 
-#### Derivative
+##### Energy from power
 
 ```yaml
-- entity: sensor.my_sensor
-  unit_of_measurement: "pulses / second"
-  lambda: |-
-    (ys, xs) => {
-      let last = {
-        x: new Date(),
-        y: 0,
-      }
-      return ys.map((y, index) => {
-        const x = xs[index];
-        const dateDelta = x - last.x;
-        const yDelta = (y - last.y) / dateDelta;
-        last = { x, y };
-        return yDelta;
-      })
-    }
+- entity: sensor.fridge_power
+  filters:
+    - integrate:
+        unit: h # resulting unit_of_measurement will be W/h
 ```
 
-#### Right hand riemann integration
+##### Using state attributes
 
 ```yaml
-- entity: sensor.my_sensor
-  unit_of_measurement: "kWh"
-  lambda: |-
-    (ys, xs) => {
-      let accumulator = 0;
-      let last = {
-        x: new Date(),
-        y: 0,
-      }
-      return ys.map((y, index) => {
-        const x = xs[index]
-        const dateDelta = x - last.x;
-        accumulator += last.y * dateDelta;
-        last = { x, y };
-        return accumulator;
-      })
-    }
+- entity: climate.loungetrv_climate
+  attribute: current_temperature # an attribute must be set to ensure attributes are fetched.
+  filters:
+    - map_y_numbers: state.state === "heat" ? state.attributes.current_temperature : 0
 ```
 
-#### Access all entity attributes inside lambda
+or alternatively,
 
 ```yaml
-- entity: climate.wintergarten_floor
-  attribute: valve
-  unit_of_measurement: °C
-  lambda: |-
-    (ys, xs, entity) => 
-      entity.map(({attributes}) => 
-        return +attributes.temperature - (+attributes.valve / 100) * 2
-      )
+- map_y_numbers: state.state === "heat" ? y : 0
 ```
 
-#### Custom x coordinates of traces
+or alternatively,
 
 ```yaml
-- entity: climate.wintergarten_floor
-  unit_of_measurement: °C
-  lambda: |-
-    (ys, xs, entity) => ({
-      x: xs.map(x => -x),
-      y: ys.map(y => y / 2),
-    })
+- map_y: state?.state === "heat" ? state.attributes?.current_temperature : 0
 ```
+
+or alternatively,
+
+```yaml
+- fn: |-
+    ({ys, states}) => ({
+      ys: states.map((state, i) => state?.state === "heat" ? state.attributes?.current_temperature : 0),
+    }),
+```
+
+#### Advanced
+
+##### Debugging
+
+1. Open [your browser's devtools console](https://balsamiq.com/support/faqs/browserconsole/)
+2. Use `console.log` or the `debugger` statement to execute your map filter step by step
+   ```yaml
+   type: custom:plotly-graph
+   entities:
+     - entity: sensor.temperature_in_celsius
+       statistics: mean
+       filters:
+         - fn: console.log # open the devtools console to see the data
+         - fn: |-
+             (params) => {
+               const ys = [];
+               debugger;
+               for (let i = 0; i < params.statistics.length; i++){
+                 ys.pushh(params.statistics.max); // <--- here's the bug
+               }
+               return { ys };
+             }
+   ```
+
+##### Using vars
+
+Compute absolute humidity
+
+```yaml
+type: custom:plotly-graph-dev
+entities:
+  - entity: sensor.wintergarten_clima_humidity
+    internal: true
+    filters:
+      - resample: 5m # important so the datapoints align in the x axis
+      - map_y: parseFloat(y)
+      - store_var: relative_humidity
+  - entity: sensor.wintergarten_clima_temperature
+    period: 5minute
+    name: Absolute Hty
+    unit_of_measurement: g/m³
+    filters:
+      - resample: 5m
+      - map_y: parseFloat(y)
+      - map_y: (6.112 * Math.exp((17.67 * y)/(y+243.5)) * +vars.relative_humidity.ys[i] * 2.1674)/(273.15+y);
+```
+
+Compute dew point
+
+```yaml
+type: custom:plotly-graph-dev
+entities:
+  - entity: sensor.openweathermap_humidity
+    internal: true
+    period: 5minute # important so the datapoints align in the x axis. Alternative to the resample filter using statistics
+    filters:
+      - map_y: parseFloat(y)
+      - store_var: relative_humidity
+  - entity: sensor.openweathermap_temperature
+    period: 5minute
+    name: Dew point
+    filters:
+      - map_y: parseFloat(y)
+      - map_y: >-
+          {
+            // https://www.omnicalculator.com/physics/dew-point
+            const a = 17.625;
+            const b = 243.04;
+            const T = y;
+            const RH = vars.relative_humidity.ys[i];
+            const α = Math.log(RH/100) + a*T/(b+T);
+            const Ts = (b * α) / (a - α);
+            return Ts; 
+          }
+hours_to_show: 24
+```
+
+### `internal:`
+
+setting it to `true` will remove it from the plot, but the data will still be fetch. Useful when the data is only used by a filter in a different trace
+
+```yaml
+type: custom:plotly-graph
+entities:
+  - entity: sensor.temperature1
+    internal: true
+    period: 5minute
+    filters:
+      store_var: temp1
+  - entity: sensor.temperature2
+    period: 5minute
+    name: sum of temperatures
+    filters:
+      map_y: y + vars.temp1[i].y
+```
+
+### `lambda:` transforms (deprecated)
+
+Deprecated. Use filters instead.
+Your old lambdas should still work for now but this API will be removed in March 2023.
 
 ## Default trace & axis styling
 

@@ -11,6 +11,9 @@ import {
   CachedEntity,
   CachedStatisticsEntity,
   CachedStateEntity,
+  HassEntity,
+  EntityData,
+  YValue,
 } from "../types";
 import { groupBy } from "lodash";
 import { StatisticValue } from "../recorder-types";
@@ -96,11 +99,11 @@ async function fetchSingleRange(
 
 export function getEntityKey(entity: EntityConfig) {
   if (isEntityIdAttrConfig(entity)) {
-    return `${entity.entity}::attribute`;
+    return `${entity.entity}::attribute::${entity.offset}`;
   } else if (isEntityIdStatisticsConfig(entity)) {
-    return `${entity.entity}::statistics::${entity.period}`;
+    return `${entity.entity}::statistics::${entity.period}::${entity.offset}`;
   } else if (isEntityIdStateConfig(entity)) {
-    return entity.entity;
+    return `${entity.entity}::${entity.offset}`;
   }
   throw new Error(`Entity malformed:${JSON.stringify(entity)}`);
 }
@@ -115,9 +118,9 @@ export default class Cache {
     const entityKey = getEntityKey(entity);
     let h = (this.histories[entityKey] ??= []);
     h.push(...states);
-    h.sort((a, b) => a.timestamp - b.timestamp);
+    h.sort((a, b) => +a.x - +b.x);
     h = h.filter((x, i) => i == 0 || !x.fake_boundary_datapoint);
-    h = h.filter((_, i) => h[i - 1]?.timestamp !== h[i].timestamp);
+    h = h.filter((_, i) => +h[i - 1]?.x !== +h[i].x);
     this.histories[entityKey] = h;
     this.ranges[entityKey] ??= [];
     this.ranges[entityKey].push(range);
@@ -128,33 +131,42 @@ export default class Cache {
     this.ranges = {};
     this.histories = {};
   }
-  getHistory(entity: EntityConfig): CachedEntity[] {
+  getData(entity: EntityConfig): EntityData {
     let key = getEntityKey(entity);
     const history = this.histories[key] || [];
+    const data: EntityData = {
+      xs: [],
+      ys: [],
+      states: [],
+      statistics: [],
+    };
+    data.xs = history.map(({ x }) => new Date(+x + entity.offset));
     if (isEntityIdStatisticsConfig(entity)) {
-      return (history as CachedStatisticsEntity[]).map((entry) => ({
-        ...entry,
-        timestamp: entry.timestamp + entity.offset,
-        value: entry[entity.statistic],
-      }));
-    }
-    if (isEntityIdAttrConfig(entity)) {
-      return (history as CachedStateEntity[]).map((entry) => ({
-        ...entry,
-        timestamp: entry.timestamp + entity.offset,
-        value: entry.attributes[entity.attribute],
-      }));
-    }
-    if (isEntityIdStateConfig(entity)) {
-      return (history as CachedStateEntity[]).map((entry) => ({
-        ...entry,
-        timestamp: entry.timestamp + entity.offset,
-        value: entry.state,
-      }));
-    }
-    throw new Error(
-      `Unrecognised fetch type for ${(entity as EntityConfig).entity}`
+      data.statistics = (history as CachedStatisticsEntity[]).map(
+        ({ statistics }) => statistics
+      );
+      data.ys = data.statistics.map((s) => s[entity.statistic]);
+    } else if (isEntityIdAttrConfig(entity)) {
+      data.states = (history as CachedStateEntity[]).map(({ state }) => state);
+      data.ys = data.states.map((s) => s.attributes[entity.attribute]);
+    } else if (isEntityIdStateConfig(entity)) {
+      data.states = (history as CachedStateEntity[]).map(({ state }) => state);
+      data.ys = data.states.map((s) => s.state);
+    } else
+      throw new Error(
+        `Unrecognised fetch type for ${(entity as EntityConfig).entity}`
+      );
+    data.ys = data.ys.map((y) =>
+      // see https://github.com/dbuezas/lovelace-plotly-graph-card/issues/146
+      // and https://github.com/dbuezas/lovelace-plotly-graph-card/commit/3d915481002d03011bcc8409c2dcc6e6fb7c8674#r94899109
+      y === "unavailable" || y === "none" || y === "unknown" ? null : y
     );
+    if (entity.extend_to_present && data.xs.length > 0 && entity.offset === 0) {
+      data.xs.push(new Date(Date.now() + entity.offset));
+      data.ys.push(data.ys[data.ys.length - 1]);
+      data.states.push(data.states[data.states.length - 1]);
+    }
+    return data;
   }
   async update(
     range: TimestampRange,
@@ -174,6 +186,7 @@ export default class Cache {
           // Making these fetches sequentially ensures that the already fetched ranges of each
           // request are not fetched more than once
           for (const entity of entityGroup) {
+            if (!entity.entity) continue;
             const entityKey = getEntityKey(entity);
             this.ranges[entityKey] ??= [];
             const offsetRange = [

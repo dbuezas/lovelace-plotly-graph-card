@@ -9,7 +9,10 @@ import {
 } from "./recorder-types";
 
 import { HassEntity } from "home-assistant-js-websocket";
+import { FilterFn } from "./filters/filters";
 export { HassEntity } from "home-assistant-js-websocket";
+
+export type YValue = number | string | null;
 export type InputConfig = {
   type: "custom:plotly-graph-card";
   hours_to_show?: number;
@@ -18,12 +21,13 @@ export type InputConfig = {
   title?: string;
   offset?: TimeDurationStr;
   entities: ({
-    entity: string;
+    entity?: string;
     attribute?: string;
     statistic?: StatisticType;
     period?: StatisticPeriod | "auto" | AutoPeriodConfig;
     unit_of_measurement?: string;
     lambda?: string;
+    internal?: boolean;
     show_value?:
       | boolean
       | {
@@ -31,6 +35,7 @@ export type InputConfig = {
         };
     offset?: TimeDurationStr;
     extend_to_present?: boolean;
+    filters?: (Record<string, any> | string)[];
   } & Partial<Plotly.PlotData>)[];
   defaults?: {
     entity?: Partial<Plotly.PlotData>;
@@ -47,10 +52,14 @@ export type InputConfig = {
 export type EntityConfig = EntityIdConfig & {
   unit_of_measurement?: string;
   lambda?: (
-    y: Datum[],
+    y: YValue[],
     x: Date[],
-    raw_entity: CachedEntity[]
-  ) => Datum[] | { x?: Datum[]; y?: Datum[] };
+    raw_entity: ((StatisticValue | HassEntity) & {
+      timestamp: number;
+      value: any;
+    })[]
+  ) => YValue[] | { x?: Date[]; y?: YValue[] };
+  internal: boolean;
   show_value:
     | boolean
     | {
@@ -58,6 +67,7 @@ export type EntityConfig = EntityIdConfig & {
       };
   offset: number;
   extend_to_present: boolean;
+  filters: FilterFn[];
 } & Partial<Plotly.PlotData>;
 
 export type Config = {
@@ -102,27 +112,34 @@ export function isEntityIdStateConfig(
 export function isEntityIdAttrConfig(
   entityConfig: EntityIdConfig
 ): entityConfig is EntityIdAttrConfig {
-  return "attribute" in entityConfig;
+  return !!entityConfig["attribute"];
 }
 export function isEntityIdStatisticsConfig(
   entityConfig: EntityIdConfig
 ): entityConfig is EntityIdStatisticsConfig {
-  return "period" in entityConfig;
+  return !!entityConfig["statistic"];
 }
 
 export type Timestamp = number;
 
-export type CachedStateEntity = HassEntity & {
+export type CachedBaseEntity = {
   fake_boundary_datapoint?: true;
-  timestamp: Timestamp;
-  value: number | string | null;
+  x: Date;
+  y: YValue;
 };
-export type CachedStatisticsEntity = StatisticValue & {
-  fake_boundary_datapoint?: true;
-  timestamp: Timestamp;
-  value: number | string | null;
+export type CachedStateEntity = CachedBaseEntity & {
+  state: HassEntity;
+};
+export type CachedStatisticsEntity = CachedBaseEntity & {
+  statistics: StatisticValue;
 };
 export type CachedEntity = CachedStateEntity | CachedStatisticsEntity;
+export type EntityData = {
+  states: HassEntity[];
+  statistics: StatisticValue[];
+  xs: Date[];
+  ys: YValue[];
+};
 
 export type TimestampRange = Timestamp[]; // [Timestamp, Timestamp];
 

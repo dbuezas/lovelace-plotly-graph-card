@@ -1,0 +1,125 @@
+import filters from "./filters";
+const data = {
+  states: [],
+  statistics: [],
+  ys: [0, 1, null, 2],
+  xs: [
+    "2022-12-20T18:07:28.000Z",
+    "2022-12-20T18:07:29.000Z",
+    "2022-12-20T18:07:29.500Z",
+    "2022-12-20T18:07:30.000Z",
+  ].map((s) => new Date(s)),
+  attributes: {
+    unit_of_measurement: "w",
+  },
+  history: [],
+  vars: {},
+};
+
+describe("filters", () => {
+  it("offset", () => {
+    expect(filters.add(-1)(data)).toEqual({
+      attributes: {
+        unit_of_measurement: "w",
+      },
+      xs: [
+        new Date("2022-12-20T18:07:28.000Z"),
+        new Date("2022-12-20T18:07:29.000Z"),
+        new Date("2022-12-20T18:07:30.000Z"),
+      ],
+      ys: [-1, 0, 1],
+    });
+  });
+  it("multiply * 2", () => {
+    expect(filters.multiply(2)(data)).toEqual({
+      attributes: {
+        unit_of_measurement: "w",
+      },
+      xs: [
+        new Date("2022-12-20T18:07:28.000Z"),
+        new Date("2022-12-20T18:07:29.000Z"),
+        new Date("2022-12-20T18:07:30.000Z"),
+      ],
+      ys: [0, 2, 4],
+    });
+  });
+  it("calibrate", () => {
+    expect(filters.calibrate_linear(["1 -> 11", "11 -> 21"])(data)).toEqual({
+      attributes: {
+        unit_of_measurement: "w",
+      },
+      xs: [
+        new Date("2022-12-20T18:07:28.000Z"),
+        new Date("2022-12-20T18:07:29.000Z"),
+        new Date("2022-12-20T18:07:30.000Z"),
+      ],
+      ys: [1, 11, 21],
+    });
+  });
+  it("derivate", () => {
+    expect(filters.derivate("s")(data)).toEqual({
+      attributes: {
+        unit_of_measurement: "w/s",
+      },
+      xs: [
+        new Date("2022-12-20T18:07:29.000Z"),
+        new Date("2022-12-20T18:07:30.000Z"),
+      ],
+      ys: [1, 1],
+    });
+  });
+  it("integrate", () => {
+    expect(filters.integrate("s")(data)).toEqual({
+      attributes: {
+        unit_of_measurement: "w*s",
+      },
+      xs: [
+        new Date("2022-12-20T18:07:29.000Z"),
+        new Date("2022-12-20T18:07:30.000Z"),
+      ],
+      ys: [1, 3],
+    });
+  });
+  it("map_x", () => {
+    expect(filters.map_x(`new Date(x.setHours(1))`)(data)).toEqual({
+      attributes: {
+        unit_of_measurement: "w",
+      },
+      xs: [
+        new Date("2022-12-20T00:07:28.000Z"),
+        new Date("2022-12-20T00:07:29.000Z"),
+        new Date("2022-12-20T00:07:30.000Z"),
+      ],
+      ys: [0, 1, 2],
+    });
+  });
+  it("map_y", () => {
+    expect(filters.map_y(`Math.sqrt(y)`)(data)).toEqual({
+      attributes: {
+        unit_of_measurement: "w",
+      },
+      xs: [
+        new Date("2022-12-20T00:07:28.000Z"),
+        new Date("2022-12-20T00:07:29.000Z"),
+        new Date("2022-12-20T00:07:30.000Z"),
+      ],
+
+      ys: [0, 1, 1.4142135623730951],
+    });
+  });
+  it("fn", () => {
+    expect(
+      filters.map(`({xs,ys,...rest}) => ({xs:ys, ys:xs,...rest})`)(data)
+    ).toEqual({
+      attributes: {
+        unit_of_measurement: "w",
+      },
+      xs: [0, 1, 2],
+      ys: [
+        new Date("2022-12-20T00:07:28.000Z"),
+        new Date("2022-12-20T00:07:29.000Z"),
+        new Date("2022-12-20T00:07:30.000Z"),
+      ],
+    });
+  });
+});

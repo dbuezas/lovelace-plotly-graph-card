@@ -1,6 +1,6 @@
 import { HomeAssistant } from "custom-card-helpers";
 import {
-  CachedEntity,
+  CachedStateEntity,
   EntityIdAttrConfig,
   EntityIdStateConfig,
   HassEntity,
@@ -13,7 +13,7 @@ async function fetchStates(
   [start, end]: [Date, Date],
   significant_changes_only?: boolean,
   minimal_response?: boolean
-): Promise<CachedEntity[]> {
+): Promise<CachedStateEntity[]> {
   const no_attributes_query = isEntityIdAttrConfig(entity)
     ? ""
     : "no_attributes&";
@@ -45,11 +45,11 @@ async function fetchStates(
     );
   }
   return (list || [])
-    .map((entry) => ({
-      ...entry,
-      timestamp: +new Date(entry.last_updated || entry.last_changed),
-      value: null, // may be state or an attribute. Will be set when getting the history
+    .map((state) => ({
+      state,
+      x: new Date(state.last_updated || state.last_changed),
+      y: null, // may be state or an attribute. Will be set when getting the history
     }))
-    .filter(({ timestamp }) => timestamp);
+    .filter(({ x }) => x);
 }
 export default fetchStates;

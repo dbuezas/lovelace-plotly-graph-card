@@ -13,6 +13,7 @@ import colorSchemes, {
 import { Config, EntityConfig, InputConfig } from "./types";
 import { parseTimeDuration } from "./duration/duration";
 import merge from "lodash/merge";
+import filters from "./filters/filters";
 
 function parseColorScheme(config: InputConfig): ColorSchemeArray {
   const schemeName = config.color_scheme ?? "category10";
@@ -54,7 +55,7 @@ function getIsAutoPeriodConfig(periodObj: any): periodObj is AutoPeriodConfig {
   return true;
 }
 function parseStatistics(entity: InputConfig["entities"][0]) {
-  if (!("statistic" in entity || "period" in entity)) return {};
+  if (!entity.statistic && !entity.period) return {};
   const statistic: StatisticType = entity.statistic || "mean";
 
   if (!STATISTIC_TYPES.includes(statistic))
@@ -96,6 +97,7 @@ function parseEntities(config: InputConfig): EntityConfig[] {
   const colorScheme = parseColorScheme(config);
   return config.entities.map((entityIn, entityIdx) => {
     if (typeof entityIn === "string") entityIn = { entity: entityIn };
+    entityIn.entity ??= "";
     const [oldAPI_entity, oldAPI_attribute] = entityIn.entity.split("::");
     if (oldAPI_attribute) {
       entityIn.entity = oldAPI_entity;
@@ -117,10 +119,34 @@ function parseEntities(config: InputConfig): EntityConfig[] {
     );
 
     const statisticConfig = parseStatistics(entityIn);
+    if (entityIn.filters && !Array.isArray(entityIn.filters)) {
+      throw new Error(
+        "filters: should be an array, did you forget adding '-' before the filter name?"
+      );
+    }
+    const parsedFilters = (entityIn.filters || []).map((obj) => {
+      let filterName: string;
+      let config: any = null;
+      if (typeof obj === "string") {
+        filterName = obj;
+      } else {
+        filterName = Object.keys(obj)[0];
+        config = Object.values(obj)[0];
+      }
+      const filter = filters[filterName];
+      if (!filter) {
+        throw new Error(
+          `Filter '${filterName} must be [${Object.keys(filters)}]`
+        );
+      }
+      return config === null ? filter() : filter(config);
+    });
     return {
       ...(entityIn as any), // ToDo: make this type safe
+      internal: !!entityIn.internal,
       offset: parseTimeDuration(entityIn.offset ?? "0s"),
       lambda: entityIn.lambda && window.eval(entityIn.lambda),
+      filters: parsedFilters,
       ...statisticConfig,
       extend_to_present:
         entityIn.extend_to_present ?? !statisticConfig.statistic,
