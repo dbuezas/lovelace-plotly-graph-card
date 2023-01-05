@@ -22,16 +22,10 @@ import { parseISO } from "date-fns";
 import { StatisticPeriod } from "./recorder-types";
 import { parseTimeDuration } from "./duration/duration";
 import parseConfig from "./parse-config";
-import type { LayoutAxis } from "plotly.js";
+import { TouchHandler } from "./touch-handler";
 
 const componentName = isProduction ? "plotly-graph" : "plotly-graph-dev";
-const zoomedRange = (axis: Partial<LayoutAxis>, zoom: number) => {
-  if (!axis || !axis.range) return undefined;
-  const center = (+axis.range[1] + +axis.range[0]) / 2;
-  if (isNaN(center)) return undefined; // probably a categorical axis. Don't zoom
-  const radius = (+axis.range[1] - +axis.range[0]) / zoom / 2;
-  return [center - radius, center + radius];
-};
+
 function removeOutOfRange(data: EntityData, range: TimestampRange) {
   let first = -1;
 
@@ -78,7 +72,7 @@ export class PlotlyGraph extends HTMLElement {
   _hass?: HomeAssistant;
   isBrowsing = false;
   isInternalRelayout = 0;
-  lastTouches?: TouchList;
+  touchHandler: TouchHandler;
   handles: {
     resizeObserver?: ResizeObserver;
     relayoutListener?: EventEmitter;
@@ -92,9 +86,7 @@ export class PlotlyGraph extends HTMLElement {
     this.handles.restyleListener!.off("plotly_restyle", this.onRestyle);
     clearTimeout(this.handles.refreshTimeout!);
     this.resetButtonEl.removeEventListener("click", this.exitBrowsingMode);
-    this.contentEl.removeEventListener("touchmove", this.onTouchMove);
-    this.contentEl.removeEventListener("touchstart", this.onTouchStart);
-    this.contentEl.removeEventListener("touchend", this.onTouchEnd);
+    this.touchHandler.disconnect();
   }
 
   constructor() {
@@ -160,6 +152,17 @@ export class PlotlyGraph extends HTMLElement {
     this.titleEl = shadow.querySelector("ha-card > #title")!;
     insertStyleHack(shadow.querySelector("style")!);
     this.contentEl.style.visibility = "hidden";
+    this.touchHandler = new TouchHandler({
+      el: this.contentEl,
+      onZoom: async (layout) => {
+        await this.withoutRelayout(async () => {
+          await Plotly.relayout(this.contentEl, layout);
+        });
+      },
+      onZoomEnd: () => {
+        this.onRelayout();
+      },
+    });
     this.withoutRelayout(() => Plotly.newPlot(this.contentEl, [], {}));
   }
   get hass() {
@@ -257,63 +260,9 @@ export class PlotlyGraph extends HTMLElement {
       this.onRestyle
     )!;
     this.resetButtonEl.addEventListener("click", this.exitBrowsingMode);
-    this.contentEl.addEventListener("touchmove", this.onTouchMove, {
-      capture: true,
-    });
-    this.contentEl.addEventListener("touchstart", this.onTouchStart, {
-      capture: true,
-    });
-    this.contentEl.addEventListener("touchend", this.onTouchEnd, {
-      capture: true,
-    });
+    this.touchHandler.connect();
   }
 
-  onTouchStart = async (e: TouchEvent) => {
-    if (e.touches.length == 2) {
-      this.lastTouches = e.touches;
-    }
-  };
-
-  onTouchMove = async (e: TouchEvent) => {
-    if (e.touches.length !== 2) return;
-    e.stopPropagation();
-    e.stopImmediatePropagation();
-    if (!this.lastTouches) {
-      this.lastTouches = e.touches;
-      return;
-    }
-    const ts_old = this.lastTouches;
-    this.lastTouches = e.touches;
-    const ts_new = e.touches;
-    const spread_old = Math.sqrt(
-      (ts_old[0].clientX - ts_old[1].clientX) ** 2 +
-        (ts_old[0].clientY - ts_old[1].clientY) ** 2
-    );
-    const spread_new = Math.sqrt(
-      (ts_new[0].clientX - ts_new[1].clientX) ** 2 +
-        (ts_new[0].clientY - ts_new[1].clientY) ** 2
-    );
-    const zoom = spread_new / spread_old;
-
-    const oldLayout = this.contentEl.layout;
-    const layout = {};
-
-    layout["xaxis.range"] = zoomedRange(oldLayout.xaxis, zoom);
-    layout["yaxis.range"] = zoomedRange(oldLayout.yaxis, zoom);
-    for (let i = 2; i < 31; i++) {
-      layout[`xaxis${i}.range`] = zoomedRange(oldLayout[`xaxis${i}`], zoom);
-      layout[`yaxis${i}.range`] = zoomedRange(oldLayout[`yaxis${i}`], zoom);
-    }
-    await this.withoutRelayout(async () => {
-      await Plotly.relayout(this.contentEl, layout);
-    });
-  };
-  onTouchEnd = () => {
-    if (this.lastTouches) {
-      this.lastTouches = undefined;
-      this.onRelayout();
-    }
-  };
   getAutoFetchRange() {
     const ms = this.parsed_config.hours_to_show * 60 * 60 * 1000;
     return [
