@@ -1,4 +1,3 @@
-import { Datum } from "plotly.js";
 import { ColorSchemeArray, ColorSchemeNames } from "./color-schemes";
 import { TimeDurationStr } from "./duration/duration";
 import {

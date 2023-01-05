@@ -11,9 +11,7 @@ import {
   CachedEntity,
   CachedStatisticsEntity,
   CachedStateEntity,
-  HassEntity,
   EntityData,
-  YValue,
 } from "../types";
 import { groupBy } from "lodash";
 import { StatisticValue } from "../recorder-types";
