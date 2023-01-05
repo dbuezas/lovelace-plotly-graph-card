@@ -154,6 +154,16 @@ export class PlotlyGraph extends HTMLElement {
     this.contentEl.style.visibility = "hidden";
     this.touchHandler = new TouchHandler({
       el: this.contentEl,
+      onZoomStart: async (layout) => {
+        await this.withoutRelayout(async () => {
+          if (this.contentEl.layout.xaxis.autorange) {
+            // when autoranging is set in the xaxis, pinch to zoom doesn't work well
+            await Plotly.relayout(this.contentEl, { "xaxis.autorange": false });
+            // for some reason, only relayout or plot aren't enough
+            await this.plot();
+          }
+        });
+      },
       onZoom: async (layout) => {
         await this.withoutRelayout(async () => {
           await Plotly.relayout(this.contentEl, layout);
@@ -309,12 +319,6 @@ export class PlotlyGraph extends HTMLElement {
   enterBrowsingMode = () => {
     this.isBrowsing = true;
     this.resetButtonEl.classList.remove("hidden");
-    if (this.contentEl.layout.xaxis.autorange) {
-      this.withoutRelayout(async () => {
-        // when autoranging is set in the xaxis, pinch to zoom doesn't work well
-        Plotly.relayout(this.contentEl, { "xaxis.autorange": false });
-      });
-    }
   };
   exitBrowsingMode = async () => {
     this.isBrowsing = false;
@@ -569,6 +573,7 @@ export class PlotlyGraph extends HTMLElement {
       },
       {
         xaxis: {
+          autorange: false,
           range: this.isBrowsing
             ? this.getVisibleRange()
             : this.getAutoFetchRangeWithValueMargins(),
