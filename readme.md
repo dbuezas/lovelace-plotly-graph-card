@@ -29,7 +29,7 @@ You may find some extra info there in this link
 
 Find more advanced examples in [Show & Tell](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/categories/show-and-tell)
 
-## Installation 
+## Installation
 
 ### Via Home Assistant Community Store (Recommended)
 
@@ -41,13 +41,13 @@ Find more advanced examples in [Show & Tell](https://github.com/dbuezas/lovelace
 1. Go to [Releases](https://github.com/dbuezas/lovelace-plotly-graph-card/releases)
 2. Download `plotly-graph-card.js` and copy it to your Home Assistant config dir as `<config>/www/plotly-graph-card.js`
 3. Add a resource to your dashboard configuration. There are two ways:
-    1. **Using UI**: `Settings` → `Dashboards` → `More Options icon` → `Resources` → `Add Resource` → Set Url as `/local/plotly-graph-card.js` → Set Resource type as `JavaScript Module`.
-        *Note: If you do not see the Resources menu, you will need to enable Advanced Mode in your User Profile*
-    2. **Using YAML**: Add following code to lovelace section.
-        ```resources:
-          - url: /local/plotly-graph-card.js
-            type: module
-        ```
+   1. **Using UI**: `Settings` → `Dashboards` → `More Options icon` → `Resources` → `Add Resource` → Set Url as `/local/plotly-graph-card.js` → Set Resource type as `JavaScript Module`.
+      _Note: If you do not see the Resources menu, you will need to enable Advanced Mode in your User Profile_
+   2. **Using YAML**: Add following code to lovelace section.
+      ```resources:
+        - url: /local/plotly-graph-card.js
+          type: module
+      ```
 
 ## Card Config
 
@@ -439,15 +439,15 @@ entities:
         alpha: 0.1 # between 0 an 1. The lower the alpha, the smoother the trace.
 
     # The filters below receive all datapoints as they come from home assistant. Y values are strings or null (unless previously mapped to numbers or any other type)
-    - map_y: y === "heat" ? 1 : 0 # map the y values of each datapoint. Variables `i` (index), `x`, `state`, `statistic` and `meta` and `vars` are also in scope.
+    - map_y: y === "heat" ? 1 : 0 # map the y values of each datapoint. Variables `i` (index), `x`, `y`, `state`, `statistic`, `meta`, `vars` and `hass` are in scope.
     - map_x: new Date(+x + 1000) # map the x coordinate (javascript date object) of each datapoint. Same variables as map_y are in scope
     - fn: |- # arbitrary function. Only the keys that are returned are replaced. Returning null or undefined, leaves the data unchanged (useful )
 
-        ({xs, ys, meta, states, statistics}) => {
+        ({xs, ys, meta, states, statistics, hass}) => {
           # either statistics or states will be available, depending on if "statistics" are fetched or not
           # attributes will be available inside states only if an attribute is picked in the trace
           return {
-            ys: states.map(state => +state?.attributes?.current_temperature - state?.attributes?.target_temperature),
+            ys: states.map(state => +state?.attributes?.current_temperature - state?.attributes?.target_temperature + hass.states.get("sensor.inside_temp")),
             meta: { unit_of_measurement: "delta" }
           };
         },
@@ -540,12 +540,24 @@ or alternatively,
              }
    ```
 
+##### Using the hass object
+
+Funcitonal filters receive `hass` (Home Assistant) as parameter, which gives you access to the current states of all entities.
+
+```yaml
+type: custom:plotly-graph
+entities:
+  - entity: sensor.power_consumption
+    filters:
+      - map_y: parseFloat(y) * parseFloat(hass.states['sensor.cost'].state)
+```
+
 ##### Using vars
 
 Compute absolute humidity
 
 ```yaml
-type: custom:plotly-graph-dev
+type: custom:plotly-graph
 entities:
   - entity: sensor.wintergarten_clima_humidity
     internal: true
@@ -566,7 +578,7 @@ entities:
 Compute dew point
 
 ```yaml
-type: custom:plotly-graph-dev
+type: custom:plotly-graph
 entities:
   - entity: sensor.openweathermap_humidity
     internal: true
@@ -715,7 +727,7 @@ refresh_interval: 5 # update every 5 seconds
 - run `npm i`
 - run `npm start`
 - From a dashboard in edit mode, go to `Manage resources` and add `http://127.0.0.1:8000/plotly-graph-card.js` as url with resource type JavaScript
-- ATTENTION: The development card is `type: custom:plotly-graph-dev`
+- ATTENTION: The development card is `type: custom:plotly-graph`
 - Either use Safari or Enable [chrome://flags/#unsafely-treat-insecure-origin-as-secure](chrome://flags/#unsafely-treat-insecure-origin-as-secure) and add your HA address (e.g http://homeassistant.local:8123): Chrome doesn't allow public network resources from requesting private-network resources - unless the public-network resource is secure (HTTPS) and the private-network resource provides appropriate (yet-undefined) CORS headers. More [here](https://stackoverflow.com/questions/66534759/chrome-cors-error-on-request-to-localhost-dev-server-from-remote-site)
 
 # Build

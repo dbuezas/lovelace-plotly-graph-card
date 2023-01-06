@@ -431,6 +431,7 @@ export class PlotlyGraph extends HTMLElement {
         ...this.cache.getData(trace),
         meta,
         vars,
+        hass: this.hass!,
       };
       if (!this.isBrowsing) {
         // to ensure the y axis autoranges to the visible data

@@ -1,4 +1,4 @@
-import { Datum } from "plotly.js";
+import { HomeAssistant } from "custom-card-helpers";
 import { linearRegressionLine, linearRegression } from "simple-statistics";
 import {
   parseTimeDuration,
@@ -18,6 +18,7 @@ type FilterData = {
   statistics: StatisticValue[];
   meta: HassEntity["attributes"];
   vars: Record<any, any>;
+  hass: HomeAssistant;
 };
 export type FilterFn = (p: FilterData) => Partial<FilterData>;
 
@@ -192,26 +193,30 @@ const filters = {
       };
     },
   map_y_numbers: (fnStr: string) => {
-    const fn = myEval(`(i, x, y, state, statistic, vars) => ${fnStr}`);
-    return ({ xs, ys, states, statistics, vars }) => ({
+    const fn = myEval(`(i, x, y, state, statistic, vars, hass) => ${fnStr}`);
+    return ({ xs, ys, states, statistics, vars, hass }) => ({
       xs,
       ys: mapNumbers(ys, (y, i) =>
-        fn(i, xs[i], y, states[i], statistics[i], vars)
+        fn(i, xs[i], y, states[i], statistics[i], vars, hass)
       ),
     });
   },
   map_y: (fnStr: string) => {
-    const fn = myEval(`(i, x, y, state, statistic, vars) => ${fnStr}`);
-    return ({ xs, ys, states, statistics, vars }) => ({
+    const fn = myEval(`(i, x, y, state, statistic, vars, hass) => ${fnStr}`);
+    return ({ xs, ys, states, statistics, vars, hass }) => ({
       xs,
-      ys: ys.map((_, i) => fn(i, xs[i], ys[i], states[i], statistics[i], vars)),
+      ys: ys.map((_, i) =>
+        fn(i, xs[i], ys[i], states[i], statistics[i], vars, hass)
+      ),
     });
   },
   map_x: (fnStr: string) => {
-    const fn = myEval(`(i, x, y, state, statistic, vars) => ${fnStr}`);
-    return ({ xs, ys, states, statistics, vars }) => ({
+    const fn = myEval(`(i, x, y, state, statistic, vars, hass) => ${fnStr}`);
+    return ({ xs, ys, states, statistics, vars, hass }) => ({
       ys,
-      xs: xs.map((_, i) => fn(i, xs[i], ys[i], states[i], statistics[i], vars)),
+      xs: xs.map((_, i) =>
+        fn(i, xs[i], ys[i], states[i], statistics[i], vars, hass)
+      ),
     });
   },
   resample:
@@ -240,16 +245,16 @@ const filters = {
     },
   store_var:
     (var_name: string) =>
-    ({ vars, ...rest }) => ({ vars: { ...vars, [var_name]: rest } }),
+    ({ hass, vars, ...rest }) => ({ vars: { ...vars, [var_name]: rest } }),
   /*
     example: fn("({xs, ys, states, statistics }) => ({xs: ys})")
   */
   fn: (fnStr: string) => myEval(fnStr),
   filter: (fnStr: string) => {
-    const fn = myEval(`(i, x, y, state, statistic, vars) => ${fnStr}`);
-    return ({ xs, ys, states, statistics, vars }) => {
+    const fn = myEval(`(i, x, y, state, statistic, vars, hass) => ${fnStr}`);
+    return ({ xs, ys, states, statistics, vars, hass }) => {
       const mask = ys.map((_, i) =>
-        fn(i, xs[i], ys[i], states[i], statistics[i], vars)
+        fn(i, xs[i], ys[i], states[i], statistics[i], vars, hass)
       );
       return {
         ys: ys.filter((_, i) => mask[i]),
