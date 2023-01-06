@@ -1,4 +1,4 @@
-import { HomeAssistant } from "custom-card-helpers";
+import { fireEvent, HomeAssistant } from "custom-card-helpers";
 import merge from "lodash/merge";
 import mapValues from "lodash/mapValues";
 import EventEmitter from "events";
@@ -77,6 +77,8 @@ export class PlotlyGraph extends HTMLElement {
     resizeObserver?: ResizeObserver;
     relayoutListener?: EventEmitter;
     restyleListener?: EventEmitter;
+    itemclick?: EventEmitter;
+    itemdoubleclick?: EventEmitter;
     refreshTimeout?: number;
   } = {};
 
@@ -201,6 +203,16 @@ export class PlotlyGraph extends HTMLElement {
       "plotly_restyle",
       this.onRestyle
     )!;
+    this.handles.itemclick = this.contentEl.on(
+      // @ts-expect-error
+      "plotly_legendclick",
+      this.onLegendclick
+    )!;
+    this.handles.itemdoubleclick = this.contentEl.on(
+      // @ts-expect-error
+      "plotly_legenddoubleclick",
+      this.onLegenddoubleclick
+    )!;
     this.resetButtonEl.addEventListener("click", this.exitBrowsingMode);
     this.touchController.connect();
     this.fetch();
@@ -210,11 +222,27 @@ export class PlotlyGraph extends HTMLElement {
     this.handles.resizeObserver!.disconnect();
     this.handles.relayoutListener!.off("plotly_relayout", this.onRelayout);
     this.handles.restyleListener!.off("plotly_restyle", this.onRestyle);
+    this.handles.itemclick!.off("plotly_legendclick", this.onLegendclick)!;
+    this.handles.itemdoubleclick!.off(
+      "plotly_legenddoubleclick",
+      this.onLegenddoubleclick
+    )!;
     clearTimeout(this.handles.refreshTimeout!);
     this.resetButtonEl.removeEventListener("click", this.exitBrowsingMode);
     this.touchController.disconnect();
   }
-
+  onLegendclick = ({ curveNumber, data }) => {
+    if (this.parsed_config.show_entity_info_on_itemclick)
+      fireEvent(this, "hass-more-info", {
+        entityId: data[curveNumber].entity,
+      });
+  };
+  onLegenddoubleclick = ({ curveNumber, data }) => {
+    if (this.parsed_config.show_entity_info_on_itemdoubleclick)
+      fireEvent(this, "hass-more-info", {
+        entityId: data[curveNumber].entity,
+      });
+  };
   get hass() {
     return this._hass;
   }

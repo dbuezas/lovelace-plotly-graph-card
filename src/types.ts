@@ -47,6 +47,8 @@ export type InputConfig = {
   significant_changes_only?: boolean; // defaults to false
   minimal_response?: boolean; // defaults to true
   disable_pinch_to_zoom?: boolean; // defaults to false
+  show_entity_info_on_itemclick?: boolean; // defaults to false
+  show_entity_info_on_itemdoubleclick?: boolean; // defaults to false
 };
 
 export type EntityConfig = EntityIdConfig & {
@@ -83,6 +85,8 @@ export type Config = {
   significant_changes_only: boolean;
   minimal_response: boolean;
   disable_pinch_to_zoom: boolean;
+  show_entity_info_on_itemclick?: boolean; // defaults to false
+  show_entity_info_on_itemdoubleclick?: boolean; // defaults to false
 };
 export type EntityIdStateConfig = {
   entity: string;

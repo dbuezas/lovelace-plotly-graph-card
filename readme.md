@@ -761,6 +761,28 @@ disable_pinch_to_zoom: true # defaults to false
 
 When true, the custom implementations of pinch-to-zoom and double-tap-drag-to-zooming will be disabled.
 
+## show_entity_info_on_itemclick
+
+```yaml
+layout:
+  legend:
+    itemclick: none # disable plotly's normal behaviour of hiding the trace
+show_entity_info_on_itemclick: true # defaults to false
+```
+
+When true, the entity info card will be shown when the legend is clicked
+
+## show_entity_info_on_itemdoubleclick
+
+```yaml
+layout:
+  legend:
+    itemdoubleclick: none # disable plotly's normal behaviour of hiding other traces
+show_entity_info_on_itemdoubleclick: true # defaults to false
+```
+
+When true, the entity info card will be shown when the legend is doubleclicked
+
 ## minimal_response
 
 When true, tell HA to only return last_changed and state for states other than the first and last state (much faster).

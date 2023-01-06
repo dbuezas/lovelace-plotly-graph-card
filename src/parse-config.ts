@@ -213,5 +213,9 @@ export default function parseConfig(config: InputConfig): Config {
     significant_changes_only: config.significant_changes_only ?? false,
     minimal_response: config.minimal_response ?? true,
     disable_pinch_to_zoom: config.disable_pinch_to_zoom ?? false,
+    show_entity_info_on_itemclick:
+      config.show_entity_info_on_itemclick ?? false,
+    show_entity_info_on_itemdoubleclick:
+      config.show_entity_info_on_itemdoubleclick ?? false,
   };
 }
