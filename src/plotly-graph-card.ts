@@ -22,7 +22,7 @@ import { parseISO } from "date-fns";
 import { StatisticPeriod } from "./recorder-types";
 import { parseTimeDuration } from "./duration/duration";
 import parseConfig from "./parse-config";
-import { TouchHandler } from "./touch-handler";
+import { TouchController } from "./touch-controller";
 
 const componentName = isProduction ? "plotly-graph" : "plotly-graph-dev";
 
@@ -72,7 +72,7 @@ export class PlotlyGraph extends HTMLElement {
   _hass?: HomeAssistant;
   isBrowsing = false;
   isInternalRelayout = 0;
-  touchHandler: TouchHandler;
+  touchController: TouchController;
   handles: {
     resizeObserver?: ResizeObserver;
     relayoutListener?: EventEmitter;
@@ -86,7 +86,7 @@ export class PlotlyGraph extends HTMLElement {
     this.handles.restyleListener!.off("plotly_restyle", this.onRestyle);
     clearTimeout(this.handles.refreshTimeout!);
     this.resetButtonEl.removeEventListener("click", this.exitBrowsingMode);
-    this.touchHandler.disconnect();
+    this.touchController.disconnect();
   }
 
   constructor() {
@@ -152,7 +152,7 @@ export class PlotlyGraph extends HTMLElement {
     this.titleEl = shadow.querySelector("ha-card > #title")!;
     insertStyleHack(shadow.querySelector("style")!);
     this.contentEl.style.visibility = "hidden";
-    this.touchHandler = new TouchHandler({
+    this.touchController = new TouchController({
       el: this.contentEl,
       onZoomStart: async (layout) => {
         await this.withoutRelayout(async () => {
@@ -270,7 +270,7 @@ export class PlotlyGraph extends HTMLElement {
       this.onRestyle
     )!;
     this.resetButtonEl.addEventListener("click", this.exitBrowsingMode);
-    this.touchHandler.connect();
+    this.touchController.connect();
   }
 
   getAutoFetchRange() {
@@ -368,6 +368,7 @@ export class PlotlyGraph extends HTMLElement {
     const was = this.parsed_config;
     this.parsed_config = newConfig;
     const is = this.parsed_config;
+    this.touchController.isEnabled = !is.disable_pinch_to_zoom;
     if (is.hours_to_show !== was?.hours_to_show || is.offset !== was?.offset) {
       this.exitBrowsingMode();
     } else {

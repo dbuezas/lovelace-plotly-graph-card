@@ -29,7 +29,7 @@ You may find some extra info there in this link
 
 Find more advanced examples in [Show & Tell](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/categories/show-and-tell)
 
-## Installation 
+## Installation
 
 ### Via Home Assistant Community Store (Recommended)
 
@@ -41,13 +41,13 @@ Find more advanced examples in [Show & Tell](https://github.com/dbuezas/lovelace
 1. Go to [Releases](https://github.com/dbuezas/lovelace-plotly-graph-card/releases)
 2. Download `plotly-graph-card.js` and copy it to your Home Assistant config dir as `<config>/www/plotly-graph-card.js`
 3. Add a resource to your dashboard configuration. There are two ways:
-    1. **Using UI**: `Settings` → `Dashboards` → `More Options icon` → `Resources` → `Add Resource` → Set Url as `/local/plotly-graph-card.js` → Set Resource type as `JavaScript Module`.
-        *Note: If you do not see the Resources menu, you will need to enable Advanced Mode in your User Profile*
-    2. **Using YAML**: Add following code to lovelace section.
-        ```resources:
-          - url: /local/plotly-graph-card.js
-            type: module
-        ```
+   1. **Using UI**: `Settings` → `Dashboards` → `More Options icon` → `Resources` → `Add Resource` → Set Url as `/local/plotly-graph-card.js` → Set Resource type as `JavaScript Module`.
+      _Note: If you do not see the Resources menu, you will need to enable Advanced Mode in your User Profile_
+   2. **Using YAML**: Add following code to lovelace section.
+      ```resources:
+        - url: /local/plotly-graph-card.js
+          type: module
+      ```
 
 ## Card Config
 
@@ -678,6 +678,14 @@ Caveats:
 ```yaml
 significant_changes_only: true # defaults to false
 ```
+
+## disable_pinch_to_zoom
+
+```yaml
+disable_pinch_to_zoom: true # defaults to false
+```
+
+When true, the custom implementations of pinch-to-zoom and double-tap-drag-to-zooming will be disabled.
 
 ## minimal_response
 

@@ -12,7 +12,8 @@ const zoomedRange = (axis: Partial<LayoutAxis>, zoom: number) => {
   return [center - radius, center + radius];
 };
 const ONE_FINGER_DOUBLE_TAP_ZOOM_MS_THRESHOLD = 250;
-export class TouchHandler {
+export class TouchController {
+  isEnabled = true;
   lastTouches?: TouchList;
   lastSingleTouchTimestamp = 0;
   elRect?: DOMRect;
@@ -50,6 +51,7 @@ export class TouchHandler {
   }
 
   onTouchStart = async (e: TouchEvent) => {
+    if (!this.isEnabled) return;
     const stateWas = this.state;
     this.state = "idle";
     if (e.touches.length == 1) {
@@ -76,6 +78,8 @@ export class TouchHandler {
   };
 
   onTouchMove = async (e: TouchEvent) => {
+    if (!this.isEnabled) return;
+
     if (e.touches.length === 1 && this.state === "one finger")
       this.handleSingleFingerZoom(e);
     if (e.touches.length === 2 && this.state === "two fingers")
@@ -126,6 +130,8 @@ export class TouchHandler {
   }
 
   onTouchEnd = () => {
+    if (!this.isEnabled) return;
+
     if (this.state !== "idle") {
       this.onZoomEnd();
       this.state = "idle";
