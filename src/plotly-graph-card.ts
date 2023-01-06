@@ -22,6 +22,7 @@ import { parseISO } from "date-fns";
 import { StatisticPeriod } from "./recorder-types";
 import { parseTimeDuration } from "./duration/duration";
 import parseConfig from "./parse-config";
+import { TouchController } from "./touch-controller";
 
 const componentName = isProduction ? "plotly-graph" : "plotly-graph-dev";
 
@@ -71,19 +72,23 @@ export class PlotlyGraph extends HTMLElement {
   _hass?: HomeAssistant;
   isBrowsing = false;
   isInternalRelayout = 0;
-
+  touchController: TouchController;
   handles: {
     resizeObserver?: ResizeObserver;
     relayoutListener?: EventEmitter;
     restyleListener?: EventEmitter;
     refreshTimeout?: number;
   } = {};
+
   disconnectedCallback() {
     this.handles.resizeObserver!.disconnect();
     this.handles.relayoutListener!.off("plotly_relayout", this.onRelayout);
     this.handles.restyleListener!.off("plotly_restyle", this.onRestyle);
     clearTimeout(this.handles.refreshTimeout!);
+    this.resetButtonEl.removeEventListener("click", this.exitBrowsingMode);
+    this.touchController.disconnect();
   }
+
   constructor() {
     super();
     if (!isProduction) {
@@ -145,9 +150,29 @@ export class PlotlyGraph extends HTMLElement {
     this.contentEl = shadow.querySelector("div#plotly")!;
     this.resetButtonEl = shadow.querySelector("button#reset")!;
     this.titleEl = shadow.querySelector("ha-card > #title")!;
-    this.resetButtonEl.addEventListener("click", this.exitBrowsingMode);
     insertStyleHack(shadow.querySelector("style")!);
     this.contentEl.style.visibility = "hidden";
+    this.touchController = new TouchController({
+      el: this.contentEl,
+      onZoomStart: async (layout) => {
+        await this.withoutRelayout(async () => {
+          if (this.contentEl.layout.xaxis.autorange) {
+            // when autoranging is set in the xaxis, pinch to zoom doesn't work well
+            await Plotly.relayout(this.contentEl, { "xaxis.autorange": false });
+            // for some reason, only relayout or plot aren't enough
+            await this.plot();
+          }
+        });
+      },
+      onZoom: async (layout) => {
+        await this.withoutRelayout(async () => {
+          await Plotly.relayout(this.contentEl, layout);
+        });
+      },
+      onZoomEnd: () => {
+        this.onRelayout();
+      },
+    });
     this.withoutRelayout(() => Plotly.newPlot(this.contentEl, [], {}));
   }
   get hass() {
@@ -244,7 +269,10 @@ export class PlotlyGraph extends HTMLElement {
       "plotly_restyle",
       this.onRestyle
     )!;
+    this.resetButtonEl.addEventListener("click", this.exitBrowsingMode);
+    this.touchController.connect();
   }
+
   getAutoFetchRange() {
     const ms = this.parsed_config.hours_to_show * 60 * 60 * 1000;
     return [
@@ -340,6 +368,7 @@ export class PlotlyGraph extends HTMLElement {
     const was = this.parsed_config;
     this.parsed_config = newConfig;
     const is = this.parsed_config;
+    this.touchController.isEnabled = !is.disable_pinch_to_zoom;
     if (is.hours_to_show !== was?.hours_to_show || is.offset !== was?.offset) {
       this.exitBrowsingMode();
     } else {
@@ -548,6 +577,7 @@ export class PlotlyGraph extends HTMLElement {
       },
       {
         xaxis: {
+          autorange: false,
           range: this.isBrowsing
             ? this.getVisibleRange()
             : this.getAutoFetchRangeWithValueMargins(),

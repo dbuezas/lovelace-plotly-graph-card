@@ -691,6 +691,14 @@ Caveats:
 significant_changes_only: true # defaults to false
 ```
 
+## disable_pinch_to_zoom
+
+```yaml
+disable_pinch_to_zoom: true # defaults to false
+```
+
+When true, the custom implementations of pinch-to-zoom and double-tap-drag-to-zooming will be disabled.
+
 ## minimal_response
 
 When true, tell HA to only return last_changed and state for states other than the first and last state (much faster).

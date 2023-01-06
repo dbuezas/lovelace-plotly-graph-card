@@ -212,5 +212,6 @@ export default function parseConfig(config: InputConfig): Config {
     no_default_layout: config.no_default_layout ?? false,
     significant_changes_only: config.significant_changes_only ?? false,
     minimal_response: config.minimal_response ?? true,
+    disable_pinch_to_zoom: config.disable_pinch_to_zoom ?? false,
   };
 }
