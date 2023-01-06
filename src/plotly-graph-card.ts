@@ -432,7 +432,10 @@ export class PlotlyGraph extends HTMLElement {
         meta,
         vars,
       };
-
+      if (!this.isBrowsing) {
+        // to ensure the y axis autoranges to the visible data
+        removeOutOfRange(data, this.getAutoFetchRangeWithValueMargins());
+      }
       if (trace.filters) {
         try {
           for (const filter of trace.filters) {
@@ -464,10 +467,7 @@ export class PlotlyGraph extends HTMLElement {
         }
       }
       if (trace.internal) return;
-      if (!this.isBrowsing) {
-        // to ensure the y axis autoranges to the visible data
-        removeOutOfRange(data, this.getAutoFetchRangeWithValueMargins());
-      }
+
       if (data.xs.length === 0 && data.ys.length === 0) {
         /*
           Traces with no data are removed from the legend by plotly. 
