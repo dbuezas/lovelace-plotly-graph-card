@@ -505,6 +505,8 @@ export class PlotlyGraph extends HTMLElement {
           y: data.ys,
           yaxis: "y" + (yaxis_idx == 0 ? "" : yaxis_idx + 1),
         },
+        // @ts-expect-error
+        data.undocumented_trace, // temporary solution until functions are allowed everyhwere. May be removed after that.
         trace
       );
       real_traces.push(mergedTrace);
