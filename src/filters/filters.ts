@@ -75,6 +75,24 @@ const filters = {
         meta: { ...meta, regression },
       };
     },
+  delta:
+    () =>
+    ({ ys, meta }) => {
+      const last = {
+        y: NaN,
+      };
+      return {
+        meta: {
+          ...meta,
+          unit_of_measurement: `Δ${meta.unit_of_measurement}`,
+        },
+        ys: mapNumbers(ys, (y) => {
+          const yDelta = y - last.y;
+          last.y = y;
+          return yDelta;
+        }),
+      };
+    },
   derivate:
     (unit: keyof typeof timeUnits = "h") =>
     ({ xs, ys, meta }) => {
@@ -91,10 +109,10 @@ const filters = {
         ys: mapNumbers(ys, (y, i) => {
           const x = +xs[i];
           const dateDelta = (x - last.x) / timeUnits[unit];
-          const yDelta = (y - last.y) / dateDelta;
+          const yDeriv = (y - last.y) / dateDelta;
           last.y = y;
           last.x = x;
-          return yDelta;
+          return yDeriv;
         }),
       };
     },
