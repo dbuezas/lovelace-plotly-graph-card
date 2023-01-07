@@ -417,10 +417,8 @@ entities:
       - 0.0 -> 0.0
       - 40.0 -> 45.0
       - 100.0 -> 102.5
-    - derivate: # computes rate of change per unit of time
-        unit: h # ms (milisecond), s (second), m (minute), h (hour), d (day), w (week), M (month), y (year)
-    - integrate: # computes area under the curve per unit of time using Right hand riemann integration
-        unit: h # ms (milisecond), s (second), m (minute), h (hour), d (day), w (week), M (month), y (year)
+    - derivate: h # computes rate of change per unit of time: h # ms (milisecond), s (second), m (minute), h (hour), d (day), w (week), M (month), y (year)
+    - integrate: h # computes area under the curve per unit of time using Right hand riemann integration. Same units as the derivative
     - map_y_numbers: Math.sqrt(y + 10*100) # map the y coordinate of each datapoint.
 
     # In the filters below, missing and non numeric datapoints will be discarded
@@ -482,8 +480,7 @@ alternatively,
 ```yaml
 - entity: sensor.fridge_power
   filters:
-    - integrate:
-        unit: h # resulting unit_of_measurement will be W/h
+    - integrate: h # resulting unit_of_measurement will be W/h
 ```
 
 ##### Using state attributes
