@@ -7,6 +7,9 @@ const defaultExtraYAxes: Partial<Plotly.LayoutAxis> = {
   overlaying: "y",
   showgrid: false,
   visible: false,
+  // This makes sure that the traces are rendered above the right y axis,
+  // including the marker and its text. Useful for show_value. See cliponaxis in entity
+  layer: "below traces",
 };
 
 const defaultLayout: Partial<Plotly.Layout> = {

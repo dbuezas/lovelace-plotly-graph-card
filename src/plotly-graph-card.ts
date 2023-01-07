@@ -285,7 +285,7 @@ export class PlotlyGraph extends HTMLElement {
     const padPercent = Math.max(
       ...this.parsed_config.entities.map(({ show_value }) => {
         if (show_value === false) return 0 / 100;
-        if (show_value === true) return 10 / 100;
+        if (show_value === true) return 0 / 100;
         return show_value.right_margin / 100;
       })
     );
@@ -545,6 +545,7 @@ export class PlotlyGraph extends HTMLElement {
         show_value_traces.push({
           texttemplate: `%{y:.2~f}%{customdata.unit_of_measurement}`, // here so it can be overwritten
           ...mergedTrace,
+          cliponaxis: false, // allows the marker + text to be rendered above the right y axis. See https://github.com/dbuezas/lovelace-plotly-graph-card/issues/171
           mode: "text+markers",
           showlegend: false,
           hoverinfo: "skip",
