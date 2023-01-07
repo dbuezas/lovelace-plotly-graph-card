@@ -417,6 +417,7 @@ entities:
       - 0.0 -> 0.0
       - 40.0 -> 45.0
       - 100.0 -> 102.5
+    - delata # computes the delta between each two consecutive numeric y values.
     - derivate: h # computes rate of change per unit of time: h # ms (milisecond), s (second), m (minute), h (hour), d (day), w (week), M (month), y (year)
     - integrate: h # computes area under the curve per unit of time using Right hand riemann integration. Same units as the derivative
     - map_y_numbers: Math.sqrt(y + 10*100) # map the y coordinate of each datapoint.
