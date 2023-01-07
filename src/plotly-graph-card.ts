@@ -80,15 +80,6 @@ export class PlotlyGraph extends HTMLElement {
     refreshTimeout?: number;
   } = {};
 
-  disconnectedCallback() {
-    this.handles.resizeObserver!.disconnect();
-    this.handles.relayoutListener!.off("plotly_relayout", this.onRelayout);
-    this.handles.restyleListener!.off("plotly_restyle", this.onRestyle);
-    clearTimeout(this.handles.refreshTimeout!);
-    this.resetButtonEl.removeEventListener("click", this.exitBrowsingMode);
-    this.touchController.disconnect();
-  }
-
   constructor() {
     super();
     if (!isProduction) {
@@ -175,6 +166,55 @@ export class PlotlyGraph extends HTMLElement {
     });
     this.withoutRelayout(() => Plotly.newPlot(this.contentEl, [], {}));
   }
+
+  connectedCallback() {
+    const updateCardSize = async () => {
+      const width = this.cardEl.offsetWidth;
+      this.contentEl.style.position = "absolute";
+      const height = this.cardEl.offsetHeight;
+      this.contentEl.style.position = "";
+      this.size = { width };
+      if (height > 100) {
+        // Panel view type has the cards covering 100% of the height of the window.
+        // Masonry lets the cards grow by themselves.
+        // if height > 100 ==> Panel ==> use available height
+        // else ==> Mansonry ==> let the height be determined by defaults
+        this.size.height = height - this.titleEl.offsetHeight;
+      }
+      this.withoutRelayout(async () => {
+        const layout = this.getLayout([]);
+        await Plotly.relayout(this.contentEl, {
+          width: layout.width,
+          height: layout.height,
+        });
+      });
+    };
+    this.handles.resizeObserver = new ResizeObserver(updateCardSize);
+    this.handles.resizeObserver.observe(this.cardEl);
+
+    updateCardSize();
+    this.handles.relayoutListener = this.contentEl.on(
+      "plotly_relayout",
+      this.onRelayout
+    )!;
+    this.handles.restyleListener = this.contentEl.on(
+      "plotly_restyle",
+      this.onRestyle
+    )!;
+    this.resetButtonEl.addEventListener("click", this.exitBrowsingMode);
+    this.touchController.connect();
+    this.fetch();
+  }
+
+  disconnectedCallback() {
+    this.handles.resizeObserver!.disconnect();
+    this.handles.relayoutListener!.off("plotly_relayout", this.onRelayout);
+    this.handles.restyleListener!.off("plotly_restyle", this.onRestyle);
+    clearTimeout(this.handles.refreshTimeout!);
+    this.resetButtonEl.removeEventListener("click", this.exitBrowsingMode);
+    this.touchController.disconnect();
+  }
+
   get hass() {
     return this._hass;
   }
@@ -226,51 +266,11 @@ export class PlotlyGraph extends HTMLElement {
     }
     this._hass = hass;
   }
-  connectedCallback() {
-    this.setupListeners();
-    this.fetch();
-  }
+
   async withoutRelayout(fn: Function) {
     this.isInternalRelayout++;
     await fn();
     this.isInternalRelayout--;
-  }
-  setupListeners() {
-    const updateCardSize = async () => {
-      const width = this.cardEl.offsetWidth;
-      this.contentEl.style.position = "absolute";
-      const height = this.cardEl.offsetHeight;
-      this.contentEl.style.position = "";
-      this.size = { width };
-      if (height > 100) {
-        // Panel view type has the cards covering 100% of the height of the window.
-        // Masonry lets the cards grow by themselves.
-        // if height > 100 ==> Panel ==> use available height
-        // else ==> Mansonry ==> let the height be determined by defaults
-        this.size.height = height - this.titleEl.offsetHeight;
-      }
-      this.withoutRelayout(async () => {
-        const layout = this.getLayout([]);
-        await Plotly.relayout(this.contentEl, {
-          width: layout.width,
-          height: layout.height,
-        });
-      });
-    };
-    this.handles.resizeObserver = new ResizeObserver(updateCardSize);
-    this.handles.resizeObserver.observe(this.cardEl);
-
-    updateCardSize();
-    this.handles.relayoutListener = this.contentEl.on(
-      "plotly_relayout",
-      this.onRelayout
-    )!;
-    this.handles.restyleListener = this.contentEl.on(
-      "plotly_restyle",
-      this.onRestyle
-    )!;
-    this.resetButtonEl.addEventListener("click", this.exitBrowsingMode);
-    this.touchController.connect();
   }
 
   getAutoFetchRange() {
