@@ -258,6 +258,44 @@ entities:
 
 Note that `5minute` period statistics are limited in time as normal recorder history is, contrary to other periods which keep data for years.
 
+## show_value:
+
+Shows the value of the last datapoint as text in the plot.
+
+Examples:
+
+```yaml
+type: custom:plotly-graph
+entities:
+  - entity: sensor.temperature
+    show_value: true
+```
+
+Often one wants this to be the case for all entities
+
+```yaml
+defaults:
+  entity:
+    show_value: true
+```
+
+If you want to make extra room for the value, you can either increase the right margin of the whole plot like this:
+
+```yaml
+layout:
+  margin:
+    r: 100
+```
+
+Or make space inside the the plot like this:
+
+```yaml
+defaults:
+  entity:
+    show_value:
+      right_margin: 20 # this is 20% of the space in the x axis
+```
+
 ## Offsets
 
 Offsets are useful to shift data in the temporal axis. For example, if you have a sensor that reports the forecasted temperature 3 hours from now, it means that the current value should be plotted in the future. With the `offset` attribute you can shift the data so it is placed in the correct position.
@@ -365,8 +403,7 @@ entities:
     lambda: |- # Transforms the data
       (ys) => ys.map(y => (y × 9/5) + 32)
     unit_of_measurement: °F # Overrides the unit
-    show_value: # shows the last value with 40% right margin
-      right_margin: 40
+    show_value: true # shows the last value as text
     texttemplate: >- # custom format for show_value
       <b>%{y}</b>%{customdata.unit_of_measurement}<br>
       %{customdata.name}
