@@ -119,12 +119,14 @@ export class TouchController {
   async handleZoom(zoom: number) {
     const oldLayout = this.el.layout;
     const layout = {};
-
-    layout["xaxis.range"] = zoomedRange(oldLayout.xaxis, zoom);
-    layout["yaxis.range"] = zoomedRange(oldLayout.yaxis, zoom);
-    for (let i = 2; i < 31; i++) {
-      layout[`xaxis${i}.range`] = zoomedRange(oldLayout[`xaxis${i}`], zoom);
-      layout[`yaxis${i}.range`] = zoomedRange(oldLayout[`yaxis${i}`], zoom);
+    const axes = Array.from({ length: 30 }).flatMap((_, i) => {
+      const i_str = i === 0 ? "" : i + 1;
+      return [`xaxis${i_str}`, `yaxis${i_str}`];
+    });
+    for (const axis of axes) {
+      if (!oldLayout[axis]?.fixedrange) {
+        layout[`${axis}.range`] = zoomedRange(oldLayout[axis], zoom);
+      }
     }
     this.onZoom(layout);
   }
