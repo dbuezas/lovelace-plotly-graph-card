@@ -489,19 +489,31 @@ alternatively,
 - entity: climate.loungetrv_climate
   attribute: current_temperature # an attribute must be set to ensure attributes are fetched.
   filters:
-    - map_y_numbers: state.state === "heat" ? state.attributes.current_temperature : 0
+    - map_y_numbers: |
+        state.state === "heat" ? state.attributes.current_temperature : 0
 ```
 
 or alternatively,
 
 ```yaml
-- map_y_numbers: state.state === "heat" ? y : 0
+- map_y_numbers: 'state.state === "heat" ? y : 0'
 ```
 
 or alternatively,
 
 ```yaml
-- map_y: state?.state === "heat" ? state.attributes?.current_temperature : 0
+- map_y_numbers: |
+    {
+      const isHeat = state.state === "heat";
+      return isHeat ? y : 0;
+    }
+```
+
+or alternatively,
+
+```yaml
+- map_y: |
+    state?.state === "heat" ? state.attributes?.current_temperature : 0
 ```
 
 or alternatively,
@@ -509,8 +521,23 @@ or alternatively,
 ```yaml
 - fn: |-
     ({ys, states}) => ({
-      ys: states.map((state, i) => state?.state === "heat" ? state.attributes?.current_temperature : 0),
+      ys: states.map((state, i) =>
+        state?.state === "heat" ? state.attributes?.current_temperature : 0
+      ),
     }),
+```
+
+or alternatively,
+
+```yaml
+- fn: |-
+    ({ys, states}) => {
+      return {
+        ys: states.map((state, i) =>
+          state?.state === "heat" ? state.attributes?.current_temperature : 0
+        ),
+      }
+    },
 ```
 
 #### Advanced
