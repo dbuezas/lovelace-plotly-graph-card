@@ -18,15 +18,15 @@ export class TouchController {
   lastSingleTouchTimestamp = 0;
   elRect?: DOMRect;
   el: PlotlyEl;
-  onZoomStart: Function;
-  onZoom: Function;
-  onZoomEnd: Function;
+  onZoomStart: () => any;
+  onZoom: (layout: Partial<Layout>) => any;
+  onZoomEnd: () => any;
   state: "one finger" | "two fingers" | "idle" = "idle";
   constructor(param: {
     el: PlotlyEl;
-    onZoomStart: Function;
+    onZoomStart: () => any;
     onZoom: (layout: Partial<Layout>) => any;
-    onZoomEnd: Function;
+    onZoomEnd: () => any;
   }) {
     this.el = param.el;
     this.onZoom = param.onZoom;

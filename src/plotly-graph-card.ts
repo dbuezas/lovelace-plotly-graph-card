@@ -154,7 +154,7 @@ export class PlotlyGraph extends HTMLElement {
     this.contentEl.style.visibility = "hidden";
     this.touchController = new TouchController({
       el: this.contentEl,
-      onZoomStart: async (layout) => {
+      onZoomStart: async () => {
         await this.withoutRelayout(async () => {
           if (this.contentEl.layout.xaxis.autorange) {
             // when autoranging is set in the xaxis, pinch to zoom doesn't work well
