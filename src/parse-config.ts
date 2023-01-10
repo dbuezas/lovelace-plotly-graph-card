@@ -14,6 +14,7 @@ import { Config, EntityConfig, InputConfig } from "./types";
 import { parseTimeDuration } from "./duration/duration";
 import merge from "lodash/merge";
 import filters from "./filters/filters";
+import { Layout } from "plotly.js";
 
 function parseColorScheme(config: InputConfig): ColorSchemeArray {
   const schemeName = config.color_scheme ?? "category10";
@@ -154,6 +155,43 @@ function parseEntities(config: InputConfig): EntityConfig[] {
   });
 }
 
+function parseLayout(config: InputConfig): Partial<Layout> {
+  return merge(
+    {
+      yaxis: merge({}, config.defaults?.yaxes),
+      yaxis2: merge({}, config.defaults?.yaxes),
+      yaxis3: merge({}, config.defaults?.yaxes),
+      yaxis4: merge({}, config.defaults?.yaxes),
+      yaxis5: merge({}, config.defaults?.yaxes),
+      yaxis6: merge({}, config.defaults?.yaxes),
+      yaxis7: merge({}, config.defaults?.yaxes),
+      yaxis8: merge({}, config.defaults?.yaxes),
+      yaxis9: merge({}, config.defaults?.yaxes),
+      yaxis10: merge({}, config.defaults?.yaxes),
+      yaxis11: merge({}, config.defaults?.yaxes),
+      yaxis12: merge({}, config.defaults?.yaxes),
+      yaxis13: merge({}, config.defaults?.yaxes),
+      yaxis14: merge({}, config.defaults?.yaxes),
+      yaxis15: merge({}, config.defaults?.yaxes),
+      yaxis16: merge({}, config.defaults?.yaxes),
+      yaxis17: merge({}, config.defaults?.yaxes),
+      yaxis18: merge({}, config.defaults?.yaxes),
+      yaxis19: merge({}, config.defaults?.yaxes),
+      yaxis20: merge({}, config.defaults?.yaxes),
+      yaxis21: merge({}, config.defaults?.yaxes),
+      yaxis22: merge({}, config.defaults?.yaxes),
+      yaxis23: merge({}, config.defaults?.yaxes),
+      yaxis24: merge({}, config.defaults?.yaxes),
+      yaxis25: merge({}, config.defaults?.yaxes),
+      yaxis26: merge({}, config.defaults?.yaxes),
+      yaxis27: merge({}, config.defaults?.yaxes),
+      yaxis28: merge({}, config.defaults?.yaxes),
+      yaxis29: merge({}, config.defaults?.yaxes),
+      yaxis30: merge({}, config.defaults?.yaxes),
+    },
+    config.layout
+  );
+}
 export default function parseConfig(config: InputConfig): Config {
   if (
     typeof config.refresh_interval !== "number" &&
@@ -168,50 +206,14 @@ export default function parseConfig(config: InputConfig): Config {
     title: config.title,
     hours_to_show: config.hours_to_show ?? 1,
     refresh_interval: config.refresh_interval ?? "auto",
-    offset: parseTimeDuration(config.offset ?? "0s"),
-    entities: parseEntities(config),
-    layout: merge(
-      {
-        yaxis: merge({}, config.defaults?.yaxes),
-        yaxis2: merge({}, config.defaults?.yaxes),
-        yaxis3: merge({}, config.defaults?.yaxes),
-        yaxis4: merge({}, config.defaults?.yaxes),
-        yaxis5: merge({}, config.defaults?.yaxes),
-        yaxis6: merge({}, config.defaults?.yaxes),
-        yaxis7: merge({}, config.defaults?.yaxes),
-        yaxis8: merge({}, config.defaults?.yaxes),
-        yaxis9: merge({}, config.defaults?.yaxes),
-        yaxis10: merge({}, config.defaults?.yaxes),
-        yaxis11: merge({}, config.defaults?.yaxes),
-        yaxis12: merge({}, config.defaults?.yaxes),
-        yaxis13: merge({}, config.defaults?.yaxes),
-        yaxis14: merge({}, config.defaults?.yaxes),
-        yaxis15: merge({}, config.defaults?.yaxes),
-        yaxis16: merge({}, config.defaults?.yaxes),
-        yaxis17: merge({}, config.defaults?.yaxes),
-        yaxis18: merge({}, config.defaults?.yaxes),
-        yaxis19: merge({}, config.defaults?.yaxes),
-        yaxis20: merge({}, config.defaults?.yaxes),
-        yaxis21: merge({}, config.defaults?.yaxes),
-        yaxis22: merge({}, config.defaults?.yaxes),
-        yaxis23: merge({}, config.defaults?.yaxes),
-        yaxis24: merge({}, config.defaults?.yaxes),
-        yaxis25: merge({}, config.defaults?.yaxes),
-        yaxis26: merge({}, config.defaults?.yaxes),
-        yaxis27: merge({}, config.defaults?.yaxes),
-        yaxis28: merge({}, config.defaults?.yaxes),
-        yaxis29: merge({}, config.defaults?.yaxes),
-        yaxis30: merge({}, config.defaults?.yaxes),
-      },
-      config.layout
-    ),
-    config: {
-      ...config.config,
-    },
     no_theme: config.no_theme ?? false,
     no_default_layout: config.no_default_layout ?? false,
     significant_changes_only: config.significant_changes_only ?? false,
     minimal_response: config.minimal_response ?? true,
     disable_pinch_to_zoom: config.disable_pinch_to_zoom ?? false,
+    config: config.config ?? {},
+    offset: parseTimeDuration(config.offset ?? "0s"),
+    entities: parseEntities(config),
+    layout: parseLayout(config),
   };
 }
