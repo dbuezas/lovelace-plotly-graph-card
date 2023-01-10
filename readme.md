@@ -678,13 +678,14 @@ entities:
     internal: true
     period: 5minute
     filters:
-      store_var: temp1
+      - map_y: parseFloat(y) 
+      - store_var: temp1
   - entity: sensor.temperature2
     period: 5minute
     name: sum of temperatures
     filters:
-      map_y: y + vars.temp1[i].y
-```
+      - map_y: parseFloat(y)
+      - map_y: y + vars.temp1.ys[i]
 
 ### `lambda:` transforms (deprecated)
 
