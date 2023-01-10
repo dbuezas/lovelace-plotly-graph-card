@@ -683,8 +683,7 @@ entities:
     period: 5minute
     name: sum of temperatures
     filters:
-      map_y: y + vars.temp1[i].y
-```
+      map_y: y + vars.temp1.ys[i]
 
 ### `lambda:` transforms (deprecated)
 
