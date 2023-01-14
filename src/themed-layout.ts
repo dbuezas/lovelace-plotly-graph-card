@@ -76,12 +76,9 @@ const defaultLayout: Partial<Plotly.Layout> = {
       t: 15,
     },
   },
-  ...{
-    // modebar is missing from the Layout Typings
+  modebar: {
     // vertical so it doesn't occlude the legend
-    modebar: {
-      orientation: "v",
-    },
+    orientation: "v",
   },
 };
 
@@ -137,9 +134,5 @@ export default function getThemedLayout(
     yaxis30: { ...themeAxisStyle },
   };
 
-  return merge(
-    { legend: { traceorder: "normal" } },
-    no_theme ? {} : theme,
-    no_default_layout ? {} : defaultLayout
-  );
+  return merge(no_theme ? {} : theme, no_default_layout ? {} : defaultLayout);
 }
