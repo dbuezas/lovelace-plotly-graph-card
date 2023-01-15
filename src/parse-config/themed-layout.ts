@@ -1,5 +1,11 @@
 import merge from "lodash/merge";
-import { HATheme } from "./types";
+export type HATheme = {
+  "--card-background-color": string;
+  "--primary-background-color": string;
+  "--primary-color": string;
+  "--primary-text-color": string;
+  "--secondary-text-color": string;
+};
 
 const defaultExtraYAxes: Partial<Plotly.LayoutAxis> = {
   // automargin: true, // it makes zooming very jumpy

@@ -143,11 +143,3 @@ export type EntityData = {
 };
 
 export type TimestampRange = Timestamp[]; // [Timestamp, Timestamp];
-
-export type HATheme = {
-  "--card-background-color": string;
-  "--primary-background-color": string;
-  "--primary-color": string;
-  "--primary-text-color": string;
-  "--secondary-text-color": string;
-};

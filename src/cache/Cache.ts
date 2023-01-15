@@ -14,7 +14,7 @@ import {
   EntityData,
 } from "../types";
 import { groupBy } from "lodash";
-import { StatisticValue } from "../recorder-types";
+import { parseTimeDuration } from "../duration/duration";
 
 export function mapValues<T, S>(
   o: Record<string, T>,
@@ -25,9 +25,7 @@ export function mapValues<T, S>(
 async function fetchSingleRange(
   hass: HomeAssistant,
   entity: EntityConfig,
-  [startT, endT]: number[],
-  significant_changes_only: boolean,
-  minimal_response: boolean
+  [startT, endT]: number[]
 ): Promise<{
   range: [number, number];
   history: CachedEntity[];
@@ -76,13 +74,7 @@ async function fetchSingleRange(
   if (isEntityIdStatisticsConfig(entity)) {
     history = await fetchStatistics(hass, entity, [start, end]);
   } else {
-    history = await fetchStates(
-      hass,
-      entity,
-      [start, end],
-      significant_changes_only,
-      minimal_response
-    );
+    history = await fetchStates(hass, entity, [start, end]);
   }
 
   let range: [number, number] = [startT, endT];
@@ -138,7 +130,9 @@ export default class Cache {
       states: [],
       statistics: [],
     };
-    data.xs = history.map(({ x }) => new Date(+x + entity.offset));
+    data.xs = history.map(
+      ({ x }) => new Date(+x + parseTimeDuration(entity.offset))
+    );
     if (isEntityIdStatisticsConfig(entity)) {
       data.statistics = (history as CachedStatisticsEntity[]).map(
         ({ statistics }) => statistics
@@ -172,49 +166,66 @@ export default class Cache {
     }
     return data;
   }
-  async update(
+  async fetch(
     range: TimestampRange,
-    entities: EntityConfig[],
-    hass: HomeAssistant,
-    significant_changes_only: boolean,
-    minimal_response: boolean
+    entity: EntityConfig,
+    hass: HomeAssistant
   ) {
     return (this.busy = this.busy
       .catch(() => {})
       .then(async () => {
-        range = range.map((n) => Math.max(MIN_SAFE_TIMESTAMP, n)); // HA API can't handle negative years
-        const parallelFetches = Object.values(groupBy(entities, getEntityKey));
-        const promises = parallelFetches.flatMap(async (entityGroup) => {
-          // Each entity in entityGroup will result in exactly the same fetch
-          // But these may differ once the offsets PR is merged
-          // Making these fetches sequentially ensures that the already fetched ranges of each
-          // request are not fetched more than once
-          for (const entity of entityGroup) {
-            if (!entity.entity) continue;
-            const entityKey = getEntityKey(entity);
-            this.ranges[entityKey] ??= [];
-            const offsetRange = [
-              range[0] - entity.offset,
-              range[1] - entity.offset,
-            ];
-            const rangesToFetch = subtractRanges(
-              [offsetRange],
-              this.ranges[entityKey]
-            );
-            for (const aRange of rangesToFetch) {
-              const fetchedHistory = await fetchSingleRange(
-                hass,
-                entity,
-                aRange,
-                significant_changes_only,
-                minimal_response
-              );
-              this.add(entity, fetchedHistory.history, fetchedHistory.range);
-            }
+        // TODO: put this in the plotly card side:
+        // range = range.map((n) => Math.max(MIN_SAFE_TIMESTAMP, n)); // HA API can't handle negative years
+        if (entity.entity) {
+          const entityKey = getEntityKey(entity);
+          this.ranges[entityKey] ??= [];
+          const rangesToFetch = subtractRanges([range], this.ranges[entityKey]);
+          for (const aRange of rangesToFetch) {
+            const fetchedHistory = await fetchSingleRange(hass, entity, aRange);
+            this.add(entity, fetchedHistory.history, fetchedHistory.range);
           }
-        });
-
-        await Promise.all(promises);
+        }
       }));
   }
+  // async update(
+  //   range: TimestampRange,
+  //   entities: EntityConfig[],
+  //   hass: HomeAssistant,
+  // ) {
+  //   return (this.busy = this.busy
+  //     .catch(() => {})
+  //     .then(async () => {
+  //       range = range.map((n) => Math.max(MIN_SAFE_TIMESTAMP, n)); // HA API can't handle negative years
+  //       const parallelFetches = Object.values(groupBy(entities, getEntityKey));
+  //       const promises = parallelFetches.flatMap(async (entityGroup) => {
+  //         // Each entity in entityGroup will result in exactly the same fetch
+  //         // But these may differ once the offsets PR is merged
+  //         // Making these fetches sequentially ensures that the already fetched ranges of each
+  //         // request are not fetched more than once
+  //         for (const entity of entityGroup) {
+  //           if (!entity.entity) continue;
+  //           const entityKey = getEntityKey(entity);
+  //           this.ranges[entityKey] ??= [];
+  //           const offsetRange = [
+  //             range[0] - entity.offset,
+  //             range[1] - entity.offset,
+  //           ];
+  //           const rangesToFetch = subtractRanges(
+  //             [offsetRange],
+  //             this.ranges[entityKey]
+  //           );
+  //           for (const aRange of rangesToFetch) {
+  //             const fetchedHistory = await fetchSingleRange(
+  //               hass,
+  //               entity,
+  //               aRange
+  //             );
+  //             this.add(entity, fetchedHistory.history, fetchedHistory.range);
+  //           }
+  //         }
+  //       });
+
+  //       await Promise.all(promises);
+  //     }));
+  // }
 }

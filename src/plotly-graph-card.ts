@@ -1,54 +1,25 @@
 import { HomeAssistant } from "custom-card-helpers";
-import merge from "lodash/merge";
-import mapValues from "lodash/mapValues";
 import EventEmitter from "events";
+import mapValues from "lodash/mapValues";
 import { version } from "../package.json";
 import insertStyleHack from "./style-hack";
 import Plotly from "./plotly";
 import {
   Config,
-  EntityData,
   InputConfig,
   isEntityIdAttrConfig,
   isEntityIdStateConfig,
   isEntityIdStatisticsConfig,
-  TimestampRange,
 } from "./types";
 import Cache from "./cache/Cache";
-import getThemedLayout from "./themed-layout";
 import isProduction from "./is-production";
 import { debounce, sleep } from "./utils";
 import { parseISO } from "date-fns";
-import { StatisticPeriod } from "./recorder-types";
-import { parseTimeDuration } from "./duration/duration";
-import parseConfig from "./parse-config";
 import { TouchController } from "./touch-controller";
+import { ConfigParser } from "./parse-config/parse-config";
+import { merge } from "lodash";
 
 const componentName = isProduction ? "plotly-graph" : "plotly-graph-dev";
-
-function removeOutOfRange(data: EntityData, range: TimestampRange) {
-  let first = -1;
-
-  for (let i = 0; i < data.xs.length; i++) {
-    if (+data.xs[i]! < range[0]) first = i;
-  }
-  if (first > -1) {
-    data.xs.splice(0, first);
-    data.ys.splice(0, first);
-    data.states.splice(0, first);
-    data.statistics.splice(0, first);
-  }
-  let last = -1;
-  for (let i = data.xs.length - 1; i >= 0; i--) {
-    if (+data.xs[i]! > range[1]) last = i;
-  }
-  if (last > -1) {
-    data.xs.splice(last);
-    data.ys.splice(last);
-    data.states.splice(last);
-    data.statistics.splice(last);
-  }
-}
 
 console.info(
   `%c ${componentName.toUpperCase()} %c ${version} ${process.env.NODE_ENV}`,
@@ -67,12 +38,12 @@ export class PlotlyGraph extends HTMLElement {
   titleEl: HTMLElement;
   config!: InputConfig;
   parsed_config!: Config;
-  cache = new Cache();
   size: { width?: number; height?: number } = {};
   _hass?: HomeAssistant;
   isBrowsing = false;
   isInternalRelayout = 0;
   touchController: TouchController;
+  configParser = new ConfigParser();
   handles: {
     resizeObserver?: ResizeObserver;
     relayoutListener?: EventEmitter;
@@ -182,10 +153,9 @@ export class PlotlyGraph extends HTMLElement {
         this.size.height = height - this.titleEl.offsetHeight;
       }
       this.withoutRelayout(async () => {
-        const layout = this.getLayout([]);
         await Plotly.relayout(this.contentEl, {
-          width: layout.width,
-          height: layout.height,
+          width: this.parsed_config?.layout?.width,
+          height: this.parsed_config?.layout?.height,
         });
       });
     };
@@ -248,21 +218,25 @@ export class PlotlyGraph extends HTMLElement {
             shouldFetch = true;
           }
 
-          if (shouldAddToCache) {
-            this.cache.add(
-              entity,
-              [{ state, x: new Date(end), y: null }],
-              range
-            );
-            shouldPlot = true;
-          }
+          // TODO: decide what to do about adding to the cache like this
+          // if (shouldAddToCache) {
+          //   this.cache.add(
+          //     entity,
+          //     [{ state, x: new Date(end), y: null }],
+          //     range
+          //   );
+          //   shouldPlot = true;
+          // }
         }
       }
-      if (shouldFetch) {
+      if (shouldFetch || shouldPlot) {
         this.fetch();
-      } else if (shouldPlot) {
-        this.plot();
       }
+      // if (shouldFetch) {
+      //   this.fetch();
+      // } else if (shouldPlot) {
+      //   this.plot();
+      // }
     }
     this._hass = hass;
   }
@@ -273,26 +247,6 @@ export class PlotlyGraph extends HTMLElement {
     this.isInternalRelayout--;
   }
 
-  getAutoFetchRange() {
-    const ms = this.parsed_config.hours_to_show * 60 * 60 * 1000;
-    return [
-      +new Date() - ms + this.parsed_config.offset,
-      +new Date() + this.parsed_config.offset,
-    ] as [number, number];
-  }
-  getAutoFetchRangeWithValueMargins() {
-    const [start, end] = this.getAutoFetchRange();
-    const padPercent = Math.max(
-      ...this.parsed_config.entities.map(({ show_value }) => {
-        if (show_value === false) return 0 / 100;
-        if (show_value === true) return 0 / 100;
-        return show_value.right_margin / 100;
-      })
-    );
-    const msToShow = this.parsed_config.hours_to_show * 1000 * 60 * 60;
-    const msPad = (msToShow / (1 - padPercent)) * padPercent;
-    return [start, end + msPad];
-  }
   getVisibleRange() {
     return this.contentEl.layout.xaxis!.range!.map((date) => {
       // if autoscale is used after scrolling, plotly returns the dates as timestamps (numbers) instead of iso strings
@@ -325,7 +279,8 @@ export class PlotlyGraph extends HTMLElement {
     this.resetButtonEl.classList.add("hidden");
     this.withoutRelayout(async () => {
       await this.plot(); // to reset xaxis to hours_to_show quickly, before refetching
-      this.cache.clearCache(); // so that when the user zooms out and autoranges, not more that what's visible will be autoranged
+      // TODO: clear cache
+      // this.cache.clearCache(); // so that when the user zooms out and autoranges, not more that what's visible will be autoranged
       await this.fetch();
     });
   };
@@ -347,7 +302,8 @@ export class PlotlyGraph extends HTMLElement {
   async setConfig(config: InputConfig) {
     try {
       this.msgEl.innerText = "";
-      return await this._setConfig(config);
+      this.config = config;
+      this.fetch();
     } catch (e: any) {
       console.error(e);
       clearTimeout(this.handles.refreshTimeout!);
@@ -361,74 +317,21 @@ export class PlotlyGraph extends HTMLElement {
       }
     }
   }
-  async _setConfig(config: InputConfig) {
-    config = JSON.parse(JSON.stringify(config));
-    this.config = config;
-    const newConfig = parseConfig(config);
-    const was = this.parsed_config;
-    this.parsed_config = newConfig;
-    const is = this.parsed_config;
-    this.touchController.isEnabled = !is.disable_pinch_to_zoom;
-    if (is.hours_to_show !== was?.hours_to_show || is.offset !== was?.offset) {
-      this.exitBrowsingMode();
-    } else {
-      await this.fetch();
-    }
-  }
-  fetch = debounce(async () => {
-    if (!(this.parsed_config && this.hass && this.isConnected)) {
-      await sleep(10);
-      return this.fetch();
-    }
-
-    const range = this.isBrowsing
-      ? this.getVisibleRange()
-      : this.getAutoFetchRange();
-    for (const entity of this.parsed_config.entities) {
-      if ((entity as any).autoPeriod) {
-        if (isEntityIdStatisticsConfig(entity) && entity.autoPeriod) {
-          entity.period = "5minute";
-          const timeSpan = range[1] - range[0];
-          const mapping = Object.entries(entity.autoPeriod).map(
-            ([duration, period]) =>
-              [parseTimeDuration(duration as any), period] as [
-                number,
-                StatisticPeriod
-              ]
-          );
-
-          for (const [fromMS, aPeriod] of mapping) {
-            /*
-              the durations are validated to be sorted in ascendinig order
-              when the config is parsed
-            */
-            if (timeSpan >= fromMS) entity.period = aPeriod;
-          }
-          this.parsed_config.layout = merge(this.parsed_config.layout, {
-            xaxis: { title: `Period: ${entity.period}` },
-          });
-        }
-      }
-    }
-    const visibleEntities = this.parsed_config.entities.filter(
-      (_, i) => this.contentEl.data[i]?.visible !== "legendonly"
-    );
-    try {
-      await this.cache.update(
-        range,
-        visibleEntities,
-        this.hass,
-        this.parsed_config.minimal_response,
-        this.parsed_config.significant_changes_only
-      );
-      this.msgEl.innerText = "";
-    } catch (e: any) {
-      console.error(e);
-      this.msgEl.innerText = JSON.stringify(e.message || "");
-    }
-    await this.plot();
-  });
-  getThemedLayout() {
+  // async _setConfig(config: InputConfig) {
+  //   config = JSON.parse(JSON.stringify(config));
+  //   this.config = config;
+  //   const newConfig = parseConfig(config);
+  //   const was = this.parsed_config;
+  //   this.parsed_config = newConfig;
+  //   const is = this.parsed_config;
+  //   this.touchController.isEnabled = !is.disable_pinch_to_zoom;
+  //   if (is.hours_to_show !== was?.hours_to_show || is.offset !== was?.offset) {
+  //     this.exitBrowsingMode();
+  //   } else {
+  //     await this.fetch();
+  //   }
+  // }
+  getCSSVars() {
     const styles = window.getComputedStyle(this.contentEl);
     let haTheme = {
       "--card-background-color": "red",
@@ -437,179 +340,41 @@ export class PlotlyGraph extends HTMLElement {
       "--primary-text-color": "red",
       "--secondary-text-color": "red",
     };
-    haTheme = mapValues(haTheme, (_, key) => styles.getPropertyValue(key));
-    return getThemedLayout(
-      haTheme,
-      this.parsed_config.no_theme,
-      this.parsed_config.no_default_layout
-    );
+    return mapValues(haTheme, (_, key) => styles.getPropertyValue(key));
   }
-
-  getDataAndUnits(): { data: Plotly.Data[]; units: string[] } {
-    const entities = this.parsed_config.entities;
-    const units = [] as string[];
-    let vars = {};
-    const show_value_traces: Plotly.Data[] = [];
-    const real_traces: Plotly.Data[] = [];
-    entities.forEach((trace, traceIdx) => {
-      const entity_id = trace.entity;
-      const meta = {
-        ...this.hass?.states[entity_id]?.attributes,
-      };
-      let data = {
-        ...this.cache.getData(trace),
-        meta,
-        vars,
-        hass: this.hass!,
-      };
-      if (!this.isBrowsing) {
-        // to ensure the y axis autoranges to the visible data
-        removeOutOfRange(data, this.getAutoFetchRangeWithValueMargins());
-      }
-      if (trace.filters) {
-        try {
-          for (const filter of trace.filters) {
-            data = { ...data, ...filter(data) };
-            vars = data.vars;
-          }
-        } catch (e) {
-          console.error(e);
-          throw new Error(`Error in filter: ${e}`);
-        }
-      }
-      if (trace.lambda) {
-        try {
-          const history = data.ys.map((_, i) => ({
-            value: data.ys[i],
-            timestamp: +data.xs[i],
-            ...data.states[i],
-            ...data.statistics[i],
-          }));
-          const r = trace.lambda(data.ys, data.xs, history);
-          if (Array.isArray(r)) {
-            data.ys = r;
-          } else {
-            if (r.x) data.xs = r.x;
-            if (r.y) data.ys = r.y;
-          }
-        } catch (e) {
-          console.error(e);
-        }
-      }
-      if (trace.internal) return;
-
-      if (data.xs.length === 0 && data.ys.length === 0) {
-        /*
-          Traces with no data are removed from the legend by plotly. 
-          Setting them to have null element prevents that.
-        */
-        data.xs = [new Date()];
-        data.ys = [null];
-      }
-
-      const unit_of_measurement =
-        trace.unit_of_measurement || data.meta.unit_of_measurement || "";
-      if (!units.includes(unit_of_measurement)) units.push(unit_of_measurement);
-      const yaxis_idx = units.indexOf(unit_of_measurement);
-
-      let name = data.meta.friendly_name || entity_id;
-      if (isEntityIdAttrConfig(trace)) name += ` (${trace.attribute}) `;
-      if (isEntityIdStatisticsConfig(trace)) name += ` (${trace.statistic}) `;
-      if (trace.name) name = trace.name;
-      const customdata = data.xs.map((x, i) => ({
-        unit_of_measurement,
-        meta: data.meta,
-        name,
-        state: data.states[i],
-        statistic: data.statistics[i],
-        vars: data.vars,
-        i,
-        x,
-        y: data.ys[i],
-      }));
-      const mergedTrace = merge(
-        {
-          name,
-          customdata,
-          x: data.xs,
-          y: data.ys,
-          yaxis: "y" + (yaxis_idx == 0 ? "" : yaxis_idx + 1),
-        },
-        // @ts-expect-error
-        data.undocumented_trace, // temporary solution until functions are allowed everyhwere. May be removed after that.
-        trace
+  fetch = debounce(async () => {
+    if (!(this.config && this.hass && this.isConnected)) {
+      await sleep(10);
+      return this.fetch();
+    }
+    /*
+      TODOs:
+      * REMEMBER TO PASS and handle visible entities 
+      * const visibleEntities = this.parsed_config.entities.filter(
+        (_, i) => this.contentEl.data[i]?.visible !== "legendonly"
       );
-      real_traces.push(mergedTrace);
-      if (mergedTrace.show_value) {
-        mergedTrace.legendgroup ??= "group" + traceIdx;
-        show_value_traces.push({
-          texttemplate: `%{y:.2~f}%{customdata.unit_of_measurement}`, // here so it can be overwritten
-          ...mergedTrace,
-          cliponaxis: false, // allows the marker + text to be rendered above the right y axis. See https://github.com/dbuezas/lovelace-plotly-graph-card/issues/171
-          mode: "text+markers",
-          showlegend: false,
-          hoverinfo: "skip",
-          textposition: "middle right",
-          marker: {
-            color: mergedTrace.line!.color,
-          },
-          textfont: {
-            color: mergedTrace.line!.color,
-          },
-          x: mergedTrace.x.slice(-1),
-          y: mergedTrace.y.slice(-1),
-        });
-      }
+      * remember to pass observed_range and handle (all viewed ranges) to cap the range of the data
+    */
+    const raw_config = merge(
+      {},
+      this.config,
+      { layout: this.size },
+      this.isBrowsing ? { visible_range: this.getVisibleRange() } : {},
+      this.config
+    );
+    this.parsed_config = await this.configParser.update({
+      raw_config,
+      hass: this.hass,
+      cssVars: this.getCSSVars(),
     });
-    // Preserving the original sequence of real_traces is important for `fill: tonexty`
-    // https://github.com/dbuezas/lovelace-plotly-graph-card/issues/87
-    return { data: [...real_traces, ...show_value_traces], units };
-  }
-
-  getLayout(units: string[]): Plotly.Layout {
-    const yAxisTitles = Object.fromEntries(
-      units.map((unit, i) => ["yaxis" + (i == 0 ? "" : i + 1), { title: unit }])
-    );
-    const layout = merge(
-      {
-        uirevision: this.isBrowsing
-          ? this.contentEl.layout.uirevision
-          : Math.random(), // to trigger the autoranges in all y-yaxes
-      },
-      {
-        xaxis: {
-          autorange: false,
-          range: this.isBrowsing
-            ? this.getVisibleRange()
-            : this.getAutoFetchRangeWithValueMargins(),
-        },
-      },
-      this.parsed_config.no_default_layout ? {} : yAxisTitles,
-      this.getThemedLayout(),
-      this.size,
-      this.parsed_config.layout
-    );
-    return layout;
-  }
-  getPlotlyConfig(): Partial<Plotly.Config> {
-    return {
-      displaylogo: false,
-      scrollZoom: true,
-      modeBarButtonsToRemove: [
-        "resetScale2d",
-        "toImage",
-        "lasso2d",
-        "select2d",
-      ],
-      ...this.parsed_config.config,
-    };
-  }
+    console.log(this.parsed_config);
+    await this.plot();
+  });
   plot = debounce(async () => {
     if (!(this.parsed_config && this.hass && this.isConnected)) {
       await sleep(10);
       return this.plot();
     }
-    this.titleEl.innerText = this.parsed_config.title || "";
     const refresh_interval = this.parsed_config.refresh_interval;
     clearTimeout(this.handles.refreshTimeout!);
     if (refresh_interval !== "auto" && refresh_interval > 0) {
@@ -618,13 +383,13 @@ export class PlotlyGraph extends HTMLElement {
         refresh_interval * 1000
       );
     }
-    const { data, units } = this.getDataAndUnits();
-    const layout = this.getLayout(units);
+    const { entities, layout, config } = this.parsed_config;
+    this.titleEl.innerText = this.parsed_config.title || "";
     if (layout.paper_bgcolor) {
       this.titleEl.style.background = layout.paper_bgcolor as string;
     }
     await this.withoutRelayout(async () => {
-      await Plotly.react(this.contentEl, data, layout, this.getPlotlyConfig());
+      await Plotly.react(this.contentEl, entities, layout, config);
       this.contentEl.style.visibility = "";
     });
   });
