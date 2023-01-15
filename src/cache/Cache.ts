@@ -130,9 +130,7 @@ export default class Cache {
       states: [],
       statistics: [],
     };
-    data.xs = history.map(
-      ({ x }) => new Date(+x + parseTimeDuration(entity.offset))
-    );
+    data.xs = history.map(({ x }) => new Date(+x + entity.offset)); // TODO: do this outside the cache
     if (isEntityIdStatisticsConfig(entity)) {
       data.statistics = (history as CachedStatisticsEntity[]).map(
         ({ statistics }) => statistics

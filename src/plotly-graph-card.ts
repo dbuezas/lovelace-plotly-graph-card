@@ -152,12 +152,13 @@ export class PlotlyGraph extends HTMLElement {
         // else ==> Mansonry ==> let the height be determined by defaults
         this.size.height = height - this.titleEl.offsetHeight;
       }
-      this.withoutRelayout(async () => {
-        await Plotly.relayout(this.contentEl, {
-          width: this.parsed_config?.layout?.width,
-          height: this.parsed_config?.layout?.height,
-        });
-      });
+      // this.withoutRelayout(async () => {
+      //   await Plotly.relayout(this.contentEl, {
+      //     width: this.parsed_config?.layout?.width || this.size.width,
+      //     height: this.parsed_config?.layout?.height || this.size.height,
+      //   });
+      // });
+      this.fetch(); // todo: optimize this. recomputing the whole plot seems too much
     };
     this.handles.resizeObserver = new ResizeObserver(updateCardSize);
     this.handles.resizeObserver.observe(this.cardEl);

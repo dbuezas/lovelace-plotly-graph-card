@@ -8,6 +8,8 @@ import { parseTimeDuration } from "../duration/duration";
 import { parseStatistics } from "./parse-statistics";
 import { HomeAssistant } from "custom-card-helpers";
 import filters from "../filters/filters";
+
+// TODO: use Function
 const myEval = typeof window != "undefined" ? window.eval : global.eval;
 
 function isObjectOrArray(value) {
@@ -59,21 +61,23 @@ class ConfigParser {
       "statistic",
       "period",
     ];
-    const fetchAt = Math.max(...requiredKeys.map((k) => keys.indexOf(k)));
+    let idxOfFirstFn = Object.entries(value).findIndex(
+      ([childKey, childValue]) =>
+        !requiredKeys.includes(childKey) && is$fn(childValue)
+    );
+    console.log("idxOfFirstFn", idxOfFirstFn, keys[idxOfFirstFn]);
+    fnParam.entityIdx = key;
     const me: any = (parent[key] = {});
     for (let i = 0; i < keys.length; i++) {
       const childKey = keys[i];
       const childValue = value[childKey];
       const childPath = `${path}.${childKey}`;
-      // TODO: deal with this. The problem is that the default offset is a function and gets put at the end
-      const isFnBeforeFetchConfigAttributes =
-        i < fetchAt && !requiredKeys.includes(childKey) && is$fn(childValue);
-      if (isFnBeforeFetchConfigAttributes) {
-        throw new Error(
-          `Since [${childPath}] is a $fn, it has to be defined after [${path}.${keys[fetchAt]}]`
-        );
+      fnParam.getFromConfig = (aPath: string) =>
+        this.getEvaledPath({ path: aPath, callingPath: childPath });
+      if (i === idxOfFirstFn) {
+        await this.fetchDataForEntity(fnParam, path);
       }
-      fnParam.entityIdx = key;
+
       await this.evalNode({
         parent: me,
         path: childPath,
@@ -81,39 +85,45 @@ class ConfigParser {
         value: childValue,
         fnParam,
       });
-      if (i === fetchAt) {
-        let visible_range = fnParam.getFromConfig("visible_range");
-        if (!visible_range) {
-          const hours_to_show = fnParam.getFromConfig("hours_to_show");
-          const global_offset = parseTimeDuration(
-            fnParam.getFromConfig("offset")
-          );
-          const ms = hours_to_show * 60 * 60 * 1000;
-          visible_range = [
-            +new Date() - ms + global_offset,
-            +new Date() + global_offset,
-          ] as [number, number];
-          this.partiallyParsedConfig.visible_range = visible_range;
-        }
-        const offset = parseTimeDuration(
-          fnParam.getFromConfig(path + ".offset")
-        );
-        const range_to_fetch = [
-          visible_range[0] - offset,
-          visible_range[1] - offset,
-        ];
-        merge(me, parseStatistics(me, visible_range));
-        await this.cache.fetch(range_to_fetch, me, this.hass!);
-
-        fnParam.data = {
-          ...this.cache.getData(me), // TODO: parse and use offset out of the cache
-          meta: this.hass?.states[me.entity]?.attributes,
-          vars: fnParam.vars,
-          hass: this.hass!,
-        };
-      }
     }
+    if (idxOfFirstFn === -1) await this.fetchDataForEntity(fnParam, path);
   }
+  private async fetchDataForEntity(fnParam: any, path: string) {
+    let visible_range = fnParam.getFromConfig("visible_range");
+    if (!visible_range) {
+      const hours_to_show = fnParam.getFromConfig("hours_to_show");
+      const global_offset = parseTimeDuration(fnParam.getFromConfig("offset"));
+      const ms = hours_to_show * 60 * 60 * 1000;
+      visible_range = [
+        +new Date() - ms + global_offset,
+        +new Date() + global_offset,
+      ] as [number, number];
+      this.partiallyParsedConfig.visible_range = visible_range;
+    }
+    const fetchConfig = {
+      offset: parseTimeDuration(fnParam.getFromConfig(path + ".offset")),
+      entity: fnParam.getFromConfig(path + ".entity"),
+      attribute: fnParam.getFromConfig(path + ".attribute"),
+      ...parseStatistics(
+        visible_range,
+        fnParam.getFromConfig(path + ".statistic"),
+        fnParam.getFromConfig(path + ".period")
+      ),
+    };
+    const range_to_fetch = [
+      visible_range[0] - fetchConfig.offset,
+      visible_range[1] - fetchConfig.offset,
+    ];
+    await this.cache.fetch(range_to_fetch, fetchConfig, this.hass!);
+
+    fnParam.data = {
+      ...this.cache.getData(fetchConfig),
+      meta: this.hass?.states[fetchConfig.entity]?.attributes,
+      vars: fnParam.vars,
+      hass: this.hass!,
+    };
+  }
+
   private async evalNode({
     parent,
     path,
@@ -128,8 +138,6 @@ class ConfigParser {
     fnParam: any;
   }) {
     if (path.match(/^defaults$/)) return;
-    fnParam.getFromConfig = (aPath: string) =>
-      this.getEvaledPath({ path: aPath, callingPath: path });
 
     if (typeof value === "string" && value.startsWith("$fn")) {
       value = myEval(value.slice(3));
@@ -160,6 +168,8 @@ class ConfigParser {
       parent[key] = me;
       for (const [childKey, childValue] of Object.entries(value)) {
         const childPath = `${path}.${childKey}`;
+        fnParam.getFromConfig = (aPath: string) =>
+          this.getEvaledPath({ path: aPath, callingPath: childPath });
         await this.evalNode({
           parent: me,
           path: childPath,

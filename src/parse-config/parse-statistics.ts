@@ -30,15 +30,13 @@ function getIsAutoPeriodConfig(periodObj: any): periodObj is AutoPeriodConfig {
   return true;
 }
 export function parseStatistics(
-  entity: {
-    entity: string;
-    statistic?: StatisticType;
-    period?: StatisticPeriod | "auto" | AutoPeriodConfig;
-  },
-  visible_range: number[]
+  visible_range: number[],
+  statistic?: StatisticType,
+  period?: StatisticPeriod | "auto" | AutoPeriodConfig
 ) {
-  const statistic: StatisticType = entity.statistic || "mean";
-  let period = entity.period || "hour";
+  if (!statistic && !period) return {};
+  statistic ??= "mean";
+  period ??= "hour";
   if (period === "auto") {
     period = {
       "0": "5minute",
