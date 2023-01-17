@@ -96,6 +96,7 @@ export class PlotlyGraph extends HTMLElement {
               background: transparent;
               width: 100%;
               height: calc(100% - 5px);
+              direction: ltr;
             }
             ha-card > #plotly{
               width: 100px;
