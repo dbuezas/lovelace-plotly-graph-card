@@ -67,7 +67,7 @@ const defaultLayout: Partial<Plotly.Layout> = {
     b: 50,
     t: 0,
     l: 60,
-    r: 60,
+    //r: 60,
   },
   legend: {
     orientation: "h",

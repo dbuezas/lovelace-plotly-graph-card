@@ -1,6 +1,7 @@
 import { parseColorScheme } from "./parse-color-scheme";
 
 export const defaultEntity = {
+  entity: "",
   hovertemplate: `<b>%{customdata.name}</b><br><i>%{x}</i><br>%{y}%{customdata.unit_of_measurement}<extra></extra>`,
   mode: "lines",
   show_value: false,
@@ -23,14 +24,16 @@ export const defaultEntity = {
   yaxis: ({ getFromConfig, entityIdx }) => {
     const units: string[] = [];
     for (let i = 0; i <= entityIdx; i++) {
-      const unit = getFromConfig(`entities.${entityIdx}.unit_of_measurement`);
-      if (!units.includes[unit]) units.push(unit);
+      const unit = getFromConfig(`entities.${i}.unit_of_measurement`);
+      const internal = getFromConfig(`entities.${i}.internal`);
+      if (!internal && !units.includes(unit)) units.push(unit);
     }
     const yaxis_idx = units.length;
     return "y" + (yaxis_idx === 1 ? "" : yaxis_idx);
   },
   name: ({ data, entityIdx, getFromConfig }) => {
-    let name = data.meta.friendly_name;
+    let name =
+      data.meta.friendly_name || getFromConfig(`entities.${entityIdx}.entity`);
     const attribute = getFromConfig(`entities.${entityIdx}.attribute`);
     if (attribute) name += ` (${attribute}) `;
     return name;
@@ -68,5 +71,12 @@ export const defaultYaml = {
   },
   layout: {
     xaxis: { autorange: false },
+    margin: {
+      r: ({ getFromConfig }) => {
+        const entities = getFromConfig(`entities`);
+        const usesRightAxis = entities.some(({ yaxis }) => yaxis === "y2");
+        return usesRightAxis ? 60 : 30;
+      },
+    },
   },
 };

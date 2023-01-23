@@ -220,24 +220,22 @@ export class PlotlyGraph extends HTMLElement {
           }
 
           // TODO: decide what to do about adding to the cache like this
-          // if (shouldAddToCache) {
-          //   this.cache.add(
-          //     entity,
-          //     [{ state, x: new Date(end), y: null }],
-          //     range
-          //   );
-          //   shouldPlot = true;
-          // }
+          if (shouldAddToCache) {
+            this.configParser.cache.add(
+              entity,
+              [{ state, x: new Date(end), y: null }],
+              range
+            );
+            shouldPlot = true;
+          }
         }
       }
-      if (shouldFetch || shouldPlot) {
+      if (shouldFetch) {
+        this.fetch();
+      } else if (shouldPlot) {
+        this.no_fetch = true;
         this.fetch();
       }
-      // if (shouldFetch) {
-      //   this.fetch();
-      // } else if (shouldPlot) {
-      //   this.plot();
-      // }
     }
     this._hass = hass;
   }
@@ -304,6 +302,7 @@ export class PlotlyGraph extends HTMLElement {
     try {
       this.msgEl.innerText = "";
       this.config = config;
+      this.no_fetch = true;
       this.fetch();
     } catch (e: any) {
       console.error(e);
@@ -344,10 +343,7 @@ export class PlotlyGraph extends HTMLElement {
     return mapValues(haTheme, (_, key) => styles.getPropertyValue(key));
   }
   fetch = debounce(async () => {
-    if (!(this.config && this.hass && this.isConnected)) {
-      await sleep(10);
-      return this.fetch();
-    }
+    while (!(this.config && this.hass && this.isConnected)) await sleep(10);
     /*
       TODOs:
       * REMEMBER TO PASS and handle visible entities 
@@ -360,22 +356,22 @@ export class PlotlyGraph extends HTMLElement {
       {},
       this.config,
       { layout: this.size },
+      { no_fetch: this.no_fetch }, // TODO: cleanup how this is done
       this.isBrowsing ? { visible_range: this.getVisibleRange() } : {},
       this.config
     );
+    this.no_fetch = false;
     this.parsed_config = await this.configParser.update({
       raw_config,
       hass: this.hass,
       cssVars: this.getCSSVars(),
     });
-    console.log(this.parsed_config);
+    console.log("fetched", this.parsed_config);
     await this.plot();
   });
   plot = debounce(async () => {
-    if (!(this.parsed_config && this.hass && this.isConnected)) {
+    while (!(this.parsed_config && this.hass && this.isConnected))
       await sleep(10);
-      return this.plot();
-    }
     const refresh_interval = this.parsed_config.refresh_interval;
     clearTimeout(this.handles.refreshTimeout!);
     if (refresh_interval !== "auto" && refresh_interval > 0) {
@@ -393,6 +389,7 @@ export class PlotlyGraph extends HTMLElement {
       await Plotly.react(this.contentEl, entities, layout, config);
       this.contentEl.style.visibility = "";
     });
+    console.log("plotted");
   });
   // The height of your card. Home Assistant uses this to automatically
   // distribute all cards over the available columns.

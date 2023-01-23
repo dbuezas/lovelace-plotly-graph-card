@@ -8,12 +8,13 @@ import { parseTimeDuration } from "../duration/duration";
 import { parseStatistics } from "./parse-statistics";
 import { HomeAssistant } from "custom-card-helpers";
 import filters from "../filters/filters";
+import { has } from "lodash";
 
 // TODO: use Function
 const myEval = typeof window != "undefined" ? window.eval : global.eval;
 
 function isObjectOrArray(value) {
-  return typeof value == "object" && !(value instanceof Date);
+  return value !== null && typeof value == "object" && !(value instanceof Date);
 }
 
 function is$fn(value) {
@@ -27,20 +28,26 @@ class ConfigParser {
   private partiallyParsedConfig?: any;
   private inputConfig?: any;
   private hass?: HomeAssistant;
-  private cache = new Cache();
-
+  cache = new Cache();
+  private busy = false;
+  private t_fetch = 0;
   private getEvaledPath(p: { path: string; callingPath: string }) {
-    let value = get(this.partiallyParsedConfig, p.path);
-    if (value !== undefined) return value;
-    value = get(this.inputConfig, p.path);
-    if (is$fn(value)) {
-      throw new Error(
-        `Since [${p.path}] is a $fn, it has to be defined before [${p.callingPath}]`
-      );
+    if (has(this.partiallyParsedConfig, p.path))
+      return get(this.partiallyParsedConfig, p.path);
+
+    let value = this.inputConfig;
+    for (const key of p.path.split(".")) {
+      if (value === undefined) return undefined;
+      value = value[key];
+      if (is$fn(value)) {
+        throw new Error(
+          `Since [${p.path}] is a $fn, it has to be defined before [${p.callingPath}]`
+        );
+      }
     }
     return value;
   }
-  private async evalEntity({
+  private async fetchDataForEntity({
     parent,
     path,
     key,
@@ -53,42 +60,7 @@ class ConfigParser {
     value: any;
     fnParam: any;
   }) {
-    const keys = Object.keys(value);
-    const requiredKeys = [
-      "entity",
-      "attribute",
-      "offset",
-      "statistic",
-      "period",
-    ];
-    let idxOfFirstFn = Object.entries(value).findIndex(
-      ([childKey, childValue]) =>
-        !requiredKeys.includes(childKey) && is$fn(childValue)
-    );
-    console.log("idxOfFirstFn", idxOfFirstFn, keys[idxOfFirstFn]);
-    fnParam.entityIdx = key;
-    const me: any = (parent[key] = {});
-    for (let i = 0; i < keys.length; i++) {
-      const childKey = keys[i];
-      const childValue = value[childKey];
-      const childPath = `${path}.${childKey}`;
-      fnParam.getFromConfig = (aPath: string) =>
-        this.getEvaledPath({ path: aPath, callingPath: childPath });
-      if (i === idxOfFirstFn) {
-        await this.fetchDataForEntity(fnParam, path);
-      }
-
-      await this.evalNode({
-        parent: me,
-        path: childPath,
-        key: childKey,
-        value: childValue,
-        fnParam,
-      });
-    }
-    if (idxOfFirstFn === -1) await this.fetchDataForEntity(fnParam, path);
-  }
-  private async fetchDataForEntity(fnParam: any, path: string) {
+    path = path.match(/^(entities\.\d+)\./)![1];
     let visible_range = fnParam.getFromConfig("visible_range");
     if (!visible_range) {
       const hours_to_show = fnParam.getFromConfig("hours_to_show");
@@ -114,14 +86,39 @@ class ConfigParser {
       visible_range[0] - fetchConfig.offset,
       visible_range[1] - fetchConfig.offset,
     ];
-    await this.cache.fetch(range_to_fetch, fetchConfig, this.hass!);
-
+    const t0 = performance.now();
+    const no_fetch = fnParam.getFromConfig("no_fetch");
+    const entityData = no_fetch
+      ? this.cache.getData(fetchConfig)
+      : await this.cache.fetch(range_to_fetch, fetchConfig, this.hass!);
+    this.t_fetch += performance.now() - t0;
     fnParam.data = {
-      ...this.cache.getData(fetchConfig),
-      meta: this.hass?.states[fetchConfig.entity]?.attributes,
+      ...entityData,
+      meta: this.hass?.states[fetchConfig.entity]?.attributes || {},
       vars: fnParam.vars,
       hass: this.hass!,
     };
+  }
+  private async fetchDataForEntityIfNecessary(p: {
+    parent: object;
+    path: string;
+    key: string;
+    value: any;
+    fnParam: any;
+  }) {
+    const isInsideEntity = !!p.path.match(/^entities\.\d+\./);
+    const isInsideFetchParamNode = !!p.path.match(
+      /^entities\.\d+\.(entity|attribute|offset|statistic|period)/
+    );
+    const alreadyFetchedData = p.fnParam.data;
+    const isFilters = p.path.match(/^entities\.\d+\.filters\.\d+$/);
+    if (
+      isInsideEntity &&
+      !isInsideFetchParamNode &&
+      !alreadyFetchedData &&
+      (is$fn(p.value) || isFilters)
+    )
+      await this.fetchDataForEntity(p);
   }
 
   private async evalNode({
@@ -138,41 +135,32 @@ class ConfigParser {
     fnParam: any;
   }) {
     if (path.match(/^defaults$/)) return;
+    fnParam.getFromConfig = (aPath: string) =>
+      this.getEvaledPath({ path: aPath, callingPath: path });
+    await this.fetchDataForEntityIfNecessary({
+      parent,
+      path,
+      key,
+      value,
+      fnParam,
+    });
 
     if (typeof value === "string" && value.startsWith("$fn")) {
       value = myEval(value.slice(3));
     }
 
     if (typeof value === "function") value = value(fnParam);
-
     if (path.match(/^entities\.\d+$/)) {
-      await this.evalEntity({ parent, path, key, value, fnParam });
-      const me = parent[key];
-      if (!me.x) {
-        me.x = fnParam.data.xs;
-      }
-      if (!me.y) {
-        me.y = fnParam.data.ys;
-      }
-      delete fnParam.data;
-      if (me.x.length === 0 && me.y.length === 0) {
-        /*
-          Traces with no data are removed from the legend by plotly. 
-          Setting them to have null element prevents that.
-        */
-        me.x = [new Date()];
-        me.y = [null];
-      }
-    } else if (isObjectOrArray(value)) {
+      fnParam.entityIdx = key;
+    }
+
+    if (isObjectOrArray(value)) {
       const me = Array.isArray(value) ? [] : {};
       parent[key] = me;
       for (const [childKey, childValue] of Object.entries(value)) {
-        const childPath = `${path}.${childKey}`;
-        fnParam.getFromConfig = (aPath: string) =>
-          this.getEvaledPath({ path: aPath, callingPath: childPath });
         await this.evalNode({
           parent: me,
-          path: childPath,
+          path: `${path}.${childKey}`,
           key: childKey,
           value: childValue,
           fnParam,
@@ -183,6 +171,32 @@ class ConfigParser {
     }
 
     // we're now on the way back of traversal, `value` is fully evaluated
+
+    if (path.match(/^entities\.\d+$/)) {
+      if (!fnParam.data) {
+        await this.fetchDataForEntity({
+          parent,
+          path,
+          key,
+          value,
+          fnParam,
+        });
+      }
+      const me = parent[key];
+      if (!me.x) me.x = fnParam.data.xs;
+      if (!me.y) me.y = fnParam.data.ys;
+      if (me.x.length === 0 && me.y.length === 0) {
+        /*
+        Traces with no data are removed from the legend by plotly. 
+        Setting them to have null element prevents that.
+        */
+        me.x = [new Date()];
+        me.y = [null];
+      }
+      delete fnParam.data;
+      delete fnParam.entityIdx;
+    }
+
     if (path.match(/^entities\.\d+\.filters\.\d+$/)) {
       evalFilter({ parent, path, key, value, fnParam });
     }
@@ -222,16 +236,18 @@ class ConfigParser {
     hass: HomeAssistant;
     cssVars: HATheme;
   }) {
+    const t0 = performance.now();
+    this.t_fetch = 0;
     /*
       TODOs:
-      * REMEMBER TO PASS this.size
       * REMEMBER TO PASS visible entities
       * const visibleEntities = this.parsed_config.entities.filter(
         (_, i) => this.contentEl.data[i]?.visible !== "legendonly"
       );
-      * remember to pass visible_range
       * remember to pass observed_range (all viewed ranges) to cap the range of the data
     */
+    if (this.busy) throw new Error("ParseConfig was updated while busy");
+    this.busy = true;
     this.hass = input.hass;
     const old_uirevision = this.partiallyParsedConfig?.layout?.uirevision;
     let config = JSON.parse(JSON.stringify(input.raw_config));
@@ -249,6 +265,7 @@ class ConfigParser {
     }
     config.entities = config.entities.map((entity) => {
       if (typeof entity === "string") entity = { entity };
+      entity.entity ??= "";
       const [oldAPI_entity, oldAPI_attribute] = entity.entity.split("::");
       if (oldAPI_attribute) {
         entity.entity = oldAPI_entity;
@@ -287,7 +304,7 @@ class ConfigParser {
     const yAxisTitles = Object.fromEntries(
       this.partiallyParsedConfig.entities.map(
         ({ unit_of_measurement, yaxis }) => [
-          yaxis,
+          "yaxis" + yaxis.slice(1),
           { title: unit_of_measurement },
         ]
       )
@@ -309,6 +326,14 @@ class ConfigParser {
       this.partiallyParsedConfig.no_default_layout ? {} : yAxisTitles,
       this.partiallyParsedConfig.layout
     );
+    this.busy = false;
+
+    const t_total = performance.now() - t0;
+    console.table({
+      t_total,
+      t_fetch: this.t_fetch,
+      t_parse: t_total - this.t_fetch,
+    });
     return this.partiallyParsedConfig;
   }
 }

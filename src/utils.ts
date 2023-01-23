@@ -3,32 +3,24 @@ export const sleep = (ms: number) =>
 export function getIsPureObject(val: any) {
   return typeof val === "object" && val !== null && !Array.isArray(val);
 }
-export class Deferred<R extends any> {
-  resolve: (value: R | PromiseLike<R>) => void = () => {};
-  reject = () => {};
-  promise: Promise<R>;
 
-  constructor() {
-    this.promise = new Promise((resolve, reject) => {
-      this.resolve = resolve;
-      this.reject = reject;
+// todo: readability
+export function debounce(func: () => Promise<void>) {
+  let lastRunningPromise = Promise.resolve();
+  let waiting = {
+    cancelled: false,
+  };
+  return async () => {
+    waiting.cancelled = true;
+    const me = {
+      cancelled: false,
+    };
+    waiting = me;
+    await lastRunningPromise;
+    if (me.cancelled) return;
+    setTimeout(async () => {
+      if (me.cancelled) return;
+      lastRunningPromise = func();
     });
-  }
-}
-export function debounce<F extends (...args: Parameters<F>) => any>(
-  func: F
-): (...args: Parameters<F>) => Promise<ReturnType<F>> {
-  let timeout: number;
-  let deferred = new Deferred<ReturnType<F>>();
-  return (...args: Parameters<F>): Promise<ReturnType<F>> => {
-    const oldDeferred = deferred;
-    deferred = new Deferred<ReturnType<F>>();
-    cancelAnimationFrame(timeout);
-    timeout = requestAnimationFrame(async () => {
-      const r = await func(...args);
-      deferred.resolve(r);
-      oldDeferred.resolve(r);
-    });
-    return deferred.promise;
   };
 }

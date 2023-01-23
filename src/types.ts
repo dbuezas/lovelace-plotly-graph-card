@@ -95,7 +95,6 @@ export type EntityIdStatisticsConfig = {
   entity: string;
   statistic: StatisticType;
   period: StatisticPeriod;
-  autoPeriod: AutoPeriodConfig;
 };
 export type EntityIdConfig =
   | EntityIdStateConfig
