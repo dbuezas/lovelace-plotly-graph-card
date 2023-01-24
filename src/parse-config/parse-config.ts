@@ -25,13 +25,20 @@ function is$fn(value) {
     (typeof value === "string" && value.startsWith("$fn"))
   );
 }
-
-const synch = <T, K>(
-  maybePromise: Promise<T> | T,
-  next: (p: T) => Promise<K> | K
-) => {
-  if (maybePromise instanceof Promise) return maybePromise.then(next);
-  return next(maybePromise);
+const smartPromise = <T, K>(maybePromise?: PromiseLike<T> | T) => {
+  if (maybePromise && typeof maybePromise == "object" && "then" in maybePromise)
+    return {
+      then: (arg: (T) => K) => {
+        const r = maybePromise.then(arg);
+        return smartPromise(r);
+      },
+    };
+  return {
+    then: (arg: (T) => K) => {
+      const r = arg(maybePromise);
+      return smartPromise(r);
+    },
+  };
 };
 
 class ConfigParser {
@@ -102,7 +109,7 @@ class ConfigParser {
       fetch_mask[fnParam.entityIdx] === false // also fetch if it is undefined. This means the entity is new
         ? this.cache.getData(fetchConfig)
         : this.cache.fetch(range_to_fetch, fetchConfig, this.hass!);
-    return synch(entityData, (entityData) => {
+    return smartPromise(entityData).then((entityData) => {
       this.t_fetch += performance.now() - t0;
       fnParam.data = {
         ...entityData,
@@ -150,110 +157,113 @@ class ConfigParser {
     if (path.match(/^defaults$/)) return;
     fnParam.getFromConfig = (aPath: string) =>
       this.getEvaledPath({ path: aPath, callingPath: path });
-    let maybe_promise = this.fetchDataForEntityIfNecessary({
-      parent,
-      path,
-      key,
-      value,
-      fnParam,
-    });
-    maybe_promise = synch(maybe_promise, () => {
-      let maybe_promise;
-      if (typeof value === "string" && value.startsWith("$fn")) {
-        value = myEval(value.slice(3));
-      }
 
-      if (typeof value === "function") value = value(fnParam);
-      if (path.match(/^entities\.\d+$/)) {
-        fnParam.entityIdx = key;
-      }
-
-      if (isObjectOrArray(value)) {
-        const me = Array.isArray(value) ? [] : {};
-        parent[key] = me;
-        for (const [childKey, childValue] of Object.entries(value)) {
-          maybe_promise = synch(maybe_promise, () =>
-            this.evalNode({
-              parent: me,
-              path: `${path}.${childKey}`,
-              key: childKey,
-              value: childValue,
-              fnParam,
-            })
-          );
+    return smartPromise()
+      .then(() => {
+        return this.fetchDataForEntityIfNecessary({
+          parent,
+          path,
+          key,
+          value,
+          fnParam,
+        });
+      })
+      .then(() => {
+        let maybe_promise;
+        if (typeof value === "string" && value.startsWith("$fn")) {
+          value = myEval(value.slice(3));
         }
-      } else {
-        parent[key] = value;
-      }
-      return maybe_promise;
-    });
-    // we're now on the way back of traversal, `value` is fully evaluated
-    maybe_promise = synch(maybe_promise, () => {
-      let maybe_promise;
-      if (path.match(/^entities\.\d+$/)) {
-        if (!fnParam.data) {
-          maybe_promise = this.fetchDataForEntity({
-            parent,
-            path,
-            key,
-            value,
-            fnParam,
-          });
+
+        if (typeof value === "function") value = value(fnParam);
+        if (path.match(/^entities\.\d+$/)) {
+          fnParam.entityIdx = key;
+        }
+
+        if (isObjectOrArray(value)) {
+          const me = Array.isArray(value) ? [] : {};
+          parent[key] = me;
+          for (const [childKey, childValue] of Object.entries(value)) {
+            maybe_promise = smartPromise(maybe_promise).then(() =>
+              this.evalNode({
+                parent: me,
+                path: `${path}.${childKey}`,
+                key: childKey,
+                value: childValue,
+                fnParam,
+              })
+            );
+          }
+        } else {
+          parent[key] = value;
         }
         return maybe_promise;
-      }
-    });
-    maybe_promise = synch(maybe_promise, () => {
-      if (path.match(/^entities\.\d+$/)) {
-        const me = parent[key];
-        if (!me.x) me.x = fnParam.data.xs;
-        if (!me.y) me.y = fnParam.data.ys;
-        if (me.x.length === 0 && me.y.length === 0) {
-          /*
+      })
+      .then(() => {
+        // we're now on the way back of traversal, `value` is fully evaluated
+        let maybe_promise;
+        if (path.match(/^entities\.\d+$/)) {
+          if (!fnParam.data) {
+            maybe_promise = this.fetchDataForEntity({
+              parent,
+              path,
+              key,
+              value,
+              fnParam,
+            });
+          }
+          return maybe_promise;
+        }
+      })
+      .then(() => {
+        if (path.match(/^entities\.\d+$/)) {
+          const me = parent[key];
+          if (!me.x) me.x = fnParam.data.xs;
+          if (!me.y) me.y = fnParam.data.ys;
+          if (me.x.length === 0 && me.y.length === 0) {
+            /*
           Traces with no data are removed from the legend by plotly. 
           Setting them to have null element prevents that.
           */
-          me.x = [new Date()];
-          me.y = [null];
+            me.x = [new Date()];
+            me.y = [null];
+          }
+          delete fnParam.data;
+          delete fnParam.entityIdx;
         }
-        delete fnParam.data;
-        delete fnParam.entityIdx;
-      }
-      if (path.match(/^entities\.\d+\.filters\.\d+$/)) {
-        evalFilter({ parent, path, key, value, fnParam });
-      }
-      if (path.match(/^entities$/)) {
-        parent[key] = parent[key].filter(({ internal }) => !internal);
-        const entities = parent[key];
-        const count = entities.length;
-        // Preserving the original sequence of real_traces is important for `fill: tonexty`
-        // https://github.com/dbuezas/lovelace-plotly-graph-card/issues/87
-        for (let i = 0; i < count; i++) {
-          const trace = entities[i];
-          if (trace.show_value) {
-            trace.legendgroup ??= "group" + i;
-            entities.push({
-              texttemplate: `%{y:.2~f}%{customdata.unit_of_measurement}`, // here so it can be overwritten
-              ...trace,
-              cliponaxis: false, // allows the marker + text to be rendered above the right y axis. See https://github.com/dbuezas/lovelace-plotly-graph-card/issues/171
-              mode: "text+markers",
-              showlegend: false,
-              hoverinfo: "skip",
-              textposition: "middle right",
-              marker: {
-                color: trace.line?.color,
-              },
-              textfont: {
-                color: trace.line?.color,
-              },
-              x: trace.x.slice(-1),
-              y: trace.y.slice(-1),
-            });
+        if (path.match(/^entities\.\d+\.filters\.\d+$/)) {
+          evalFilter({ parent, path, key, value, fnParam });
+        }
+        if (path.match(/^entities$/)) {
+          parent[key] = parent[key].filter(({ internal }) => !internal);
+          const entities = parent[key];
+          const count = entities.length;
+          // Preserving the original sequence of real_traces is important for `fill: tonexty`
+          // https://github.com/dbuezas/lovelace-plotly-graph-card/issues/87
+          for (let i = 0; i < count; i++) {
+            const trace = entities[i];
+            if (trace.show_value) {
+              trace.legendgroup ??= "group" + i;
+              entities.push({
+                texttemplate: `%{y:.2~f}%{customdata.unit_of_measurement}`, // here so it can be overwritten
+                ...trace,
+                cliponaxis: false, // allows the marker + text to be rendered above the right y axis. See https://github.com/dbuezas/lovelace-plotly-graph-card/issues/171
+                mode: "text+markers",
+                showlegend: false,
+                hoverinfo: "skip",
+                textposition: "middle right",
+                marker: {
+                  color: trace.line?.color,
+                },
+                textfont: {
+                  color: trace.line?.color,
+                },
+                x: trace.x.slice(-1),
+                y: trace.y.slice(-1),
+              });
+            }
           }
         }
-      }
-    });
-    return maybe_promise;
+      });
   }
   async update(input: {
     raw_config: any;
