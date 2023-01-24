@@ -16,7 +16,7 @@ export const defaultEntity = {
   internal: false,
   offset: "0s",
   // extend_to_present: true unless using statistics. Defined inside parse-config.ts to avoid forward depndency
-  unit_of_measurement: ({ data }) => data.meta.unit_of_measurement || "",
+  unit_of_measurement: ({ meta }) => meta.unit_of_measurement || "",
   yaxis: ({ getFromConfig, entityIdx }) => {
     const units: string[] = [];
     for (let i = 0; i <= entityIdx; i++) {
@@ -27,19 +27,19 @@ export const defaultEntity = {
     const yaxis_idx = units.length;
     return "y" + (yaxis_idx === 1 ? "" : yaxis_idx);
   },
-  name: ({ data, entityIdx, getFromConfig }) => {
+  name: ({ meta, entityIdx, getFromConfig }) => {
     let name =
-      data.meta.friendly_name || getFromConfig(`entities.${entityIdx}.entity`);
+      meta.friendly_name || getFromConfig(`entities.${entityIdx}.entity`);
     const attribute = getFromConfig(`entities.${entityIdx}.attribute`);
     if (attribute) name += ` (${attribute}) `;
     return name;
   },
-  customdata: ({ data, entityIdx, getFromConfig }) => {
+  customdata: ({ xs, entityIdx, getFromConfig }) => {
     const unit_of_measurement = getFromConfig(
       `entities.${entityIdx}.unit_of_measurement`
     );
     const name = getFromConfig(`entities.${entityIdx}.name`);
-    return data.xs.map(() => ({
+    return xs.map(() => ({
       unit_of_measurement,
       name,
     }));

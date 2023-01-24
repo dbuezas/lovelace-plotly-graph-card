@@ -15,17 +15,19 @@ export function debounce(func: (delay?: number) => Promise<void>) {
       cancelled: false,
     };
     waiting = me;
-    return (lastRunningPromise = lastRunningPromise.then(
-      () =>
-        new Promise(async (resolve) => {
-          if (delay) {
-            await sleep(delay);
-          }
-          requestAnimationFrame(async () => {
-            if (me.cancelled) resolve();
-            else resolve(func());
-          });
-        })
-    ));
+    return (lastRunningPromise = lastRunningPromise
+      .catch(() => {})
+      .then(
+        () =>
+          new Promise(async (resolve) => {
+            if (delay) {
+              await sleep(delay);
+            }
+            requestAnimationFrame(async () => {
+              if (me.cancelled) resolve();
+              else resolve(func());
+            });
+          })
+      ));
   };
 }

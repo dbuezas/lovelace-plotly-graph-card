@@ -273,7 +273,7 @@ export class PlotlyGraph extends HTMLElement {
     try {
       this.msgEl.innerText = "";
       this.config = config;
-      this.plot({ should_fetch: false });
+      await this.plot({ should_fetch: false });
     } catch (e: any) {
       console.error(e);
       clearTimeout(this.handles.refreshTimeout!);

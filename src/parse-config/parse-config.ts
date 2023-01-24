@@ -133,12 +133,11 @@ class ConfigParser {
       if (data.statistics.length) data.statistics.push(data.statistics[last_i]);
     }
     this.t_fetch += performance.now() - t0;
-    fnParam.data = {
-      ...data,
-      meta: this.hass?.states[fetchConfig.entity]?.attributes || {},
-      vars: fnParam.vars,
-      hass: this.hass!,
-    };
+    fnParam.xs = data.xs;
+    fnParam.ys = data.ys;
+    fnParam.statistics = data.statistics;
+    fnParam.states = data.states;
+    fnParam.meta = this.hass?.states[fetchConfig.entity]?.attributes || {};
   }
   private async fetchDataForEntityIfNecessary(p: {
     parent: object;
@@ -151,7 +150,7 @@ class ConfigParser {
     const isInsideFetchParamNode = !!p.path.match(
       /^entities\.\d+\.(entity|attribute|offset|statistic|period)/
     );
-    const alreadyFetchedData = p.fnParam.data;
+    const alreadyFetchedData = p.fnParam.xs;
     const isFilters = p.path.match(/^entities\.\d+\.filters\.\d+$/);
     if (
       isInsideEntity &&
@@ -219,7 +218,7 @@ class ConfigParser {
     // we're now on the way back of traversal, `value` is fully evaluated
 
     if (path.match(/^entities\.\d+$/)) {
-      if (!fnParam.data) {
+      if (!fnParam.xs) {
         await this.fetchDataForEntity({
           parent,
           path,
@@ -229,8 +228,8 @@ class ConfigParser {
         });
       }
       const me = parent[key];
-      if (!me.x) me.x = fnParam.data.xs;
-      if (!me.y) me.y = fnParam.data.ys;
+      if (!me.x) me.x = fnParam.xs;
+      if (!me.y) me.y = fnParam.ys;
       if (me.x.length === 0 && me.y.length === 0) {
         /*
         Traces with no data are removed from the legend by plotly. 
@@ -239,7 +238,13 @@ class ConfigParser {
         me.x = [new Date()];
         me.y = [null];
       }
-      delete fnParam.data;
+
+      delete fnParam.xs;
+      delete fnParam.ys;
+      delete fnParam.statistics;
+      delete fnParam.states;
+      delete fnParam.meta;
+
       delete fnParam.entityIdx;
     }
 
@@ -286,93 +291,99 @@ class ConfigParser {
     this.t_fetch = 0;
     if (this.busy) throw new Error("ParseConfig was updated while busy");
     this.busy = true;
-    this.hass = input.hass;
-    const old_uirevision = this.partiallyParsedConfig?.layout?.uirevision;
-    let config = JSON.parse(JSON.stringify(input.raw_config));
+    try {
+      this.hass = input.hass;
+      const old_uirevision = this.partiallyParsedConfig?.layout?.uirevision;
+      let config = JSON.parse(JSON.stringify(input.raw_config));
 
-    // 1st pass: add defaults
-    config = merge({}, config, defaultYaml, config);
-    for (let i = 1; i < 31; i++) {
-      const yaxis = "yaxis" + (i == 1 ? "" : i);
-      config.layout[yaxis] = merge(
-        {},
-        config.layout[yaxis],
-        config.defaults?.yaxes,
-        config.layout[yaxis]
-      );
-    }
-    config.entities = config.entities.map((entity) => {
-      if (typeof entity === "string") entity = { entity };
-      entity.entity ??= "";
-      const [oldAPI_entity, oldAPI_attribute] = entity.entity.split("::");
-      if (oldAPI_attribute) {
-        entity.entity = oldAPI_entity;
-        entity.attribute = oldAPI_attribute;
+      // 1st pass: add defaults
+      config = merge({}, config, defaultYaml, config);
+      for (let i = 1; i < 31; i++) {
+        const yaxis = "yaxis" + (i == 1 ? "" : i);
+        config.layout[yaxis] = merge(
+          {},
+          config.layout[yaxis],
+          config.defaults?.yaxes,
+          config.layout[yaxis]
+        );
       }
-      entity = merge(
-        {},
-        entity,
-        defaultEntity,
-        config.defaults?.entity,
-        entity
-      );
-      return entity;
-    });
-
-    // 2nd pass: evaluate functions
-    const fnParam = {
-      vars: {},
-      hass: input.hass,
-    };
-    this.partiallyParsedConfig = {};
-    this.inputConfig = config;
-    for (const [key, value] of Object.entries(config)) {
-      await this.evalNode({
-        parent: this.partiallyParsedConfig,
-        path: key,
-        key: key,
-        value,
-        fnParam,
+      config.entities = config.entities.map((entity) => {
+        if (typeof entity === "string") entity = { entity };
+        entity.entity ??= "";
+        const [oldAPI_entity, oldAPI_attribute] = entity.entity.split("::");
+        if (oldAPI_attribute) {
+          entity.entity = oldAPI_entity;
+          entity.attribute = oldAPI_attribute;
+        }
+        entity = merge(
+          {},
+          entity,
+          defaultEntity,
+          config.defaults?.entity,
+          entity
+        );
+        return entity;
       });
-    }
 
-    // 3rd pass: decorate
-    // TODO: do this in defaults
-    const isBrowsing = !!input.raw_config.visible_range;
-    const yAxisTitles = Object.fromEntries(
-      this.partiallyParsedConfig.entities.map(
-        ({ unit_of_measurement, yaxis }) => [
-          "yaxis" + yaxis.slice(1),
-          { title: unit_of_measurement },
-        ]
-      )
-    );
-    merge(
-      this.partiallyParsedConfig.layout,
-      getThemedLayout(
-        input.cssVars,
-        this.partiallyParsedConfig.no_theme,
-        this.partiallyParsedConfig.no_default_layout
-      ),
-      {
-        xaxis: {
-          range: this.partiallyParsedConfig.visible_range,
+      // 2nd pass: evaluate functions
+      const fnParam = {
+        vars: {},
+        hass: input.hass,
+      };
+      this.partiallyParsedConfig = {};
+      this.inputConfig = config;
+      for (const [key, value] of Object.entries(config)) {
+        await this.evalNode({
+          parent: this.partiallyParsedConfig,
+          path: key,
+          key: key,
+          value,
+          fnParam,
+        });
+      }
+
+      // 3rd pass: decorate
+      /**
+       * These cannot be done via defaults because they are functions and
+       * functions would be overwritten if the user sets a configuration on a parent
+       *  */
+      const isBrowsing = !!input.raw_config.visible_range;
+      const yAxisTitles = Object.fromEntries(
+        this.partiallyParsedConfig.entities.map(
+          ({ unit_of_measurement, yaxis }) => [
+            "yaxis" + yaxis.slice(1),
+            { title: unit_of_measurement },
+          ]
+        )
+      );
+      merge(
+        this.partiallyParsedConfig.layout,
+        getThemedLayout(
+          input.cssVars,
+          this.partiallyParsedConfig.no_theme,
+          this.partiallyParsedConfig.no_default_layout
+        ),
+        {
+          xaxis: {
+            range: this.partiallyParsedConfig.visible_range,
+          },
+          //changing the uirevision triggers a reset to the axes
+          uirevision: isBrowsing ? old_uirevision : Math.random(),
         },
-        //changing the uirevision triggers a reset to the axes
-        uirevision: isBrowsing ? old_uirevision : Math.random(),
-      },
-      this.partiallyParsedConfig.no_default_layout ? {} : yAxisTitles,
-      this.partiallyParsedConfig.layout
-    );
-    this.busy = false;
+        this.partiallyParsedConfig.no_default_layout ? {} : yAxisTitles,
+        this.partiallyParsedConfig.layout
+      );
 
-    const t_total = performance.now() - t0;
-    // console.table({
-    //   t_total,
-    //   t_fetch: this.t_fetch,
-    //   t_parse: t_total - this.t_fetch,
-    // });
-    return this.partiallyParsedConfig;
+      const t_total = performance.now() - t0;
+      // console.table({
+      //   t_total,
+      //   t_fetch: this.t_fetch,
+      //   t_parse: t_total - this.t_fetch,
+      // });
+      return this.partiallyParsedConfig;
+    } finally {
+      this.busy = false;
+    }
   }
 }
 
@@ -401,12 +412,10 @@ function evalFilter(input: {
   const filterfn = config === null ? filter() : filter(config);
   try {
     const fnParam = input.fnParam;
-    fnParam.data.vars = fnParam.vars;
-    input.fnParam.data = {
-      ...input.fnParam.data,
-      ...filterfn(input.fnParam.data),
+    input.fnParam = {
+      ...input.fnParam,
+      ...filterfn(input.fnParam),
     };
-    fnParam.vars = fnParam.data.vars;
   } catch (e) {
     console.error(e);
     throw new Error(`Error in filter: ${e}`);
