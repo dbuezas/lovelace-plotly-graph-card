@@ -73,29 +73,48 @@ class ConfigParser {
       ] as [number, number];
       this.partiallyParsedConfig.visible_range = visible_range;
     }
+    const statisticsParams = parseStatistics(
+      visible_range,
+      fnParam.getFromConfig(path + ".statistic"),
+      fnParam.getFromConfig(path + ".period")
+    );
+    const attribute = fnParam.getFromConfig(path + ".attribute") as
+      | string
+      | undefined;
     const fetchConfig = {
-      offset: parseTimeDuration(fnParam.getFromConfig(path + ".offset")),
       entity: fnParam.getFromConfig(path + ".entity"),
-      attribute: fnParam.getFromConfig(path + ".attribute"),
-      ...parseStatistics(
-        visible_range,
-        fnParam.getFromConfig(path + ".statistic"),
-        fnParam.getFromConfig(path + ".period")
-      ),
+      ...(statisticsParams ? statisticsParams : attribute ? { attribute } : {}),
     };
+    const offset = parseTimeDuration(fnParam.getFromConfig(path + ".offset"));
+
     const range_to_fetch = [
-      visible_range[0] - fetchConfig.offset,
-      visible_range[1] - fetchConfig.offset,
+      visible_range[0] - offset,
+      visible_range[1] - offset,
     ];
     const t0 = performance.now();
     const fetch_mask = fnParam.getFromConfig("fetch_mask");
-    const entityData =
+    const data =
       fetch_mask[fnParam.entityIdx] === false // also fetch if it is undefined. This means the entity is new
         ? this.cache.getData(fetchConfig)
         : await this.cache.fetch(range_to_fetch, fetchConfig, this.hass!);
+    /**
+     * ToDo: offset traces should also be extended, but only up to the limits of the fetched range
+     * Otherwise, the datapoint can go way into the future and mess up auto-ranging.
+     */
+    const extend_to_present =
+      fnParam.getFromConfig(path + ".extend_to_present") ?? !statisticsParams;
+
+    if (extend_to_present && data.xs.length > 0 && offset === 0) {
+      const last_i = data.xs.length - 1;
+      data.xs.push(new Date(Date.now() + offset));
+      data.ys.push(data.ys[last_i]);
+      if (data.states.length) data.states.push(data.states[last_i]);
+      if (data.statistics.length) data.statistics.push(data.statistics[last_i]);
+    }
+    data.xs = data.xs.map((x) => new Date(+x + offset));
     this.t_fetch += performance.now() - t0;
     fnParam.data = {
-      ...entityData,
+      ...data,
       meta: this.hass?.states[fetchConfig.entity]?.attributes || {},
       vars: fnParam.vars,
       hass: this.hass!,
@@ -156,7 +175,12 @@ class ConfigParser {
     }
 
     if (typeof value === "function") {
-      // allowing functions that return functions makes it very slow
+      /**
+       * Allowing functions that return functions makes it very slow
+       * This is mostly because of customdata, which returns an array as large as the cached data,
+       * and the fact that awaits are expensive.
+       */
+
       parent[key] = value = value(fnParam);
     } else if (isObjectOrArray(value)) {
       const me = Array.isArray(value) ? [] : {};

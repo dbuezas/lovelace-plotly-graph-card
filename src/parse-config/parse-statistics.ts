@@ -34,7 +34,7 @@ export function parseStatistics(
   statistic?: StatisticType,
   period?: StatisticPeriod | "auto" | AutoPeriodConfig
 ) {
-  if (!statistic && !period) return {};
+  if (!statistic && !period) return null;
   statistic ??= "mean";
   period ??= "hour";
   if (period === "auto") {

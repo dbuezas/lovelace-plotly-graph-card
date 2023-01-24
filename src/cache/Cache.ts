@@ -13,9 +13,19 @@ import {
   CachedStateEntity,
   EntityData,
 } from "../types";
-import { groupBy } from "lodash";
-import { parseTimeDuration } from "../duration/duration";
-
+type FetchConfig =
+  | {
+      statistic: "state" | "sum" | "min" | "max" | "mean";
+      period: "5minute" | "hour" | "day" | "week" | "month";
+      entity: string;
+    }
+  | {
+      attribute: string;
+      entity: string;
+    }
+  | {
+      entity: string;
+    };
 export function mapValues<T, S>(
   o: Record<string, T>,
   fn: (value: T, key: string) => S
@@ -24,7 +34,7 @@ export function mapValues<T, S>(
 }
 async function fetchSingleRange(
   hass: HomeAssistant,
-  entity: EntityConfig,
+  entity: FetchConfig,
   [startT, endT]: number[]
 ): Promise<{
   range: [number, number];
@@ -87,13 +97,13 @@ async function fetchSingleRange(
   };
 }
 
-export function getEntityKey(entity: EntityConfig) {
+export function getEntityKey(entity: FetchConfig) {
   if (isEntityIdAttrConfig(entity)) {
-    return `${entity.entity}::attribute::${entity.offset}`;
+    return `${entity.entity}::attribute:`;
   } else if (isEntityIdStatisticsConfig(entity)) {
-    return `${entity.entity}::statistics::${entity.period}::${entity.offset}`;
+    return `${entity.entity}::statistics::${entity.period}`;
   } else if (isEntityIdStateConfig(entity)) {
-    return `${entity.entity}::${entity.offset}`;
+    return `${entity.entity}`;
   }
   throw new Error(`Entity malformed:${JSON.stringify(entity)}`);
 }
@@ -102,9 +112,9 @@ const MIN_SAFE_TIMESTAMP = Date.parse("0001-01-02T00:00:00.000Z");
 export default class Cache {
   ranges: Record<string, TimestampRange[]> = {};
   histories: Record<string, CachedEntity[]> = {};
-  busy: Promise<void | EntityData> = Promise.resolve(); // mutex
+  busy: Promise<EntityData> = Promise.resolve(null as unknown as EntityData); // mutex
 
-  add(entity: EntityConfig, states: CachedEntity[], range: [number, number]) {
+  add(entity: FetchConfig, states: CachedEntity[], range: [number, number]) {
     const entityKey = getEntityKey(entity);
     let h = (this.histories[entityKey] ??= []);
     h.push(...states);
@@ -121,7 +131,8 @@ export default class Cache {
     this.ranges = {};
     this.histories = {};
   }
-  getData(entity: EntityConfig): EntityData {
+
+  getData(entity: FetchConfig): EntityData {
     let key = getEntityKey(entity);
     const history = this.histories[key] || [];
     const data: EntityData = {
@@ -130,7 +141,7 @@ export default class Cache {
       states: [],
       statistics: [],
     };
-    data.xs = history.map(({ x }) => new Date(+x + entity.offset)); // TODO: do this outside the cache
+    data.xs = history.map(({ x }) => x);
     if (isEntityIdStatisticsConfig(entity)) {
       data.statistics = (history as CachedStatisticsEntity[]).map(
         ({ statistics }) => statistics
@@ -151,24 +162,9 @@ export default class Cache {
       // and https://github.com/dbuezas/lovelace-plotly-graph-card/commit/3d915481002d03011bcc8409c2dcc6e6fb7c8674#r94899109
       y === "unavailable" || y === "none" || y === "unknown" ? null : y
     );
-    /**
-     * ToDo: offset traces should also be extended, but only up to the limits of the fetched range
-     * Otherwise, the datapoint can go way into the future and mess up auto-ranging.
-     */
-    if (entity.extend_to_present && data.xs.length > 0 && entity.offset === 0) {
-      const last_i = data.xs.length - 1;
-      data.xs.push(new Date(Date.now() + entity.offset));
-      data.ys.push(data.ys[last_i]);
-      if (data.states.length) data.states.push(data.states[last_i]);
-      if (data.statistics.length) data.statistics.push(data.statistics[last_i]);
-    }
     return data;
   }
-  async fetch(
-    range: TimestampRange,
-    entity: EntityConfig,
-    hass: HomeAssistant
-  ) {
+  async fetch(range: TimestampRange, entity: FetchConfig, hass: HomeAssistant) {
     return (this.busy = this.busy
       .catch(() => {})
       .then(async () => {

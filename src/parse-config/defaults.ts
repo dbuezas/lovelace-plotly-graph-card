@@ -15,11 +15,7 @@ export const defaultEntity = {
   },
   internal: false,
   offset: "0s",
-  extend_to_present: ({ getFromConfig, entityIdx }) =>
-    !(
-      getFromConfig(`entities.${entityIdx}.statistic`) ||
-      getFromConfig(`entities.${entityIdx}.period`)
-    ),
+  // extend_to_present: true unless using statistics. Defined inside parse-config.ts to avoid forward depndency
   unit_of_measurement: ({ data }) => data.meta.unit_of_measurement || "",
   yaxis: ({ getFromConfig, entityIdx }) => {
     const units: string[] = [];
