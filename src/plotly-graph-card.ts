@@ -277,8 +277,7 @@ export class PlotlyGraph extends HTMLElement {
     this.resetButtonEl.classList.add("hidden");
     this.withoutRelayout(async () => {
       await this.plot({ should_fetch: false }); // to reset xaxis to hours_to_show quickly, before refetching
-      // TODO: clear cache
-      // this.cache.clearCache(); // so that when the user zooms out and autoranges, not more that what's visible will be autoranged
+      this.configParser.resetObservedRange();
       await this.plot({ should_fetch: true });
     });
   };

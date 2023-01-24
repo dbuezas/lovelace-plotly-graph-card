@@ -8,6 +8,7 @@ import { parseTimeDuration } from "../duration/duration";
 import { parseStatistics } from "./parse-statistics";
 import { HomeAssistant } from "custom-card-helpers";
 import filters from "../filters/filters";
+import bounds from "binary-search-bounds";
 import { has } from "lodash";
 
 // TODO: use Function
@@ -25,6 +26,24 @@ function is$fn(value) {
   );
 }
 
+function removeOutOfRange(data: any, range: [number, number]) {
+  const first = bounds.le(data.xs, range[0]);
+  if (first > -1) {
+    data.xs.splice(0, first);
+    data.xs[0] = new Date(range[0]);
+    data.ys.splice(0, first);
+    data.states.splice(0, first);
+    data.statistics.splice(0, first);
+  }
+  const last = bounds.gt(data.xs, range[1]);
+  if (last > -1) {
+    data.xs.splice(last);
+    data.ys.splice(last);
+    data.states.splice(last);
+    data.statistics.splice(last);
+  }
+}
+
 class ConfigParser {
   private partiallyParsedConfig?: any;
   private inputConfig?: any;
@@ -32,6 +51,10 @@ class ConfigParser {
   cache = new Cache();
   private busy = false;
   private t_fetch = 0;
+  private observed_range: [number, number] = [Date.now(), Date.now()];
+  public resetObservedRange() {
+    this.observed_range = [Date.now(), Date.now()];
+  }
   private getEvaledPath(p: { path: string; callingPath: string }) {
     if (has(this.partiallyParsedConfig, p.path))
       return get(this.partiallyParsedConfig, p.path);
@@ -49,10 +72,7 @@ class ConfigParser {
     return value;
   }
   private async fetchDataForEntity({
-    parent,
     path,
-    key,
-    value,
     fnParam,
   }: {
     parent: object;
@@ -73,6 +93,8 @@ class ConfigParser {
       ] as [number, number];
       this.partiallyParsedConfig.visible_range = visible_range;
     }
+    this.observed_range[0] = Math.min(this.observed_range[0], visible_range[0]);
+    this.observed_range[1] = Math.max(this.observed_range[1], visible_range[1]);
     const statisticsParams = parseStatistics(
       visible_range,
       fnParam.getFromConfig(path + ".statistic"),
@@ -97,21 +119,20 @@ class ConfigParser {
       fetch_mask[fnParam.entityIdx] === false // also fetch if it is undefined. This means the entity is new
         ? this.cache.getData(fetchConfig)
         : await this.cache.fetch(range_to_fetch, fetchConfig, this.hass!);
-    /**
-     * ToDo: offset traces should also be extended, but only up to the limits of the fetched range
-     * Otherwise, the datapoint can go way into the future and mess up auto-ranging.
-     */
     const extend_to_present =
       fnParam.getFromConfig(path + ".extend_to_present") ?? !statisticsParams;
 
-    if (extend_to_present && data.xs.length > 0 && offset === 0) {
+    data.xs = data.xs.map((x) => new Date(+x + offset));
+
+    removeOutOfRange(data, this.observed_range);
+    if (extend_to_present && data.xs.length > 0) {
       const last_i = data.xs.length - 1;
-      data.xs.push(new Date(Date.now() + offset));
+      const now = Math.min(this.observed_range[1], Date.now());
+      data.xs.push(new Date(Math.min(this.observed_range[1], now + offset)));
       data.ys.push(data.ys[last_i]);
       if (data.states.length) data.states.push(data.states[last_i]);
       if (data.statistics.length) data.statistics.push(data.statistics[last_i]);
     }
-    data.xs = data.xs.map((x) => new Date(+x + offset));
     this.t_fetch += performance.now() - t0;
     fnParam.data = {
       ...data,

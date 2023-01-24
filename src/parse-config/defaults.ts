@@ -39,7 +39,7 @@ export const defaultEntity = {
       `entities.${entityIdx}.unit_of_measurement`
     );
     const name = getFromConfig(`entities.${entityIdx}.name`);
-    return data.xs.map((x, i) => ({
+    return data.xs.map(() => ({
       unit_of_measurement,
       name,
     }));
