@@ -217,6 +217,9 @@ class ConfigParser {
 
     // we're now on the way back of traversal, `value` is fully evaluated
 
+    if (path.match(/^entities\.\d+\.filters\.\d+$/)) {
+      evalFilter({ parent, path, key, value, fnParam });
+    }
     if (path.match(/^entities\.\d+$/)) {
       if (!fnParam.xs) {
         await this.fetchDataForEntity({
@@ -246,10 +249,6 @@ class ConfigParser {
       delete fnParam.meta;
 
       delete fnParam.entityIdx;
-    }
-
-    if (path.match(/^entities\.\d+\.filters\.\d+$/)) {
-      evalFilter({ parent, path, key, value, fnParam });
     }
     if (path.match(/^entities$/)) {
       parent[key] = parent[key].filter(({ internal }) => !internal);
@@ -411,11 +410,11 @@ function evalFilter(input: {
   }
   const filterfn = config === null ? filter() : filter(config);
   try {
-    const fnParam = input.fnParam;
-    input.fnParam = {
-      ...input.fnParam,
-      ...filterfn(input.fnParam),
-    };
+    const r = filterfn(input.fnParam);
+    console.log(r);
+    for (const key in r) {
+      input.fnParam[key] = r[key];
+    }
   } catch (e) {
     console.error(e);
     throw new Error(`Error in filter: ${e}`);
