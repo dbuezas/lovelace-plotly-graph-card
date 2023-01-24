@@ -185,27 +185,22 @@ export class PlotlyGraph extends HTMLElement {
     }
     if (this.parsed_config?.refresh_interval === "auto") {
       let shouldPlot = false;
-      let shouldFetch = false;
+      let should_fetch = false;
       for (const entity of this.parsed_config.entities) {
         const state = hass.states[entity.entity];
         const oldState = this._hass?.states[entity.entity];
         if (state && oldState !== state) {
+          shouldPlot = true;
           const start = new Date(oldState?.last_updated || state.last_updated);
           const end = new Date(state.last_updated);
           const range: [number, number] = [+start, +end];
           let shouldAddToCache = false;
-          if (entity.offset !== 0) {
-            // in entities with offset, the added datapoint may be far into the future.
-            // Therefore, adding it messes with autoranging.
-            // TODO: unify entity caches independent of offsets and keep track of what has actually been
-            // in the viewport
-            shouldFetch = true;
-          } else if (isEntityIdAttrConfig(entity)) {
+          if (isEntityIdAttrConfig(entity)) {
             shouldAddToCache = true;
           } else if (isEntityIdStateConfig(entity)) {
             shouldAddToCache = true;
           } else if (isEntityIdStatisticsConfig(entity)) {
-            shouldFetch = true;
+            should_fetch = true;
           }
 
           // TODO: decide what to do about adding to the cache like this
@@ -215,14 +210,11 @@ export class PlotlyGraph extends HTMLElement {
               [{ state, x: new Date(end), y: null }],
               range
             );
-            shouldPlot = true;
           }
         }
       }
-      if (shouldFetch) {
-        this.plot({ should_fetch: true });
-      } else if (shouldPlot) {
-        this.plot({ should_fetch: false });
+      if (shouldPlot) {
+        this.plot({ should_fetch }, 500);
       }
     }
     this._hass = hass;
@@ -273,8 +265,6 @@ export class PlotlyGraph extends HTMLElement {
     // trace visibility changed, fetch missing traces
     if (this.isInternalRelayout) return;
     this.enterBrowsingMode();
-    await this.plot({ should_fetch: false }); // to reset xaxis to hours_to_show quickly, before refetching
-
     await this.plot({ should_fetch: true });
   };
   onRelayout = async () => {
@@ -330,9 +320,12 @@ export class PlotlyGraph extends HTMLElement {
     return mapValues(haTheme, (_, key) => styles.getPropertyValue(key));
   }
   fetchScheduled = false;
-  plot = async ({ should_fetch }: { should_fetch: boolean }) => {
+  plot = async (
+    { should_fetch }: { should_fetch: boolean },
+    delay?: number
+  ) => {
     if (should_fetch) this.fetchScheduled = true;
-    await this._plot();
+    await this._plot(delay);
   };
   _plot = debounce(async () => {
     if (this.pausedRendering) return;
@@ -342,18 +335,8 @@ export class PlotlyGraph extends HTMLElement {
       console.log("waiting for loading");
       await sleep(100);
     }
-    /*
-      TODOs:
-      * remember to pass observed_range and handle (all viewed ranges) to cap the range of the data
-    */
     const fetch_mask = this.contentEl.data.map(
       ({ visible }) => should_fetch && visible !== "legendonly"
-    );
-    console.log(
-      "fetch_mask",
-      should_fetch,
-      fetch_mask,
-      this.contentEl.data.map(({ visible }) => visible)
     );
     const raw_config = merge(
       {},
@@ -368,7 +351,7 @@ export class PlotlyGraph extends HTMLElement {
       hass: this.hass,
       cssVars: this.getCSSVars(),
     });
-    console.log("fetched", this.parsed_config);
+    // console.log("fetched", this.parsed_config);
 
     const { entities, layout, config, refresh_interval } = this.parsed_config;
     clearTimeout(this.handles.refreshTimeout!);

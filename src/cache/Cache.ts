@@ -168,8 +168,7 @@ export default class Cache {
     return (this.busy = this.busy
       .catch(() => {})
       .then(async () => {
-        // TODO: put this in the plotly card side:
-        // range = range.map((n) => Math.max(MIN_SAFE_TIMESTAMP, n)); // HA API can't handle negative years
+        range = range.map((n) => Math.max(MIN_SAFE_TIMESTAMP, n)); // HA API can't handle negative years
         if (entity.entity) {
           const entityKey = getEntityKey(entity);
           this.ranges[entityKey] ??= [];

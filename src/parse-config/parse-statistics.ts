@@ -65,9 +65,6 @@ export function parseStatistics(
         */
       if (timeSpan >= fromMS) period = aPeriod;
     }
-    // TODO: this.parsed_config.layout = merge(this.parsed_config.layout, {
-    //   xaxis: { title: `Period: ${entity.period}` },
-    // });
   }
   if (!STATISTIC_TYPES.includes(statistic))
     throw new Error(

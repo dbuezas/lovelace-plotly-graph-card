@@ -11,7 +11,6 @@ import filters from "../filters/filters";
 import bounds from "binary-search-bounds";
 import { has } from "lodash";
 
-// TODO: use Function
 const myEval = typeof window != "undefined" ? window.eval : global.eval;
 
 function isObjectOrArray(value) {
@@ -375,11 +374,11 @@ class ConfigParser {
     this.busy = false;
 
     const t_total = performance.now() - t0;
-    console.table({
-      t_total,
-      t_fetch: this.t_fetch,
-      t_parse: t_total - this.t_fetch,
-    });
+    // console.table({
+    //   t_total,
+    //   t_fetch: this.t_fetch,
+    //   t_parse: t_total - this.t_fetch,
+    // });
     return this.partiallyParsedConfig;
   }
 }
