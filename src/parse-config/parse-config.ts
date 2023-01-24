@@ -138,6 +138,9 @@ class ConfigParser {
     w.i++;
     console.log(path);
     if (path.match(/^defaults$/)) return;
+    if (path.match(/^entities\.\d+$/)) {
+      fnParam.entityIdx = key;
+    }
     fnParam.getFromConfig = (aPath: string) =>
       this.getEvaledPath({ path: aPath, callingPath: path });
     await this.fetchDataForEntityIfNecessary({
@@ -152,12 +155,10 @@ class ConfigParser {
       value = myEval(value.slice(3));
     }
 
-    if (typeof value === "function") value = value(fnParam);
-    if (path.match(/^entities\.\d+$/)) {
-      fnParam.entityIdx = key;
-    }
-
-    if (isObjectOrArray(value)) {
+    if (typeof value === "function") {
+      // allowing functions that return functions makes it very slow
+      parent[key] = value = value(fnParam);
+    } else if (isObjectOrArray(value)) {
       const me = Array.isArray(value) ? [] : {};
       parent[key] = me;
       for (const [childKey, childValue] of Object.entries(value)) {
