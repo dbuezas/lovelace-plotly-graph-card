@@ -17,7 +17,6 @@ const myEval = typeof window != "undefined" ? window.eval : global.eval;
 function isObjectOrArray(value) {
   return value !== null && typeof value == "object" && !(value instanceof Date);
 }
-const w = window as any;
 
 function is$fn(value) {
   return (
@@ -175,8 +174,6 @@ class ConfigParser {
     value: any;
     fnParam: any;
   }) {
-    w.i++;
-    console.log(path);
     if (path.match(/^defaults$/)) return;
     if (path.match(/^entities\.\d+$/)) {
       fnParam.entityIdx = key;
@@ -285,7 +282,6 @@ class ConfigParser {
     hass: HomeAssistant;
     cssVars: HATheme;
   }) {
-    w.i = 0;
     const t0 = performance.now();
     this.t_fetch = 0;
     /*
@@ -384,7 +380,6 @@ class ConfigParser {
       t_fetch: this.t_fetch,
       t_parse: t_total - this.t_fetch,
     });
-    console.log(w.i);
     return this.partiallyParsedConfig;
   }
 }

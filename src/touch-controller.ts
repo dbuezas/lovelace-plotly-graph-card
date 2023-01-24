@@ -15,21 +15,20 @@ const ONE_FINGER_DOUBLE_TAP_ZOOM_MS_THRESHOLD = 250;
 export class TouchController {
   isEnabled = true;
   lastTouches?: TouchList;
+  clientX = 0;
+  clientY = 0;
   lastSingleTouchTimestamp = 0;
   elRect?: DOMRect;
   el: PlotlyEl;
   onZoomStart: () => any;
-  onZoom: (layout: Partial<Layout>) => any;
   onZoomEnd: () => any;
   state: "one finger" | "two fingers" | "idle" = "idle";
   constructor(param: {
     el: PlotlyEl;
     onZoomStart: () => any;
-    onZoom: (layout: Partial<Layout>) => any;
     onZoomEnd: () => any;
   }) {
     this.el = param.el;
-    this.onZoom = param.onZoom;
     this.onZoomStart = param.onZoomStart;
     this.onZoomEnd = param.onZoomEnd;
   }
@@ -63,6 +62,8 @@ export class TouchController {
         e.stopPropagation();
         e.stopImmediatePropagation();
         this.state = "one finger";
+        this.clientX = e.touches[0].clientX;
+        this.clientY = e.touches[0].clientY;
         this.lastTouches = e.touches;
         this.elRect = this.el.getBoundingClientRect();
       } else {
@@ -71,6 +72,8 @@ export class TouchController {
     } else if (e.touches.length == 2) {
       this.state = "two fingers";
       this.lastTouches = e.touches;
+      this.clientX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+      this.clientY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
     }
     if (stateWas === "idle" && stateWas !== this.state) {
       this.onZoomStart();
@@ -92,12 +95,9 @@ export class TouchController {
     const ts_old = this.lastTouches!;
     this.lastTouches = e.touches;
     const ts_new = e.touches;
-    const height = this.elRect?.height || 500;
-    const dist = (ts_new[0].clientY - ts_old[0].clientY) / height;
-    let zoom = 1;
-    if (dist > 0) zoom = 1 + dist * 4;
-    if (dist < 0) zoom = 1 / (1 - dist * 4);
-    await this.handleZoom(zoom);
+    const dist = ts_new[0].clientY - ts_old[0].clientY;
+
+    await this.handleZoom(dist);
   }
   async handleTwoFingersZoom(e: TouchEvent) {
     e.preventDefault();
@@ -114,21 +114,17 @@ export class TouchController {
       (ts_new[0].clientX - ts_new[1].clientX) ** 2 +
         (ts_new[0].clientY - ts_new[1].clientY) ** 2
     );
-    await this.handleZoom(spread_new / spread_old);
+    await this.handleZoom(spread_new - spread_old);
   }
-  async handleZoom(zoom: number) {
-    const oldLayout = this.el.layout;
-    const layout = {};
-    const axes = Array.from({ length: 30 }).flatMap((_, i) => {
-      const i_str = i === 0 ? "" : i + 1;
-      return [`xaxis${i_str}`, `yaxis${i_str}`];
+  async handleZoom(dist: number) {
+    const wheelEvent = new WheelEvent("wheel", {
+      clientX: this.clientX,
+      clientY: this.clientY,
+      deltaX: 0,
+      deltaY: -dist,
     });
-    for (const axis of axes) {
-      if (!oldLayout[axis]?.fixedrange) {
-        layout[`${axis}.range`] = zoomedRange(oldLayout[axis], zoom);
-      }
-    }
-    this.onZoom(layout);
+
+    this.el.querySelector(".nsewdrag.drag")!.dispatchEvent(wheelEvent);
   }
 
   onTouchEnd = () => {

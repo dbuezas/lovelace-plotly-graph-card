@@ -11,7 +11,6 @@ import {
   isEntityIdStateConfig,
   isEntityIdStatisticsConfig,
 } from "./types";
-import Cache from "./cache/Cache";
 import isProduction from "./is-production";
 import { debounce, sleep } from "./utils";
 import { parseISO } from "date-fns";
@@ -44,6 +43,7 @@ export class PlotlyGraph extends HTMLElement {
   isInternalRelayout = 0;
   touchController: TouchController;
   configParser = new ConfigParser();
+  pausedRendering = false;
   handles: {
     resizeObserver?: ResizeObserver;
     relayoutListener?: EventEmitter;
@@ -116,23 +116,12 @@ export class PlotlyGraph extends HTMLElement {
     this.contentEl.style.visibility = "hidden";
     this.touchController = new TouchController({
       el: this.contentEl,
-      onZoomStart: async () => {
-        await this.withoutRelayout(async () => {
-          if (this.contentEl.layout.xaxis.autorange) {
-            // when autoranging is set in the xaxis, pinch to zoom doesn't work well
-            await Plotly.relayout(this.contentEl, { "xaxis.autorange": false });
-            // for some reason, only relayout or plot aren't enough
-            await this.plot({ should_fetch: false }); // todo: can I plotly.react instead?
-          }
-        });
-      },
-      onZoom: async (layout) => {
-        await this.withoutRelayout(async () => {
-          await Plotly.relayout(this.contentEl, layout);
-        });
+      onZoomStart: () => {
+        this.pausedRendering = true;
       },
       onZoomEnd: () => {
-        this.onRelayout();
+        this.pausedRendering = false;
+        this.plot({ should_fetch: true });
       },
     });
     this.withoutRelayout(() => Plotly.newPlot(this.contentEl, [], {}));
@@ -276,7 +265,6 @@ export class PlotlyGraph extends HTMLElement {
     this.isBrowsing = false;
     this.resetButtonEl.classList.add("hidden");
     this.withoutRelayout(async () => {
-      await this.plot({ should_fetch: false }); // to reset xaxis to hours_to_show quickly, before refetching
       this.configParser.resetObservedRange();
       await this.plot({ should_fetch: true });
     });
@@ -347,6 +335,7 @@ export class PlotlyGraph extends HTMLElement {
     await this._plot();
   };
   _plot = debounce(async () => {
+    if (this.pausedRendering) return;
     const should_fetch = this.fetchScheduled;
     this.fetchScheduled = false;
     while (!(this.config && this.hass && this.isConnected)) {
