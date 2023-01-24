@@ -53,8 +53,6 @@ export const defaultYaml = {
   offset: "0s",
   no_theme: false,
   no_default_layout: false,
-  significant_changes_only: false,
-  minimal_response: true,
   disable_pinch_to_zoom: false,
   defaults: {
     entity: {},

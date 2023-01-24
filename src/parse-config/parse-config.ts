@@ -114,6 +114,7 @@ class ConfigParser {
     const t0 = performance.now();
     const fetch_mask = fnParam.getFromConfig("fetch_mask");
     const data =
+      // TODO: decide about minimal response
       fetch_mask[fnParam.entityIdx] === false // also fetch if it is undefined. This means the entity is new
         ? this.cache.getData(fetchConfig)
         : await this.cache.fetch(range_to_fetch, fetchConfig, this.hass!);
@@ -283,14 +284,6 @@ class ConfigParser {
   }) {
     const t0 = performance.now();
     this.t_fetch = 0;
-    /*
-      TODOs:
-      * REMEMBER TO PASS visible entities
-      * const visibleEntities = this.parsed_config.entities.filter(
-        (_, i) => this.contentEl.data[i]?.visible !== "legendonly"
-      );
-      * remember to pass observed_range (all viewed ranges) to cap the range of the data
-    */
     if (this.busy) throw new Error("ParseConfig was updated while busy");
     this.busy = true;
     this.hass = input.hass;

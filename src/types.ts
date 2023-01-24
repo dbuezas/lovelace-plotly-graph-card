@@ -1,4 +1,7 @@
-import { ColorSchemeArray, ColorSchemeNames } from "./color-schemes";
+import {
+  ColorSchemeArray,
+  ColorSchemeNames,
+} from "./parse-config/parse-color-scheme";
 import { TimeDurationStr } from "./duration/duration";
 import {
   AutoPeriodConfig,
