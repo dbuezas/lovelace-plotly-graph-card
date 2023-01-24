@@ -411,7 +411,6 @@ function evalFilter(input: {
   const filterfn = config === null ? filter() : filter(config);
   try {
     const r = filterfn(input.fnParam);
-    console.log(r);
     for (const key in r) {
       input.fnParam[key] = r[key];
     }

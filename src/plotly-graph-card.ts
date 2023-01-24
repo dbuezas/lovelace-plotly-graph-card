@@ -362,7 +362,6 @@ export class PlotlyGraph extends HTMLElement {
       await Plotly.react(this.contentEl, entities, layout, config);
       this.contentEl.style.visibility = "";
     });
-    console.log("plotted");
   });
   // The height of your card. Home Assistant uses this to automatically
   // distribute all cards over the available columns.
