@@ -102,7 +102,9 @@ const MIN_SAFE_TIMESTAMP = Date.parse("0001-01-02T00:00:00.000Z");
 export default class Cache {
   ranges: Record<string, TimestampRange[]> = {};
   histories: Record<string, CachedEntity[]> = {};
-  busy: Promise<void | EntityData> = Promise.resolve(); // mutex
+  busy: Promise<EntityData> = Promise.resolve(
+    undefined as unknown as EntityData
+  ); // mutex
 
   add(entity: EntityConfig, states: CachedEntity[], range: [number, number]) {
     const entityKey = getEntityKey(entity);

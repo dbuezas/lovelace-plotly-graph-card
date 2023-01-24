@@ -286,8 +286,6 @@ export class PlotlyGraph extends HTMLElement {
     // trace visibility changed, fetch missing traces
     if (this.isInternalRelayout) return;
     this.enterBrowsingMode();
-    await this.plot({ should_fetch: false }); // to reset xaxis to hours_to_show quickly, before refetching
-
     await this.plot({ should_fetch: true });
   };
   onRelayout = async () => {
