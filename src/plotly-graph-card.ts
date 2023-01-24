@@ -122,7 +122,7 @@ export class PlotlyGraph extends HTMLElement {
             // when autoranging is set in the xaxis, pinch to zoom doesn't work well
             await Plotly.relayout(this.contentEl, { "xaxis.autorange": false });
             // for some reason, only relayout or plot aren't enough
-            await this.plot();
+            await this.plot({ should_fetch: false }); // todo: can I plotly.react instead?
           }
         });
       },
@@ -158,7 +158,7 @@ export class PlotlyGraph extends HTMLElement {
       //     height: this.parsed_config?.layout?.height || this.size.height,
       //   });
       // });
-      this.fetch(); // todo: optimize this. recomputing the whole plot seems too much
+      this.plot({ should_fetch: false }); // todo: optimize this. recomputing the whole plot seems too much
     };
     this.handles.resizeObserver = new ResizeObserver(updateCardSize);
     this.handles.resizeObserver.observe(this.cardEl);
@@ -174,7 +174,7 @@ export class PlotlyGraph extends HTMLElement {
     )!;
     this.resetButtonEl.addEventListener("click", this.exitBrowsingMode);
     this.touchController.connect();
-    this.fetch();
+    this.plot({ should_fetch: true });
   }
 
   disconnectedCallback() {
@@ -231,10 +231,9 @@ export class PlotlyGraph extends HTMLElement {
         }
       }
       if (shouldFetch) {
-        this.fetch();
+        this.plot({ should_fetch: true });
       } else if (shouldPlot) {
-        this.no_fetch = true;
-        this.fetch();
+        this.plot({ should_fetch: false });
       }
     }
     this._hass = hass;
@@ -277,23 +276,25 @@ export class PlotlyGraph extends HTMLElement {
     this.isBrowsing = false;
     this.resetButtonEl.classList.add("hidden");
     this.withoutRelayout(async () => {
-      await this.plot(); // to reset xaxis to hours_to_show quickly, before refetching
+      await this.plot({ should_fetch: false }); // to reset xaxis to hours_to_show quickly, before refetching
       // TODO: clear cache
       // this.cache.clearCache(); // so that when the user zooms out and autoranges, not more that what's visible will be autoranged
-      await this.fetch();
+      await this.plot({ should_fetch: true });
     });
   };
   onRestyle = async () => {
     // trace visibility changed, fetch missing traces
     if (this.isInternalRelayout) return;
     this.enterBrowsingMode();
-    await this.fetch();
+    await this.plot({ should_fetch: false }); // to reset xaxis to hours_to_show quickly, before refetching
+
+    await this.plot({ should_fetch: true });
   };
   onRelayout = async () => {
     // user panned/zoomed
     if (this.isInternalRelayout) return;
     this.enterBrowsingMode();
-    await this.fetch();
+    await this.plot({ should_fetch: true });
   };
 
   // The user supplied configuration. Throw an exception and Lovelace will
@@ -302,8 +303,7 @@ export class PlotlyGraph extends HTMLElement {
     try {
       this.msgEl.innerText = "";
       this.config = config;
-      this.no_fetch = true;
-      this.fetch();
+      this.plot({ should_fetch: false });
     } catch (e: any) {
       console.error(e);
       clearTimeout(this.handles.refreshTimeout!);
@@ -342,45 +342,54 @@ export class PlotlyGraph extends HTMLElement {
     };
     return mapValues(haTheme, (_, key) => styles.getPropertyValue(key));
   }
-  fetch = debounce(async () => {
-    while (!(this.config && this.hass && this.isConnected)) await sleep(10);
+  fetchScheduled = false;
+  plot = async ({ should_fetch }: { should_fetch: boolean }) => {
+    if (should_fetch) this.fetchScheduled = true;
+    await this._plot();
+  };
+  _plot = debounce(async () => {
+    const should_fetch = this.fetchScheduled;
+    this.fetchScheduled = false;
+    while (!(this.config && this.hass && this.isConnected)) {
+      console.log("waiting for loading");
+      await sleep(100);
+    }
     /*
       TODOs:
-      * REMEMBER TO PASS and handle visible entities 
-      * const visibleEntities = this.parsed_config.entities.filter(
-        (_, i) => this.contentEl.data[i]?.visible !== "legendonly"
-      );
       * remember to pass observed_range and handle (all viewed ranges) to cap the range of the data
     */
+    const fetch_mask = this.contentEl.data.map(
+      ({ visible }) => should_fetch && visible !== "legendonly"
+    );
+    console.log(
+      "fetch_mask",
+      should_fetch,
+      fetch_mask,
+      this.contentEl.data.map(({ visible }) => visible)
+    );
     const raw_config = merge(
       {},
       this.config,
       { layout: this.size },
-      { no_fetch: this.no_fetch }, // TODO: cleanup how this is done
+      { fetch_mask },
       this.isBrowsing ? { visible_range: this.getVisibleRange() } : {},
       this.config
     );
-    this.no_fetch = false;
     this.parsed_config = await this.configParser.update({
       raw_config,
       hass: this.hass,
       cssVars: this.getCSSVars(),
     });
     console.log("fetched", this.parsed_config);
-    await this.plot();
-  });
-  plot = debounce(async () => {
-    while (!(this.parsed_config && this.hass && this.isConnected))
-      await sleep(10);
-    const refresh_interval = this.parsed_config.refresh_interval;
+
+    const { entities, layout, config, refresh_interval } = this.parsed_config;
     clearTimeout(this.handles.refreshTimeout!);
     if (refresh_interval !== "auto" && refresh_interval > 0) {
       this.handles.refreshTimeout = window.setTimeout(
-        () => this.fetch(),
+        () => this.plot({ should_fetch: true }),
         refresh_interval * 1000
       );
     }
-    const { entities, layout, config } = this.parsed_config;
     this.titleEl.innerText = this.parsed_config.title || "";
     if (layout.paper_bgcolor) {
       this.titleEl.style.background = layout.paper_bgcolor as string;

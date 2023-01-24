@@ -16,6 +16,7 @@ const myEval = typeof window != "undefined" ? window.eval : global.eval;
 function isObjectOrArray(value) {
   return value !== null && typeof value == "object" && !(value instanceof Date);
 }
+const w = window as any;
 
 function is$fn(value) {
   return (
@@ -87,10 +88,11 @@ class ConfigParser {
       visible_range[1] - fetchConfig.offset,
     ];
     const t0 = performance.now();
-    const no_fetch = fnParam.getFromConfig("no_fetch");
-    const entityData = no_fetch
-      ? this.cache.getData(fetchConfig)
-      : await this.cache.fetch(range_to_fetch, fetchConfig, this.hass!);
+    const fetch_mask = fnParam.getFromConfig("fetch_mask");
+    const entityData =
+      fetch_mask[fnParam.entityIdx] === false // also fetch if it is undefined. This means the entity is new
+        ? this.cache.getData(fetchConfig)
+        : await this.cache.fetch(range_to_fetch, fetchConfig, this.hass!);
     this.t_fetch += performance.now() - t0;
     fnParam.data = {
       ...entityData,
@@ -120,7 +122,6 @@ class ConfigParser {
     )
       await this.fetchDataForEntity(p);
   }
-
   private async evalNode({
     parent,
     path,
@@ -134,6 +135,8 @@ class ConfigParser {
     value: any;
     fnParam: any;
   }) {
+    w.i++;
+    console.log(path);
     if (path.match(/^defaults$/)) return;
     fnParam.getFromConfig = (aPath: string) =>
       this.getEvaledPath({ path: aPath, callingPath: path });
@@ -236,6 +239,7 @@ class ConfigParser {
     hass: HomeAssistant;
     cssVars: HATheme;
   }) {
+    w.i = 0;
     const t0 = performance.now();
     this.t_fetch = 0;
     /*
@@ -334,6 +338,7 @@ class ConfigParser {
       t_fetch: this.t_fetch,
       t_parse: t_total - this.t_fetch,
     });
+    console.log(w.i);
     return this.partiallyParsedConfig;
   }
 }

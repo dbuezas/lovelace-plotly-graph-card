@@ -4,23 +4,25 @@ export function getIsPureObject(val: any) {
   return typeof val === "object" && val !== null && !Array.isArray(val);
 }
 
-// todo: readability
-export function debounce(func: () => Promise<void>) {
+export function debounce(func: (...args) => Promise<void>) {
   let lastRunningPromise = Promise.resolve();
   let waiting = {
     cancelled: false,
   };
-  return async () => {
+  return () => {
     waiting.cancelled = true;
     const me = {
       cancelled: false,
     };
     waiting = me;
-    await lastRunningPromise;
-    if (me.cancelled) return;
-    setTimeout(async () => {
-      if (me.cancelled) return;
-      lastRunningPromise = func();
-    });
+    return (lastRunningPromise = lastRunningPromise.then(
+      () =>
+        new Promise((resolve) => {
+          setTimeout(async () => {
+            if (me.cancelled) resolve;
+            resolve(func());
+          });
+        })
+    ));
   };
 }
