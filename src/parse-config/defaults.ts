@@ -1,4 +1,5 @@
 import { parseColorScheme } from "./parse-color-scheme";
+import { getEntityIndex } from "./parse-config";
 
 export const defaultEntity = {
   entity: "",
@@ -8,31 +9,28 @@ export const defaultEntity = {
   line: {
     width: 1,
     shape: "hv",
-    color: ({ getFromConfig, entityIdx }) => {
+    color: ({ getFromConfig, path }) => {
       const color_scheme = parseColorScheme(getFromConfig("color_scheme"));
-      return color_scheme[entityIdx % color_scheme.length];
+      return color_scheme[getEntityIndex(path) % color_scheme.length];
     },
   },
   internal: false,
   offset: "0s",
   // extend_to_present: true unless using statistics. Defined inside parse-config.ts to avoid forward depndency
   unit_of_measurement: ({ meta }) => meta.unit_of_measurement || "",
-  name: ({ meta, entityIdx, getFromConfig }) => {
-    let name =
-      meta.friendly_name || getFromConfig(`entities.${entityIdx}.entity`);
-    const attribute = getFromConfig(`entities.${entityIdx}.attribute`);
+  name: ({ meta, getFromConfig }) => {
+    let name = meta.friendly_name || getFromConfig(`.entity`);
+    const attribute = getFromConfig(`.attribute`);
     if (attribute) name += ` (${attribute}) `;
     return name;
   },
-  hovertemplate: ({ getFromConfig, entityIdx }) =>
-    `<b>${getFromConfig(
-      `entities.${entityIdx}.name`
-    )}</b><br><i>%{x}</i><br>%{y} ${getFromConfig(
-      `entities.${entityIdx}.unit_of_measurement`
+  hovertemplate: ({ getFromConfig }) =>
+    `<b>${getFromConfig(".name")}</b><br><i>%{x}</i><br>%{y} ${getFromConfig(
+      ".unit_of_measurement"
     )}<extra></extra>`,
-  yaxis: ({ getFromConfig, entityIdx }) => {
+  yaxis: ({ getFromConfig, path }) => {
     const units: string[] = [];
-    for (let i = 0; i <= entityIdx; i++) {
+    for (let i = 0; i <= getEntityIndex(path); i++) {
       const unit = getFromConfig(`entities.${i}.unit_of_measurement`);
       const internal = getFromConfig(`entities.${i}.internal`);
       if (!internal && !units.includes(unit)) units.push(unit);
@@ -65,7 +63,8 @@ export const defaultYaml = {
       r: ({ getFromConfig }) => {
         const entities = getFromConfig(`entities`);
         const usesRightAxis = entities.some(({ yaxis }) => yaxis === "y2");
-        return usesRightAxis ? 60 : 30;
+        const usesShowValue = entities.some(({ show_value }) => show_value);
+        return usesRightAxis | usesShowValue ? 60 : 30;
       },
     },
   },

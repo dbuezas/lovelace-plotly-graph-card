@@ -65,8 +65,8 @@ class ConfigParser {
       // 2nd pass: evaluate functions
       this.fnParam = {
         vars: {},
+        path: "",
         hass: input.hass,
-        entityIdx: "",
         getFromConfig: () => "",
       };
       this.partiallyParsedConfig = {};
@@ -130,10 +130,10 @@ class ConfigParser {
   }) {
     errorIfDeprecated(path);
     if (path.match(/^defaults$/)) return;
-    this.fnParam.getFromConfig = (aPath: string) =>
-      this.getEvaledPath({ path: aPath, callingPath: path });
+    this.fnParam.path = path;
+    this.fnParam.getFromConfig = (pathQuery: string) =>
+      this.getEvaledPath(pathQuery, path /* caller */);
 
-    if (path.match(/^entities\.\d$/)) this.fnParam.entityIdx = key;
     if (
       path.match(/^entities\.\d+\./) && //isInsideEntity
       !path.match(
@@ -270,9 +270,10 @@ class ConfigParser {
       visible_range[1] - offset,
     ];
     const fetch_mask = this.fnParam.getFromConfig("fetch_mask");
+    const i = getEntityIndex(path);
     const data =
       // TODO: decide about minimal response
-      fetch_mask[this.fnParam.entityIdx] === false // also fetch if it is undefined. This means the entity is new
+      fetch_mask[i] === false // also fetch if it is undefined. This means the entity is new
         ? this.cache.getData(fetchConfig)
         : await this.cache.fetch(range_to_fetch, fetchConfig, this.hass!);
     const extend_to_present =
@@ -300,17 +301,23 @@ class ConfigParser {
   public resetObservedRange() {
     this.observed_range = [Date.now(), Date.now()];
   }
-  private getEvaledPath(p: { path: string; callingPath: string }) {
-    if (has(this.partiallyParsedConfig, p.path))
-      return get(this.partiallyParsedConfig, p.path);
+  private getEvaledPath(path: string, callingPath: string) {
+    if (path.startsWith("."))
+      path = callingPath
+        .split(".")
+        .slice(0, -1)
+        .concat(path.slice(1).split("."))
+        .join(".");
+    if (has(this.partiallyParsedConfig, path))
+      return get(this.partiallyParsedConfig, path);
 
     let value = this.inputConfig;
-    for (const key of p.path.split(".")) {
+    for (const key of path.split(".")) {
       if (value === undefined) return undefined;
       value = value[key];
       if (is$fn(value)) {
         throw new Error(
-          `Since [${p.path}] is a $fn, it has to be defined before [${p.callingPath}]`
+          `Since [${path}] is a $fn, it has to be defined before [${callingPath}]`
         );
       }
     }
@@ -387,7 +394,7 @@ type FnParam = {
   ) => ReturnType<InstanceType<typeof ConfigParser>["getEvaledPath"]>;
   hass: HomeAssistant;
   vars: Record<string, any>;
-  entityIdx: string;
+  path: string;
   xs?: Date[];
   ys?: YValue[];
   statistics?: StatisticValue[];
@@ -407,5 +414,6 @@ function errorIfDeprecated(path: string) {
       "minimal_response was removed, if you need attributes use the 'attribute' parameter instead."
     );
 }
-
+export const getEntityIndex = (path: string) =>
+  +path.match(/entities\.(\d+)/)![1];
 export { ConfigParser };
