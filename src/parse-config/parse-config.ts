@@ -13,57 +13,12 @@ import { has } from "lodash";
 import { StatisticValue } from "../recorder-types";
 import { HassEntity, YValue } from "../types";
 
-const myEval = typeof window != "undefined" ? window.eval : global.eval;
-
-function isObjectOrArray(value) {
-  return value !== null && typeof value == "object" && !(value instanceof Date);
-}
-
-function is$fn(value) {
-  return (
-    typeof value === "function" ||
-    (typeof value === "string" && value.startsWith("$fn"))
-  );
-}
-
-function removeOutOfRange(data: any, range: [number, number]) {
-  const first = bounds.le(data.xs, range[0]);
-  if (first > -1) {
-    data.xs.splice(0, first);
-    data.xs[0] = new Date(range[0]);
-    data.ys.splice(0, first);
-    data.states.splice(0, first);
-    data.statistics.splice(0, first);
-  }
-  const last = bounds.gt(data.xs, range[1]);
-  if (last > -1) {
-    data.xs.splice(last);
-    data.ys.splice(last);
-    data.states.splice(last);
-    data.statistics.splice(last);
-  }
-}
-
-type FnParam = {
-  getFromConfig: (
-    string
-  ) => ReturnType<InstanceType<typeof ConfigParser>["getEvaledPath"]>;
-  hass: HomeAssistant;
-  vars: Record<string, any>;
-  key: string;
-  xs?: Date[];
-  ys?: YValue[];
-  statistics?: StatisticValue[];
-  states?: HassEntity[];
-  meta?: HassEntity["attributes"];
-};
 class ConfigParser {
   private partiallyParsedConfig?: any;
   private inputConfig?: any;
   private hass?: HomeAssistant;
   cache = new Cache();
   private busy = false;
-  private t_fetch = 0;
   private fnParam!: FnParam;
 
   async update(input: {
@@ -71,8 +26,6 @@ class ConfigParser {
     hass: HomeAssistant;
     cssVars: HATheme;
   }) {
-    const t0 = performance.now();
-    this.t_fetch = 0;
     if (this.busy) throw new Error("ParseConfig was updated while busy");
     this.busy = true;
     try {
@@ -159,12 +112,6 @@ class ConfigParser {
         this.partiallyParsedConfig.layout
       );
 
-      const t_total = performance.now() - t0;
-      // console.table({
-      //   t_total,
-      //   t_fetch: this.t_fetch,
-      //   t_parse: t_total - this.t_fetch,
-      // });
       return this.partiallyParsedConfig;
     } finally {
       this.busy = false;
@@ -319,7 +266,6 @@ class ConfigParser {
       visible_range[0] - offset,
       visible_range[1] - offset,
     ];
-    const t0 = performance.now();
     const fetch_mask = this.fnParam.getFromConfig("fetch_mask");
     const data =
       // TODO: decide about minimal response
@@ -341,7 +287,6 @@ class ConfigParser {
       if (data.states.length) data.states.push(data.states[last_i]);
       if (data.statistics.length) data.statistics.push(data.statistics[last_i]);
     }
-    this.t_fetch += performance.now() - t0;
     this.fnParam.xs = data.xs;
     this.fnParam.ys = data.ys;
     this.fnParam.statistics = data.statistics;
@@ -401,5 +346,50 @@ class ConfigParser {
     }
   }
 }
+
+const myEval = typeof window != "undefined" ? window.eval : global.eval;
+
+function isObjectOrArray(value) {
+  return value !== null && typeof value == "object" && !(value instanceof Date);
+}
+
+function is$fn(value) {
+  return (
+    typeof value === "function" ||
+    (typeof value === "string" && value.startsWith("$fn"))
+  );
+}
+
+function removeOutOfRange(data: any, range: [number, number]) {
+  const first = bounds.le(data.xs, range[0]);
+  if (first > -1) {
+    data.xs.splice(0, first);
+    data.xs[0] = new Date(range[0]);
+    data.ys.splice(0, first);
+    data.states.splice(0, first);
+    data.statistics.splice(0, first);
+  }
+  const last = bounds.gt(data.xs, range[1]);
+  if (last > -1) {
+    data.xs.splice(last);
+    data.ys.splice(last);
+    data.states.splice(last);
+    data.statistics.splice(last);
+  }
+}
+
+type FnParam = {
+  getFromConfig: (
+    string
+  ) => ReturnType<InstanceType<typeof ConfigParser>["getEvaledPath"]>;
+  hass: HomeAssistant;
+  vars: Record<string, any>;
+  key: string;
+  xs?: Date[];
+  ys?: YValue[];
+  statistics?: StatisticValue[];
+  states?: HassEntity[];
+  meta?: HassEntity["attributes"];
+};
 
 export { ConfigParser };
