@@ -10,6 +10,8 @@ import { HomeAssistant } from "custom-card-helpers";
 import filters from "../filters/filters";
 import bounds from "binary-search-bounds";
 import { has } from "lodash";
+import { StatisticValue } from "../recorder-types";
+import { HassEntity, YValue } from "../types";
 
 const myEval = typeof window != "undefined" ? window.eval : global.eval;
 
@@ -42,6 +44,19 @@ function removeOutOfRange(data: any, range: [number, number]) {
   }
 }
 
+type FnParam = {
+  getFromConfig: (
+    string
+  ) => ReturnType<InstanceType<typeof ConfigParser>["getEvaledPath"]>;
+  hass: HomeAssistant;
+  vars: Record<string, any>;
+  key: string;
+  xs?: Date[];
+  ys?: YValue[];
+  statistics?: StatisticValue[];
+  states?: HassEntity[];
+  meta?: HassEntity["attributes"];
+};
 class ConfigParser {
   private partiallyParsedConfig?: any;
   private inputConfig?: any;
@@ -49,6 +64,8 @@ class ConfigParser {
   cache = new Cache();
   private busy = false;
   private t_fetch = 0;
+  private fnParam!: FnParam;
+
   private observed_range: [number, number] = [Date.now(), Date.now()];
   public resetObservedRange() {
     this.observed_range = [Date.now(), Date.now()];
@@ -69,21 +86,53 @@ class ConfigParser {
     }
     return value;
   }
+  private evalFilter(input: {
+    parent: object;
+    path: string;
+    key: string;
+    value: any;
+  }) {
+    const obj = input.value;
+    let filterName: string;
+    let config: any = null;
+    if (typeof obj === "string") {
+      filterName = obj;
+    } else {
+      filterName = Object.keys(obj)[0];
+      config = Object.values(obj)[0];
+    }
+    const filter = filters[filterName];
+    if (!filter) {
+      throw new Error(
+        `Filter '${filterName} must be [${Object.keys(filters)}]`
+      );
+    }
+    const filterfn = config === null ? filter() : filter(config);
+    try {
+      const r = filterfn(this.fnParam);
+      for (const key in r) {
+        this.fnParam[key] = r[key];
+      }
+    } catch (e) {
+      console.error(e);
+      throw new Error(`Error in filter: ${e}`);
+    }
+  }
   private async fetchDataForEntity({
     path,
-    fnParam,
   }: {
     parent: object;
     path: string;
     key: string;
     value: any;
-    fnParam: any;
   }) {
     path = path.match(/^(entities\.\d+)\./)![1];
-    let visible_range = fnParam.getFromConfig("visible_range");
+    let visible_range = this.fnParam.getFromConfig("visible_range");
     if (!visible_range) {
-      const hours_to_show = fnParam.getFromConfig("hours_to_show");
-      const global_offset = parseTimeDuration(fnParam.getFromConfig("offset"));
+      const hours_to_show = this.fnParam.getFromConfig("hours_to_show");
+      const global_offset = parseTimeDuration(
+        this.fnParam.getFromConfig("offset")
+      );
       const ms = hours_to_show * 60 * 60 * 1000;
       visible_range = [
         +new Date() - ms + global_offset,
@@ -95,31 +144,34 @@ class ConfigParser {
     this.observed_range[1] = Math.max(this.observed_range[1], visible_range[1]);
     const statisticsParams = parseStatistics(
       visible_range,
-      fnParam.getFromConfig(path + ".statistic"),
-      fnParam.getFromConfig(path + ".period")
+      this.fnParam.getFromConfig(path + ".statistic"),
+      this.fnParam.getFromConfig(path + ".period")
     );
-    const attribute = fnParam.getFromConfig(path + ".attribute") as
+    const attribute = this.fnParam.getFromConfig(path + ".attribute") as
       | string
       | undefined;
     const fetchConfig = {
-      entity: fnParam.getFromConfig(path + ".entity"),
+      entity: this.fnParam.getFromConfig(path + ".entity"),
       ...(statisticsParams ? statisticsParams : attribute ? { attribute } : {}),
     };
-    const offset = parseTimeDuration(fnParam.getFromConfig(path + ".offset"));
+    const offset = parseTimeDuration(
+      this.fnParam.getFromConfig(path + ".offset")
+    );
 
     const range_to_fetch = [
       visible_range[0] - offset,
       visible_range[1] - offset,
     ];
     const t0 = performance.now();
-    const fetch_mask = fnParam.getFromConfig("fetch_mask");
+    const fetch_mask = this.fnParam.getFromConfig("fetch_mask");
     const data =
       // TODO: decide about minimal response
-      fetch_mask[fnParam.entityIdx] === false // also fetch if it is undefined. This means the entity is new
+      fetch_mask[this.fnParam.key] === false // also fetch if it is undefined. This means the entity is new
         ? this.cache.getData(fetchConfig)
         : await this.cache.fetch(range_to_fetch, fetchConfig, this.hass!);
     const extend_to_present =
-      fnParam.getFromConfig(path + ".extend_to_present") ?? !statisticsParams;
+      this.fnParam.getFromConfig(path + ".extend_to_present") ??
+      !statisticsParams;
 
     data.xs = data.xs.map((x) => new Date(+x + offset));
 
@@ -133,24 +185,23 @@ class ConfigParser {
       if (data.statistics.length) data.statistics.push(data.statistics[last_i]);
     }
     this.t_fetch += performance.now() - t0;
-    fnParam.xs = data.xs;
-    fnParam.ys = data.ys;
-    fnParam.statistics = data.statistics;
-    fnParam.states = data.states;
-    fnParam.meta = this.hass?.states[fetchConfig.entity]?.attributes || {};
+    this.fnParam.xs = data.xs;
+    this.fnParam.ys = data.ys;
+    this.fnParam.statistics = data.statistics;
+    this.fnParam.states = data.states;
+    this.fnParam.meta = this.hass?.states[fetchConfig.entity]?.attributes || {};
   }
   private async fetchDataForEntityIfNecessary(p: {
     parent: object;
     path: string;
     key: string;
     value: any;
-    fnParam: any;
   }) {
     const isInsideEntity = !!p.path.match(/^entities\.\d+\./);
     const isInsideFetchParamNode = !!p.path.match(
       /^entities\.\d+\.(entity|attribute|offset|statistic|period)/
     );
-    const alreadyFetchedData = p.fnParam.xs;
+    const alreadyFetchedData = this.fnParam.xs;
     const isFilters = p.path.match(/^entities\.\d+\.filters\.\d+$/);
     if (
       isInsideEntity &&
@@ -165,26 +216,21 @@ class ConfigParser {
     path,
     key,
     value,
-    fnParam,
   }: {
     parent: object;
     path: string;
     key: string;
     value: any;
-    fnParam: any;
   }) {
     if (path.match(/^defaults$/)) return;
-    if (path.match(/^entities\.\d+$/)) {
-      fnParam.entityIdx = key;
-    }
-    fnParam.getFromConfig = (aPath: string) =>
+    this.fnParam.key = key;
+    this.fnParam.getFromConfig = (aPath: string) =>
       this.getEvaledPath({ path: aPath, callingPath: path });
     await this.fetchDataForEntityIfNecessary({
       parent,
       path,
       key,
       value,
-      fnParam,
     });
 
     if (typeof value === "string" && value.startsWith("$fn")) {
@@ -198,7 +244,7 @@ class ConfigParser {
        * and the fact that awaits are expensive.
        */
 
-      parent[key] = value = value(fnParam);
+      parent[key] = value = value(this.fnParam);
     } else if (isObjectOrArray(value)) {
       const me = Array.isArray(value) ? [] : {};
       parent[key] = me;
@@ -208,7 +254,6 @@ class ConfigParser {
           path: `${path}.${childKey}`,
           key: childKey,
           value: childValue,
-          fnParam,
         });
       }
     } else {
@@ -218,21 +263,20 @@ class ConfigParser {
     // we're now on the way back of traversal, `value` is fully evaluated
 
     if (path.match(/^entities\.\d+\.filters\.\d+$/)) {
-      evalFilter({ parent, path, key, value, fnParam });
+      this.evalFilter({ parent, path, key, value });
     }
     if (path.match(/^entities\.\d+$/)) {
-      if (!fnParam.xs) {
+      if (!this.fnParam.xs) {
         await this.fetchDataForEntity({
           parent,
           path,
           key,
           value,
-          fnParam,
         });
       }
       const me = parent[key];
-      if (!me.x) me.x = fnParam.xs;
-      if (!me.y) me.y = fnParam.ys;
+      if (!me.x) me.x = this.fnParam.xs;
+      if (!me.y) me.y = this.fnParam.ys;
       if (me.x.length === 0 && me.y.length === 0) {
         /*
         Traces with no data are removed from the legend by plotly. 
@@ -242,13 +286,11 @@ class ConfigParser {
         me.y = [null];
       }
 
-      delete fnParam.xs;
-      delete fnParam.ys;
-      delete fnParam.statistics;
-      delete fnParam.states;
-      delete fnParam.meta;
-
-      delete fnParam.entityIdx;
+      delete this.fnParam.xs;
+      delete this.fnParam.ys;
+      delete this.fnParam.statistics;
+      delete this.fnParam.states;
+      delete this.fnParam.meta;
     }
     if (path.match(/^entities$/)) {
       parent[key] = parent[key].filter(({ internal }) => !internal);
@@ -325,9 +367,11 @@ class ConfigParser {
       });
 
       // 2nd pass: evaluate functions
-      const fnParam = {
+      this.fnParam = {
         vars: {},
         hass: input.hass,
+        key: "",
+        getFromConfig: () => "",
       };
       this.partiallyParsedConfig = {};
       this.inputConfig = config;
@@ -337,7 +381,6 @@ class ConfigParser {
           path: key,
           key: key,
           value,
-          fnParam,
         });
       }
 
@@ -387,35 +430,3 @@ class ConfigParser {
 }
 
 export { ConfigParser };
-
-function evalFilter(input: {
-  parent: object;
-  path: string;
-  key: string;
-  value: any;
-  fnParam: any;
-}) {
-  const obj = input.value;
-  let filterName: string;
-  let config: any = null;
-  if (typeof obj === "string") {
-    filterName = obj;
-  } else {
-    filterName = Object.keys(obj)[0];
-    config = Object.values(obj)[0];
-  }
-  const filter = filters[filterName];
-  if (!filter) {
-    throw new Error(`Filter '${filterName} must be [${Object.keys(filters)}]`);
-  }
-  const filterfn = config === null ? filter() : filter(config);
-  try {
-    const r = filterfn(input.fnParam);
-    for (const key in r) {
-      input.fnParam[key] = r[key];
-    }
-  } catch (e) {
-    console.error(e);
-    throw new Error(`Error in filter: ${e}`);
-  }
-}

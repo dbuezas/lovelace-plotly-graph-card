@@ -8,18 +8,18 @@ export const defaultEntity = {
   line: {
     width: 1,
     shape: "hv",
-    color: ({ getFromConfig, entityIdx }) => {
+    color: ({ getFromConfig, key }) => {
       const color_scheme = parseColorScheme(getFromConfig("color_scheme"));
-      return color_scheme[entityIdx % color_scheme.length];
+      return color_scheme[key % color_scheme.length];
     },
   },
   internal: false,
   offset: "0s",
   // extend_to_present: true unless using statistics. Defined inside parse-config.ts to avoid forward depndency
   unit_of_measurement: ({ meta }) => meta.unit_of_measurement || "",
-  yaxis: ({ getFromConfig, entityIdx }) => {
+  yaxis: ({ getFromConfig, key }) => {
     const units: string[] = [];
-    for (let i = 0; i <= entityIdx; i++) {
+    for (let i = 0; i <= key; i++) {
       const unit = getFromConfig(`entities.${i}.unit_of_measurement`);
       const internal = getFromConfig(`entities.${i}.internal`);
       if (!internal && !units.includes(unit)) units.push(unit);
@@ -27,18 +27,17 @@ export const defaultEntity = {
     const yaxis_idx = units.length;
     return "y" + (yaxis_idx === 1 ? "" : yaxis_idx);
   },
-  name: ({ meta, entityIdx, getFromConfig }) => {
-    let name =
-      meta.friendly_name || getFromConfig(`entities.${entityIdx}.entity`);
-    const attribute = getFromConfig(`entities.${entityIdx}.attribute`);
+  name: ({ meta, key, getFromConfig }) => {
+    let name = meta.friendly_name || getFromConfig(`entities.${key}.entity`);
+    const attribute = getFromConfig(`entities.${key}.attribute`);
     if (attribute) name += ` (${attribute}) `;
     return name;
   },
-  customdata: ({ xs, entityIdx, getFromConfig }) => {
+  customdata: ({ xs, key, getFromConfig }) => {
     const unit_of_measurement = getFromConfig(
-      `entities.${entityIdx}.unit_of_measurement`
+      `entities.${key}.unit_of_measurement`
     );
-    const name = getFromConfig(`entities.${entityIdx}.name`);
+    const name = getFromConfig(`entities.${key}.name`);
     return xs.map(() => ({
       unit_of_measurement,
       name,

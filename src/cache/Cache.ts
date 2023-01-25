@@ -181,45 +181,4 @@ export default class Cache {
         return this.getData(entity);
       }));
   }
-  // async update(
-  //   range: TimestampRange,
-  //   entities: EntityConfig[],
-  //   hass: HomeAssistant,
-  // ) {
-  //   return (this.busy = this.busy
-  //     .catch(() => {})
-  //     .then(async () => {
-  //       range = range.map((n) => Math.max(MIN_SAFE_TIMESTAMP, n)); // HA API can't handle negative years
-  //       const parallelFetches = Object.values(groupBy(entities, getEntityKey));
-  //       const promises = parallelFetches.flatMap(async (entityGroup) => {
-  //         // Each entity in entityGroup will result in exactly the same fetch
-  //         // But these may differ once the offsets PR is merged
-  //         // Making these fetches sequentially ensures that the already fetched ranges of each
-  //         // request are not fetched more than once
-  //         for (const entity of entityGroup) {
-  //           if (!entity.entity) continue;
-  //           const entityKey = getEntityKey(entity);
-  //           this.ranges[entityKey] ??= [];
-  //           const offsetRange = [
-  //             range[0] - entity.offset,
-  //             range[1] - entity.offset,
-  //           ];
-  //           const rangesToFetch = subtractRanges(
-  //             [offsetRange],
-  //             this.ranges[entityKey]
-  //           );
-  //           for (const aRange of rangesToFetch) {
-  //             const fetchedHistory = await fetchSingleRange(
-  //               hass,
-  //               entity,
-  //               aRange
-  //             );
-  //             this.add(entity, fetchedHistory.history, fetchedHistory.range);
-  //           }
-  //         }
-  //       });
-
-  //       await Promise.all(promises);
-  //     }));
-  // }
 }
