@@ -2,46 +2,43 @@ import { parseColorScheme } from "./parse-color-scheme";
 
 export const defaultEntity = {
   entity: "",
-  hovertemplate: `<b>%{customdata.name}</b><br><i>%{x}</i><br>%{y}%{customdata.unit_of_measurement}<extra></extra>`,
+
   mode: "lines",
   show_value: false,
   line: {
     width: 1,
     shape: "hv",
-    color: ({ getFromConfig, key }) => {
+    color: ({ getFromConfig, entityIdx }) => {
       const color_scheme = parseColorScheme(getFromConfig("color_scheme"));
-      return color_scheme[key % color_scheme.length];
+      return color_scheme[entityIdx % color_scheme.length];
     },
   },
   internal: false,
   offset: "0s",
   // extend_to_present: true unless using statistics. Defined inside parse-config.ts to avoid forward depndency
   unit_of_measurement: ({ meta }) => meta.unit_of_measurement || "",
-  yaxis: ({ getFromConfig, key }) => {
+  name: ({ meta, entityIdx, getFromConfig }) => {
+    let name =
+      meta.friendly_name || getFromConfig(`entities.${entityIdx}.entity`);
+    const attribute = getFromConfig(`entities.${entityIdx}.attribute`);
+    if (attribute) name += ` (${attribute}) `;
+    return name;
+  },
+  hovertemplate: ({ getFromConfig, entityIdx }) =>
+    `<b>${getFromConfig(
+      `entities.${entityIdx}.name`
+    )}</b><br><i>%{x}</i><br>%{y} ${getFromConfig(
+      `entities.${entityIdx}.unit_of_measurement`
+    )}<extra></extra>`,
+  yaxis: ({ getFromConfig, entityIdx }) => {
     const units: string[] = [];
-    for (let i = 0; i <= key; i++) {
+    for (let i = 0; i <= entityIdx; i++) {
       const unit = getFromConfig(`entities.${i}.unit_of_measurement`);
       const internal = getFromConfig(`entities.${i}.internal`);
       if (!internal && !units.includes(unit)) units.push(unit);
     }
     const yaxis_idx = units.length;
     return "y" + (yaxis_idx === 1 ? "" : yaxis_idx);
-  },
-  name: ({ meta, key, getFromConfig }) => {
-    let name = meta.friendly_name || getFromConfig(`entities.${key}.entity`);
-    const attribute = getFromConfig(`entities.${key}.attribute`);
-    if (attribute) name += ` (${attribute}) `;
-    return name;
-  },
-  customdata: ({ xs, key, getFromConfig }) => {
-    const unit_of_measurement = getFromConfig(
-      `entities.${key}.unit_of_measurement`
-    );
-    const name = getFromConfig(`entities.${key}.name`);
-    return xs.map(() => ({
-      unit_of_measurement,
-      name,
-    }));
   },
 };
 export const defaultYaml = {

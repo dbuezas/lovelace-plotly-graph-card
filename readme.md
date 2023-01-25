@@ -739,20 +739,6 @@ no_theme: true
 To define general configurations like enabling scroll to zoom, disabling the modebar, etc.
 Anything from https://plotly.com/javascript/configuration-options/.
 
-## significant_changes_only
-
-When true, will tell HA to only fetch datapoints with a different state as the one before.
-More here: https://developers.home-assistant.io/docs/api/rest/ under `/api/history/period/<timestamp>`
-
-Caveats:
-
-1. zana-37 repoorts that `minimal_response: false` needs to be set to get all non-significant datapoints [here](https://github.com/dbuezas/lovelace-plotly-graph-card/issues/34#issuecomment-1085083597).
-2. This configuration will be ignored (will be true) while fetching [Attribute Values](#Attribute-Values).
-
-```yaml
-significant_changes_only: true # defaults to false
-```
-
 ## disable_pinch_to_zoom
 
 ```yaml
@@ -760,19 +746,6 @@ disable_pinch_to_zoom: true # defaults to false
 ```
 
 When true, the custom implementations of pinch-to-zoom and double-tap-drag-to-zooming will be disabled.
-
-## minimal_response
-
-When true, tell HA to only return last_changed and state for states other than the first and last state (much faster).
-More here: https://developers.home-assistant.io/docs/api/rest/ under `/api/history/period/<timestamp>`
-
-Caveats:
-
-1. This configuration will be ignored (will be false) while fetching [Attribute Values](#Attribute-Values).
-
-```yaml
-minimal_response: false # defaults to true
-```
 
 ## hours_to_show:
 

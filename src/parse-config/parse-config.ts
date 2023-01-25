@@ -66,7 +66,7 @@ class ConfigParser {
       this.fnParam = {
         vars: {},
         hass: input.hass,
-        key: "",
+        entityIdx: "",
         getFromConfig: () => "",
       };
       this.partiallyParsedConfig = {};
@@ -128,11 +128,12 @@ class ConfigParser {
     key: string;
     value: any;
   }) {
+    errorIfDeprecated(path);
     if (path.match(/^defaults$/)) return;
-    this.fnParam.key = key;
     this.fnParam.getFromConfig = (aPath: string) =>
       this.getEvaledPath({ path: aPath, callingPath: path });
 
+    if (path.match(/^entities\.\d$/)) this.fnParam.entityIdx = key;
     if (
       path.match(/^entities\.\d+\./) && //isInsideEntity
       !path.match(
@@ -208,7 +209,9 @@ class ConfigParser {
         if (trace.show_value) {
           trace.legendgroup ??= "group" + i;
           entities.push({
-            texttemplate: `%{y:.2~f}%{customdata.unit_of_measurement}`, // here so it can be overwritten
+            texttemplate: `%{y:.2~f} ${this.fnParam.getFromConfig(
+              `entities.${i}.unit_of_measurement`
+            )}`, // here so it can be overwritten
             ...trace,
             cliponaxis: false, // allows the marker + text to be rendered above the right y axis. See https://github.com/dbuezas/lovelace-plotly-graph-card/issues/171
             mode: "text+markers",
@@ -269,7 +272,7 @@ class ConfigParser {
     const fetch_mask = this.fnParam.getFromConfig("fetch_mask");
     const data =
       // TODO: decide about minimal response
-      fetch_mask[this.fnParam.key] === false // also fetch if it is undefined. This means the entity is new
+      fetch_mask[this.fnParam.entityIdx] === false // also fetch if it is undefined. This means the entity is new
         ? this.cache.getData(fetchConfig)
         : await this.cache.fetch(range_to_fetch, fetchConfig, this.hass!);
     const extend_to_present =
@@ -384,12 +387,25 @@ type FnParam = {
   ) => ReturnType<InstanceType<typeof ConfigParser>["getEvaledPath"]>;
   hass: HomeAssistant;
   vars: Record<string, any>;
-  key: string;
+  entityIdx: string;
   xs?: Date[];
   ys?: YValue[];
   statistics?: StatisticValue[];
   states?: HassEntity[];
   meta?: HassEntity["attributes"];
 };
+
+function errorIfDeprecated(path: string) {
+  if (path.match(/^entity\.\d+\.lambda$/))
+    throw new Error("Lambdas were removed, use filters instead");
+  if (path.match(/^significant_changes_only$/))
+    throw new Error(
+      "significant_changes_only was removed, it is now always set to false"
+    );
+  if (path.match(/^minimal_response$/))
+    throw new Error(
+      "minimal_response was removed, if you need attributes use the 'attribute' parameter instead."
+    );
+}
 
 export { ConfigParser };
