@@ -400,8 +400,6 @@ type: custom:plotly-graph
 entities:
   - entity: sensor.temperature_in_celsius
     name: living temperature in Farenheit # Overrides the entity name
-    lambda: |- # Transforms the data
-      (ys) => ys.map(y => (y × 9/5) + 32)
     unit_of_measurement: °F # Overrides the unit
     show_value: true # shows the last value as text
     texttemplate: >- # custom format for show_value
@@ -686,10 +684,87 @@ entities:
       map_y: y + vars.temp1[i].y
 ```
 
-### `lambda:` transforms (deprecated)
+### Universal functions
 
-Deprecated. Use filters instead.
-Your old lambdas should still work for now but this API will be removed in March 2023.
+Javascript functions allowed everywhere in the yaml. Evaluation is top to bottom and shallow to deep (depth first traversal).
+
+#### Gotchas
+
+- The following entity attributes are required for fetching, so if another function needs the entity data it needs to be declared below them. `entity`,`attribute`,`offset`,`statistic`,`period`
+- Functions are allowed for those properties (`entity`, `attribute`, ...) but they do not receive entity data as parameters. You can still use the `hass` parameter to get the last state of an entity if you need to.
+- Functions cannot return functions for performance reasons. (feature request if you need this)
+- Defaults are not applied to the subelements returned by a function. (feature request if you need this)
+- You can get other values from the yaml with the `getFromConfig` parameter, but if they are functions they need to be defined before.
+- If a function throws an exception, the complete plot won't be rendered. Make sure to use `if` statements or [Optional Chaining (?.)](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Optional_chaining) if the values you use may be undefined.
+
+#### Adding the last value to the entitiy's name
+
+```yaml
+type: custom:plotly-graph
+entities:
+  - entity: sensor.garden_temperature
+    name: |
+      $fn ({ ys,meta }) =>
+        meta.friendly_name + " " + ys[ys.length - 1]
+```
+
+#### Sharing data across functions
+
+```yaml
+type: custom:plotly-graph
+entities:
+  - entity: sensor.garden_temperature
+
+    # the fn attribute has no meaning, it is just a placeholder to put a function there. It can be any name not used by plotly
+    fn: |
+      $fn ({ ys, vars }) =>
+        vars.title = ys[ys.length - 1]
+title: $fn ({ vars }) => vars.title
+```
+
+#### Histograms
+
+```yaml
+type: custom:plotly-graph
+entities:
+  - entity: sensor.openweathermap_temperature
+    x: $fn ({ys,vars}) => ys
+    type: histogram
+title: Temperature Histogram last 10 days
+hours_to_show: 240
+no_default_layout: true
+layout:
+  margin:
+    t: 0
+    l: 50
+    b: 40
+  height: 285
+  xaxis:
+    autorange: true
+```
+
+#### custom hover text
+
+```yaml
+type: custom:plotly-graph
+title: hovertemplate
+entities:
+  - entity: climate.living
+    attribute: current_temperature
+    customdata: |
+      $fn ({states}) =>
+        states.map( ({state, attributes}) =>({
+          ...attributes,
+          state
+        })
+      )
+    hovertemplate: |-
+      <br> <b>Mode:</b> %{customdata.state}<br>
+      <b>Target:</b>%{y}</br>
+      <b>Current:</b>%{customdata.current_temperature}
+      <extra></extra>
+hours_to_show: 24
+```
 
 ## Default trace & axis styling
 
