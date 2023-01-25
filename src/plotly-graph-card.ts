@@ -12,6 +12,7 @@ import {
   isEntityIdStatisticsConfig,
 } from "./types";
 import isProduction from "./is-production";
+import "./hot-reload";
 import { debounce, sleep } from "./utils";
 import { parseISO } from "date-fns";
 import { TouchController } from "./touch-controller";
