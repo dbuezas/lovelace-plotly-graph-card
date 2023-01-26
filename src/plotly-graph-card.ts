@@ -98,11 +98,14 @@ export class PlotlyGraph extends HTMLElement {
               position: absolute;
               color: #ffffff;
               top: 0;
-              padding: 5px;
+              padding: 10px;
+              width: calc(100% - 20px);
               background: rgba(203,0,0,0.8);
               overflow-wrap: break-word;
-              width: 100%;
               display: none;
+            }
+            #error-msg a{
+              color: mediumturquoise;
             }
           </style>
           <div id="title"> </div>
@@ -273,23 +276,16 @@ export class PlotlyGraph extends HTMLElement {
   // The user supplied configuration. Throw an exception and Lovelace will
   // render an error card.
   async setConfig(config: InputConfig) {
+    const was = this.config;
     this.config = config;
-    await this.plot({ should_fetch: false });
+    const is = this.config;
+    this.touchController.isEnabled = !is.disable_pinch_to_zoom;
+    if (is.hours_to_show !== was?.hours_to_show || is.offset !== was?.offset) {
+      this.exitBrowsingMode();
+    } else {
+      await this.plot({ should_fetch: false });
+    }
   }
-  // async _setConfig(config: InputConfig) {
-  //   config = JSON.parse(JSON.stringify(config));
-  //   this.config = config;
-  //   const newConfig = parseConfig(config);
-  //   const was = this.parsed_config;
-  //   this.parsed_config = newConfig;
-  //   const is = this.parsed_config;
-  //   this.touchController.isEnabled = !is.disable_pinch_to_zoom;
-  //   if (is.hours_to_show !== was?.hours_to_show || is.offset !== was?.offset) {
-  //     this.exitBrowsingMode();
-  //   } else {
-  //     await this.fetch();
-  //   }
-  // }
   getCSSVars() {
     const styles = window.getComputedStyle(this.contentEl);
     let haTheme = {
@@ -336,7 +332,7 @@ export class PlotlyGraph extends HTMLElement {
     this.errorMsgEl.style.display = errors.length ? "block" : "none";
     this.errorMsgEl.innerHTML = errors
       .map((e) => "<span>" + (e || "See devtools console") + "</span>")
-      .join("\n");
+      .join("\n<br />\n");
     this.parsed_config = parsed;
     console.log("fetched", this.parsed_config);
 
