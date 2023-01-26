@@ -15,7 +15,7 @@ export const defaultEntity = {
     },
   },
   internal: false,
-  offset: "0s",
+  time_offset: "0s",
   // extend_to_present: true unless using statistics. Defined inside parse-config.ts to avoid forward depndency
   unit_of_measurement: ({ meta }) => meta.unit_of_measurement || "",
   name: ({ meta, getFromConfig }) => {
@@ -44,7 +44,7 @@ export const defaultYaml = {
   hours_to_show: 1,
   refresh_interval: "auto",
   color_scheme: "category10",
-  offset: "0s",
+  time_offset: "0s",
   no_theme: false,
   no_default_layout: false,
   disable_pinch_to_zoom: false,

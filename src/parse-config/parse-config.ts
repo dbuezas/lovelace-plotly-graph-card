@@ -11,10 +11,11 @@ import filters from "../filters/filters";
 import bounds from "binary-search-bounds";
 import { has } from "lodash";
 import { StatisticValue } from "../recorder-types";
-import { HassEntity, YValue } from "../types";
+import { Config, HassEntity, YValue } from "../types";
 
 class ConfigParser {
   private partiallyParsedConfig?: any;
+  private errors?: Error[];
   private inputConfig?: any;
   private hass?: HomeAssistant;
   cache = new Cache();
@@ -25,8 +26,11 @@ class ConfigParser {
     raw_config: any;
     hass: HomeAssistant;
     cssVars: HATheme;
-  }) {
+  }): Promise<{ errors: Error[]; parsed: Config }> {
     if (this.busy) throw new Error("ParseConfig was updated while busy");
+    this.partiallyParsedConfig = {};
+    this.errors = [];
+
     this.busy = true;
     try {
       this.hass = input.hass;
@@ -69,15 +73,19 @@ class ConfigParser {
         hass: input.hass,
         getFromConfig: () => "",
       };
-      this.partiallyParsedConfig = {};
       this.inputConfig = config;
       for (const [key, value] of Object.entries(config)) {
-        await this.evalNode({
-          parent: this.partiallyParsedConfig,
-          path: key,
-          key: key,
-          value,
-        });
+        try {
+          await this.evalNode({
+            parent: this.partiallyParsedConfig,
+            path: key,
+            key: key,
+            value,
+          });
+        } catch (e) {
+          console.warn(`Plotly Graph Card: Error parsing [${key}]`, e);
+          this.errors?.push(e as Error);
+        }
       }
 
       // 3rd pass: decorate
@@ -112,7 +120,7 @@ class ConfigParser {
         this.partiallyParsedConfig.layout
       );
 
-      return this.partiallyParsedConfig;
+      return { errors: this.errors, parsed: this.partiallyParsedConfig };
     } finally {
       this.busy = false;
     }
@@ -128,7 +136,6 @@ class ConfigParser {
     key: string;
     value: any;
   }) {
-    errorIfDeprecated(path);
     if (path.match(/^defaults$/)) return;
     this.fnParam.path = path;
     this.fnParam.getFromConfig = (pathQuery: string) =>
@@ -137,7 +144,7 @@ class ConfigParser {
     if (
       path.match(/^entities\.\d+\./) && //isInsideEntity
       !path.match(
-        /^entities\.\d+\.(entity|attribute|offset|statistic|period)/
+        /^entities\.\d+\.(entity|attribute|time_offset|statistic|period)/
       ) && //isInsideFetchParamNode
       !this.fnParam.xs && // alreadyFetchedData
       (is$fn(value) || path.match(/^entities\.\d+\.filters\.\d+$/)) // if function of filter
@@ -147,6 +154,8 @@ class ConfigParser {
     if (typeof value === "string" && value.startsWith("$fn")) {
       value = myEval(value.slice(3));
     }
+    const error = getDeprecationError(path, value);
+    if (error) this.errors?.push(error);
 
     if (typeof value === "function") {
       /**
@@ -160,12 +169,18 @@ class ConfigParser {
       const me = Array.isArray(value) ? [] : {};
       parent[key] = me;
       for (const [childKey, childValue] of Object.entries(value)) {
-        await this.evalNode({
-          parent: me,
-          path: `${path}.${childKey}`,
-          key: childKey,
-          value: childValue,
-        });
+        const childPath = `${path}.${childKey}`;
+        try {
+          await this.evalNode({
+            parent: me,
+            path: childPath,
+            key: childKey,
+            value: childValue,
+          });
+        } catch (e: any) {
+          console.warn(`Plotly Graph Card: Error parsing [${childPath}]`, e);
+          this.errors?.push(new Error(`at [${childPath}]: ${e?.message || e}`));
+        }
       }
     } else {
       parent[key] = value;
@@ -238,7 +253,7 @@ class ConfigParser {
     if (!visible_range) {
       const hours_to_show = this.fnParam.getFromConfig("hours_to_show");
       const global_offset = parseTimeDuration(
-        this.fnParam.getFromConfig("offset")
+        this.fnParam.getFromConfig("time_offset")
       );
       const ms = hours_to_show * 60 * 60 * 1000;
       visible_range = [
@@ -262,7 +277,7 @@ class ConfigParser {
       ...(statisticsParams ? statisticsParams : attribute ? { attribute } : {}),
     };
     const offset = parseTimeDuration(
-      this.fnParam.getFromConfig(path + ".offset")
+      this.fnParam.getFromConfig(path + ".time_offset")
     );
 
     const range_to_fetch = [
@@ -402,17 +417,28 @@ type FnParam = {
   meta?: HassEntity["attributes"];
 };
 
-function errorIfDeprecated(path: string) {
-  if (path.match(/^entity\.\d+\.lambda$/))
-    throw new Error("Lambdas were removed, use filters instead");
+function getDeprecationError(path: string, value: any) {
+  const e = _getDeprecationError(path, value);
+  if (e) return new Error(`at [${path}]: ${e}`);
+  return null;
+}
+function _getDeprecationError(path: string, value: any) {
+  if (path.match(/^offset$/)) return "renamed to time_offset in v3.0.0";
+  if (path.match(/^entities\.\d+\.offset$/)) {
+    try {
+      parseTimeDuration(value);
+      return 'renamed to time_offset in v3.0.0 to avoid conflicts with <a href="https://plotly.com/javascript/reference/bar/#bar-offset">bar-offsets</a>';
+    } catch (e) {
+      // bar-offsets are numbers without time unit
+    }
+  }
+  if (path.match(/^entities\.\d+\.lambda$/))
+    return "removed in v3.0.0, use filters instead";
   if (path.match(/^significant_changes_only$/))
-    throw new Error(
-      "significant_changes_only was removed, it is now always set to false"
-    );
+    return "removed in v3.0.0, it is now always set to false";
   if (path.match(/^minimal_response$/))
-    throw new Error(
-      "minimal_response was removed, if you need attributes use the 'attribute' parameter instead."
-    );
+    return "removed in v3.0.0, if you need attributes use the 'attribute' parameter instead.";
+  return null;
 }
 export const getEntityIndex = (path: string) =>
   +path.match(/entities\.(\d+)/)![1];

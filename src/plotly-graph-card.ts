@@ -32,7 +32,7 @@ export class PlotlyGraph extends HTMLElement {
     data: (Plotly.PlotData & { entity: string })[];
     layout: Plotly.Layout;
   };
-  msgEl: HTMLElement;
+  errorMsgEl: HTMLElement;
   cardEl: HTMLElement;
   resetButtonEl: HTMLButtonElement;
   titleEl: HTMLElement;
@@ -94,21 +94,23 @@ export class PlotlyGraph extends HTMLElement {
               border: 0px;
               border-radius: 3px;
             }
-            #msg {
+            #error-msg {
               position: absolute;
-              color: red;
+              color: #ffffff;
               top: 0;
-              background: rgba(0, 0, 0, 0.4);
+              padding: 5px;
+              background: rgba(203,0,0,0.8);
               overflow-wrap: break-word;
               width: 100%;
+              display: none;
             }
           </style>
           <div id="title"> </div>
           <div id="plotly"> </div>
-          <span id="msg"> </span>
+          <span id="error-msg"> </span>
           <button id="reset" class="hidden">↻</button>
         </ha-card>`;
-    this.msgEl = shadow.querySelector("#msg")!;
+    this.errorMsgEl = shadow.querySelector("#error-msg")!;
     this.cardEl = shadow.querySelector("ha-card")!;
     this.contentEl = shadow.querySelector("div#plotly")!;
     this.resetButtonEl = shadow.querySelector("button#reset")!;
@@ -271,22 +273,8 @@ export class PlotlyGraph extends HTMLElement {
   // The user supplied configuration. Throw an exception and Lovelace will
   // render an error card.
   async setConfig(config: InputConfig) {
-    try {
-      this.msgEl.innerText = "";
-      this.config = config;
-      await this.plot({ should_fetch: false });
-    } catch (e: any) {
-      console.error(e);
-      clearTimeout(this.handles.refreshTimeout!);
-      if (typeof e.message === "string") {
-        this.msgEl.innerText = e.message;
-      } else {
-        this.msgEl.innerText = JSON.stringify(e.message || "").replace(
-          /\\"/g,
-          '"'
-        );
-      }
-    }
+    this.config = config;
+    await this.plot({ should_fetch: false });
   }
   // async _setConfig(config: InputConfig) {
   //   config = JSON.parse(JSON.stringify(config));
@@ -340,12 +328,17 @@ export class PlotlyGraph extends HTMLElement {
       this.isBrowsing ? { visible_range: this.getVisibleRange() } : {},
       this.config
     );
-    this.parsed_config = await this.configParser.update({
+    const { errors, parsed } = await this.configParser.update({
       raw_config,
       hass: this.hass,
       cssVars: this.getCSSVars(),
     });
-    // console.log("fetched", this.parsed_config);
+    this.errorMsgEl.style.display = errors.length ? "block" : "none";
+    this.errorMsgEl.innerHTML = errors
+      .map((e) => "<span>" + (e || "See devtools console") + "</span>")
+      .join("\n");
+    this.parsed_config = parsed;
+    console.log("fetched", this.parsed_config);
 
     const { entities, layout, config, refresh_interval } = this.parsed_config;
     clearTimeout(this.handles.refreshTimeout!);
