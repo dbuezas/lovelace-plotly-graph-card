@@ -1,6 +1,8 @@
 import Cache from "../cache/Cache";
 import getThemedLayout, { defaultLayout, HATheme } from "./themed-layout";
 
+import propose from "propose";
+
 import merge from "lodash/merge";
 import get from "lodash/get";
 import {
@@ -371,7 +373,10 @@ class ConfigParser {
     const filter = filters[filterName];
     if (!filter) {
       throw new Error(
-        `Filter '${filterName} must be [${Object.keys(filters)}]`
+        `Filter '${filterName}' doesn't exist. Did you mean <b>${propose(
+          filterName,
+          Object.keys(filters)
+        )}<b>?`
       );
     }
     const filterfn = config === null ? filter() : filter(config);

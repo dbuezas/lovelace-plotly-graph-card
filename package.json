@@ -31,6 +31,7 @@
     "deepmerge": "^4.2.2",
     "lodash": "^4.17.21",
     "plotly.js": "^2.14.0",
+    "propose": "^0.0.5",
     "simple-statistics": "^7.8.0"
   }
 }
