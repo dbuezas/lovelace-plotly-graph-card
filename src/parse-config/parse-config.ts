@@ -1,9 +1,14 @@
 import Cache from "../cache/Cache";
-import getThemedLayout, { HATheme } from "./themed-layout";
+import getThemedLayout, { defaultLayout, HATheme } from "./themed-layout";
 
 import merge from "lodash/merge";
 import get from "lodash/get";
-import { defaultEntity, defaultYaml } from "./defaults";
+import {
+  defaultEntityRequired,
+  defaultEntityOptional,
+  defaultYamlRequired,
+  defaultYamlOptional,
+} from "./defaults";
 import { parseTimeDuration } from "../duration/duration";
 import { parseStatistics } from "./parse-statistics";
 import { HomeAssistant } from "custom-card-helpers";
@@ -38,7 +43,13 @@ class ConfigParser {
       let config = JSON.parse(JSON.stringify(input.raw_config));
 
       // 1st pass: add defaults
-      config = merge({}, config, defaultYaml, config);
+      config = merge(
+        {},
+        config,
+        defaultYamlRequired,
+        config.raw_plotly_config ? {} : defaultYamlOptional,
+        config
+      );
       for (let i = 1; i < 31; i++) {
         const yaxis = "yaxis" + (i == 1 ? "" : i);
         config.layout[yaxis] = merge(
@@ -59,7 +70,8 @@ class ConfigParser {
         entity = merge(
           {},
           entity,
-          defaultEntity,
+          defaultEntityRequired,
+          config.raw_plotly_config ? {} : defaultEntityOptional,
           config.defaults?.entity,
           entity
         );
@@ -97,26 +109,27 @@ class ConfigParser {
       const yAxisTitles = Object.fromEntries(
         this.partiallyParsedConfig.entities.map(
           ({ unit_of_measurement, yaxis }) => [
-            "yaxis" + yaxis.slice(1),
+            "yaxis" + yaxis?.slice(1),
             { title: unit_of_measurement },
           ]
         )
       );
       merge(
         this.partiallyParsedConfig.layout,
-        getThemedLayout(
-          input.cssVars,
-          this.partiallyParsedConfig.no_theme,
-          this.partiallyParsedConfig.no_default_layout
-        ),
-        {
-          xaxis: {
-            range: this.partiallyParsedConfig.visible_range,
-          },
-          //changing the uirevision triggers a reset to the axes
-          uirevision: isBrowsing ? old_uirevision : Math.random(),
-        },
-        this.partiallyParsedConfig.no_default_layout ? {} : yAxisTitles,
+        this.partiallyParsedConfig.raw_plotly_config ? {} : defaultLayout,
+        this.partiallyParsedConfig.ha_theme
+          ? getThemedLayout(input.cssVars)
+          : {},
+        this.partiallyParsedConfig.raw_plotly_config
+          ? {}
+          : {
+              xaxis: {
+                range: this.partiallyParsedConfig.visible_range,
+              },
+              //changing the uirevision triggers a reset to the axes
+              uirevision: isBrowsing ? old_uirevision : Math.random(),
+            },
+        this.partiallyParsedConfig.raw_plotly_config ? {} : yAxisTitles,
         this.partiallyParsedConfig.layout
       );
 
@@ -196,15 +209,17 @@ class ConfigParser {
         await this.fetchDataForEntity(path);
       }
       const me = parent[key];
-      if (!me.x) me.x = this.fnParam.xs;
-      if (!me.y) me.y = this.fnParam.ys;
-      if (me.x.length === 0 && me.y.length === 0) {
-        /*
+      if (!this.fnParam.getFromConfig("raw_plotly_config")) {
+        if (!me.x) me.x = this.fnParam.xs;
+        if (!me.y) me.y = this.fnParam.ys;
+        if (me.x.length === 0 && me.y.length === 0) {
+          /*
         Traces with no data are removed from the legend by plotly. 
         Setting them to have null element prevents that.
         */
-        me.x = [new Date()];
-        me.y = [null];
+          me.x = [new Date()];
+          me.y = [null];
+        }
       }
 
       delete this.fnParam.xs;
@@ -423,6 +438,10 @@ function getDeprecationError(path: string, value: any) {
   return null;
 }
 function _getDeprecationError(path: string, value: any) {
+  if (path.match(/^no_theme$/))
+    return "renamed to ha_theme (inverted logic) in v3.0.0";
+  if (path.match(/^no_default_layout$/))
+    return "replaced with more general raw_plotly_config in v3.0.0";
   if (path.match(/^offset$/)) return "renamed to time_offset in v3.0.0";
   if (path.match(/^entities\.\d+\.offset$/)) {
     try {

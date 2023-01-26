@@ -18,7 +18,7 @@ const defaultExtraYAxes: Partial<Plotly.LayoutAxis> = {
   layer: "below traces",
 };
 
-const defaultLayout: Partial<Plotly.Layout> = {
+export const defaultLayout: Partial<Plotly.Layout> = {
   height: 285,
   dragmode: "pan",
   xaxis: {
@@ -96,11 +96,9 @@ const themeAxisStyle = {
 };
 
 export default function getThemedLayout(
-  haTheme: HATheme,
-  no_theme?: boolean,
-  no_default_layout?: boolean
+  haTheme: HATheme
 ): Partial<Plotly.Layout> {
-  const theme = {
+  return {
     paper_bgcolor: haTheme["--card-background-color"],
     plot_bgcolor: haTheme["--card-background-color"],
     font: {
@@ -117,6 +115,7 @@ export default function getThemedLayout(
     yaxis7: { ...themeAxisStyle },
     yaxis8: { ...themeAxisStyle },
     yaxis9: { ...themeAxisStyle },
+    // @ts-expect-error (the types are missing yaxes > 9)
     yaxis10: { ...themeAxisStyle },
     yaxis11: { ...themeAxisStyle },
     yaxis12: { ...themeAxisStyle },
@@ -139,6 +138,4 @@ export default function getThemedLayout(
     yaxis29: { ...themeAxisStyle },
     yaxis30: { ...themeAxisStyle },
   };
-
-  return merge(no_theme ? {} : theme, no_default_layout ? {} : defaultLayout);
 }

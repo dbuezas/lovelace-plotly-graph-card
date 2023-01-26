@@ -732,7 +732,7 @@ entities:
     type: histogram
 title: Temperature Histogram last 10 days
 hours_to_show: 240
-no_default_layout: true
+raw_plotly_config: true
 layout:
   margin:
     t: 0
@@ -789,24 +789,30 @@ defaults:
 To define layout aspects, like margins, title, axes names, ...
 Anything from https://plotly.com/javascript/reference/layout/.
 
-### disable default layout:
+### Home Assistant theming:
 
-Use this if you want to use plotly default layout instead. Very useful for heavy customization while following pure plotly examples.
+Disables Home Assistant theme colors
 
 ```yaml
 type: custom:plotly-graph
 entities:
   - entity: sensor.temperature_in_celsius
-no_default_layout: true
+ha_theme: false #defaults to true unless raw_plotly_config is true
 ```
 
-### disable Home Assistant themes:
+### Raw plotly config:
+
+Disables all in-built defaults for layout and entitites. Useful when using histograms, 3d plots, etc.
+The `x` and `y` properties of the traces won't be automatically filled with entity data, you need to use $fn for that.
+It will also change the default of `ha_theme` to false (you can set it to true manually)
 
 ```yaml
 type: custom:plotly-graph
 entities:
   - entity: sensor.temperature_in_celsius
-no_theme: true
+    x: $fn ({xs}) => xs
+    y: $fn ({ys}) => ys
+raw_plotly_config: true # defaults to false
 ```
 
 ## config:

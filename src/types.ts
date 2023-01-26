@@ -45,8 +45,8 @@ export type InputConfig = {
   };
   layout?: Partial<Plotly.Layout>;
   config?: Partial<Plotly.Config>;
-  no_theme?: boolean;
-  no_default_layout?: boolean;
+  ha_theme?: boolean;
+  raw_plotly_config?: boolean;
   significant_changes_only?: boolean; // defaults to false
   minimal_response?: boolean; // defaults to true
   disable_pinch_to_zoom?: boolean; // defaults to false
@@ -81,8 +81,8 @@ export type Config = {
   entities: EntityConfig[];
   layout: Partial<Plotly.Layout>;
   config: Partial<Plotly.Config>;
-  no_theme: boolean;
-  no_default_layout: boolean;
+  ha_theme: boolean;
+  raw_plotly_config: boolean;
   significant_changes_only: boolean;
   minimal_response: boolean;
   disable_pinch_to_zoom: boolean;

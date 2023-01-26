@@ -1,11 +1,14 @@
 import { parseColorScheme } from "./parse-color-scheme";
 import { getEntityIndex } from "./parse-config";
 
-export const defaultEntity = {
+export const defaultEntityRequired = {
   entity: "",
-
-  mode: "lines",
   show_value: false,
+  internal: false,
+  time_offset: "0s",
+};
+export const defaultEntityOptional = {
+  mode: "lines",
   line: {
     width: 1,
     shape: "hv",
@@ -14,8 +17,6 @@ export const defaultEntity = {
       return color_scheme[getEntityIndex(path) % color_scheme.length];
     },
   },
-  internal: false,
-  time_offset: "0s",
   // extend_to_present: true unless using statistics. Defined inside parse-config.ts to avoid forward depndency
   unit_of_measurement: ({ meta }) => meta.unit_of_measurement || "",
   name: ({ meta, getFromConfig }) => {
@@ -39,19 +40,23 @@ export const defaultEntity = {
     return "y" + (yaxis_idx === 1 ? "" : yaxis_idx);
   },
 };
-export const defaultYaml = {
+
+export const defaultYamlRequired = {
   title: "",
   hours_to_show: 1,
   refresh_interval: "auto",
   color_scheme: "category10",
   time_offset: "0s",
-  no_theme: false,
-  no_default_layout: false,
+  raw_plotly_config: false,
+  ha_theme: ({ getFromConfig }) => !getFromConfig(".raw_plotly_config"),
   disable_pinch_to_zoom: false,
+  raw_plotly: false,
   defaults: {
     entity: {},
     yaxes: {},
   },
+};
+export const defaultYamlOptional = {
   config: {
     displaylogo: false,
     scrollZoom: true,
