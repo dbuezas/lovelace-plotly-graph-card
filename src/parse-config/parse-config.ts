@@ -3,7 +3,6 @@ import { HATheme } from "./themed-layout";
 
 import propose from "propose";
 
-import merge from "lodash/merge";
 import get from "lodash/get";
 import { addPreParsingDefaults, addPostParsingDefaults } from "./defaults";
 import { parseTimeDuration } from "../duration/duration";

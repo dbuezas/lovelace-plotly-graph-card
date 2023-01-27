@@ -1,9 +1,9 @@
 export type HATheme = {
-  "--card-background-color": string;
-  "--primary-background-color": string;
-  "--primary-color": string;
-  "--primary-text-color": string;
-  "--secondary-text-color": string;
+  "card-background-color": string;
+  "primary-background-color": string;
+  "primary-color": string;
+  "primary-text-color": string;
+  "secondary-text-color": string;
 };
 
 const defaultExtraYAxes: Partial<Plotly.LayoutAxis> = {
@@ -98,10 +98,10 @@ export default function getThemedLayout(
   haTheme: HATheme
 ): Partial<Plotly.Layout> {
   return {
-    paper_bgcolor: haTheme["--card-background-color"],
-    plot_bgcolor: haTheme["--card-background-color"],
+    paper_bgcolor: haTheme["card-background-color"],
+    plot_bgcolor: haTheme["card-background-color"],
     font: {
-      color: haTheme["--secondary-text-color"],
+      color: haTheme["secondary-text-color"],
       size: 11,
     },
     xaxis: { ...themeAxisStyle },

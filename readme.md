@@ -481,7 +481,7 @@ entities:
           # either statistics or states will be available, depending on if "statistics" are fetched or not
           # attributes will be available inside states only if an attribute is picked in the trace
           return {
-            ys: states.map(state => +state?.attributes?.current_temperature - state?.attributes?.target_temperature + hass.states.get("sensor.inside_temp")),
+            ys: states.map(state => +state?.attributes?.current_temperature - state?.attributes?.target_temperature + hass.states["sensor.temperature"].state,
             meta: { unit_of_measurement: "delta" }
           };
         },
@@ -688,6 +688,32 @@ entities:
 
 Javascript functions allowed everywhere in the yaml. Evaluation is top to bottom and shallow to deep (depth first traversal).
 
+The returned value will be used as value for the property where it is found. E.g:
+
+```js
+name: $fn ({ hass }) => hass.states["sensor.garden_temperature"].state
+```
+
+### Available parameters:
+
+Remember you can add a `console.log(the_object_you_want_to_inspect)` and see its content in the devTools console.
+
+#### Everywhere:
+
+- `getFromConfig: (path) => value;` Pass a path (e.g `entities.0.name`) and get back its value
+- `hass: HomeAssistant object;` For example: `hass.states["sensor.garden_temperature"].state` to get its current state
+- `vars: Record<string, any>;` You can communicate between functions with this. E.g `vars.temperatures = ys`
+- `path: string;` The path of the current function
+- `css_vars: HATheme;` The colors set by the active Home Assistant theme (see #ha_theme)
+
+#### Only iniside entities
+
+- `xs: Date[];` Array of timestamps
+- `ys: YValue[];` Array of values of the sensor/attribute/statistic
+- `statistics: StatisticValue[];` Array of statistics objects
+- `states: HassEntity[];` Array of state objects
+- `meta: HassEntity["attributes"];` The current attributes of the sensor
+
 #### Gotchas
 
 - The following entity attributes are required for fetching, so if another function needs the entity data it needs to be declared below them. `entity`,`attribute`,`offset`,`statistic`,`period`
@@ -791,7 +817,13 @@ Anything from https://plotly.com/javascript/reference/layout/.
 
 ### Home Assistant theming:
 
-Toggle Home Assistant theme colors
+Toggle Home Assistant theme colors:
+
+- card-background-color
+- primary-background-color
+- primary-color
+- primary-text-color
+- secondary-text-color
 
 ```yaml
 type: custom:plotly-graph

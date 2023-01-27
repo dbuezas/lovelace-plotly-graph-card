@@ -289,13 +289,13 @@ export class PlotlyGraph extends HTMLElement {
   getCSSVars() {
     const styles = window.getComputedStyle(this.contentEl);
     let haTheme = {
-      "--card-background-color": "red",
-      "--primary-background-color": "red",
-      "--primary-color": "red",
-      "--primary-text-color": "red",
-      "--secondary-text-color": "red",
+      "card-background-color": "red",
+      "primary-background-color": "red",
+      "primary-color": "red",
+      "primary-text-color": "red",
+      "secondary-text-color": "red",
     };
-    return mapValues(haTheme, (_, key) => styles.getPropertyValue(key));
+    return mapValues(haTheme, (_, key) => styles.getPropertyValue("--" + key));
   }
   fetchScheduled = false;
   plot = async (
