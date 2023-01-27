@@ -721,7 +721,6 @@ Remember you can add a `console.log(the_object_you_want_to_inspect)` and see its
 - Functions cannot return functions for performance reasons. (feature request if you need this)
 - Defaults are not applied to the subelements returned by a function. (feature request if you need this)
 - You can get other values from the yaml with the `getFromConfig` parameter, but if they are functions they need to be defined before.
-- If a function throws an exception, the complete plot won't be rendered. Make sure to use `if` statements or [Optional Chaining (?.)](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Optional_chaining) if the values you use may be undefined.
 
 #### Adding the last value to the entitiy's name
 
