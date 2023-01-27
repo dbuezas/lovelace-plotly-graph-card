@@ -119,13 +119,9 @@ export function addPreParsingDefaults(yaml: InputConfig): InputConfig {
 
 export function addPostParsingDefaults({
   yaml,
-  isBrowsing,
-  old_uirevision,
   css_vars,
 }: {
   yaml: Config;
-  isBrowsing: boolean;
-  old_uirevision: number;
   css_vars: HATheme;
 }): Config {
   // 3rd pass: decorate
@@ -150,8 +146,6 @@ export function addPostParsingDefaults({
           xaxis: {
             range: yaml.visible_range,
           },
-          //changing the uirevision triggers a reset to the axes
-          uirevision: isBrowsing ? old_uirevision : Math.random(),
         },
     yaml.raw_plotly_config ? {} : yAxisTitles,
     yaml.layout

@@ -226,7 +226,8 @@ export class PlotlyGraph extends HTMLElement {
   }
 
   getVisibleRange() {
-    return this.contentEl.layout.xaxis!.range!.map((date) => {
+    // TODO: if the x axis is not there, or is not time, don't fetch & replot
+    return this.contentEl.layout.xaxis?.range?.map((date) => {
       // if autoscale is used after scrolling, plotly returns the dates as timestamps (numbers) instead of iso strings
       if (Number.isFinite(date)) return date;
       if (date.startsWith("-")) {
@@ -309,19 +310,30 @@ export class PlotlyGraph extends HTMLElement {
     if (this.pausedRendering) return;
     const should_fetch = this.fetchScheduled;
     this.fetchScheduled = false;
+    let i = 0;
     while (!(this.config && this.hass && this.isConnected)) {
+      if (i++ > 10) throw new Error("Card didn't load");
       console.log("waiting for loading");
       await sleep(100);
     }
     const fetch_mask = this.contentEl.data.map(
       ({ visible }) => should_fetch && visible !== "legendonly"
     );
+    const uirevision = this.isBrowsing
+      ? this.contentEl.layout?.uirevision || 0
+      : Math.random();
     const yaml = merge(
       {},
       this.config,
-      { layout: this.size },
-      { fetch_mask },
+      {
+        layout: {
+          ...this.size,
+          ...{ uirevision },
+        },
+        fetch_mask,
+      },
       this.isBrowsing ? { visible_range: this.getVisibleRange() } : {},
+
       this.config
     );
     const { errors, parsed } = await this.configParser.update({

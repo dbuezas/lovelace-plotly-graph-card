@@ -46,9 +46,6 @@ class ConfigParser {
     this.errors = [];
     this.hass = hass;
     this.yaml_with_defaults = addPreParsingDefaults(input_yaml);
-    const isBrowsing = !!input_yaml.visible_range;
-    console.log("isBrowsing", isBrowsing);
-
     // 2nd pass: evaluate functions
 
     this.fnParam = {
@@ -74,8 +71,6 @@ class ConfigParser {
     //TODO: mutates
     this.yaml = addPostParsingDefaults({
       yaml: this.yaml,
-      isBrowsing,
-      old_uirevision,
       css_vars,
     });
 
