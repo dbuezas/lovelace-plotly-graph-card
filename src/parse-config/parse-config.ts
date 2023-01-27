@@ -45,7 +45,7 @@ class ConfigParser {
     this.yaml = {};
     this.errors = [];
     this.hass = hass;
-    this.yaml_with_defaults = addPreParsingDefaults(input_yaml);
+    this.yaml_with_defaults = addPreParsingDefaults(input_yaml, css_vars);
     // 2nd pass: evaluate functions
 
     this.fnParam = {
@@ -69,10 +69,7 @@ class ConfigParser {
       }
     }
     //TODO: mutates
-    this.yaml = addPostParsingDefaults({
-      yaml: this.yaml,
-      css_vars,
-    });
+    this.yaml = addPostParsingDefaults(this.yaml);
 
     return { errors: this.errors, parsed: this.yaml };
   }

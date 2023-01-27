@@ -2,7 +2,7 @@ import { merge } from "lodash";
 import { Config, InputConfig } from "../types";
 import { parseColorScheme } from "./parse-color-scheme";
 import { getEntityIndex } from "./parse-config";
-import getThemedLayout, { defaultLayout, HATheme } from "./themed-layout";
+import getThemedLayout, { HATheme } from "./themed-layout";
 
 const defaultEntityRequired = {
   entity: "",
@@ -59,15 +59,73 @@ const defaultYamlRequired = {
     yaxes: {},
   },
 };
-const defaultYamlOptional = {
+
+//
+
+const defaultExtraYAxes: Partial<Plotly.LayoutAxis> = {
+  // automargin: true, // it makes zooming very jumpy
+  side: "right",
+  overlaying: "y",
+  showgrid: false,
+  visible: false,
+  // This makes sure that the traces are rendered above the right y axis,
+  // including the marker and its text. Useful for show_value. See cliponaxis in entity
+  layer: "below traces",
+};
+
+const defaultYamlOptional: {
+  layout: Partial<Plotly.Layout>;
+  config: Partial<Plotly.Config>;
+} = {
   config: {
     displaylogo: false,
     scrollZoom: true,
     modeBarButtonsToRemove: ["resetScale2d", "toImage", "lasso2d", "select2d"],
   },
   layout: {
-    xaxis: { autorange: false },
+    height: 285,
+    dragmode: "pan",
+    xaxis: {
+      autorange: false,
+      type: "date",
+      // automargin: true, // it makes zooming very jumpy
+    },
+    yaxis: {
+      // automargin: true, // it makes zooming very jumpy
+    },
+    yaxis2: {
+      // automargin: true, // it makes zooming very jumpy
+      ...defaultExtraYAxes,
+      visible: true,
+    },
+    ...Object.fromEntries(
+      Array.from({ length: 27 }).map((_, i) => [
+        `yaxis${i + 3}`,
+        { ...defaultExtraYAxes },
+      ])
+    ),
+    legend: {
+      orientation: "h",
+      bgcolor: "transparent",
+      x: 0,
+      y: 1,
+      yanchor: "bottom",
+    },
+    title: {
+      y: 1,
+      pad: {
+        t: 15,
+      },
+    },
+    modebar: {
+      // vertical so it doesn't occlude the legend
+      orientation: "v",
+    },
     margin: {
+      b: 50,
+      t: 0,
+      l: 60,
+      // @ts-expect-error functions are not a plotly thing, only this card
       r: ({ getFromConfig }) => {
         const entities = getFromConfig(`entities`);
         const usesRightAxis = entities.some(({ yaxis }) => yaxis === "y2");
@@ -78,11 +136,14 @@ const defaultYamlOptional = {
   },
 };
 
-export function addPreParsingDefaults(yaml: InputConfig): InputConfig {
+export function addPreParsingDefaults(
+  yaml: InputConfig,
+  css_vars: HATheme
+): InputConfig {
   const out = merge(
     {},
     yaml,
-    { layout: {} },
+    { layout: yaml.ha_theme ? getThemedLayout(css_vars) : {} },
     defaultYamlRequired,
     yaml.raw_plotly_config ? {} : defaultYamlOptional,
     yaml
@@ -117,14 +178,7 @@ export function addPreParsingDefaults(yaml: InputConfig): InputConfig {
   return out;
 }
 
-export function addPostParsingDefaults({
-  yaml,
-  css_vars,
-}: {
-  yaml: Config;
-  css_vars: HATheme;
-}): Config {
-  // 3rd pass: decorate
+export function addPostParsingDefaults(yaml: Config): Config {
   /**
    * These cannot be done via defaults because they are functions and
    * functions would be overwritten if the user sets a configuration on a parent
@@ -138,8 +192,6 @@ export function addPostParsingDefaults({
   const layout = merge(
     {},
     yaml.layout,
-    yaml.raw_plotly_config ? {} : defaultLayout,
-    yaml.ha_theme ? getThemedLayout(css_vars) : {},
     yaml.raw_plotly_config
       ? {}
       : {
