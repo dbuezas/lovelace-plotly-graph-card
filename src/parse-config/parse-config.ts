@@ -21,47 +21,53 @@ import { StatisticValue } from "../recorder-types";
 import { Config, HassEntity, YValue } from "../types";
 
 class ConfigParser {
-  private partiallyParsedConfig?: any;
+  private yaml?: any;
   private errors?: Error[];
-  private inputConfig?: any;
+  private yaml_with_defaults?: any;
   private hass?: HomeAssistant;
   cache = new Cache();
   private busy = false;
   private fnParam!: FnParam;
 
-  async update(input: {
-    raw_config: any;
-    hass: HomeAssistant;
-    cssVars: HATheme;
-  }): Promise<{ errors: Error[]; parsed: Config }> {
+  async update(input: { yaml: any; hass: HomeAssistant }) {
     if (this.busy) throw new Error("ParseConfig was updated while busy");
-    this.partiallyParsedConfig = {};
-    this.errors = [];
-
     this.busy = true;
     try {
-      this.hass = input.hass;
-      const old_uirevision = this.partiallyParsedConfig?.layout?.uirevision;
-      let config = JSON.parse(JSON.stringify(input.raw_config));
+      return this._update(input);
+    } finally {
+      this.busy = false;
+    }
+  }
+  private async _update(input: {
+    yaml: any;
+    hass: HomeAssistant;
+  }): Promise<{ errors: Error[]; parsed: Config }> {
+    this.yaml = {};
+    this.errors = [];
 
-      // 1st pass: add defaults
-      config = merge(
+    this.hass = input.hass;
+    const old_uirevision = this.yaml?.layout?.uirevision;
+    this.yaml_with_defaults = JSON.parse(JSON.stringify(input.yaml));
+
+    // 1st pass: add defaults
+    this.yaml_with_defaults = merge(
+      {},
+      this.yaml_with_defaults,
+      defaultYamlRequired,
+      this.yaml_with_defaults.raw_plotly_config ? {} : defaultYamlOptional,
+      this.yaml_with_defaults
+    );
+    for (let i = 1; i < 31; i++) {
+      const yaxis = "yaxis" + (i == 1 ? "" : i);
+      this.yaml_with_defaults.layout[yaxis] = merge(
         {},
-        config,
-        defaultYamlRequired,
-        config.raw_plotly_config ? {} : defaultYamlOptional,
-        config
+        this.yaml_with_defaults.layout[yaxis],
+        this.yaml_with_defaults.defaults?.yaxes,
+        this.yaml_with_defaults.layout[yaxis]
       );
-      for (let i = 1; i < 31; i++) {
-        const yaxis = "yaxis" + (i == 1 ? "" : i);
-        config.layout[yaxis] = merge(
-          {},
-          config.layout[yaxis],
-          config.defaults?.yaxes,
-          config.layout[yaxis]
-        );
-      }
-      config.entities = config.entities.map((entity) => {
+    }
+    this.yaml_with_defaults.entities = this.yaml_with_defaults.entities.map(
+      (entity) => {
         if (typeof entity === "string") entity = { entity };
         entity.entity ??= "";
         const [oldAPI_entity, oldAPI_attribute] = entity.entity.split("::");
@@ -73,72 +79,67 @@ class ConfigParser {
           {},
           entity,
           defaultEntityRequired,
-          config.raw_plotly_config ? {} : defaultEntityOptional,
-          config.defaults?.entity,
+          this.yaml_with_defaults.raw_plotly_config
+            ? {}
+            : defaultEntityOptional,
+          this.yaml_with_defaults.defaults?.entity,
           entity
         );
         return entity;
-      });
-
-      // 2nd pass: evaluate functions
-      this.fnParam = {
-        vars: {},
-        path: "",
-        hass: input.hass,
-        getFromConfig: () => "",
-      };
-      this.inputConfig = config;
-      for (const [key, value] of Object.entries(config)) {
-        try {
-          await this.evalNode({
-            parent: this.partiallyParsedConfig,
-            path: key,
-            key: key,
-            value,
-          });
-        } catch (e) {
-          console.warn(`Plotly Graph Card: Error parsing [${key}]`, e);
-          this.errors?.push(e as Error);
-        }
       }
+    );
 
-      // 3rd pass: decorate
-      /**
-       * These cannot be done via defaults because they are functions and
-       * functions would be overwritten if the user sets a configuration on a parent
-       *  */
-      const isBrowsing = !!input.raw_config.visible_range;
-      const yAxisTitles = Object.fromEntries(
-        this.partiallyParsedConfig.entities.map(
-          ({ unit_of_measurement, yaxis }) => [
-            "yaxis" + yaxis?.slice(1),
-            { title: unit_of_measurement },
-          ]
-        )
-      );
-      merge(
-        this.partiallyParsedConfig.layout,
-        this.partiallyParsedConfig.raw_plotly_config ? {} : defaultLayout,
-        this.partiallyParsedConfig.ha_theme
-          ? getThemedLayout(input.cssVars)
-          : {},
-        this.partiallyParsedConfig.raw_plotly_config
-          ? {}
-          : {
-              xaxis: {
-                range: this.partiallyParsedConfig.visible_range,
-              },
-              //changing the uirevision triggers a reset to the axes
-              uirevision: isBrowsing ? old_uirevision : Math.random(),
-            },
-        this.partiallyParsedConfig.raw_plotly_config ? {} : yAxisTitles,
-        this.partiallyParsedConfig.layout
-      );
-
-      return { errors: this.errors, parsed: this.partiallyParsedConfig };
-    } finally {
-      this.busy = false;
+    // 2nd pass: evaluate functions
+    this.fnParam = {
+      vars: {},
+      path: "",
+      hass: input.hass,
+      getFromConfig: () => "",
+    };
+    for (const [key, value] of Object.entries(this.yaml_with_defaults)) {
+      try {
+        await this.evalNode({
+          parent: this.yaml,
+          path: key,
+          key: key,
+          value,
+        });
+      } catch (e) {
+        console.warn(`Plotly Graph Card: Error parsing [${key}]`, e);
+        this.errors?.push(e as Error);
+      }
     }
+
+    // 3rd pass: decorate
+    /**
+     * These cannot be done via defaults because they are functions and
+     * functions would be overwritten if the user sets a configuration on a parent
+     *  */
+    const isBrowsing = !!input.yaml.visible_range;
+    const yAxisTitles = Object.fromEntries(
+      this.yaml.entities.map(({ unit_of_measurement, yaxis }) => [
+        "yaxis" + yaxis?.slice(1),
+        { title: unit_of_measurement },
+      ])
+    );
+    merge(
+      this.yaml.layout,
+      this.yaml.raw_plotly_config ? {} : defaultLayout,
+      this.yaml.ha_theme ? getThemedLayout(this.yaml.css_vars) : {},
+      this.yaml.raw_plotly_config
+        ? {}
+        : {
+            xaxis: {
+              range: this.yaml.visible_range,
+            },
+            //changing the uirevision triggers a reset to the axes
+            uirevision: isBrowsing ? old_uirevision : Math.random(),
+          },
+      this.yaml.raw_plotly_config ? {} : yAxisTitles,
+      this.yaml.layout
+    );
+
+    return { errors: this.errors, parsed: this.yaml };
   }
   private async evalNode({
     parent,
@@ -277,7 +278,7 @@ class ConfigParser {
         +new Date() - ms + global_offset,
         +new Date() + global_offset,
       ] as [number, number];
-      this.partiallyParsedConfig.visible_range = visible_range;
+      this.yaml.visible_range = visible_range;
     }
     this.observed_range[0] = Math.min(this.observed_range[0], visible_range[0]);
     this.observed_range[1] = Math.max(this.observed_range[1], visible_range[1]);
@@ -340,10 +341,9 @@ class ConfigParser {
         .slice(0, -1)
         .concat(path.slice(1).split("."))
         .join(".");
-    if (has(this.partiallyParsedConfig, path))
-      return get(this.partiallyParsedConfig, path);
+    if (has(this.yaml, path)) return get(this.yaml, path);
 
-    let value = this.inputConfig;
+    let value = this.yaml_with_defaults;
     for (const key of path.split(".")) {
       if (value === undefined) return undefined;
       value = value[key];

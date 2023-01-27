@@ -316,18 +316,18 @@ export class PlotlyGraph extends HTMLElement {
     const fetch_mask = this.contentEl.data.map(
       ({ visible }) => should_fetch && visible !== "legendonly"
     );
-    const raw_config = merge(
+    const yaml = merge(
       {},
       this.config,
+      { css_vars: this.getCSSVars() },
       { layout: this.size },
       { fetch_mask },
       this.isBrowsing ? { visible_range: this.getVisibleRange() } : {},
       this.config
     );
     const { errors, parsed } = await this.configParser.update({
-      raw_config,
+      yaml,
       hass: this.hass,
-      cssVars: this.getCSSVars(),
     });
     this.errorMsgEl.style.display = errors.length ? "block" : "none";
     this.errorMsgEl.innerHTML = errors
