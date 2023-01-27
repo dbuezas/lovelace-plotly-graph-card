@@ -319,7 +319,6 @@ export class PlotlyGraph extends HTMLElement {
     const yaml = merge(
       {},
       this.config,
-      { css_vars: this.getCSSVars() },
       { layout: this.size },
       { fetch_mask },
       this.isBrowsing ? { visible_range: this.getVisibleRange() } : {},
@@ -328,6 +327,7 @@ export class PlotlyGraph extends HTMLElement {
     const { errors, parsed } = await this.configParser.update({
       yaml,
       hass: this.hass,
+      css_vars: this.getCSSVars(),
     });
     this.errorMsgEl.style.display = errors.length ? "block" : "none";
     this.errorMsgEl.innerHTML = errors

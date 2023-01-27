@@ -791,20 +791,19 @@ Anything from https://plotly.com/javascript/reference/layout/.
 
 ### Home Assistant theming:
 
-Disables Home Assistant theme colors
+Toggle Home Assistant theme colors
 
 ```yaml
 type: custom:plotly-graph
 entities:
   - entity: sensor.temperature_in_celsius
-ha_theme: false #defaults to true unless raw_plotly_config is true
+ha_theme: false #defaults to true
 ```
 
 ### Raw plotly config:
 
-Disables all in-built defaults for layout and entitites. Useful when using histograms, 3d plots, etc.
-The `x` and `y` properties of the traces won't be automatically filled with entity data, you need to use $fn for that.
-It will also change the default of `ha_theme` to false (you can set it to true manually)
+Toggle all in-built defaults for layout and entitites. Useful when using histograms, 3d plots, etc.
+When true, the `x` and `y` properties of the traces won't be automatically filled with entity data, you need to use $fn for that.
 
 ```yaml
 type: custom:plotly-graph

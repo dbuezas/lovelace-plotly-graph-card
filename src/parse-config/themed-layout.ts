@@ -1,4 +1,3 @@
-import merge from "lodash/merge";
 export type HATheme = {
   "--card-background-color": string;
   "--primary-background-color": string;

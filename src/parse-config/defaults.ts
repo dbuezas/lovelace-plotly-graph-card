@@ -1,13 +1,16 @@
+import { merge } from "lodash";
+import { Config, InputConfig } from "../types";
 import { parseColorScheme } from "./parse-color-scheme";
 import { getEntityIndex } from "./parse-config";
+import getThemedLayout, { defaultLayout, HATheme } from "./themed-layout";
 
-export const defaultEntityRequired = {
+const defaultEntityRequired = {
   entity: "",
   show_value: false,
   internal: false,
   time_offset: "0s",
 };
-export const defaultEntityOptional = {
+const defaultEntityOptional = {
   mode: "lines",
   line: {
     width: 1,
@@ -41,14 +44,14 @@ export const defaultEntityOptional = {
   },
 };
 
-export const defaultYamlRequired = {
+const defaultYamlRequired = {
   title: "",
   hours_to_show: 1,
   refresh_interval: "auto",
   color_scheme: "category10",
   time_offset: "0s",
   raw_plotly_config: false,
-  ha_theme: ({ getFromConfig }) => !getFromConfig(".raw_plotly_config"),
+  ha_theme: true,
   disable_pinch_to_zoom: false,
   raw_plotly: false,
   defaults: {
@@ -56,7 +59,7 @@ export const defaultYamlRequired = {
     yaxes: {},
   },
 };
-export const defaultYamlOptional = {
+const defaultYamlOptional = {
   config: {
     displaylogo: false,
     scrollZoom: true,
@@ -74,3 +77,84 @@ export const defaultYamlOptional = {
     },
   },
 };
+
+export function addPreParsingDefaults(yaml: InputConfig): InputConfig {
+  const out = merge(
+    {},
+    yaml,
+    { layout: {} },
+    defaultYamlRequired,
+    yaml.raw_plotly_config ? {} : defaultYamlOptional,
+    yaml
+  );
+  for (let i = 1; i < 31; i++) {
+    const yaxis = "yaxis" + (i == 1 ? "" : i);
+    out.layout[yaxis] = merge(
+      {},
+      out.layout[yaxis],
+      out.defaults?.yaxes,
+      out.layout[yaxis]
+    );
+  }
+  out.entities = out.entities.map((entity) => {
+    if (typeof entity === "string") entity = { entity };
+    entity.entity ??= "";
+    const [oldAPI_entity, oldAPI_attribute] = entity.entity.split("::");
+    if (oldAPI_attribute) {
+      entity.entity = oldAPI_entity;
+      entity.attribute = oldAPI_attribute;
+    }
+    entity = merge(
+      {},
+      entity,
+      defaultEntityRequired,
+      out.raw_plotly_config ? {} : defaultEntityOptional,
+      out.defaults?.entity,
+      entity
+    );
+    return entity;
+  });
+  return out;
+}
+
+export function addPostParsingDefaults({
+  yaml,
+  isBrowsing,
+  old_uirevision,
+  css_vars,
+}: {
+  yaml: Config;
+  isBrowsing: boolean;
+  old_uirevision: number;
+  css_vars: HATheme;
+}): Config {
+  // 3rd pass: decorate
+  /**
+   * These cannot be done via defaults because they are functions and
+   * functions would be overwritten if the user sets a configuration on a parent
+   *  */
+  const yAxisTitles = Object.fromEntries(
+    yaml.entities.map(({ unit_of_measurement, yaxis }) => [
+      "yaxis" + yaxis?.slice(1),
+      { title: unit_of_measurement },
+    ])
+  );
+  const layout = merge(
+    {},
+    yaml.layout,
+    yaml.raw_plotly_config ? {} : defaultLayout,
+    yaml.ha_theme ? getThemedLayout(css_vars) : {},
+    yaml.raw_plotly_config
+      ? {}
+      : {
+          xaxis: {
+            range: yaml.visible_range,
+          },
+          //changing the uirevision triggers a reset to the axes
+          uirevision: isBrowsing ? old_uirevision : Math.random(),
+        },
+    yaml.raw_plotly_config ? {} : yAxisTitles,
+    yaml.layout
+  );
+  return merge({}, yaml, { layout }, yaml);
+}
