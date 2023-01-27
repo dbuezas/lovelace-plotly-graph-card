@@ -86,6 +86,7 @@ export type Config = {
   significant_changes_only: boolean;
   minimal_response: boolean;
   disable_pinch_to_zoom: boolean;
+  visible_range: [number, number];
 };
 export type EntityIdStateConfig = {
   entity: string;

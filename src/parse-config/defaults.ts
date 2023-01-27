@@ -139,7 +139,7 @@ const defaultYamlOptional: {
 export function addPreParsingDefaults(
   yaml: InputConfig,
   css_vars: HATheme
-): InputConfig {
+): Config {
   const out = merge(
     {},
     yaml,
@@ -178,10 +178,11 @@ export function addPreParsingDefaults(
   return out;
 }
 
-export function addPostParsingDefaults(yaml: Config): Config {
+export function addPostParsingDefaults(
+  yaml: Config & { visible_range: [number, number] }
+): Config {
   /**
-   * These cannot be done via defaults because they are functions and
-   * functions would be overwritten if the user sets a configuration on a parent
+   * These cannot be done via defaults because they depend on the entities already being fully evaluated and filtered
    *  */
   const yAxisTitles = Object.fromEntries(
     yaml.entities.map(({ unit_of_measurement, yaxis }) => [

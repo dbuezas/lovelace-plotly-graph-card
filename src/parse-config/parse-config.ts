@@ -12,18 +12,23 @@ import filters from "../filters/filters";
 import bounds from "binary-search-bounds";
 import { has } from "lodash";
 import { StatisticValue } from "../recorder-types";
-import { Config, HassEntity, InputConfig, YValue } from "../types";
+import { Config, EntityData, HassEntity, InputConfig, YValue } from "../types";
+import getDeprecationError from "./deprecations";
 
 class ConfigParser {
-  private yaml?: any;
+  private yaml: Partial<Config> = {};
   private errors?: Error[];
-  private yaml_with_defaults?: any;
+  private yaml_with_defaults?: Config;
   private hass?: HomeAssistant;
   cache = new Cache();
   private busy = false;
   private fnParam!: FnParam;
 
-  async update(input: { yaml: any; hass: HomeAssistant; css_vars: HATheme }) {
+  async update(input: {
+    yaml: InputConfig;
+    hass: HomeAssistant;
+    css_vars: HATheme;
+  }) {
     if (this.busy) throw new Error("ParseConfig was updated while busy");
     this.busy = true;
     try {
@@ -37,7 +42,7 @@ class ConfigParser {
     hass,
     css_vars,
   }: {
-    yaml: any;
+    yaml: InputConfig;
     hass: HomeAssistant;
     css_vars: HATheme;
   }): Promise<{ errors: Error[]; parsed: Config }> {
@@ -46,7 +51,6 @@ class ConfigParser {
     this.errors = [];
     this.hass = hass;
     this.yaml_with_defaults = addPreParsingDefaults(input_yaml, css_vars);
-    // 2nd pass: evaluate functions
 
     this.fnParam = {
       vars: {},
@@ -68,10 +72,9 @@ class ConfigParser {
         this.errors?.push(e as Error);
       }
     }
-    //TODO: mutates
-    this.yaml = addPostParsingDefaults(this.yaml);
+    this.yaml = addPostParsingDefaults(this.yaml as Config);
 
-    return { errors: this.errors, parsed: this.yaml };
+    return { errors: this.errors, parsed: this.yaml as Config };
   }
   private async evalNode({
     parent,
@@ -337,8 +340,8 @@ function is$fn(value) {
   );
 }
 
-function removeOutOfRange(data: any, range: [number, number]) {
-  const first = bounds.le(data.xs, range[0]);
+function removeOutOfRange(data: EntityData, range: [number, number]) {
+  const first = bounds.le(data.xs, new Date(range[0]));
   if (first > -1) {
     data.xs.splice(0, first);
     data.xs[0] = new Date(range[0]);
@@ -346,7 +349,7 @@ function removeOutOfRange(data: any, range: [number, number]) {
     data.states.splice(0, first);
     data.statistics.splice(0, first);
   }
-  const last = bounds.gt(data.xs, range[1]);
+  const last = bounds.gt(data.xs, new Date(range[1]));
   if (last > -1) {
     data.xs.splice(last);
     data.ys.splice(last);
@@ -369,34 +372,6 @@ type FnParam = {
   states?: HassEntity[];
   meta?: HassEntity["attributes"];
 };
-
-function getDeprecationError(path: string, value: any) {
-  const e = _getDeprecationError(path, value);
-  if (e) return new Error(`at [${path}]: ${e}`);
-  return null;
-}
-function _getDeprecationError(path: string, value: any) {
-  if (path.match(/^no_theme$/))
-    return "renamed to ha_theme (inverted logic) in v3.0.0";
-  if (path.match(/^no_default_layout$/))
-    return "replaced with more general raw_plotly_config in v3.0.0";
-  if (path.match(/^offset$/)) return "renamed to time_offset in v3.0.0";
-  if (path.match(/^entities\.\d+\.offset$/)) {
-    try {
-      parseTimeDuration(value);
-      return 'renamed to time_offset in v3.0.0 to avoid conflicts with <a href="https://plotly.com/javascript/reference/bar/#bar-offset">bar-offsets</a>';
-    } catch (e) {
-      // bar-offsets are numbers without time unit
-    }
-  }
-  if (path.match(/^entities\.\d+\.lambda$/))
-    return "removed in v3.0.0, use filters instead";
-  if (path.match(/^significant_changes_only$/))
-    return "removed in v3.0.0, it is now always set to false";
-  if (path.match(/^minimal_response$/))
-    return "removed in v3.0.0, if you need attributes use the 'attribute' parameter instead.";
-  return null;
-}
 export const getEntityIndex = (path: string) =>
   +path.match(/entities\.(\d+)/)![1];
 export { ConfigParser };
