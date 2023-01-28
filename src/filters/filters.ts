@@ -224,29 +224,38 @@ const filters = {
       };
     },
   map_y_numbers: (fnStr: string) => {
-    const fn = myEval(`(i, x, y, state, statistic, vars, hass) => ${fnStr}`);
-    return ({ xs, ys, states, statistics, vars, hass }) => ({
+    const fn = myEval(
+      `(i, x, y, state, statistic, xs, ys, states, statistics, meta, vars, hass) => ${fnStr}`
+    );
+    return ({ xs, ys, states, statistics, meta, vars, hass }) => ({
       xs,
-      ys: mapNumbers(ys, (y, i) =>
-        fn(i, xs[i], y, states[i], statistics[i], vars, hass)
+      ys: mapNumbers(ys, (_, i) =>
+        // prettier-ignore
+        fn(i, xs[i], ys[i], states[i], statistics[i], xs, ys, states, statistics, meta, vars, hass)
       ),
     });
   },
   map_y: (fnStr: string) => {
-    const fn = myEval(`(i, x, y, state, statistic, vars, hass) => ${fnStr}`);
-    return ({ xs, ys, states, statistics, vars, hass }) => ({
+    const fn = myEval(
+      `(i, x, y, state, statistic, xs, ys, states, statistics, meta, vars, hass) => ${fnStr}`
+    );
+    return ({ xs, ys, states, statistics, meta, vars, hass }) => ({
       xs,
       ys: ys.map((_, i) =>
-        fn(i, xs[i], ys[i], states[i], statistics[i], vars, hass)
+        // prettier-ignore
+        fn(i, xs[i], ys[i], states[i], statistics[i], xs, ys, states, statistics, meta, vars, hass)
       ),
     });
   },
   map_x: (fnStr: string) => {
-    const fn = myEval(`(i, x, y, state, statistic, vars, hass) => ${fnStr}`);
-    return ({ xs, ys, states, statistics, vars, hass }) => ({
+    const fn = myEval(
+      `(i, x, y, state, statistic, xs, ys, states, statistics, meta, vars, hass) => ${fnStr}`
+    );
+    return ({ xs, ys, states, statistics, meta, vars, hass }) => ({
       ys,
       xs: xs.map((_, i) =>
-        fn(i, xs[i], ys[i], states[i], statistics[i], vars, hass)
+        // prettier-ignore
+        fn(i, xs[i], ys[i], states[i], statistics[i], xs, ys, states, statistics, meta, vars, hass)
       ),
     });
   },
@@ -283,11 +292,12 @@ const filters = {
   fn: (fnStr: string) => myEval(fnStr),
   filter: (fnStr: string) => {
     const fn = myEval(
-      `(i, x, y, xs, ys, state, statistic, vars, hass) => ${fnStr}`
+      `(i, x, y, state, statistic, xs, ys, states, statistics, meta, vars, hass) => ${fnStr}`
     );
-    return ({ xs, ys, states, statistics, vars, hass }) => {
+    return ({ xs, ys, states, statistics, meta, vars, hass }) => {
       const mask = ys.map((_, i) =>
-        fn(i, xs[i], ys[i], xs, ys, states[i], statistics[i], vars, hass)
+        // prettier-ignore
+        fn(i, xs[i], ys[i], states[i], statistics[i], xs, ys, states, statistics, meta, vars, hass)
       );
       return {
         ys: ys.filter((_, i) => mask[i]),
