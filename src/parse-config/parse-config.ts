@@ -23,6 +23,10 @@ class ConfigParser {
   cache = new Cache();
   private busy = false;
   private fnParam!: FnParam;
+  private observed_range: [number, number] = [Date.now(), Date.now()];
+  public resetObservedRange() {
+    this.observed_range = [Date.now(), Date.now()];
+  }
 
   async update(input: {
     yaml: InputConfig;
@@ -46,7 +50,6 @@ class ConfigParser {
     hass: HomeAssistant;
     css_vars: HATheme;
   }): Promise<{ errors: Error[]; parsed: Config }> {
-    const old_uirevision = this.yaml?.layout?.uirevision;
     this.yaml = {};
     this.errors = [];
     this.hass = hass;
@@ -99,8 +102,10 @@ class ConfigParser {
         /^entities\.\d+\.(entity|attribute|time_offset|statistic|period)/
       ) && //isInsideFetchParamNode
       (is$fn(value) || path.match(/^entities\.\d+\.filters\.\d+$/)) // if function of filter
-    )
-      await this.fetchDataForEntity(path);
+    ) {
+      const entityPath = path.match(/^(entities\.\d+)\./)![1];
+      await this.fetchDataForEntity(entityPath);
+    }
 
     if (typeof value === "string" && value.startsWith("$fn")) {
       value = myEval(value.slice(3));
@@ -110,9 +115,8 @@ class ConfigParser {
 
     if (typeof value === "function") {
       /**
-       * Allowing functions that return functions makes it very slow
-       * This is mostly because of customdata, which returns an array as large as the cached data,
-       * and the fact that awaits are expensive.
+       * Allowing functions that return functions makes it very slow when large arrays are returned.
+       * This is because awaits are expensive.
        */
 
       parent[key] = value = value(this.fnParam);
@@ -201,7 +205,6 @@ class ConfigParser {
   }
 
   private async fetchDataForEntity(path: string) {
-    path = path.match(/^(entities\.\d+)\./)![1];
     let visible_range = this.fnParam.getFromConfig("visible_range");
     if (!visible_range) {
       const hours_to_show = this.fnParam.getFromConfig("hours_to_show");
@@ -252,6 +255,9 @@ class ConfigParser {
 
     removeOutOfRange(data, this.observed_range);
     if (extend_to_present && data.xs.length > 0) {
+      // Todo: should this be done after the entity was fully evaluated?
+      // this would make it also work if filters change the data.
+      // Would also need to be combined with yet another removeOutOfRange call.
       const last_i = data.xs.length - 1;
       const now = Math.min(this.observed_range[1], Date.now());
       data.xs.push(new Date(Math.min(this.observed_range[1], now + offset)));
@@ -265,10 +271,7 @@ class ConfigParser {
     this.fnParam.states = data.states;
     this.fnParam.meta = this.hass?.states[fetchConfig.entity]?.attributes || {};
   }
-  private observed_range: [number, number] = [Date.now(), Date.now()];
-  public resetObservedRange() {
-    this.observed_range = [Date.now(), Date.now()];
-  }
+
   private getEvaledPath(path: string, callingPath: string) {
     if (path.startsWith("."))
       path = callingPath
