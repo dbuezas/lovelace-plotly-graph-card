@@ -75,6 +75,17 @@ const filters = {
         meta: { ...meta, regression },
       };
     },
+  deduplicate_adjacent:
+    () =>
+    ({ xs, ys, states, statistics }) => {
+      const mask = ys.map((y, i) => y === ys[i - 1]);
+      return {
+        ys: ys.filter((_, i) => mask[i]),
+        xs: xs.filter((_, i) => mask[i]),
+        states: states.filter((_, i) => mask[i]),
+        statistics: statistics.filter((_, i) => mask[i]),
+      };
+    },
   delta:
     () =>
     ({ ys, meta }) => {
@@ -271,10 +282,12 @@ const filters = {
   */
   fn: (fnStr: string) => myEval(fnStr),
   filter: (fnStr: string) => {
-    const fn = myEval(`(i, x, y, state, statistic, vars, hass) => ${fnStr}`);
+    const fn = myEval(
+      `(i, x, y, xs, ys, state, statistic, vars, hass) => ${fnStr}`
+    );
     return ({ xs, ys, states, statistics, vars, hass }) => {
       const mask = ys.map((_, i) =>
-        fn(i, xs[i], ys[i], states[i], statistics[i], vars, hass)
+        fn(i, xs[i], ys[i], xs, ys, states[i], statistics[i], vars, hass)
       );
       return {
         ys: ys.filter((_, i) => mask[i]),

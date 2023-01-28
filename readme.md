@@ -452,6 +452,7 @@ entities:
       - 0.0 -> 0.0
       - 40.0 -> 45.0
       - 100.0 -> 102.5
+    - deduplicate_adjacent # removes all adjacent duplicate values. Useful for type: marker+text
     - delta # computes the delta between each two consecutive numeric y values.
     - derivate: h # computes rate of change per unit of time: h # ms (milisecond), s (second), m (minute), h (hour), d (day), w (week), M (month), y (year)
     - integrate: h # computes area under the curve per unit of time using Right hand riemann integration. Same units as the derivative
@@ -667,7 +668,7 @@ hours_to_show: 24
 
 ### `internal:`
 
-setting it to `true` will remove it from the plot, but the data will still be fetch. Useful when the data is only used by a filter in a different trace
+setting it to `true` will remove it from the plot, but the data will still be fetch. Useful when the data is only used by a filter in a different trace. Similar to plotly's `visibility: false`, except it internal traces won't use up new yaxes.
 
 ```yaml
 type: custom:plotly-graph
@@ -676,7 +677,7 @@ entities:
     internal: true
     period: 5minute
     filters:
-      - map_y: parseFloat(y) 
+      - map_y: parseFloat(y)
       - store_var: temp1
   - entity: sensor.temperature2
     period: 5minute
@@ -684,6 +685,7 @@ entities:
     filters:
       - map_y: parseFloat(y)
       - map_y: y + vars.temp1.ys[i]
+```
 
 ### Universal functions
 
