@@ -18,7 +18,7 @@ import getDeprecationError from "./deprecations";
 class ConfigParser {
   private yaml: Partial<Config> = {};
   private errors?: Error[];
-  private yaml_with_defaults?: Config;
+  private yaml_with_defaults?: InputConfig;
   private hass?: HomeAssistant;
   cache = new Cache();
   private busy = false;

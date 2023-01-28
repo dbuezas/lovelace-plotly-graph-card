@@ -58,6 +58,7 @@ const defaultYamlRequired = {
     entity: {},
     yaxes: {},
   },
+  layout: {},
 };
 
 //
@@ -137,27 +138,30 @@ const defaultYamlOptional: {
 };
 
 export function addPreParsingDefaults(
-  yaml: InputConfig,
+  yaml_in: InputConfig,
   css_vars: HATheme
-): Config {
-  const out = merge(
+): InputConfig {
+  let yaml = merge({}, yaml_in, defaultYamlRequired, yaml_in);
+  // merging in two steps to ensure ha_theme and raw_plotly_config took its default value
+  yaml = merge(
     {},
     yaml,
-    { layout: yaml.ha_theme ? getThemedLayout(css_vars) : {} },
-    defaultYamlRequired,
+    {
+      layout: yaml.ha_theme ? getThemedLayout(css_vars) : {},
+    },
     yaml.raw_plotly_config ? {} : defaultYamlOptional,
-    yaml
+    yaml_in
   );
   for (let i = 1; i < 31; i++) {
     const yaxis = "yaxis" + (i == 1 ? "" : i);
-    out.layout[yaxis] = merge(
+    yaml.layout[yaxis] = merge(
       {},
-      out.layout[yaxis],
-      out.defaults?.yaxes,
-      out.layout[yaxis]
+      yaml.layout[yaxis],
+      yaml.defaults.yaxes,
+      yaml.layout[yaxis]
     );
   }
-  out.entities = out.entities.map((entity) => {
+  yaml.entities = yaml.entities.map((entity) => {
     if (typeof entity === "string") entity = { entity };
     entity.entity ??= "";
     const [oldAPI_entity, oldAPI_attribute] = entity.entity.split("::");
@@ -169,13 +173,13 @@ export function addPreParsingDefaults(
       {},
       entity,
       defaultEntityRequired,
-      out.raw_plotly_config ? {} : defaultEntityOptional,
-      out.defaults?.entity,
+      yaml.raw_plotly_config ? {} : defaultEntityOptional,
+      yaml.defaults?.entity,
       entity
     );
     return entity;
   });
-  return out;
+  return yaml;
 }
 
 export function addPostParsingDefaults(
