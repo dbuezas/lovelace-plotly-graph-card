@@ -25,7 +25,6 @@ export default class FFTRegression extends BaseRegression {
     const sorted = Array.from(re.data)
       .map((x, i) => [x, i])
       .sort((a, b) => b[0] - a[0]);
-    console.log(`sorted`, sorted);
 
     for (let i = degree; i < sorted.length; i++) {
       re.set(sorted[i][1], 0);
