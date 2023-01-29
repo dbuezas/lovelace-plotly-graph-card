@@ -434,7 +434,7 @@ entities:
 
 ### `filters:`
 
-Filters are used to process the data before plotting it. Heavily inspired by [ESPHome's sensor filters](https://esphome.io/components/sensor/index.html#sensor-filters).
+Filters are used to process the data before plotting it. Inspired by [ESPHome's sensor filters](https://esphome.io/components/sensor/index.html#sensor-filters).
 Filters are applied in order.
 
 ```yaml
@@ -442,6 +442,8 @@ type: custom:plotly-graph
 entities:
   - entity: sensor.temperature_in_celsius
   filters:
+    - store_var: myVar # stores the datapoints inside `vars.myVar`
+    - load_var: myVar # sets the datapoint from `vars.myVar`
 
     # The filters below will only be applied to numeric values. Missing (unavailable) and non-numerics will be left untouched
     - add: 5 # adds 5 to each datapoint
@@ -452,28 +454,36 @@ entities:
       - 0.0 -> 0.0
       - 40.0 -> 45.0
       - 100.0 -> 102.5
+    - deduplicate_adjacent # removes all adjacent duplicate values. Useful for type: marker+text
     - delta # computes the delta between each two consecutive numeric y values.
     - derivate: h # computes rate of change per unit of time: h # ms (milisecond), s (second), m (minute), h (hour), d (day), w (week), M (month), y (year)
     - integrate: h # computes area under the curve per unit of time using Right hand riemann integration. Same units as the derivative
-    - map_y_numbers: Math.sqrt(y + 10*100) # map the y coordinate of each datapoint.
+    - map_y_numbers: Math.sqrt(y + 10*100) # map the y coordinate of each datapoint. Same available variables as for `map_y`
 
     # In the filters below, missing and non numeric datapoints will be discarded
-    - sliding_window_moving_average:
+    - sliding_window_moving_average: # best for smoothing
         # default parameters:
         window_size: 10
         extended: false # when true, smaller window sizes are used on the extremes.
         centered: true # compensate for averaging lag by offsetting the x axis by half a window_size
-    - median:
+    - exponential_moving_average: # good for smoothing
+        # default parameters:
+        alpha: 0.1 # between 0 an 1. The lower the alpha, the smoother the trace.
+    - median: # got to remove outliers
         # default parameters:
         window_size: 10
         extended: false
         centered: true
-    - exponential_moving_average:
-        # default parameters:
-        alpha: 0.1 # between 0 an 1. The lower the alpha, the smoother the trace.
-
+    - trendline # converts the data to a linear trendline // TODO: force line.shape = linear
+    - trendline: linear # defaults to no forecast, no formula, no error squared
+    - trendline:
+        type: polynomial # linear, polynomial, power, exponential, theil_sen, robust_polynomial, fft
+        forecast: 1d # continue trendline after present. Use global time_offset to show beyond present.
+        degree: 3 # only appliable to polynomial regression.
+        show_formula: true
+        show_r2: true
     # The filters below receive all datapoints as they come from home assistant. Y values are strings or null (unless previously mapped to numbers or any other type)
-    - map_y: 'y === "heat" ? 1 : 0' # map the y values of each datapoint. Variables `i` (index), `x`, `y`, `state`, `statistic`, `meta`, `vars` and `hass` are in scope. The outer quoutes are there because yaml doesn't like colons in strings without quoutes.
+    - map_y: 'y === "heat" ? 1 : 0' # map the y values of each datapoint. Variables `i` (index), `x`, `y`, `state`, `statistic`, `xs`, `ys`, `states`, `statistics`, `meta`, `vars` and `hass` are in scope. The outer quoutes are there because yaml doesn't like colons in strings without quoutes.
     - map_x: new Date(+x + 1000) # map the x coordinate (javascript date object) of each datapoint. Same variables as map_y are in scope
     - fn: |- # arbitrary function. Only the keys that are returned are replaced. Returning null or undefined, leaves the data unchanged (useful )
 
@@ -667,7 +677,7 @@ hours_to_show: 24
 
 ### `internal:`
 
-setting it to `true` will remove it from the plot, but the data will still be fetch. Useful when the data is only used by a filter in a different trace
+setting it to `true` will remove it from the plot, but the data will still be fetch. Useful when the data is only used by a filter in a different trace. Similar to plotly's `visibility: false`, except it internal traces won't use up new yaxes.
 
 ```yaml
 type: custom:plotly-graph

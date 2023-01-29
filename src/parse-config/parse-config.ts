@@ -314,7 +314,7 @@ class ConfigParser {
         `Filter '${filterName}' doesn't exist. Did you mean <b>${propose(
           filterName,
           Object.keys(filters)
-        )}<b>?`
+        )}<b>?\nOthers: ${Object.keys(filters)}`
       );
     }
     const filterfn = config === null ? filter() : filter(config);

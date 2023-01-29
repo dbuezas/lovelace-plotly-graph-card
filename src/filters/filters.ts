@@ -1,5 +1,5 @@
+import propose from "propose";
 import { HomeAssistant } from "custom-card-helpers";
-import { linearRegressionLine, linearRegression } from "simple-statistics";
 import {
   parseTimeDuration,
   TimeDurationStr,
@@ -7,6 +7,15 @@ import {
 } from "../duration/duration";
 import { StatisticValue } from "../recorder-types";
 import { HassEntity, YValue } from "../types";
+
+import BaseRegression from "ml-regression-base";
+import LinearRegression from "ml-regression-simple-linear";
+import PolynomialRegression from "ml-regression-polynomial";
+import PowerRegression from "ml-regression-power";
+import ExponentialRegression from "ml-regression-exponential";
+import TheilSenRegression from "ml-regression-theil-sen";
+import { RobustPolynomialRegression } from "ml-regression-robust-polynomial";
+import FFTRegression from "./fft-regression";
 
 const castFloat = (y: any) => parseFloat(y);
 const myEval = typeof window != "undefined" ? window.eval : global.eval;
@@ -68,11 +77,24 @@ const filters = {
     (mappingStr: `${number} -> ${number}`[]) =>
     ({ ys, meta }) => {
       const mapping = mappingStr.map((str) => str.split("->").map(parseFloat));
-      const regression = linearRegression(mapping);
-      const mapper = linearRegressionLine(regression);
+      const regression = new LinearRegression(
+        mapping.map(([x, _y]) => x),
+        mapping.map(([_x, y]) => y)
+      );
       return {
-        ys: mapNumbers(ys, mapper),
+        ys: regression.predict(ys.map(castFloat)),
         meta: { ...meta, regression },
+      };
+    },
+  deduplicate_adjacent:
+    () =>
+    ({ xs, ys, states, statistics }) => {
+      const mask = ys.map((y, i) => y !== ys[i - 1]);
+      return {
+        ys: ys.filter((_, i) => mask[i]),
+        xs: xs.filter((_, i) => mask[i]),
+        states: states.filter((_, i) => mask[i]),
+        statistics: statistics.filter((_, i) => mask[i]),
       };
     },
   delta:
@@ -101,6 +123,7 @@ const filters = {
         y: NaN,
       };
       checkTimeUnits(unit);
+      checkTimeUnits(unit);
       return {
         meta: {
           ...meta,
@@ -120,6 +143,7 @@ const filters = {
   integrate:
     (unit: keyof typeof timeUnits = "h") =>
     ({ xs, ys, meta }) => {
+      checkTimeUnits(unit);
       checkTimeUnits(unit);
       let yAcc = 0;
       let last = {
@@ -213,29 +237,38 @@ const filters = {
       };
     },
   map_y_numbers: (fnStr: string) => {
-    const fn = myEval(`(i, x, y, state, statistic, vars, hass) => ${fnStr}`);
-    return ({ xs, ys, states, statistics, vars, hass }) => ({
+    const fn = myEval(
+      `(i, x, y, state, statistic, xs, ys, states, statistics, meta, vars, hass) => ${fnStr}`
+    );
+    return ({ xs, ys, states, statistics, meta, vars, hass }) => ({
       xs,
-      ys: mapNumbers(ys, (y, i) =>
-        fn(i, xs[i], y, states[i], statistics[i], vars, hass)
+      ys: mapNumbers(ys, (_, i) =>
+        // prettier-ignore
+        fn(i, xs[i], ys[i], states[i], statistics[i], xs, ys, states, statistics, meta, vars, hass)
       ),
     });
   },
   map_y: (fnStr: string) => {
-    const fn = myEval(`(i, x, y, state, statistic, vars, hass) => ${fnStr}`);
-    return ({ xs, ys, states, statistics, vars, hass }) => ({
+    const fn = myEval(
+      `(i, x, y, state, statistic, xs, ys, states, statistics, meta, vars, hass) => ${fnStr}`
+    );
+    return ({ xs, ys, states, statistics, meta, vars, hass }) => ({
       xs,
       ys: ys.map((_, i) =>
-        fn(i, xs[i], ys[i], states[i], statistics[i], vars, hass)
+        // prettier-ignore
+        fn(i, xs[i], ys[i], states[i], statistics[i], xs, ys, states, statistics, meta, vars, hass)
       ),
     });
   },
   map_x: (fnStr: string) => {
-    const fn = myEval(`(i, x, y, state, statistic, vars, hass) => ${fnStr}`);
-    return ({ xs, ys, states, statistics, vars, hass }) => ({
+    const fn = myEval(
+      `(i, x, y, state, statistic, xs, ys, states, statistics, meta, vars, hass) => ${fnStr}`
+    );
+    return ({ xs, ys, states, statistics, meta, vars, hass }) => ({
       ys,
       xs: xs.map((_, i) =>
-        fn(i, xs[i], ys[i], states[i], statistics[i], vars, hass)
+        // prettier-ignore
+        fn(i, xs[i], ys[i], states[i], statistics[i], xs, ys, states, statistics, meta, vars, hass)
       ),
     });
   },
@@ -263,18 +296,91 @@ const filters = {
       }
       return data;
     },
+  load_var:
+    (var_name: string) =>
+    ({ vars }) =>
+      vars[var_name],
   store_var:
     (var_name: string) =>
-    ({ hass, vars, ...rest }) => ({ vars: { ...vars, [var_name]: rest } }),
-  /*
-    example: fn("({xs, ys, states, statistics }) => ({xs: ys})")
-  */
+    ({ vars, xs, ys, states, statistics, meta }) => ({
+      vars: { ...vars, [var_name]: { xs, ys, states, statistics, meta } },
+    }),
+  trendline: (p3: TrendlineType | Partial<TrendlineParam> = "linear") => {
+    let p2: Partial<TrendlineParam> = {};
+    if (typeof p3 == "string") {
+      p2 = { type: p3 };
+    } else p2 = { ...p3 };
+    p2.type ??= "linear";
+    p2.forecast ??= "0s";
+    p2.show_formula ??= false;
+    p2.show_r2 ??= false;
+    p2.degree ??= 2;
+    const p = p2 as TrendlineParam;
+    const forecast = parseTimeDuration(p.forecast);
+    return (data) => {
+      const { xs, ys, meta, ...rest } = force_numeric(data);
+      const t0 = +xs[0] - 0.1; // otherwise the power series doesn't work
+      const t1 = +xs[xs.length - 1];
+      const xs_numbers = xs.map((x) => +x - t0);
+      let RegressionClass = trendlineTypes[p.type];
+      if (!RegressionClass) {
+        throw new Error(
+          `Trendline '${p.type}' doesn't exist. Did you mean <b>${propose(
+            p.type,
+            Object.keys(trendlineTypes)
+          )}<b>?\nOthers: ${Object.keys(trendlineTypes)}`
+        );
+      }
+      const regression: BaseRegression = new RegressionClass(
+        xs_numbers,
+        ys,
+        p.degree
+      );
+      let extras: string[] = [];
+      if (p.show_r2)
+        extras.push(
+          `r²=${maxDecimals(regression.score(xs_numbers, ys).r2, 2)}`
+        );
+
+      if (forecast > 0) {
+        const N = Math.round(
+          (xs_numbers.length /
+            (xs_numbers[xs_numbers.length - 1] - xs_numbers[0])) *
+            forecast
+        );
+        xs_numbers.push(
+          ...Array.from({ length: N }).map(
+            (_, i) => t1 - t0 + (forecast / N) * i
+          )
+        );
+      }
+      const ys_out = regression.predict(xs_numbers);
+
+      if (p.show_formula) extras.push(regression.toString(2));
+      return {
+        ...rest,
+        xs: xs_numbers.map((x) => new Date(x + t0)),
+        ys: ys_out,
+        meta: {
+          ...meta,
+          friendly_name:
+            "Trend" + (extras.length ? ` (${extras.join(", ")})` : ""),
+        },
+      };
+    };
+  },
   fn: (fnStr: string) => myEval(fnStr),
+  /*
+      example: fn("({xs, ys, states, statistics }) => ({xs: ys})")
+    */
   filter: (fnStr: string) => {
-    const fn = myEval(`(i, x, y, state, statistic, vars, hass) => ${fnStr}`);
-    return ({ xs, ys, states, statistics, vars, hass }) => {
+    const fn = myEval(
+      `(i, x, y, state, statistic, xs, ys, states, statistics, meta, vars, hass) => ${fnStr}`
+    );
+    return ({ xs, ys, states, statistics, meta, vars, hass }) => {
       const mask = ys.map((_, i) =>
-        fn(i, xs[i], ys[i], states[i], statistics[i], vars, hass)
+        // prettier-ignore
+        fn(i, xs[i], ys[i], states[i], statistics[i], xs, ys, states, statistics, meta, vars, hass)
       );
       return {
         ys: ys.filter((_, i) => mask[i]),
@@ -292,4 +398,24 @@ function checkTimeUnits(unit: string) {
       `Unit '${unit}' is not valid, use ${Object.keys(timeUnits)}`
     );
   }
+}
+const trendlineTypes = {
+  linear: LinearRegression,
+  polynomial: PolynomialRegression,
+  power: PowerRegression,
+  exponential: ExponentialRegression,
+  theil_sen: TheilSenRegression,
+  robust_polynomial: RobustPolynomialRegression,
+  fft: FFTRegression,
+};
+type TrendlineType = keyof typeof trendlineTypes;
+type TrendlineParam = {
+  type: TrendlineType;
+  forecast: TimeDurationStr;
+  show_formula: boolean;
+  show_r2: boolean;
+  degree: number;
+};
+function maxDecimals(n: number, decimals: number) {
+  return Math.round(n * 10 ** decimals) / 10 ** decimals;
 }

@@ -26,12 +26,23 @@
   },
   "dependencies": {
     "binary-search-bounds": "^2.0.5",
+    "buffer": "^6.0.3",
     "custom-card-helpers": "^1.9.0",
     "date-fns": "^2.29.3",
     "deepmerge": "^4.2.2",
+    "fourier-transform": "^1.1.2",
     "lodash": "^4.17.21",
+    "ml-fft": "^1.3.5",
+    "ml-regression-exponential": "^2.1.0",
+    "ml-regression-logarithmic": "github:DoubleCorner/regression-logarithmic",
+    "ml-regression-polynomial": "^2.2.0",
+    "ml-regression-power": "^2.0.0",
+    "ml-regression-robust-polynomial": "^3.0.0",
+    "ml-regression-simple-linear": "^2.0.3",
+    "ml-regression-theil-sen": "^2.0.0",
+    "ndarray": "^1.0.19",
+    "ndarray-fft": "^1.0.3",
     "plotly.js": "^2.14.0",
-    "propose": "^0.0.5",
-    "simple-statistics": "^7.8.0"
+    "propose": "^0.0.5"
   }
 }
