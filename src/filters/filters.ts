@@ -100,6 +100,7 @@ const filters = {
         x: +xs[0],
         y: NaN,
       };
+      checkTimeUnits(unit);
       return {
         meta: {
           ...meta,
@@ -119,6 +120,7 @@ const filters = {
   integrate:
     (unit: keyof typeof timeUnits = "h") =>
     ({ xs, ys, meta }) => {
+      checkTimeUnits(unit);
       let yAcc = 0;
       let last = {
         x: NaN,
@@ -284,3 +286,10 @@ const filters = {
   },
 } satisfies Record<string, (...args: any[]) => FilterFn>;
 export default filters;
+function checkTimeUnits(unit: string) {
+  if (!timeUnits[unit]) {
+    throw new Error(
+      `Unit '${unit}' is not valid, use ${Object.keys(timeUnits)}`
+    );
+  }
+}

@@ -17,6 +17,7 @@ export type TimeDurationStr = `${number}${TimeUnit}` | `0`;
  * @returns duration in milliseconds
  */
 export const parseTimeDuration = (str: TimeDurationStr | undefined): number => {
+  if (str === "0") return 0;
   if (!str || !str.match)
     throw new Error(`Cannot parse "${str}" as a duration`);
   const match = str.match(

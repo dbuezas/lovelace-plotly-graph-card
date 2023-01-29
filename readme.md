@@ -4,20 +4,20 @@
 # Plotly Graph Card
 
 <img src="https://user-images.githubusercontent.com/777196/202489269-184d2f30-e834-4bea-8104-5aedb7d6f2d0.gif" width="300" align="left">
-<img src="https://user-images.githubusercontent.com/777196/202489368-234c7fbd-b33d-4fd0-8885-80f9e704a191.gif" width="300" align="right">
+<img src="https://user-images.githubusercontent.com/777196/215353175-97118ea7-778b-41b7-96f2-7e52c1c396d3.gif" width="300" align="right" >
 
 <br clear="both"/>
 <br clear="both"/>
 
 <img src="https://user-images.githubusercontent.com/777196/148675247-6e838783-a02a-453c-96b5-8ce86094ece2.gif" width="300" align="left" >
-<img src="https://user-images.githubusercontent.com/37914650/148646429-34f32f23-20b8-4171-87d3-ca69d8ab34b1.JPG" width="300" align="right">
+<img width="300" alt="image" src="https://user-images.githubusercontent.com/777196/215352580-b2122f49-d37a-452f-9b59-e205bcfb76a1.png" align="right" >
 
 <br clear="both"/>
 <br clear="both"/>
 
-<img src="https://user-images.githubusercontent.com/777196/198649220-14af3cf2-8948-4174-8138-b669dce5319e.png" width="300" align="left" >
+<img width="300" alt="image" src="https://user-images.githubusercontent.com/777196/215352591-4eeec752-6abf-40cf-8214-a38c03d64b43.png" align="left" >
 
-<img src="https://user-images.githubusercontent.com/52346449/142386216-dfc22660-b053-495d-906f-0ebccbdf985f.png" width="300" align="right" >
+<img src="https://user-images.githubusercontent.com/777196/198649220-14af3cf2-8948-4174-8138-b669dce5319e.png" width="300" align="right" >
 
 <br clear="both"/>
 
@@ -400,8 +400,6 @@ type: custom:plotly-graph
 entities:
   - entity: sensor.temperature_in_celsius
     name: living temperature in Farenheit # Overrides the entity name
-    lambda: |- # Transforms the data
-      (ys) => ys.map(y => (y × 9/5) + 32)
     unit_of_measurement: °F # Overrides the unit
     show_value: true # shows the last value as text
     texttemplate: >- # custom format for show_value
@@ -483,7 +481,7 @@ entities:
           # either statistics or states will be available, depending on if "statistics" are fetched or not
           # attributes will be available inside states only if an attribute is picked in the trace
           return {
-            ys: states.map(state => +state?.attributes?.current_temperature - state?.attributes?.target_temperature + hass.states.get("sensor.inside_temp")),
+            ys: states.map(state => +state?.attributes?.current_temperature - state?.attributes?.target_temperature + hass.states["sensor.temperature"].state,
             meta: { unit_of_measurement: "delta" }
           };
         },
@@ -678,7 +676,7 @@ entities:
     internal: true
     period: 5minute
     filters:
-      - map_y: parseFloat(y) 
+      - map_y: parseFloat(y)
       - store_var: temp1
   - entity: sensor.temperature2
     period: 5minute
@@ -686,11 +684,114 @@ entities:
     filters:
       - map_y: parseFloat(y)
       - map_y: y + vars.temp1.ys[i]
+```
 
-### `lambda:` transforms (deprecated)
+### Universal functions
 
-Deprecated. Use filters instead.
-Your old lambdas should still work for now but this API will be removed in March 2023.
+Javascript functions allowed everywhere in the yaml. Evaluation is top to bottom and shallow to deep (depth first traversal).
+
+The returned value will be used as value for the property where it is found. E.g:
+
+```js
+name: $fn ({ hass }) => hass.states["sensor.garden_temperature"].state
+```
+
+### Available parameters:
+
+Remember you can add a `console.log(the_object_you_want_to_inspect)` and see its content in the devTools console.
+
+#### Everywhere:
+
+- `getFromConfig: (path) => value;` Pass a path (e.g `entities.0.name`) and get back its value
+- `hass: HomeAssistant object;` For example: `hass.states["sensor.garden_temperature"].state` to get its current state
+- `vars: Record<string, any>;` You can communicate between functions with this. E.g `vars.temperatures = ys`
+- `path: string;` The path of the current function
+- `css_vars: HATheme;` The colors set by the active Home Assistant theme (see #ha_theme)
+
+#### Only iniside entities
+
+- `xs: Date[];` Array of timestamps
+- `ys: YValue[];` Array of values of the sensor/attribute/statistic
+- `statistics: StatisticValue[];` Array of statistics objects
+- `states: HassEntity[];` Array of state objects
+- `meta: HassEntity["attributes"];` The current attributes of the sensor
+
+#### Gotchas
+
+- The following entity attributes are required for fetching, so if another function needs the entity data it needs to be declared below them. `entity`,`attribute`,`offset`,`statistic`,`period`
+- Functions are allowed for those properties (`entity`, `attribute`, ...) but they do not receive entity data as parameters. You can still use the `hass` parameter to get the last state of an entity if you need to.
+- Functions cannot return functions for performance reasons. (feature request if you need this)
+- Defaults are not applied to the subelements returned by a function. (feature request if you need this)
+- You can get other values from the yaml with the `getFromConfig` parameter, but if they are functions they need to be defined before.
+
+#### Adding the last value to the entitiy's name
+
+```yaml
+type: custom:plotly-graph
+entities:
+  - entity: sensor.garden_temperature
+    name: |
+      $fn ({ ys,meta }) =>
+        meta.friendly_name + " " + ys[ys.length - 1]
+```
+
+#### Sharing data across functions
+
+```yaml
+type: custom:plotly-graph
+entities:
+  - entity: sensor.garden_temperature
+
+    # the fn attribute has no meaning, it is just a placeholder to put a function there. It can be any name not used by plotly
+    fn: |
+      $fn ({ ys, vars }) =>
+        vars.title = ys[ys.length - 1]
+title: $fn ({ vars }) => vars.title
+```
+
+#### Histograms
+
+```yaml
+type: custom:plotly-graph
+entities:
+  - entity: sensor.openweathermap_temperature
+    x: $fn ({ys,vars}) => ys
+    type: histogram
+title: Temperature Histogram last 10 days
+hours_to_show: 240
+raw_plotly_config: true
+layout:
+  margin:
+    t: 0
+    l: 50
+    b: 40
+  height: 285
+  xaxis:
+    autorange: true
+```
+
+#### custom hover text
+
+```yaml
+type: custom:plotly-graph
+title: hovertemplate
+entities:
+  - entity: climate.living
+    attribute: current_temperature
+    customdata: |
+      $fn ({states}) =>
+        states.map( ({state, attributes}) =>({
+          ...attributes,
+          state
+        })
+      )
+    hovertemplate: |-
+      <br> <b>Mode:</b> %{customdata.state}<br>
+      <b>Target:</b>%{y}</br>
+      <b>Current:</b>%{customdata.current_temperature}
+      <extra></extra>
+hours_to_show: 24
+```
 
 ## Default trace & axis styling
 
@@ -715,44 +816,41 @@ defaults:
 To define layout aspects, like margins, title, axes names, ...
 Anything from https://plotly.com/javascript/reference/layout/.
 
-### disable default layout:
+### Home Assistant theming:
 
-Use this if you want to use plotly default layout instead. Very useful for heavy customization while following pure plotly examples.
+Toggle Home Assistant theme colors:
+
+- card-background-color
+- primary-background-color
+- primary-color
+- primary-text-color
+- secondary-text-color
 
 ```yaml
 type: custom:plotly-graph
 entities:
   - entity: sensor.temperature_in_celsius
-no_default_layout: true
+ha_theme: false #defaults to true
 ```
 
-### disable Home Assistant themes:
+### Raw plotly config:
+
+Toggle all in-built defaults for layout and entitites. Useful when using histograms, 3d plots, etc.
+When true, the `x` and `y` properties of the traces won't be automatically filled with entity data, you need to use $fn for that.
 
 ```yaml
 type: custom:plotly-graph
 entities:
   - entity: sensor.temperature_in_celsius
-no_theme: true
+    x: $fn ({xs}) => xs
+    y: $fn ({ys}) => ys
+raw_plotly_config: true # defaults to false
 ```
 
 ## config:
 
 To define general configurations like enabling scroll to zoom, disabling the modebar, etc.
 Anything from https://plotly.com/javascript/configuration-options/.
-
-## significant_changes_only
-
-When true, will tell HA to only fetch datapoints with a different state as the one before.
-More here: https://developers.home-assistant.io/docs/api/rest/ under `/api/history/period/<timestamp>`
-
-Caveats:
-
-1. zana-37 repoorts that `minimal_response: false` needs to be set to get all non-significant datapoints [here](https://github.com/dbuezas/lovelace-plotly-graph-card/issues/34#issuecomment-1085083597).
-2. This configuration will be ignored (will be true) while fetching [Attribute Values](#Attribute-Values).
-
-```yaml
-significant_changes_only: true # defaults to false
-```
 
 ## disable_pinch_to_zoom
 
@@ -761,19 +859,6 @@ disable_pinch_to_zoom: true # defaults to false
 ```
 
 When true, the custom implementations of pinch-to-zoom and double-tap-drag-to-zooming will be disabled.
-
-## minimal_response
-
-When true, tell HA to only return last_changed and state for states other than the first and last state (much faster).
-More here: https://developers.home-assistant.io/docs/api/rest/ under `/api/history/period/<timestamp>`
-
-Caveats:
-
-1. This configuration will be ignored (will be false) while fetching [Attribute Values](#Attribute-Values).
-
-```yaml
-minimal_response: false # defaults to true
-```
 
 ## hours_to_show:
 

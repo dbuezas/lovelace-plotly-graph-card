@@ -1,10 +1,13 @@
+import { InputConfig } from "../types";
+
 /*
 Usage example in YAML:
 
   color_scheme: accent
   color_scheme: 0 # both mean the same
 */
-export type ColorSchemeArray = string[]
+export type ColorSchemeArray = string[];
+// prettier-ignore
 const colorSchemes = {
   // https://vega.github.io/vega/docs/schemes/#categorical
   accent: ["#7fc97f","#beaed4","#fdc086","#ffff99","#386cb0","#f0027f","#bf5b17","#666666"],
@@ -34,9 +37,27 @@ const colorSchemes = {
   pink_foam: ["#54bebe", "#76c8c8", "#98d1d1", "#badbdb", "#dedad2", "#e4bcad", "#df979e", "#d7658b", "#c80064"],
   salmon_to_aqua: ["#e27c7c", "#a86464", "#6d4b4b", "#503f3f", "#333333", "#3c4e4b", "#466964", "#599e94", "#6cd4c5"],
 }
-export function isColorSchemeArray(obj: any): obj is ColorSchemeArray{
-  return Array.isArray(obj)
+function isColorSchemeArray(obj: any): obj is ColorSchemeArray {
+  return Array.isArray(obj);
 }
 
-export default colorSchemes
-export type ColorSchemeNames = keyof typeof colorSchemes
+export type ColorSchemeNames = keyof typeof colorSchemes;
+
+export function parseColorScheme(
+  color_scheme: InputConfig["color_scheme"]
+): ColorSchemeArray {
+  const schemeName = color_scheme ?? "category10";
+  const colorScheme = isColorSchemeArray(schemeName)
+    ? schemeName
+    : colorSchemes[schemeName] ||
+      colorSchemes[Object.keys(colorSchemes)[schemeName]] ||
+      null;
+  if (colorScheme === null) {
+    throw new Error(
+      `color_scheme: "${color_scheme}" is not valid. Valid are an array of colors (see readme) or ${Object.keys(
+        colorSchemes
+      )}`
+    );
+  }
+  return colorScheme;
+}

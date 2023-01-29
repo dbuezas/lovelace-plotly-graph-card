@@ -1,4 +1,7 @@
-import { ColorSchemeArray, ColorSchemeNames } from "./color-schemes";
+import {
+  ColorSchemeArray,
+  ColorSchemeNames,
+} from "./parse-config/parse-color-scheme";
 import { TimeDurationStr } from "./duration/duration";
 import {
   AutoPeriodConfig,
@@ -42,8 +45,8 @@ export type InputConfig = {
   };
   layout?: Partial<Plotly.Layout>;
   config?: Partial<Plotly.Config>;
-  no_theme?: boolean;
-  no_default_layout?: boolean;
+  ha_theme?: boolean;
+  raw_plotly_config?: boolean;
   significant_changes_only?: boolean; // defaults to false
   minimal_response?: boolean; // defaults to true
   disable_pinch_to_zoom?: boolean; // defaults to false
@@ -78,11 +81,12 @@ export type Config = {
   entities: EntityConfig[];
   layout: Partial<Plotly.Layout>;
   config: Partial<Plotly.Config>;
-  no_theme: boolean;
-  no_default_layout: boolean;
+  ha_theme: boolean;
+  raw_plotly_config: boolean;
   significant_changes_only: boolean;
   minimal_response: boolean;
   disable_pinch_to_zoom: boolean;
+  visible_range: [number, number];
 };
 export type EntityIdStateConfig = {
   entity: string;
@@ -95,7 +99,6 @@ export type EntityIdStatisticsConfig = {
   entity: string;
   statistic: StatisticType;
   period: StatisticPeriod;
-  autoPeriod: AutoPeriodConfig;
 };
 export type EntityIdConfig =
   | EntityIdStateConfig
@@ -143,11 +146,3 @@ export type EntityData = {
 };
 
 export type TimestampRange = Timestamp[]; // [Timestamp, Timestamp];
-
-export type HATheme = {
-  "--card-background-color": string;
-  "--primary-background-color": string;
-  "--primary-color": string;
-  "--primary-text-color": string;
-  "--secondary-text-color": string;
-};

@@ -10,28 +10,19 @@ import {
 async function fetchStates(
   hass: HomeAssistant,
   entity: EntityIdStateConfig | EntityIdAttrConfig,
-  [start, end]: [Date, Date],
-  significant_changes_only?: boolean,
-  minimal_response?: boolean
+  [start, end]: [Date, Date]
 ): Promise<CachedStateEntity[]> {
-  const no_attributes_query = isEntityIdAttrConfig(entity)
-    ? ""
-    : "no_attributes&";
-  const minimal_response_query =
-    isEntityIdAttrConfig(entity) || minimal_response == false
-      ? ""
-      : "minimal_response&";
-  const significant_changes_only_query =
-    isEntityIdAttrConfig(entity) || significant_changes_only == false
-      ? "0"
-      : "1";
   const uri =
     `history/period/${start.toISOString()}?` +
-    `filter_entity_id=${entity.entity}&` +
-    `significant_changes_only=${significant_changes_only_query}&` +
-    `${no_attributes_query}&` +
-    minimal_response_query +
-    `end_time=${end.toISOString()}`;
+    [
+      `filter_entity_id=${entity.entity}`,
+      `significant_changes_only=0`,
+      isEntityIdAttrConfig(entity) ? "" : "no_attributes&",
+      isEntityIdAttrConfig(entity) ? "" : "minimal_response&",
+      `end_time=${end.toISOString()}`,
+    ]
+      .filter(Boolean)
+      .join("&");
   let list: HassEntity[] | undefined;
   try {
     const lists: HassEntity[][] = (await hass.callApi("GET", uri)) || [];
