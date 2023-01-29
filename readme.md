@@ -1,23 +1,26 @@
 [!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/dbuezas)
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg?style=for-the-badge)](https://github.com/hacs/integration)
 
+
 # Plotly Graph Card
 
 <img src="https://user-images.githubusercontent.com/777196/202489269-184d2f30-e834-4bea-8104-5aedb7d6f2d0.gif" width="300" align="left">
-<img src="https://user-images.githubusercontent.com/777196/202489368-234c7fbd-b33d-4fd0-8885-80f9e704a191.gif" width="300" align="right">
+<img src="https://user-images.githubusercontent.com/777196/215353175-97118ea7-778b-41b7-96f2-7e52c1c396d3.gif" width="300" align="right" >
 
 <br clear="both"/>
 <br clear="both"/>
 
 <img src="https://user-images.githubusercontent.com/777196/148675247-6e838783-a02a-453c-96b5-8ce86094ece2.gif" width="300" align="left" >
-<img src="https://user-images.githubusercontent.com/37914650/148646429-34f32f23-20b8-4171-87d3-ca69d8ab34b1.JPG" width="300" align="right">
+<img width="300" alt="image" src="https://user-images.githubusercontent.com/777196/215352580-b2122f49-d37a-452f-9b59-e205bcfb76a1.png" align="right" >
+
 
 <br clear="both"/>
 <br clear="both"/>
 
-<img src="https://user-images.githubusercontent.com/777196/198649220-14af3cf2-8948-4174-8138-b669dce5319e.png" width="300" align="left" >
 
-<img src="https://user-images.githubusercontent.com/52346449/142386216-dfc22660-b053-495d-906f-0ebccbdf985f.png" width="300" align="right" >
+<img width="300" alt="image" src="https://user-images.githubusercontent.com/777196/215352591-4eeec752-6abf-40cf-8214-a38c03d64b43.png" align="left" >
+
+<img src="https://user-images.githubusercontent.com/777196/198649220-14af3cf2-8948-4174-8138-b669dce5319e.png" width="300" align="right" >
 
 <br clear="both"/>
 
