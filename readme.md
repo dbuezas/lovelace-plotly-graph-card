@@ -461,19 +461,19 @@ entities:
     - map_y_numbers: Math.sqrt(y + 10*100) # map the y coordinate of each datapoint. Same available variables as for `map_y`
 
     # In the filters below, missing and non numeric datapoints will be discarded
-    - sliding_window_moving_average:
+    - sliding_window_moving_average: # best for smoothing
         # default parameters:
         window_size: 10
         extended: false # when true, smaller window sizes are used on the extremes.
         centered: true # compensate for averaging lag by offsetting the x axis by half a window_size
-    - median:
+    - exponential_moving_average: # good for smoothing
+        # default parameters:
+        alpha: 0.1 # between 0 an 1. The lower the alpha, the smoother the trace.
+    - median: # got to remove outliers
         # default parameters:
         window_size: 10
         extended: false
         centered: true
-    - exponential_moving_average:
-        # default parameters:
-        alpha: 0.1 # between 0 an 1. The lower the alpha, the smoother the trace.
 
     # The filters below receive all datapoints as they come from home assistant. Y values are strings or null (unless previously mapped to numbers or any other type)
     - map_y: 'y === "heat" ? 1 : 0' # map the y values of each datapoint. Variables `i` (index), `x`, `y`, `state`, `statistic`, `xs`, `ys`, `states`, `statistics`, `meta`, `vars` and `hass` are in scope. The outer quoutes are there because yaml doesn't like colons in strings without quoutes.
