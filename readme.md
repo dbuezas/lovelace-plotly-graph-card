@@ -442,6 +442,8 @@ type: custom:plotly-graph
 entities:
   - entity: sensor.temperature_in_celsius
   filters:
+    - store_var: myVar # stores the datapoints inside `vars.myVar`
+    - load_var: myVar # sets the datapoint from `vars.myVar`
 
     # The filters below will only be applied to numeric values. Missing (unavailable) and non-numerics will be left untouched
     - add: 5 # adds 5 to each datapoint

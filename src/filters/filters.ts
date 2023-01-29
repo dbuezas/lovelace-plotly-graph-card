@@ -78,7 +78,7 @@ const filters = {
   deduplicate_adjacent:
     () =>
     ({ xs, ys, states, statistics }) => {
-      const mask = ys.map((y, i) => y === ys[i - 1]);
+      const mask = ys.map((y, i) => y !== ys[i - 1]);
       return {
         ys: ys.filter((_, i) => mask[i]),
         xs: xs.filter((_, i) => mask[i]),
@@ -283,13 +283,19 @@ const filters = {
       }
       return data;
     },
+  load_var:
+    (var_name: string) =>
+    ({ vars }) =>
+      vars[var_name],
   store_var:
     (var_name: string) =>
-    ({ hass, vars, ...rest }) => ({ vars: { ...vars, [var_name]: rest } }),
-  /*
-    example: fn("({xs, ys, states, statistics }) => ({xs: ys})")
-  */
+    ({ vars, xs, ys, states, statistics }) => ({
+      vars: { ...vars, [var_name]: { xs, ys, states, statistics } },
+    }),
   fn: (fnStr: string) => myEval(fnStr),
+  /*
+      example: fn("({xs, ys, states, statistics }) => ({xs: ys})")
+    */
   filter: (fnStr: string) => {
     const fn = myEval(
       `(i, x, y, state, statistic, xs, ys, states, statistics, meta, vars, hass) => ${fnStr}`
