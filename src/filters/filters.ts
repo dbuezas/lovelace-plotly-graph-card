@@ -362,7 +362,7 @@ const filters = {
         meta: {
           ...meta,
           friendly_name:
-            p.type + (extras.length ? ` (${extras.join(", ")})` : ""),
+            "Trend" + (extras.length ? ` (${extras.join(", ")})` : ""),
         },
       };
     };
