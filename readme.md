@@ -1,7 +1,6 @@
 [!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/dbuezas)
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg?style=for-the-badge)](https://github.com/hacs/integration)
 
-
 # Plotly Graph Card
 
 <img src="https://user-images.githubusercontent.com/777196/202489269-184d2f30-e834-4bea-8104-5aedb7d6f2d0.gif" width="300" align="left">
@@ -13,10 +12,8 @@
 <img src="https://user-images.githubusercontent.com/777196/148675247-6e838783-a02a-453c-96b5-8ce86094ece2.gif" width="300" align="left" >
 <img width="300" alt="image" src="https://user-images.githubusercontent.com/777196/215352580-b2122f49-d37a-452f-9b59-e205bcfb76a1.png" align="right" >
 
-
 <br clear="both"/>
 <br clear="both"/>
-
 
 <img width="300" alt="image" src="https://user-images.githubusercontent.com/777196/215352591-4eeec752-6abf-40cf-8214-a38c03d64b43.png" align="left" >
 
@@ -679,7 +676,7 @@ entities:
     internal: true
     period: 5minute
     filters:
-      - map_y: parseFloat(y) 
+      - map_y: parseFloat(y)
       - store_var: temp1
   - entity: sensor.temperature2
     period: 5minute
@@ -687,6 +684,7 @@ entities:
     filters:
       - map_y: parseFloat(y)
       - map_y: y + vars.temp1.ys[i]
+```
 
 ### Universal functions
 
