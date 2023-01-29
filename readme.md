@@ -479,7 +479,7 @@ entities:
     - trendline:
         type: polynomial # linear, polynomial, power, exponential, theil_sen, robust_polynomial, fft
         forecast: 1d # continue trendline after present. Use global time_offset to show beyond present.
-        degree: 3 # only appliable to polynomial regression.
+        degree: 3 # only appliable to polynomial regression and fft.
         show_formula: true
         show_r2: true
     # The filters below receive all datapoints as they come from home assistant. Y values are strings or null (unless previously mapped to numbers or any other type)
