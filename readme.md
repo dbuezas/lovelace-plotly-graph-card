@@ -434,7 +434,7 @@ entities:
 
 ### `filters:`
 
-Filters are used to process the data before plotting it. Heavily inspired by [ESPHome's sensor filters](https://esphome.io/components/sensor/index.html#sensor-filters).
+Filters are used to process the data before plotting it. Inspired by [ESPHome's sensor filters](https://esphome.io/components/sensor/index.html#sensor-filters).
 Filters are applied in order.
 
 ```yaml
@@ -474,7 +474,14 @@ entities:
         window_size: 10
         extended: false
         centered: true
-
+    - trendline # converts the data to a linear trendline // TODO: force line.shape = linear
+    - trendline: linear # defaults to no forecast, no formula, no error squared
+    - trendline:
+        type: polynomial # linear, polynomial, power, exponential, theil_sen, robust_polynomial, fft
+        forecast: 1d # continue trendline after present. Use global time_offset to show beyond present.
+        degree: 3 # only appliable to polynomial regression.
+        show_formula: true
+        show_r2: true
     # The filters below receive all datapoints as they come from home assistant. Y values are strings or null (unless previously mapped to numbers or any other type)
     - map_y: 'y === "heat" ? 1 : 0' # map the y values of each datapoint. Variables `i` (index), `x`, `y`, `state`, `statistic`, `xs`, `ys`, `states`, `statistics`, `meta`, `vars` and `hass` are in scope. The outer quoutes are there because yaml doesn't like colons in strings without quoutes.
     - map_x: new Date(+x + 1000) # map the x coordinate (javascript date object) of each datapoint. Same variables as map_y are in scope
