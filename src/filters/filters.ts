@@ -123,6 +123,7 @@ const filters = {
         y: NaN,
       };
       checkTimeUnits(unit);
+      checkTimeUnits(unit);
       return {
         meta: {
           ...meta,
@@ -142,6 +143,7 @@ const filters = {
   integrate:
     (unit: keyof typeof timeUnits = "h") =>
     ({ xs, ys, meta }) => {
+      checkTimeUnits(unit);
       checkTimeUnits(unit);
       let yAcc = 0;
       let last = {
