@@ -28,7 +28,6 @@ export type InputConfig = {
     statistic?: StatisticType;
     period?: StatisticPeriod | "auto" | AutoPeriodConfig;
     unit_of_measurement?: string;
-    lambda?: string;
     internal?: boolean;
     show_value?:
       | boolean
@@ -38,11 +37,15 @@ export type InputConfig = {
     offset?: TimeDurationStr;
     extend_to_present?: boolean;
     filters?: (Record<string, any> | string)[];
+    on_legend_click?: Function;
+    on_legend_dblclick?: Function;
+    on_click?: Function;
   } & Partial<Plotly.PlotData>)[];
   defaults?: {
     entity?: Partial<Plotly.PlotData>;
     yaxes?: Partial<Plotly.Layout["yaxis"]>;
   };
+  on_dblclick?: Function;
   layout?: Partial<Plotly.Layout>;
   config?: Partial<Plotly.Config>;
   ha_theme?: boolean;
@@ -54,14 +57,6 @@ export type InputConfig = {
 
 export type EntityConfig = EntityIdConfig & {
   unit_of_measurement?: string;
-  lambda?: (
-    y: YValue[],
-    x: Date[],
-    raw_entity: ((StatisticValue | HassEntity) & {
-      timestamp: number;
-      value: any;
-    })[]
-  ) => YValue[] | { x?: Date[]; y?: YValue[] };
   internal: boolean;
   show_value:
     | boolean
@@ -71,6 +66,9 @@ export type EntityConfig = EntityIdConfig & {
   offset: number;
   extend_to_present: boolean;
   filters: FilterFn[];
+  on_legend_click: Function;
+  on_legend_dblclick: Function;
+  on_click: Function;
 } & Partial<Plotly.PlotData>;
 
 export type Config = {
@@ -87,6 +85,7 @@ export type Config = {
   minimal_response: boolean;
   disable_pinch_to_zoom: boolean;
   visible_range: [number, number];
+  on_dblclick: Function;
 };
 export type EntityIdStateConfig = {
   entity: string;

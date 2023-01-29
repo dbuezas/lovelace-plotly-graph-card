@@ -50,6 +50,10 @@ export class PlotlyGraph extends HTMLElement {
     relayoutListener?: EventEmitter;
     restyleListener?: EventEmitter;
     refreshTimeout?: number;
+    legendItemClick?: EventEmitter;
+    legendItemDoubleclick?: EventEmitter;
+    dataClick?: EventEmitter;
+    doubleclick?: EventEmitter;
   } = {};
 
   constructor() {
@@ -161,6 +165,18 @@ export class PlotlyGraph extends HTMLElement {
       "plotly_restyle",
       this.onRestyle
     )!;
+    this.handles.legendItemClick = this.contentEl.on(
+      "plotly_legendclick",
+      this.onLegendItemClick
+    )!;
+    this.handles.legendItemDoubleclick = this.contentEl.on(
+      "plotly_legenddoubleclick",
+      this.onLegendItemDoubleclick
+    )!;
+    this.handles.doubleclick = this.contentEl.on(
+      "plotly_doubleclick",
+      this.onDoubleclick
+    )!;
     this.resetButtonEl.addEventListener("click", this.exitBrowsingMode);
     this.touchController.connect();
     this.plot({ should_fetch: true });
@@ -170,6 +186,16 @@ export class PlotlyGraph extends HTMLElement {
     this.handles.resizeObserver!.disconnect();
     this.handles.relayoutListener!.off("plotly_relayout", this.onRelayout);
     this.handles.restyleListener!.off("plotly_restyle", this.onRestyle);
+    this.handles.legendItemClick!.off(
+      "plotly_legendclick",
+      this.onLegendItemClick
+    )!;
+    this.handles.legendItemDoubleclick!.off(
+      "plotly_legenddoubleclick",
+      this.onLegendItemDoubleclick
+    )!;
+    this.handles.dataClick!.off("plotly_click", this.onDataClick)!;
+    this.handles.doubleclick!.off("plotly_doubleclick", this.onDoubleclick)!;
     clearTimeout(this.handles.refreshTimeout!);
     this.resetButtonEl.removeEventListener("click", this.exitBrowsingMode);
     this.touchController.disconnect();
@@ -261,6 +287,27 @@ export class PlotlyGraph extends HTMLElement {
       await this.plot({ should_fetch: true });
     });
   };
+  onLegendItemClick = ({ curveNumber, ...rest }) => {
+    return this.parsed_config.entities[curveNumber].on_legend_click({
+      curveNumber,
+      ...rest,
+    });
+  };
+  onLegendItemDoubleclick = ({ curveNumber, ...rest }) => {
+    return this.parsed_config.entities[curveNumber].on_legend_dblclick({
+      curveNumber,
+      ...rest,
+    });
+  };
+  onDataClick = ({ points, ...rest }) => {
+    return this.parsed_config.entities[points[0].curveNumber].on_click({
+      points,
+      ...rest,
+    });
+  };
+  onDoubleclick = () => {
+    return this.parsed_config.on_dblclick();
+  };
   onRestyle = async () => {
     // trace visibility changed, fetch missing traces
     if (this.isInternalRelayout) return;
@@ -346,7 +393,6 @@ export class PlotlyGraph extends HTMLElement {
       .map((e) => "<span>" + (e || "See devtools console") + "</span>")
       .join("\n<br />\n");
     this.parsed_config = parsed;
-    console.log("fetched", this.parsed_config);
 
     const { entities, layout, config, refresh_interval } = this.parsed_config;
     clearTimeout(this.handles.refreshTimeout!);
@@ -364,6 +410,11 @@ export class PlotlyGraph extends HTMLElement {
       await Plotly.react(this.contentEl, entities, layout, config);
       this.contentEl.style.visibility = "";
     });
+    // this.handles.dataClick?.off("plotly_click", this.onDataClick)!;
+    this.handles.dataClick = this.contentEl.on(
+      "plotly_click",
+      this.onDataClick
+    )!;
   });
   // The height of your card. Home Assistant uses this to automatically
   // distribute all cards over the available columns.

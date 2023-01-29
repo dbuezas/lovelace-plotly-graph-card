@@ -3,12 +3,15 @@ import { Config, InputConfig } from "../types";
 import { parseColorScheme } from "./parse-color-scheme";
 import { getEntityIndex } from "./parse-config";
 import getThemedLayout, { HATheme } from "./themed-layout";
-
+const noop$fn = () => () => {};
 const defaultEntityRequired = {
   entity: "",
   show_value: false,
   internal: false,
   time_offset: "0s",
+  on_legend_click: noop$fn,
+  on_legend_dblclick: noop$fn,
+  on_click: noop$fn,
 };
 const defaultEntityOptional = {
   mode: "lines",
@@ -59,6 +62,7 @@ const defaultYamlRequired = {
     yaxes: {},
   },
   layout: {},
+  on_dblclick: noop$fn,
 };
 
 //

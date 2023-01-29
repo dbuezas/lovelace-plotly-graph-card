@@ -696,7 +696,55 @@ entities:
       - map_y: y + vars.temp1.ys[i]
 ```
 
-### Universal functions
+### Entity click handlers
+
+When the legend is clicked (or doubleclicked), the trace will be hidden (or showed alone) by default. This behaviour is controlled by [layout-legend-itemclick](https://plotly.com/javascript/reference/layout/#layout-legend-itemclick).
+On top of that, a `$fn` function can be used to add custom behaviour.
+If a handler returns false, the default behaviour trace toggle behaviour will be disabled, but this will also inhibit the `on_legend_dblclick ` handler. Disable the default behaviour via layout-legend-itemclick instead if you want to use both click and dblclick handlers.
+
+```yaml
+type: custom:plotly-graph
+entities:
+  - entity: sensor.temperature1
+    on_legend_click: |-
+      $fn () => (event_data) => {
+        event = new Event( "hass-more-info")
+        event.detail =  { entityId: 'sensor.temperature1' };
+        document.querySelector('home-assistant').dispatchEvent(event);
+        return false; // disable trace toggling
+      }
+```
+
+Alternatively, clicking on points of the trace itself.
+
+```yaml
+type: custom:plotly-graph
+entities:
+  - entity: sensor.temperature1
+    on_click: |-
+      $fn () => (event_data) => {
+        ...
+        // WARNING: this doesn't work and I don't understand why. Help welcome
+      }
+```
+
+There is also a double click plot handler, it works on the whole plotting area (not points of an entity). Beware that double click also autoscales the plot.
+
+```yaml
+type: custom:plotly-graph
+entities:
+  - entity: sensor.temperature1
+on_dblclick: |-
+  $fn ({ hass }) => () => {
+    hass.callService('light', 'turn_on', {
+      entity_id: 'light.portique_lumiere'
+    })
+  }
+```
+
+See more in plotly's [official docs](https://plotly.com/javascript/plotlyjs-events)
+
+## Universal functions
 
 Javascript functions allowed everywhere in the yaml. Evaluation is top to bottom and shallow to deep (depth first traversal).
 
