@@ -329,11 +329,7 @@ export class PlotlyGraph extends HTMLElement {
     this.config = config;
     const is = this.config;
     this.touchController.isEnabled = !is.disable_pinch_to_zoom;
-    if (is.hours_to_show !== was?.hours_to_show || is.offset !== was?.offset) {
-      this.exitBrowsingMode();
-    } else {
-      await this.plot({ should_fetch: false });
-    }
+    this.exitBrowsingMode();
   }
   getCSSVars() {
     const styles = window.getComputedStyle(this.contentEl);
