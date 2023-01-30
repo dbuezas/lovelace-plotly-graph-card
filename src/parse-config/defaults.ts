@@ -145,17 +145,8 @@ export function addPreParsingDefaults(
   yaml_in: InputConfig,
   css_vars: HATheme
 ): InputConfig {
-  let yaml = merge({}, yaml_in, defaultYamlRequired, yaml_in);
   // merging in two steps to ensure ha_theme and raw_plotly_config took its default value
-  yaml = merge(
-    {},
-    yaml,
-    {
-      layout: yaml.ha_theme ? getThemedLayout(css_vars) : {},
-    },
-    yaml.raw_plotly_config ? {} : defaultYamlOptional,
-    yaml_in
-  );
+  let yaml = merge({}, yaml_in, defaultYamlRequired, yaml_in);
   for (let i = 1; i < 31; i++) {
     const yaxis = "yaxis" + (i == 1 ? "" : i);
     yaml.layout[yaxis] = merge(
@@ -165,6 +156,17 @@ export function addPreParsingDefaults(
       yaml.layout[yaxis]
     );
   }
+
+  yaml = merge(
+    {},
+    yaml,
+    {
+      layout: yaml.ha_theme ? getThemedLayout(css_vars) : {},
+    },
+    yaml.raw_plotly_config ? {} : defaultYamlOptional,
+    yaml
+  );
+
   yaml.entities = yaml.entities.map((entity) => {
     if (typeof entity === "string") entity = { entity };
     entity.entity ??= "";
