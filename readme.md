@@ -458,8 +458,12 @@ entities:
     - delta # computes the delta between each two consecutive numeric y values.
     - derivate: h # computes rate of change per unit of time: h # ms (milisecond), s (second), m (minute), h (hour), d (day), w (week), M (month), y (year)
     - integrate: h # computes area under the curve per unit of time using Right hand riemann integration. Same units as the derivative
-    - map_y_numbers: Math.sqrt(y + 10*100) # map the y coordinate of each datapoint. Same available variables as for `map_y`
+    - integrate:
+        unit: h # defaults to h
+        reset_every: 1h # Defaults to 0 (never reset). Any duration unit (ms, s, m, h, d, w, M, y).
+        offset: 30m # defaults to 0. Resets happen 30m later
 
+    - map_y_numbers: Math.sqrt(y + 10*100) # map the y coordinate of each datapoint. Same available variables as for `map_y`
     # In the filters below, missing and non numeric datapoints will be discarded
     - sliding_window_moving_average: # best for smoothing
         # default parameters:

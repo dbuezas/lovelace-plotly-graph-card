@@ -140,14 +140,32 @@ const filters = {
         }),
       };
     },
-  integrate:
-    (unit: keyof typeof timeUnits = "h") =>
-    ({ xs, ys, meta }) => {
-      checkTimeUnits(unit);
-      checkTimeUnits(unit);
+  integrate: (
+    unitOrObject:
+      | keyof typeof timeUnits
+      | {
+          unit?: keyof typeof timeUnits;
+          reset_every?: TimeDurationStr;
+          offset?: TimeDurationStr;
+        } = "h"
+  ) => {
+    const param =
+      typeof unitOrObject == "string" ? { unit: unitOrObject } : unitOrObject;
+    console.log(`param`, param);
+    const unit = param.unit ?? "h";
+    const reset_every = parseTimeDuration(param.reset_every ?? "0s");
+    const offset = parseTimeDuration(param.offset ?? "0s");
+    checkTimeUnits(unit);
+    const date = new Date();
+    date.setHours(0);
+    date.setMinutes(0);
+    date.setSeconds(0);
+    const t0 = +date + offset;
+    return ({ xs, ys, meta }) => {
       let yAcc = 0;
       let last = {
         x: NaN,
+        laps: 0,
       };
       return {
         meta: {
@@ -157,6 +175,13 @@ const filters = {
         xs: xs,
         ys: mapNumbers(ys, (y, i) => {
           const x = +xs[i];
+          if (reset_every > 0) {
+            const laps = Math.floor((x - t0) / reset_every);
+            if (laps !== last.laps) {
+              yAcc = 0;
+              last.laps = laps;
+            }
+          }
           const dateDelta = (x - last.x) / timeUnits[unit];
           const isFirst = isNaN(last.x);
           last.x = x;
@@ -165,7 +190,8 @@ const filters = {
           return yAcc;
         }),
       };
-    },
+    };
+  },
   sliding_window_moving_average:
     ({ window_size = 10, extended = false, centered = true } = {}) =>
     (params) => {
