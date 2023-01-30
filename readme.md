@@ -352,7 +352,7 @@ entities:
   - entity: sensor.forecast_temperature
     yaxis: y1
     offset: 3h
-  - entity: sensor.nothing_now
+  - entity: ''
     name: Now
     yaxis: y9
     showlegend: false
@@ -360,10 +360,8 @@ entities:
       width: 1
       dash: dot
       color: deepskyblue
-    lambda: |-
-      () => {
-        return {x:[Date.now(),Date.now()], y:[0,1]}
-      }
+    x: $fn () => [Date.now(), Date.now()]
+    y: $fn () => [0,1]
 layout:
   yaxis9:
     visible: false
