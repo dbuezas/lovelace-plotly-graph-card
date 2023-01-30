@@ -21,6 +21,8 @@ function _getDeprecationError(path: string, value: any) {
   }
   if (path.match(/^entities\.\d+\.lambda$/))
     return "removed in v3.0.0, use filters instead";
+  if (path.match(/^entities\.\d+\.show_value\.right_margin$/))
+    return "removed in v3.0.0, use `true` and set the global `time_offset` or `layout.margins.r` to make space at the right. ";
   if (path.match(/^significant_changes_only$/))
     return "removed in v3.0.0, it is now always set to false";
   if (path.match(/^minimal_response$/))
