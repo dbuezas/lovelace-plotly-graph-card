@@ -941,7 +941,7 @@ refresh_interval: 5 # update every 5 seconds
 
 # deprecations:
 
-### `#no_theme`
+### `no_theme`
 
 Renamed to `ha_theme` (inverted logic) in v3.0.0
 
@@ -995,11 +995,11 @@ filters:
 
 Removed in v3.0.0, use `show_value: true` instead and if necessary, set the global `time_offset` or `layout.margins.r` to make extra space to the right.
 
-### significant_changes_only
+### `significant_changes_only`
 
 Removed in v3.0.0, non significant changes are also fetched now. The bandwidth savings weren't worth the issues it created.
 
-### minimal_response
+### `minimal_response`
 
 Removed in v3.0.0, if you need access to the attributes use the 'attribute' parameter instead. It doesn't matter which attribute you pick, all of them are still accessible inside filters and universal functions
 
