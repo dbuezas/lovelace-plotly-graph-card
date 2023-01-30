@@ -51,7 +51,7 @@ Find more advanced examples in [Show & Tell](https://github.com/dbuezas/lovelace
 
 ## Card Config
 
-_**New**_ Visual Config editor available for Basic Configs (\*)
+Visual Config editor available for Basic Configs (\*)
 
 ```yaml
 type: custom:plotly-graph
