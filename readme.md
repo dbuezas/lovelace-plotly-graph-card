@@ -360,10 +360,11 @@ entities:
       width: 1
       dash: dot
       color: deepskyblue
-    lambda: |-
-      () => {
-        return {x:[Date.now(),Date.now()], y:[0,1]}
-      }
+    filters:
+      - fn: |
+          ({xs,ys}) => {
+            return {xs:[Date.now(),Date.now()], ys:[0,1]}
+          }
 layout:
   yaxis9:
     visible: false
