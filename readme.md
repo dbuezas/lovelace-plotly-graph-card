@@ -939,6 +939,70 @@ refresh_interval: 0 # never update.
 refresh_interval: 5 # update every 5 seconds
 ```
 
+# deprecations:
+
+### `#no_theme`
+
+Renamed to `ha_theme` (inverted logic) in v3.0.0
+
+### `no_default_layout`
+
+Replaced with more general `raw_plotly_config` in v3.0.0.
+If you were using it, you most likely can delete it and add this to your yaxes defaults:
+
+```yaml
+defaults:
+  yaxes:
+    side: left
+    overlaying: "y"
+    visible: true
+```
+
+### `offset`
+
+Renamed to time_offset in v3.0.0 to avoid conflicts with PlotlyJS bar offset configuration.
+
+### `lambda`
+
+Removed in v3.0.0, use filters instead. There is most likely a filter (or combination) that will give you the same result, but you can also translate an old lambda to a filter like this:
+
+```yaml
+lambda: |
+  (ys,xs) => {
+    ...
+    return {x: arr_x, y: arr_y};
+  }
+# becomes
+filters:
+  - fn: |
+    ({ys,xs}) => {
+      ...
+      return {xs: arr_x, ys: arr_y};
+    }
+```
+
+and
+
+```yaml
+lambda: |
+  (ys) => ys.map(y => y+1...etc...)
+# becomes
+filters:
+  - map_y: ys.map(y => y+1...etc...)
+```
+
+### `entities/show_value/right_margin`
+
+Removed in v3.0.0, use `show_value: true` instead and if necessary, set the global `time_offset` or `layout.margins.r` to make extra space to the right.
+
+### significant_changes_only
+
+Removed in v3.0.0, non significant changes are also fetched now. The bandwidth savings weren't worth the issues it created.
+
+### minimal_response
+
+Removed in v3.0.0, if you need access to the attributes use the 'attribute' parameter instead. It doesn't matter which attribute you pick, all of them are still accessible inside filters and universal functions
+
 # Development
 
 - Clone the repo
