@@ -166,6 +166,7 @@ const filters = {
       let last = {
         x: NaN,
         laps: 0,
+        y: 0,
       };
       return {
         meta: {
@@ -186,7 +187,8 @@ const filters = {
           const isFirst = isNaN(last.x);
           last.x = x;
           if (isFirst) return NaN;
-          yAcc += y * dateDelta;
+          yAcc += last.y * dateDelta;
+          last.y = y;
           return yAcc;
         }),
       };
