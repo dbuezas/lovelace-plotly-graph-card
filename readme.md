@@ -293,7 +293,7 @@ Or make space inside the the plot like this:
 
 ```yaml
 time_offset: 3h
-
+```
 ## Offsets
 
 Offsets are useful to shift data in the temporal axis. For example, if you have a sensor that reports the forecasted temperature 3 hours from now, it means that the current value should be plotted in the future. With the `time_offset` attribute you can shift the data so it is placed in the correct position.
