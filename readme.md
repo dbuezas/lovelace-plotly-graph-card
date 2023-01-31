@@ -91,7 +91,7 @@ layout:
 config:
   scrollZoom: false
 
-hours_to_show: 1
+hours_to_show: 1h
 refresh_interval: 10 # in seconds
 ```
 
@@ -104,7 +104,7 @@ type: custom:plotly-graph
 entities:
   - entity: sensor.temperature
 refresh_interval: 10
-hours_to_show: 12
+hours_to_show: 12h
 layout:
   xaxis:
     rangeselector:
@@ -298,17 +298,17 @@ defaults:
 
 ## Offsets
 
-Offsets are useful to shift data in the temporal axis. For example, if you have a sensor that reports the forecasted temperature 3 hours from now, it means that the current value should be plotted in the future. With the `offset` attribute you can shift the data so it is placed in the correct position.
+Offsets are useful to shift data in the temporal axis. For example, if you have a sensor that reports the forecasted temperature 3 hours from now, it means that the current value should be plotted in the future. With the `time_offset` attribute you can shift the data so it is placed in the correct position.
 Another possible use is to compare past data with the current one. For example, you can plot yesterday's temperature and the current one on top of each other.
 
-The `offset` flag can be specified in two places.
-**1)** When used at the top level of the configuration, it specifies how much "future" the graph shows by default. For example, if `hours_to_show` is 16 and `offset` is 3h, the graph shows the past 13 hours (16-3) plus the next 3 hours.
+The `time_offset` flag can be specified in two places.
+**1)** When used at the top level of the configuration, it specifies how much "future" the graph shows by default. For example, if `hours_to_show` is 16 and `time_offset` is 3h, the graph shows the past 13 hours (16-3) plus the next 3 hours.
 **2)** When used at the trace level, it offsets the trace by the specified amount.
 
 ```yaml
 type: custom:plotly-graph
 hours_to_show: 16
-offset: 3h
+time_offset: 3h
 entities:
   - entity: sensor.current_temperature
     line:
@@ -316,13 +316,13 @@ entities:
       color: orange
   - entity: sensor.current_temperature
     name: Temperature yesterday
-    offset: 1d
+    time_offset: 1d
     line:
       width: 1
       dash: dot
       color: orange
   - entity: sensor.temperature_12h_forecast
-    offset: 12h
+    time_offset: 12h
     name: Forecast temperature
     line:
       width: 1
@@ -346,13 +346,13 @@ When using offsets, it is useful to have a line that indicates the current time.
 
 ```yaml
 type: custom:plotly-graph
-hours_to_show: 6
-offset: 3h
+hours_to_show: 6h
+time_offset: 3h
 entities:
   - entity: sensor.forecast_temperature
     yaxis: y1
-    offset: 3h
-  - entity: ''
+    time_offset: 3h
+  - entity: ""
     name: Now
     yaxis: y9
     showlegend: false
@@ -388,7 +388,7 @@ Whenever a time duration can be specified, this is the notation to use:
 Example:
 
 ```yaml
-offset: 3h
+time_offset: 3h
 ```
 
 ## Extra entity attributes:
@@ -818,7 +818,7 @@ entities:
     x: $fn ({ys,vars}) => ys
     type: histogram
 title: Temperature Histogram last 10 days
-hours_to_show: 240
+hours_to_show: 10d
 raw_plotly_config: true
 layout:
   margin:
@@ -850,7 +850,7 @@ entities:
       <b>Target:</b>%{y}</br>
       <b>Current:</b>%{customdata.current_temperature}
       <extra></extra>
-hours_to_show: 24
+hours_to_show: current_day
 ```
 
 ## Default trace & axis styling
@@ -923,7 +923,18 @@ When true, the custom implementations of pinch-to-zoom and double-tap-drag-to-zo
 ## hours_to_show:
 
 How many hours are shown.
-Exactly the same as the history card, except decimal values (e.g `0.1`) do actually work
+Exactly the same as the history card, but more powerful
+
+### Fixed Relative Time
+
+- Decimal values (e.g `hours_to_show: 0.5`)
+- Duration strings (e.g `hours_to_show: 2h`, `3d`, `1w`, `1M`). See #Duration
+
+### Dynamic Relative Time
+
+Shows the current day, hour, etc from beginning to end.
+The options are: `current_minute`, `current_hour`, `current_day`, `current_week`, `current_month`, `current_quarter`, `current_year`
+It can be combined with the global `time_offset`.
 
 ## refresh_interval:
 
