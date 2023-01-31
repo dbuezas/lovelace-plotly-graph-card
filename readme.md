@@ -518,7 +518,7 @@ alternatively,
 ```yaml
 - entity: sensor.fridge_power
   filters:
-    - integrate: h # resulting unit_of_measurement will be W/h
+    - integrate: h # resulting unit_of_measurement will be Wh (watts hour)
 ```
 
 ##### Using state attributes
