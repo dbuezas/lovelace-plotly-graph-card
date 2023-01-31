@@ -330,14 +330,6 @@ entities:
 
 ![Graph with offsets](docs/resources/offset-temperature.png)
 
-### Caveats
-
-The following exceptions apply to traces with offsets:
-
-- They get their own cache, meaning that data will be fetched twice if the same entity is in the plot with a different (or no) offset.
-- Websocket state updates are not used to fill their cache (but a request to the server may be triggered)
-- `extend_to_present` is ignored (because extending to an offset present may be far into the future and that messes up with autorange)
-
 ### Now line
 
 When using offsets, it is useful to have a line that indicates the current time. This can be done by using a lambda function that returns a line with the current time as x value and 0 and 1 as y values. The line is then hidden from the legend.
