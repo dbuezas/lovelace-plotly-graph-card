@@ -53,6 +53,7 @@ export type InputConfig = {
   significant_changes_only?: boolean; // defaults to false
   minimal_response?: boolean; // defaults to true
   disable_pinch_to_zoom?: boolean; // defaults to false
+  autorange_after_scroll?: boolean; // defaults to false
 };
 
 export type EntityConfig = EntityIdConfig & {
@@ -86,6 +87,7 @@ export type Config = {
   disable_pinch_to_zoom: boolean;
   visible_range: [number, number];
   on_dblclick: Function;
+  autorange_after_scroll: boolean;
 };
 export type EntityIdStateConfig = {
   entity: string;

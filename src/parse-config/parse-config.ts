@@ -240,6 +240,9 @@ class ConfigParser {
       }
       this.yaml.visible_range = visible_range;
     }
+    if (this.fnParam.getFromConfig("autorange_after_scroll")) {
+      this.observed_range = visible_range.slice();
+    }
     this.observed_range[0] = Math.min(this.observed_range[0], visible_range[0]);
     this.observed_range[1] = Math.max(this.observed_range[1], visible_range[1]);
     const statisticsParams = parseStatistics(
