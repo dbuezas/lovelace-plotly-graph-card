@@ -63,6 +63,7 @@ const defaultYamlRequired = {
   },
   layout: {},
   on_dblclick: noop$fn,
+  autorange_after_scroll: false,
 };
 
 //

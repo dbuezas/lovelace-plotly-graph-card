@@ -391,7 +391,13 @@ export class PlotlyGraph extends HTMLElement {
       .join("\n<br />\n");
     this.parsed_config = parsed;
 
-    const { entities, layout, config, refresh_interval } = this.parsed_config;
+    const {
+      entities,
+      layout,
+      config,
+      refresh_interval,
+      autorange_after_scroll,
+    } = this.parsed_config;
     clearTimeout(this.handles.refreshTimeout!);
     if (refresh_interval !== "auto" && refresh_interval > 0) {
       this.handles.refreshTimeout = window.setTimeout(
@@ -405,6 +411,11 @@ export class PlotlyGraph extends HTMLElement {
     }
     await this.withoutRelayout(async () => {
       await Plotly.react(this.contentEl, entities, layout, config);
+      if (autorange_after_scroll) {
+        await Plotly.relayout(this.contentEl, {
+          "yaxis.autorange": true,
+        });
+      }
       this.contentEl.style.visibility = "";
     });
     // this.handles.dataClick?.off("plotly_click", this.onDataClick)!;

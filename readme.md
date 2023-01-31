@@ -928,13 +928,25 @@ Exactly the same as the history card, but more powerful
 ### Fixed Relative Time
 
 - Decimal values (e.g `hours_to_show: 0.5`)
-- Duration strings (e.g `hours_to_show: 2h`, `3d`, `1w`, `1M`). See #Duration
+- Duration strings (e.g `hours_to_show: 2h`, `3d`, `1w`, `1M`). See [Durations](#Duration)
 
 ### Dynamic Relative Time
 
 Shows the current day, hour, etc from beginning to end.
 The options are: `current_minute`, `current_hour`, `current_day`, `current_week`, `current_month`, `current_quarter`, `current_year`
 It can be combined with the global `time_offset`.
+
+## autorange_after_scroll:
+
+Removes all data out of the visible range, and autoscales after each replot.
+Particularly useful when combined with [Range Selector Buttons](#Range-Selector-buttons)
+
+```yaml
+type: custom:plotly-graph
+entities:
+  - entity: sensor.garden_temperature
+autorange_after_scroll: true
+```
 
 ## refresh_interval:
 
