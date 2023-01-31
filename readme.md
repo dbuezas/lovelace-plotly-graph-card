@@ -332,7 +332,7 @@ entities:
 
 ### Now line
 
-When using offsets, it is useful to have a line that indicates the current time. This can be done by using a lambda function that returns a line with the current time as x value and 0 and 1 as y values. The line is then hidden from the legend.
+When using offsets, it is useful to have a line that indicates the current time. This can be done by using a universal function that returns a line with the current time as x value and 0 and 1 as y values. The line is then hidden from the legend.
 
 ```yaml
 type: custom:plotly-graph
