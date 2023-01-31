@@ -184,19 +184,19 @@ export class PlotlyGraph extends HTMLElement {
   }
 
   disconnectedCallback() {
-    this.handles.resizeObserver!.disconnect();
-    this.handles.relayoutListener!.off("plotly_relayout", this.onRelayout);
-    this.handles.restyleListener!.off("plotly_restyle", this.onRestyle);
-    this.handles.legendItemClick!.off(
+    this.handles.resizeObserver?.disconnect();
+    this.handles.relayoutListener?.off("plotly_relayout", this.onRelayout);
+    this.handles.restyleListener?.off("plotly_restyle", this.onRestyle);
+    this.handles.legendItemClick?.off(
       "plotly_legendclick",
       this.onLegendItemClick
-    )!;
-    this.handles.legendItemDoubleclick!.off(
+    );
+    this.handles.legendItemDoubleclick?.off(
       "plotly_legenddoubleclick",
       this.onLegendItemDoubleclick
-    )!;
-    this.handles.dataClick!.off("plotly_click", this.onDataClick)!;
-    this.handles.doubleclick!.off("plotly_doubleclick", this.onDoubleclick)!;
+    );
+    this.handles.dataClick?.off("plotly_click", this.onDataClick);
+    this.handles.doubleclick?.off("plotly_doubleclick", this.onDoubleclick);
     clearTimeout(this.handles.refreshTimeout!);
     this.resetButtonEl.removeEventListener("click", this.exitBrowsingMode);
     this.touchController.disconnect();

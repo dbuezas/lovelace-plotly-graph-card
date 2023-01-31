@@ -1,3 +1,20 @@
+import {
+  endOfDay,
+  endOfHour,
+  endOfMinute,
+  endOfMonth,
+  endOfQuarter,
+  endOfWeek,
+  endOfYear,
+  startOfDay,
+  startOfHour,
+  startOfMinute,
+  startOfMonth,
+  startOfQuarter,
+  startOfWeek,
+  startOfYear,
+} from "date-fns";
+
 export const timeUnits = {
   ms: 1,
   s: 1000,
@@ -35,4 +52,43 @@ export const parseTimeDuration = (str: TimeDurationStr | undefined): number => {
     throw new Error(`Cannot parse "${str}" as a duration`);
 
   return sign * number * unit;
+};
+
+export const isTimeDuration = (str: any) => {
+  try {
+    parseTimeDuration(str);
+    return true;
+  } catch (e) {
+    return false;
+  }
+};
+
+export const parseRelativeTime = (str: string): [number, number] => {
+  const now = new Date();
+  switch (str) {
+    case "current_minute":
+      return [+startOfMinute(now), +endOfMinute(now)];
+    case "current_hour":
+      return [+startOfHour(now), +endOfHour(now)];
+    case "current_day":
+      return [+startOfDay(now), +endOfDay(now)];
+    case "current_week":
+      return [+startOfWeek(now), +endOfWeek(now)];
+    case "current_month":
+      return [+startOfMonth(now), +endOfMonth(now)];
+    case "current_quarter":
+      return [+startOfQuarter(now), +endOfQuarter(now)];
+    case "current_year":
+      return [+startOfYear(now), +endOfYear(now)];
+  }
+  throw new Error(`${str} is not a dynamic relative time`);
+};
+
+export const isRelativeTime = (str: any) => {
+  try {
+    parseRelativeTime(str);
+    return true;
+  } catch (e) {
+    return false;
+  }
 };

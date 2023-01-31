@@ -99,7 +99,7 @@ const filters = {
     },
   delta:
     () =>
-    ({ ys, meta }) => {
+    ({ ys, meta, xs, statistics, states }) => {
       const last = {
         y: NaN,
       };
@@ -112,7 +112,10 @@ const filters = {
           const yDelta = y - last.y;
           last.y = y;
           return yDelta;
-        }),
+        }).slice(1),
+        xs: xs.slice(1),
+        statistics: statistics.slice(1),
+        states: states.slice(1),
       };
     },
   derivate:

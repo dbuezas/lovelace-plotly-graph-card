@@ -5,7 +5,12 @@ import propose from "propose";
 
 import get from "lodash/get";
 import { addPreParsingDefaults, addPostParsingDefaults } from "./defaults";
-import { parseTimeDuration } from "../duration/duration";
+import {
+  isRelativeTime,
+  isTimeDuration,
+  parseRelativeTime,
+  parseTimeDuration,
+} from "../duration/duration";
 import { parseStatistics } from "./parse-statistics";
 import { HomeAssistant } from "custom-card-helpers";
 import filters from "../filters/filters";
@@ -207,15 +212,32 @@ class ConfigParser {
   private async fetchDataForEntity(path: string) {
     let visible_range = this.fnParam.getFromConfig("visible_range");
     if (!visible_range) {
-      const hours_to_show = this.fnParam.getFromConfig("hours_to_show");
-      const global_offset = parseTimeDuration(
+      let global_offset = parseTimeDuration(
         this.fnParam.getFromConfig("time_offset")
       );
-      const ms = hours_to_show * 60 * 60 * 1000;
-      visible_range = [
-        +new Date() - ms + global_offset,
-        +new Date() + global_offset,
-      ] as [number, number];
+      const hours_to_show = this.fnParam.getFromConfig("hours_to_show");
+      if (isRelativeTime(hours_to_show)) {
+        const [start, end] = parseRelativeTime(hours_to_show);
+        visible_range = [start + global_offset, end + global_offset] as [
+          number,
+          number
+        ];
+      } else {
+        let ms_to_show;
+        if (isTimeDuration(hours_to_show)) {
+          ms_to_show = parseTimeDuration(hours_to_show);
+        } else if (typeof hours_to_show === "number") {
+          ms_to_show = hours_to_show * 60 * 60 * 1000;
+        } else {
+          throw new Error(
+            `${hours_to_show} is not a valid duration. Use numbers, durations (e.g 1d) or dynamic time (e.g current_day)`
+          );
+        }
+        visible_range = [
+          +new Date() - ms_to_show + global_offset,
+          +new Date() + global_offset,
+        ] as [number, number];
+      }
       this.yaml.visible_range = visible_range;
     }
     this.observed_range[0] = Math.min(this.observed_range[0], visible_range[0]);
