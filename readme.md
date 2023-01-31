@@ -124,6 +124,8 @@ layout:
           step: day
 ```
 
+See also: [autorange_after_scroll](#autorange_after_scroll)
+
 ## Features
 
 - Anything you can do with scatter and barcharts in plotly
