@@ -292,11 +292,7 @@ layout:
 Or make space inside the the plot like this:
 
 ```yaml
-defaults:
-  entity:
-    show_value:
-      right_margin: 20 # this is 20% of the space in the x axis
-```
+time_offset: 3h
 
 ## Offsets
 
