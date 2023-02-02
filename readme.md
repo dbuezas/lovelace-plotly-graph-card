@@ -445,7 +445,7 @@ entities:
     - deduplicate_adjacent # removes all adjacent duplicate values. Useful for type: marker+text
     - delta # computes the delta between each two consecutive numeric y values.
     - derivate: h # computes rate of change per unit of time: h # ms (milisecond), s (second), m (minute), h (hour), d (day), w (week), M (month), y (year)
-    - integrate: h # computes area under the curve per unit of time using Right hand riemann integration. Same units as the derivative
+    - integrate: h # computes area under the curve in a specific unit of time using Right hand riemann integration. Same units as the derivative
     - integrate:
         unit: h # defaults to h
         reset_every: 1h # Defaults to 0 (never reset). Any duration unit (ms, s, m, h, d, w, M, y).
