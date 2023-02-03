@@ -294,6 +294,7 @@ Or make space inside the the plot like this:
 ```yaml
 time_offset: 3h
 ```
+
 ## Offsets
 
 Offsets are useful to shift data in the temporal axis. For example, if you have a sensor that reports the forecasted temperature 3 hours from now, it means that the current value should be plotted in the future. With the `time_offset` attribute you can shift the data so it is placed in the correct position.
@@ -350,8 +351,8 @@ entities:
       width: 1
       dash: dot
       color: deepskyblue
-    x: $fn () => [Date.now(), Date.now()]
-    y: $fn () => [0,1]
+    x: $f [Date.now(), Date.now()]
+    y: [0, 1]
 layout:
   yaxis9:
     visible: false
@@ -746,6 +747,21 @@ The returned value will be used as value for the property where it is found. E.g
 name: $fn ({ hass }) => hass.states["sensor.garden_temperature"].state
 ```
 
+or in short form:
+
+```js
+name: $f hass.states["sensor.garden_temperature"].state
+```
+
+can also take a block:
+
+```js
+name: |
+  $f {
+    return hass.states["sensor.garden_temperature"].state
+  }
+```
+
 ### Available parameters:
 
 Remember you can add a `console.log(the_object_you_want_to_inspect)` and see its content in the devTools console.
@@ -753,6 +769,7 @@ Remember you can add a `console.log(the_object_you_want_to_inspect)` and see its
 #### Everywhere:
 
 - `getFromConfig: (path) => value;` Pass a path (e.g `entities.0.name`) and get back its value
+- `get: (path) => value;` same as `getFromConfig`
 - `hass: HomeAssistant object;` For example: `hass.states["sensor.garden_temperature"].state` to get its current state
 - `vars: Record<string, any>;` You can communicate between functions with this. E.g `vars.temperatures = ys`
 - `path: string;` The path of the current function
@@ -781,8 +798,7 @@ type: custom:plotly-graph
 entities:
   - entity: sensor.garden_temperature
     name: |
-      $fn ({ ys,meta }) =>
-        meta.friendly_name + " " + ys[ys.length - 1]
+      $f meta.friendly_name + " " + ys[ys.length - 1]
 ```
 
 #### Sharing data across functions
@@ -793,10 +809,8 @@ entities:
   - entity: sensor.garden_temperature
 
     # the fn attribute has no meaning, it is just a placeholder to put a function there. It can be any name not used by plotly
-    fn: |
-      $fn ({ ys, vars }) =>
-        vars.title = ys[ys.length - 1]
-title: $fn ({ vars }) => vars.title
+    fn: $f vars.title = ys[ys.length - 1];
+title: $f vars.title
 ```
 
 #### Histograms
@@ -805,7 +819,7 @@ title: $fn ({ vars }) => vars.title
 type: custom:plotly-graph
 entities:
   - entity: sensor.openweathermap_temperature
-    x: $fn ({ys,vars}) => ys
+    x: $f ys
     type: histogram
 title: Temperature Histogram last 10 days
 hours_to_show: 10d
@@ -892,8 +906,8 @@ When true, the `x` and `y` properties of the traces won't be automatically fille
 type: custom:plotly-graph
 entities:
   - entity: sensor.temperature_in_celsius
-    x: $fn ({xs}) => xs
-    y: $fn ({ys}) => ys
+    x: $f xs
+    y: $f ys
 raw_plotly_config: true # defaults to false
 ```
 

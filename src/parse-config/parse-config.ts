@@ -115,14 +115,13 @@ class ConfigParser {
     }
 
     if (typeof value === "string") {
+      if (typeof value === "string" && value.startsWith("$f ")) {
+        value =
+          "$fn ({ getFromConfig, get, hass, vars, path, css_vars, xs, ys, statistics, states, meta }) => " +
+          value.slice(3);
+      }
       if (value.startsWith("$fn")) {
         value = myEval(value.slice(3));
-      } else if (typeof value === "string" && value.startsWith("$f ")) {
-        value = myEval(
-          `({ getFromConfig, get, hass, vars, path, css_vars, xs, ys, statistics, states, meta })=>${value.slice(
-            3
-          )}`
-        );
       }
     }
     const error = getDeprecationError(path, value);
