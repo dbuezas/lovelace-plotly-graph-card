@@ -294,6 +294,7 @@ Or make space inside the the plot like this:
 ```yaml
 time_offset: 3h
 ```
+
 ## Offsets
 
 Offsets are useful to shift data in the temporal axis. For example, if you have a sensor that reports the forecasted temperature 3 hours from now, it means that the current value should be plotted in the future. With the `time_offset` attribute you can shift the data so it is placed in the correct position.
@@ -949,6 +950,19 @@ refresh_interval: auto # (default) update automatically when an entity changes i
 refresh_interval: 0 # never update.
 refresh_interval: 5 # update every 5 seconds
 ```
+
+## localization:
+
+The locale is directly taken from Home Assistant's configuration, but can be overridden like this:
+
+```yaml
+config:
+  locale: ar
+```
+
+** Home Assistant custom Number and Date format will be ignored, only the language determines the locale **
+
+When using `hours_to_show: current_week`, the "First day of the week" configured in Home Assistant is used
 
 # deprecations:
 
