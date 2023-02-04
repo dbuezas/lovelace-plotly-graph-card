@@ -351,7 +351,7 @@ entities:
       width: 1
       dash: dot
       color: deepskyblue
-    x: $f [Date.now(), Date.now()]
+    x: $ex [Date.now(), Date.now()]
     y: [0, 1]
 layout:
   yaxis9:
@@ -747,17 +747,17 @@ The returned value will be used as value for the property where it is found. E.g
 name: $fn ({ hass }) => hass.states["sensor.garden_temperature"].state
 ```
 
-or in short form:
+or a universal expression `$ex` (the parameters and arrow are added automatically):
 
 ```js
-name: $f hass.states["sensor.garden_temperature"].state
+name: $ex hass.states["sensor.garden_temperature"].state
 ```
 
-can also take a block:
+which can also take a block:
 
 ```js
 name: |
-  $f {
+  $ex {
     return hass.states["sensor.garden_temperature"].state
   }
 ```
@@ -798,7 +798,7 @@ type: custom:plotly-graph
 entities:
   - entity: sensor.garden_temperature
     name: |
-      $f meta.friendly_name + " " + ys[ys.length - 1]
+      $ex meta.friendly_name + " " + ys[ys.length - 1]
 ```
 
 #### Sharing data across functions
@@ -809,8 +809,8 @@ entities:
   - entity: sensor.garden_temperature
 
     # the fn attribute has no meaning, it is just a placeholder to put a function there. It can be any name not used by plotly
-    fn: $f vars.title = ys[ys.length - 1];
-title: $f vars.title
+    fn: $ex vars.title = ys[ys.length - 1];
+title: $ex vars.title
 ```
 
 #### Histograms
@@ -819,7 +819,7 @@ title: $f vars.title
 type: custom:plotly-graph
 entities:
   - entity: sensor.openweathermap_temperature
-    x: $f ys
+    x: $ex ys
     type: histogram
 title: Temperature Histogram last 10 days
 hours_to_show: 10d
@@ -906,8 +906,8 @@ When true, the `x` and `y` properties of the traces won't be automatically fille
 type: custom:plotly-graph
 entities:
   - entity: sensor.temperature_in_celsius
-    x: $f xs
-    y: $f ys
+    x: $ex xs
+    y: $ex ys
 raw_plotly_config: true # defaults to false
 ```
 
