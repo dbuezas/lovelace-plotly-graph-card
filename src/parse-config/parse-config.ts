@@ -10,6 +10,7 @@ import {
   isTimeDuration,
   parseRelativeTime,
   parseTimeDuration,
+  setDateFnDefaultOptions,
 } from "../duration/duration";
 import { parseStatistics } from "./parse-statistics";
 import { HomeAssistant } from "custom-card-helpers";
@@ -59,6 +60,7 @@ class ConfigParser {
     this.errors = [];
     this.hass = hass;
     this.yaml_with_defaults = addPreParsingDefaults(input_yaml, css_vars);
+    setDateFnDefaultOptions(hass);
 
     this.fnParam = {
       vars: {},

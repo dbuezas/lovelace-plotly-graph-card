@@ -87,6 +87,7 @@ const defaultYamlOptional: {
     displaylogo: false,
     scrollZoom: true,
     modeBarButtonsToRemove: ["resetScale2d", "toImage", "lasso2d", "select2d"],
+    locale: ({ hass }) => hass.locale?.language,
   },
   layout: {
     height: 285,

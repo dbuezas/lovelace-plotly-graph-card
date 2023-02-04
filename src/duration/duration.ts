@@ -1,3 +1,4 @@
+import { HomeAssistant } from "custom-card-helpers";
 import {
   endOfDay,
   endOfHour,
@@ -6,6 +7,7 @@ import {
   endOfQuarter,
   endOfWeek,
   endOfYear,
+  setDefaultOptions,
   startOfDay,
   startOfHour,
   startOfMinute,
@@ -63,6 +65,28 @@ export const isTimeDuration = (str: any) => {
   }
 };
 
+export const setDateFnDefaultOptions = (hass: HomeAssistant) => {
+  const first_weekday: "sunday" | "saturday" | "monday" | "language" = (
+    hass.locale as any
+  ).first_weekday;
+  const weekStartsOn = (
+    {
+      language: undefined,
+      sunday: 0,
+      monday: 1,
+      tuesday: 2,
+      wednesday: 3,
+      thursday: 4,
+      friday: 5,
+      saturday: 6,
+    } as const
+  )[first_weekday];
+
+  setDefaultOptions({
+    locale: { code: hass.locale.language },
+    weekStartsOn,
+  });
+};
 export const parseRelativeTime = (str: string): [number, number] => {
   const now = new Date();
   switch (str) {
@@ -89,6 +113,7 @@ export const isRelativeTime = (str: any) => {
     parseRelativeTime(str);
     return true;
   } catch (e) {
+    console.log(e);
     return false;
   }
 };
