@@ -126,18 +126,20 @@ layout:
 
 See also: [autorange_after_scroll](#autorange_after_scroll)
 
+See also: [Custom buttons](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/231#discussioncomment-4869001)
+
+![btns](https://user-images.githubusercontent.com/777196/216764329-94b9cd7e-fee9-439b-9134-95b7be626592.gif)
+
+
 ## Features
 
-- Anything you can do with scatter and barcharts in plotly
+- Anything you can do with in plotlyjs except maps
 - Zoom / Pan, etc.
-- Data is loaded in the background
+- Data is loaded on demand
 - Axes are automatically configured based on the units of each trace
-- Configuration compatible with the History Card
+- Basic configuration compatible with the History Card
 
-For now only the only allowed chart types are:
-
-- Bar charts https://plotly.com/javascript/bar-charts/#basic-bar-chart
-- Line and scatter https://plotly.com/javascript/line-and-scatter/
+Get ideas from all charts in here https://plotly.com/javascript/
 
 ## Entities:
 
