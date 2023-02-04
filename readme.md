@@ -244,7 +244,6 @@ entities:
       100d: day
       100w: week
       100M: month # note uppercase M for month. Lowercase are minutes
-    };
 ```
 
 #### step function for auto period
