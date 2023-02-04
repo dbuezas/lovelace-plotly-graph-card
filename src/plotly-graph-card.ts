@@ -412,8 +412,17 @@ export class PlotlyGraph extends HTMLElement {
     await this.withoutRelayout(async () => {
       await Plotly.react(this.contentEl, entities, layout, config);
       if (autorange_after_scroll) {
-        await Plotly.relayout(this.contentEl, {
+        const before = this.contentEl.layout.yaxis.range?.slice();
+        Plotly.relayout(this.contentEl, {
           "yaxis.autorange": true,
+        });
+        const after = this.contentEl.layout.yaxis.range?.slice();
+        Plotly.relayout(this.contentEl, {
+          "yaxis.range": before,
+        });
+
+        await Plotly.animate(this.contentEl, {
+          layout: { "yaxis.range": after },
         });
       }
       this.contentEl.style.visibility = "";
