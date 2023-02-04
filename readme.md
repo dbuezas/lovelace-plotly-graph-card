@@ -130,7 +130,6 @@ See also: [Custom buttons](https://github.com/dbuezas/lovelace-plotly-graph-card
 
 ![btns](https://user-images.githubusercontent.com/777196/216764329-94b9cd7e-fee9-439b-9134-95b7be626592.gif)
 
-
 ## Features
 
 - Anything you can do with in plotlyjs except maps
@@ -210,8 +209,6 @@ entities:
     period: 5minute # `5minute`, `hour`, `day`, `week`, `month`, `auto` # `auto` varies the period depending on the zoom level
 ```
 
-The option `auto` makes the period relative to the currently visible time range. It picks the longest period, such that there are at least 100 datapoints in screen.
-
 #### for entities with state_class=total (such as utility meters)
 
 ```yaml
@@ -224,7 +221,7 @@ entities:
 
 #### automatic period
 
-The period will automatically adapt to the visible range.
+The option `auto` makes the period relative to the currently visible time range. It picks the longest period, such that there are at least 100 datapoints in screen.
 
 ```yaml
 type: custom:plotly-graph
@@ -234,15 +231,20 @@ entities:
     period: auto
 ```
 
-equivalent to:
+It is equivalent to writing:
 
 ```yaml
-period:
-  0s: 5minute
-  1d: hour
-  7d: day
-  28d: week
-  12M: month # note uppercase M
+type: custom:plotly-graph
+entities:
+  - entity: sensor.temperature
+    statistic: mean
+    period:
+      0m: 5minute
+      100h: hour
+      100d: day
+      100w: week
+      100M: month # note uppercase M for month. Lowercase are minutes
+    };
 ```
 
 #### step function for auto period

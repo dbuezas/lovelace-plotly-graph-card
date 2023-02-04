@@ -87,6 +87,7 @@ const defaultYamlOptional: {
     displaylogo: false,
     scrollZoom: true,
     modeBarButtonsToRemove: ["resetScale2d", "toImage", "lasso2d", "select2d"],
+    // @ts-expect-error expects a string, not a function
     locale: ({ hass }) => hass.locale?.language,
   },
   layout: {

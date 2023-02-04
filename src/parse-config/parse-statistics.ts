@@ -40,10 +40,10 @@ export function parseStatistics(
   if (period === "auto") {
     period = {
       "0": "5minute",
-      "1d": "hour",
-      "7d": "day",
-      "28d": "week",
-      "12M": "month",
+      "100h": "hour",
+      "100d": "day",
+      "100w": "week",
+      "100M": "month",
     };
   }
   if (getIsAutoPeriodConfig(period)) {

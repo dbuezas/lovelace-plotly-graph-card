@@ -113,7 +113,6 @@ export const isRelativeTime = (str: any) => {
     parseRelativeTime(str);
     return true;
   } catch (e) {
-    console.log(e);
     return false;
   }
 };
