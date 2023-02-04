@@ -68,6 +68,7 @@ class ConfigParser {
       hass,
       css_vars,
       getFromConfig: () => "",
+      get: () => "",
     };
     for (const [key, value] of Object.entries(this.yaml_with_defaults)) {
       try {
@@ -101,6 +102,7 @@ class ConfigParser {
     this.fnParam.path = path;
     this.fnParam.getFromConfig = (pathQuery: string) =>
       this.getEvaledPath(pathQuery, path /* caller */);
+    this.fnParam.get = this.fnParam.getFromConfig;
 
     if (
       !this.fnParam.xs && // hasn't fetched yet
@@ -114,8 +116,15 @@ class ConfigParser {
       await this.fetchDataForEntity(entityPath);
     }
 
-    if (typeof value === "string" && value.startsWith("$fn")) {
-      value = myEval(value.slice(3));
+    if (typeof value === "string") {
+      if (typeof value === "string" && value.startsWith("$ex")) {
+        value =
+          "$fn ({ getFromConfig, get, hass, vars, path, css_vars, xs, ys, statistics, states, meta }) => " +
+          value.slice(3);
+      }
+      if (value.startsWith("$fn")) {
+        value = myEval(value.slice(3));
+      }
     }
     const error = getDeprecationError(path, value);
     if (error) this.errors?.push(error);
@@ -366,7 +375,8 @@ function isObjectOrArray(value) {
 function is$fn(value) {
   return (
     typeof value === "function" ||
-    (typeof value === "string" && value.startsWith("$fn"))
+    (typeof value === "string" && value.startsWith("$fn")) ||
+    (typeof value === "string" && value.startsWith("$ex"))
   );
 }
 
@@ -387,11 +397,12 @@ function removeOutOfRange(data: EntityData, range: [number, number]) {
     data.statistics.splice(last);
   }
 }
-
+type GetFromConfig = (
+  string
+) => ReturnType<InstanceType<typeof ConfigParser>["getEvaledPath"]>;
 type FnParam = {
-  getFromConfig: (
-    string
-  ) => ReturnType<InstanceType<typeof ConfigParser>["getEvaledPath"]>;
+  getFromConfig: GetFromConfig;
+  get: GetFromConfig;
   hass: HomeAssistant;
   vars: Record<string, any>;
   path: string;
