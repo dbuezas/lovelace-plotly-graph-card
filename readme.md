@@ -997,6 +997,7 @@ defaults:
     side: left
     overlaying: "y"
     visible: true
+    showgrid: true
 ```
 
 ### `offset`
