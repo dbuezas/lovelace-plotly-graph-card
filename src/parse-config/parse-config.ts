@@ -117,7 +117,7 @@ class ConfigParser {
     }
 
     if (typeof value === "string") {
-      if (typeof value === "string" && value.startsWith("$ex")) {
+      if (value.startsWith("$ex")) {
         value =
           "$fn ({ getFromConfig, get, hass, vars, path, css_vars, xs, ys, statistics, states, meta }) => " +
           value.slice(3);
