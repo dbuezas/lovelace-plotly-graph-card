@@ -158,6 +158,7 @@ class ConfigParser {
     }
 
     // we're now on the way back of traversal, `value` is fully evaluated (not a function)
+    value = parent[key];
 
     if (path.match(/^entities\.\d+\.filters\.\d+$/)) {
       this.evalFilter({ parent, path, key, value });
