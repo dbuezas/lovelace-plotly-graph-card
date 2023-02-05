@@ -1061,3 +1061,4 @@ Removed in v3.0.0, if you need access to the attributes use the 'attribute' para
 
 - Click on releases/new draft from tag in github
 - The bundle will be built by the CI action thanks to @zanna-37 in #143
+- The version in the artifact will be set from the created tag while building.
