@@ -1030,7 +1030,7 @@ lambda: |
   (ys) => ys.map(y => y+1...etc...)
 # becomes
 filters:
-  - map_y: ys.map(y => y+1...etc...)
+  - map_y: y+1...etc...
 ```
 
 ### `entities/show_value/right_margin`
