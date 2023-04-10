@@ -154,7 +154,6 @@ const filters = {
   ) => {
     const param =
       typeof unitOrObject == "string" ? { unit: unitOrObject } : unitOrObject;
-    console.log(`param`, param);
     const unit = param.unit ?? "h";
     const reset_every = parseTimeDuration(param.reset_every ?? "0s");
     const offset = parseTimeDuration(param.offset ?? "0s");

@@ -356,7 +356,7 @@ export class PlotlyGraph extends HTMLElement {
     this.fetchScheduled = false;
     let i = 0;
     while (!(this.config && this.hass && this.isConnected)) {
-      if (i++ > 10) throw new Error("Card didn't load");
+      if (i++ > 50) throw new Error("Card didn't load");
       console.log("waiting for loading");
       await sleep(100);
     }
@@ -418,7 +418,7 @@ export class PlotlyGraph extends HTMLElement {
       }
       this.contentEl.style.visibility = "";
     });
-    // this.handles.dataClick?.off("plotly_click", this.onDataClick)!;
+    this.handles.dataClick?.off("plotly_click", this.onDataClick)!;
     this.handles.dataClick = this.contentEl.on(
       "plotly_click",
       this.onDataClick
