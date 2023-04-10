@@ -42,7 +42,7 @@ const defaultEntityOptional = {
       const internal = getFromConfig(`entities.${i}.internal`);
       if (!internal && !units.includes(unit)) units.push(unit);
     }
-    const yaxis_idx = units.length;
+    const yaxis_idx = units.indexOf(getFromConfig(`.unit_of_measurement`)) + 1;
     return "y" + (yaxis_idx === 1 ? "" : yaxis_idx);
   },
 };
