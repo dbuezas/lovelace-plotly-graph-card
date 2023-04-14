@@ -1063,3 +1063,10 @@ Removed in v3.0.0, if you need access to the attributes use the 'attribute' para
 - Click on releases/new draft from tag in github
 - The bundle will be built by the CI action thanks to @zanna-37 in #143
 - The version in the artifact will be set from the created tag while building.
+
+# Popularity
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=dbuezas/lovelace-plotly-graph-card&type=Date)](https://star-history.com/#dbuezas/lovelace-plotly-graph-card&Date)
+
