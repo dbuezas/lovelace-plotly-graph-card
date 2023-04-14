@@ -433,67 +433,67 @@ Filters are applied in order.
 type: custom:plotly-graph
 entities:
   - entity: sensor.temperature_in_celsius
-  filters:
-    - store_var: myVar # stores the datapoints inside `vars.myVar`
-    - load_var: myVar # loads the datapoints from `vars.myVar`
+    filters:
+      - store_var: myVar # stores the datapoints inside `vars.myVar`
+      - load_var: myVar # loads the datapoints from `vars.myVar`
 
-    # The filters below will only be applied to numeric values. Missing (unavailable) and non-numerics will be left untouched
-    - add: 5 # adds 5 to each datapoint
-    - multiply: 2 # multiplies each datapoint by 2
-    - calibrate_linear:
-      # Left of the arrow are the measurements, right are the expected values.
-      # The mapping is then approximated through linear regression, and that correction is applied to the data.
-      - 0.0 -> 0.0
-      - 40.0 -> 45.0
-      - 100.0 -> 102.5
-    - deduplicate_adjacent # removes all adjacent duplicate values. Useful for type: marker+text
-    - delta # computes the delta between each two consecutive numeric y values.
-    - derivate: h # computes rate of change per unit of time: h # ms (milisecond), s (second), m (minute), h (hour), d (day), w (week), M (month), y (year)
-    - integrate: h # computes area under the curve in a specific unit of time using Right hand riemann integration. Same units as the derivative
-    - integrate:
-        unit: h # defaults to h
-        reset_every: 1h # Defaults to 0 (never reset). Any duration unit (ms, s, m, h, d, w, M, y).
-        offset: 30m # defaults to 0. Resets happen 30m later
+      # The filters below will only be applied to numeric values. Missing (unavailable) and non-numerics will be left untouched
+      - add: 5 # adds 5 to each datapoint
+      - multiply: 2 # multiplies each datapoint by 2
+      - calibrate_linear:
+        # Left of the arrow are the measurements, right are the expected values.
+        # The mapping is then approximated through linear regression, and that correction is applied to the data.
+        - 0.0 -> 0.0
+        - 40.0 -> 45.0
+        - 100.0 -> 102.5
+      - deduplicate_adjacent # removes all adjacent duplicate values. Useful for type: marker+text
+      - delta # computes the delta between each two consecutive numeric y values.
+      - derivate: h # computes rate of change per unit of time: h # ms (milisecond), s (second), m (minute), h (hour), d (day), w (week), M (month), y (year)
+      - integrate: h # computes area under the curve in a specific unit of time using Right hand riemann integration. Same units as the derivative
+      - integrate:
+          unit: h # defaults to h
+          reset_every: 1h # Defaults to 0 (never reset). Any duration unit (ms, s, m, h, d, w, M, y).
+          offset: 30m # defaults to 0. Resets happen 30m later
 
-    - map_y_numbers: Math.sqrt(y + 10*100) # map the y coordinate of each datapoint. Same available variables as for `map_y`
-    # In the filters below, missing and non numeric datapoints will be discarded
-    - sliding_window_moving_average: # best for smoothing
-        # default parameters:
-        window_size: 10
-        extended: false # when true, smaller window sizes are used on the extremes.
-        centered: true # compensate for averaging lag by offsetting the x axis by half a window_size
-    - exponential_moving_average: # good for smoothing
-        # default parameters:
-        alpha: 0.1 # between 0 an 1. The lower the alpha, the smoother the trace.
-    - median: # got to remove outliers
-        # default parameters:
-        window_size: 10
-        extended: false
-        centered: true
-    - trendline # converts the data to a linear trendline // TODO: force line.shape = linear
-    - trendline: linear # defaults to no forecast, no formula, no error squared
-    - trendline:
-        type: polynomial # linear, polynomial, power, exponential, theil_sen, robust_polynomial, fft
-        forecast: 1d # continue trendline after present. Use global time_offset to show beyond present.
-        degree: 3 # only appliable to polynomial regression and fft.
-        show_formula: true
-        show_r2: true
-    # The filters below receive all datapoints as they come from home assistant. Y values are strings or null (unless previously mapped to numbers or any other type)
-    - map_y: 'y === "heat" ? 1 : 0' # map the y values of each datapoint. Variables `i` (index), `x`, `y`, `state`, `statistic`, `xs`, `ys`, `states`, `statistics`, `meta`, `vars` and `hass` are in scope. The outer quoutes are there because yaml doesn't like colons in strings without quoutes.
-    - map_x: new Date(+x + 1000) # map the x coordinate (javascript date object) of each datapoint. Same variables as map_y are in scope
-    - fn: |- # arbitrary function. Only the keys that are returned are replaced. Returning null or undefined, leaves the data unchanged (useful )
+      - map_y_numbers: Math.sqrt(y + 10*100) # map the y coordinate of each datapoint. Same available variables as for `map_y`
+      # In the filters below, missing and non numeric datapoints will be discarded
+      - sliding_window_moving_average: # best for smoothing
+          # default parameters:
+          window_size: 10
+          extended: false # when true, smaller window sizes are used on the extremes.
+          centered: true # compensate for averaging lag by offsetting the x axis by half a window_size
+      - exponential_moving_average: # good for smoothing
+          # default parameters:
+          alpha: 0.1 # between 0 an 1. The lower the alpha, the smoother the trace.
+      - median: # got to remove outliers
+          # default parameters:
+          window_size: 10
+          extended: false
+          centered: true
+      - trendline # converts the data to a linear trendline // TODO: force line.shape = linear
+      - trendline: linear # defaults to no forecast, no formula, no error squared
+      - trendline:
+          type: polynomial # linear, polynomial, power, exponential, theil_sen, robust_polynomial, fft
+          forecast: 1d # continue trendline after present. Use global time_offset to show beyond present.
+          degree: 3 # only appliable to polynomial regression and fft.
+          show_formula: true
+          show_r2: true
+      # The filters below receive all datapoints as they come from home assistant. Y values are strings or null (unless previously mapped to numbers or any other type)
+      - map_y: 'y === "heat" ? 1 : 0' # map the y values of each datapoint. Variables `i` (index), `x`, `y`, `state`, `statistic`, `xs`, `ys`, `states`, `statistics`, `meta`, `vars` and `hass` are in scope. The outer quoutes are there because yaml doesn't like colons in strings without quoutes.
+      - map_x: new Date(+x + 1000) # map the x coordinate (javascript date object) of each datapoint. Same variables as map_y are in scope
+      - fn: |- # arbitrary function. Only the keys that are returned are replaced. Returning null or undefined, leaves the data unchanged (useful )
 
-        ({xs, ys, meta, states, statistics, hass}) => {
-          # either statistics or states will be available, depending on if "statistics" are fetched or not
-          # attributes will be available inside states only if an attribute is picked in the trace
-          return {
-            ys: states.map(state => +state?.attributes?.current_temperature - state?.attributes?.target_temperature + hass.states["sensor.temperature"].state,
-            meta: { unit_of_measurement: "delta" }
-          };
-        },
-    - resample: 5m # Rebuilds data so that the timestamps in xs are exact multiples of the specified interval, and without gaps. The parameter is the length of the interval and defaults to 5 minutes (see #duration for the format). This is useful when combining data from multiple entities, as the index of each datapoint will correspond to the same instant of time across them.
-    - filter: y !== null && +y > 0 && x > new Date(Date.now()-1000*60*60) # filter out datapoints for which this returns false. Also filters from xs, states and statistics. Same variables as map_y are in scope
-    - force_numeric # converts number-lookinig-strings to actual js numbers and removes the rest. Any filters used after this one will receive numbers, not strings or nulls. Also removes respective elements from xs, states and statistics parameters
+          ({xs, ys, meta, states, statistics, hass}) => {
+            # either statistics or states will be available, depending on if "statistics" are fetched or not
+            # attributes will be available inside states only if an attribute is picked in the trace
+            return {
+              ys: states.map(state => +state?.attributes?.current_temperature - state?.attributes?.target_temperature + hass.states["sensor.temperature"].state,
+              meta: { unit_of_measurement: "delta" }
+            };
+          },
+      - resample: 5m # Rebuilds data so that the timestamps in xs are exact multiples of the specified interval, and without gaps. The parameter is the length of the interval and defaults to 5 minutes (see #duration for the format). This is useful when combining data from multiple entities, as the index of each datapoint will correspond to the same instant of time across them.
+      - filter: y !== null && +y > 0 && x > new Date(Date.now()-1000*60*60) # filter out datapoints for which this returns false. Also filters from xs, states and statistics. Same variables as map_y are in scope
+      - force_numeric # converts number-lookinig-strings to actual js numbers and removes the rest. Any filters used after this one will receive numbers, not strings or nulls. Also removes respective elements from xs, states and statistics parameters
 ```
 
 #### Examples
