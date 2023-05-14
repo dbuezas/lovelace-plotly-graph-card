@@ -397,6 +397,7 @@ entities:
     customdata: |
       $fn ({states}) => 
         states.map( () => ({ extra_attr: "hello" }) )
+      # customdata is array with the same number of values as x axis (states)
       # use statistics instead of states if entity is based on statistic   
     texttemplate: >- # custom format for show_value
       <b>%{y}</b>%{customdata.extra_attr}<br>
