@@ -396,7 +396,7 @@ entities:
     show_value: true # shows the last value as text
     customdata: |
       $fn ({states}) => 
-        states.map( ({...attributes}) => ({ extra_attr: "hello" , ...attributes}) )
+        states.map( () => ({ extra_attr: "hello" }) )
       # use statistics instead of states if entity is based on statistic   
     texttemplate: >- # custom format for show_value
       <b>%{y}</b>%{customdata.extra_attr}<br>
@@ -409,8 +409,7 @@ entities:
       ` <b>${getFromConfig(".name")}</b><br>
       <i>%{x}</i><br>
       %{y}${getFromConfig(".unit_of_measurement")}
-      <extra></extra>`
-      # <extra></extra> is text next to the tooltip (defaults to entity name)
+      <extra></extra>` # <extra></extra> removes text on the side of the tooltip (it otherwise defaults to the entity name)
 ```
 
 ### Extend_to_present
