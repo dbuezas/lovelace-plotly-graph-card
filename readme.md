@@ -394,16 +394,23 @@ entities:
     name: living temperature in Farenheit # Overrides the entity name
     unit_of_measurement: °F # Overrides the unit
     show_value: true # shows the last value as text
+    customdata: |
+      $fn ({states}) => 
+        states.map( () => ({ extra_attr: "hello" }) )
+      # customdata is array with the same number of values as x axis (states)
+      # use statistics instead of states if entity is based on statistic   
     texttemplate: >- # custom format for show_value
-      <b>%{y}</b>%{customdata.unit_of_measurement}<br>
-      %{customdata.name}
+      <b>%{y}</b>%{customdata.extra_attr}<br>
       # to show only 2 decimals: "%{y:.2f}"
-      # see more here: https://plotly.com/javascript/reference/pie/#pie-texttemplate
+      # see more here: https://plotly.com/javascript/hover-text-and-formatting/
+      # only x, y, customdata are available as %{} template
 
-    hovertemplate: >- # custom format for tooltip
-      <b>%{customdata.name}</b><br><i>%{x}</i><br>
-      %{y}%{customdata.unit_of_measurement}
-      <extra></extra>
+    hovertemplate: | # custom format for hover text using entity properites name and unit_of_measurement
+      $fn ({ getFromConfig }) =>
+      ` <b>${getFromConfig(".name")}</b><br>
+      <i>%{x}</i><br>
+      %{y}${getFromConfig(".unit_of_measurement")}
+      <extra></extra>` # <extra></extra> removes text on the side of the tooltip (it otherwise defaults to the entity name)
 ```
 
 ### Extend_to_present
