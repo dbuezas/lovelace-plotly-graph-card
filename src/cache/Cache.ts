@@ -77,7 +77,8 @@ async function fetchSingleRange(
   // |            '--- discarded as it is fictitious
   // '--- point at the edge, kept
 
-  const start = new Date(startT - 1);
+  const l = Math.max(0, 5000 - (endT - startT)); // The HA API doesn't add the fake boundary if the interval requested is too small
+  const start = new Date(startT - 1 - l);
   endT = Math.min(endT, Date.now());
   const end = new Date(endT);
   let history: CachedEntity[];
