@@ -168,7 +168,7 @@ entities:
 ## Color schemes
 
 Changes default line colors.
-See more here: https://github.com/dbuezas/lovelace-plotly-graph-card/blob/master/src/color-schemes.ts
+See more here: https://github.com/dbuezas/lovelace-plotly-graph-card/blob/master/src/parse-config/parse-color-scheme.ts
 
 ```yaml
 type: custom:plotly-graph
