@@ -76,6 +76,8 @@ async function fetchSingleRange(
   // ^            ^
   // |            '--- discarded as it is fictitious
   // '--- point at the edge, kept
+  //
+  // The above does not apply to statistics data where there are no fake data points.
 
   const l = Math.max(0, 5000 - (endT - startT)); // The HA API doesn't add the fake boundary if the interval requested is too small
   const start = new Date(startT - 1 - l);
@@ -86,12 +88,12 @@ async function fetchSingleRange(
     history = await fetchStatistics(hass, entity, [start, end]);
   } else {
     history = await fetchStates(hass, entity, [start, end]);
+    if (history.length) {
+      history[0].fake_boundary_datapoint = true;
+    }
   }
 
   let range: [number, number] = [startT, endT];
-  if (history.length) {
-    history[0].fake_boundary_datapoint = true;
-  }
   return {
     range,
     history,
@@ -120,7 +122,9 @@ export default class Cache {
     let h = (this.histories[entityKey] ??= []);
     h.push(...states);
     h.sort((a, b) => +a.x - +b.x);
-    h = h.filter((x, i) => i == 0 || !x.fake_boundary_datapoint);
+    if (!isEntityIdStatisticsConfig(entity)) {
+      h = h.filter((x, i) => i == 0 || !x.fake_boundary_datapoint);
+    }
     h = h.filter((_, i) => +h[i - 1]?.x !== +h[i].x);
     this.histories[entityKey] = h;
     this.ranges[entityKey] ??= [];
