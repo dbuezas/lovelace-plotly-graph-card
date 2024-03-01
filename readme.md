@@ -489,8 +489,7 @@ entities:
       - map_y: 'y === "heat" ? 1 : 0' # map the y values of each datapoint. Variables `i` (index), `x`, `y`, `state`, `statistic`, `xs`, `ys`, `states`, `statistics`, `meta`, `vars` and `hass` are in scope. The outer quoutes are there because yaml doesn't like colons in strings without quoutes.
       - map_x: new Date(+x + 1000) # map the x coordinate (javascript date object) of each datapoint. Same variables as map_y are in scope
       - fn: |- # arbitrary function. Only the keys that are returned are replaced. Returning null or undefined, leaves the data unchanged (useful )
-
-          ({xs, ys, meta, states, statistics, hass}) => {
+          ({xs, ys, vars, meta, states, statistics, hass}) => {
             # either statistics or states will be available, depending on if "statistics" are fetched or not
             # attributes will be available inside states only if an attribute is picked in the trace
             return {
