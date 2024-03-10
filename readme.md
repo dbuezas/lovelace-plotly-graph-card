@@ -265,7 +265,9 @@ Note that `5minute` period statistics are limited in time as normal recorder his
 
 ## show_value:
 
-Shows the value of the last datapoint as text in the plot.
+Shows the value of the last datapoint as text in a scatter plot.
+
+> Warning: don't use it with bar charts, it will only add an extra bar and no text
 
 Examples:
 
