@@ -25,6 +25,12 @@
 
 You may find some extra info there in this link
 
+## [Index of examples with images](./discussion-index.md)
+
+You can browse this list and find yamls by looking at images
+
+Created with this [quick and dirty script](./discussion-index.mjs)
+
 ## More yaml examples
 
 Find more advanced examples in [Show & Tell](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/categories/show-and-tell)
