@@ -23,15 +23,18 @@ async function fetchDiscussions(owner, repo, cursor) {
               title
               url
               body
-              comments(first: 100) {
+              comments(first: 70) {
                 totalCount
                 nodes {
                   id
-                  author {
-                    login
-                  }
                   body
                   createdAt
+                  replies(first: 70) {
+                    totalCount
+                    nodes {
+                      body
+                    }
+                  }
                 }
                 pageInfo {
                   endCursor
@@ -63,12 +66,14 @@ async function fetchDiscussions(owner, repo, cursor) {
     }
     return imageUrls;
   }
-  console.log(response.repository.discussions.nodes.length);
   const data = response.repository.discussions.nodes
     .map(({ title, url, body, comments }) => {
       const images = extractImageUrls(body);
       for (const comment of comments.nodes) {
         images.push(...extractImageUrls(comment.body));
+        for (const reply of comment.replies.nodes) {
+          images.push(...extractImageUrls(reply.body));
+        }
       }
       return { title, url, images };
     })
