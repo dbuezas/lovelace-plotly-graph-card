@@ -54,10 +54,7 @@ async function fetchDiscussions(owner, repo, cursor) {
   function extractImageUrls(markdown) {
     const imageUrls = [];
     // This regex specifically matches URLs starting with the specified GitHub path
-    const regexes = [
-      /!\[.*?\]\((https:\/\/github\.com\/dbuezas\/lovelace-plotly-graph-card\/assets\/.*?)\)/g,
-      /src="(https:\/\/github\.com\/dbuezas\/lovelace-plotly-graph-card\/assets\/[^"]+)"/g,
-    ];
+    const regexes = [/!\[.*?\]\((.*?)\)/g, /src="([^"]+)"/g];
     for (const regex of regexes) {
       let match;
       while ((match = regex.exec(markdown)) !== null) {
@@ -82,7 +79,7 @@ async function fetchDiscussions(owner, repo, cursor) {
     let group = [];
     groups.push(group);
     for (let i = 0; i < images.length; i++) {
-      if (i % 3 === 0) {
+      if (i % 4 === 0) {
         group = [];
         groups.push(group);
       }
