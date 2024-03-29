@@ -3,8 +3,12 @@ import { Octokit } from "@octokit/core";
 const owner = "dbuezas";
 const repo = "lovelace-plotly-graph-card";
 const auth = "github_pat_xxx"; // create from https://github.com/settings/tokens
+import fetch from "node-fetch";
 
 const octokit = new Octokit({
+  request: {
+    fetch: fetch,
+  },
   auth,
 });
 
