@@ -42,7 +42,7 @@
     "ml-regression-theil-sen": "^2.0.0",
     "ndarray": "^1.0.19",
     "ndarray-fft": "^1.0.3",
-    "plotly.js": "^2.18.1",
+    "plotly.js": "^2.34.0",
     "propose": "^0.0.5"
   }
 }
