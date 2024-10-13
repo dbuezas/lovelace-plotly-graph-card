@@ -9,8 +9,8 @@ type With$fn<T> = {
         : T[K] extends object
           ? With$fn<T[K]> // handle objects recursively
           : T[K]) // retain original type
-    | (string & `${Whitespace | ""}$ex${Whitespace}${string}`)
-    | (string & `${Whitespace | ""}$fn${Whitespace}${string}`); // allow string starting with $ex or $fn with optional whitespace
+    | `${Whitespace | ""}$ex${Whitespace}${string}`
+    | `${Whitespace | ""}$fn${Whitespace}${string}`; // allow string starting with $ex or $fn with optional whitespace
 };
 
 export type JsonSchemaRoot = With$fn<InputConfig>;
