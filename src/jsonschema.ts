@@ -2,12 +2,10 @@ import { InputConfig } from "./types";
 
 type With$fn<T> = {
   [K in keyof T]:
-    | (T[K] extends (infer U)[]
-        ? With$fn<U>[] // handle arrays recursively
-        : T[K] extends object
-          ? With$fn<T[K]> // handle objects recursively
-          : T[K]) // retain original type
-    | `${string}$ex$fn_REPLACER`;
+    | (T[K] extends (infer U)[] // Handle arrays recursively
+        ? With$fn<U>[]
+        : With$fn<T[K]>) // Handle everything else recursively
+    | `${string}$ex$fn_REPLACER`; // Apply extension to everything
 };
 
 export type JsonSchemaRoot = With$fn<InputConfig>;
