@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" type="image/svg+xml" href="<%= require('./icon.svg') %>" />
+    <title>Plotly graph card yaml editor</title>
+    <meta name="description" content="YAML editor for Plotly Graph Card" />
+    <meta name="theme-color" content="#42e3ff" />
+  </head>
+  <body>
+    <nav>
+      <h1>
+        <a
+        href="https://github.com/dbuezas/lovelace-plotly-graph-card"
+        class="nav-icon"
+        >
+          Plotly graph card
+        </a>
+        yaml editor
+      </h1>
+      <a
+        href="https://github.com/dbuezas/lovelace-plotly-graph-card"
+        class="nav-icon"
+      >
+        <img
+          alt="GitHub icon"
+          height="32"
+          src="<%= require('@fortawesome/fontawesome-free/svgs/brands/github.svg') %>"
+          width="32"
+        />
+      </a>
+    </nav>
+    <main>
+      <div id="breadcrumbs"></div>
+      <div id="editor"></div>
+      <div id="problems"></div>
+      <div id="toast-container" style="position: fixed; bottom: 20px; right: 20px;"></div>
+
+    </main>
+  </body>
+</html>

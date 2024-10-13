@@ -1,0 +1,30 @@
+{
+  "name": "demo",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "npm run schema && webpack serve --open --mode development",
+    "build": "npm run schema &&rm -rf dist && webpack --mode production",
+    "schema": "cd .. && typescript-json-schema --noExtraProps tsconfig.json InputConfig > yaml-editor/src/schema.json",
+    "deploy": "pnpm run build && gh-pages -d dist"
+  },
+  "dependencies": {
+    "@fortawesome/fontawesome-free": "^6.0.0",
+    "@schemastore/schema-catalog": "^0.0.6",
+    "css-loader": "^7.0.0",
+    "css-minimizer-webpack-plugin": "^7.0.0",
+    "html-webpack-plugin": "^5.0.0",
+    "mini-css-extract-plugin": "^2.0.0",
+    "monaco-editor": "^0.50.0",
+    "monaco-yaml": "^5.2.2",
+    "ts-loader": "^9.0.0",
+    "typescript-json-schema": "^0.65.1",
+    "webpack": "^5.0.0",
+    "webpack-cli": "^5.0.0",
+    "webpack-dev-server": "^5.0.0"
+  },
+  "devDependencies": {
+    "gh-pages": "^6.2.0"
+  }
+}

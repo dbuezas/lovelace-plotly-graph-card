@@ -2,7 +2,8 @@ import {
   ColorSchemeArray,
   ColorSchemeNames,
 } from "./parse-config/parse-color-scheme";
-import { TimeDurationStr } from "./duration/duration";
+
+import { RelativeTimeStr, TimeDurationStr } from "./duration/duration";
 import {
   AutoPeriodConfig,
   StatisticPeriod,
@@ -11,20 +12,24 @@ import {
 } from "./recorder-types";
 
 import { HassEntity } from "home-assistant-js-websocket";
-import { FilterFn } from "./filters/filters";
+import { FilterFn, FilterInput } from "./filters/filters";
+import type filters from "./filters/filters";
+import internal from "stream";
+
 export { HassEntity } from "home-assistant-js-websocket";
 
 export type YValue = number | string | null;
 
 export type InputConfig = {
   type: "custom:plotly-graph";
-  hours_to_show?: number;
+  hours_to_show?: number | TimeDurationStr | RelativeTimeStr;
   refresh_interval?: number | "auto"; // in seconds
   color_scheme?: ColorSchemeNames | ColorSchemeArray | number;
   title?: string;
   offset?: TimeDurationStr;
   entities: ({
     entity?: string;
+    name?: string;
     attribute?: string;
     statistic?: StatisticType;
     period?: StatisticPeriod | "auto" | AutoPeriodConfig;
@@ -37,7 +42,7 @@ export type InputConfig = {
         };
     offset?: TimeDurationStr;
     extend_to_present?: boolean;
-    filters?: (Record<string, any> | string)[];
+    filters?: FilterInput[];
     on_legend_click?: Function;
     on_legend_dblclick?: Function;
     on_click?: Function;
@@ -108,7 +113,7 @@ export type EntityIdConfig =
   | EntityIdStatisticsConfig;
 
 export function isEntityIdStateConfig(
-  entityConfig: EntityIdConfig
+  entityConfig: EntityIdConfig,
 ): entityConfig is EntityIdStateConfig {
   return !(
     isEntityIdAttrConfig(entityConfig) ||
@@ -116,12 +121,12 @@ export function isEntityIdStateConfig(
   );
 }
 export function isEntityIdAttrConfig(
-  entityConfig: EntityIdConfig
+  entityConfig: EntityIdConfig,
 ): entityConfig is EntityIdAttrConfig {
   return !!entityConfig["attribute"];
 }
 export function isEntityIdStatisticsConfig(
-  entityConfig: EntityIdConfig
+  entityConfig: EntityIdConfig,
 ): entityConfig is EntityIdStatisticsConfig {
   return !!entityConfig["statistic"];
 }
