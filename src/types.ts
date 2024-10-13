@@ -15,8 +15,9 @@ import { FilterFn } from "./filters/filters";
 export { HassEntity } from "home-assistant-js-websocket";
 
 export type YValue = number | string | null;
+
 export type InputConfig = {
-  type: "custom:plotly-graph-card";
+  type: "custom:plotly-graph";
   hours_to_show?: number;
   refresh_interval?: number | "auto"; // in seconds
   color_scheme?: ColorSchemeNames | ColorSchemeArray | number;

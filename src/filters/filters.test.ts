@@ -14,6 +14,8 @@ const data = {
   },
   history: [],
   vars: {},
+  meta: {} as any,
+  hass: {} as any,
 };
 
 describe("filters", () => {
@@ -109,7 +111,7 @@ describe("filters", () => {
   });
   it("fn", () => {
     expect(
-      filters.map(`({xs,ys,...rest}) => ({xs:ys, ys:xs,...rest})`)(data)
+      filters.fn(`({xs,ys,...rest}) => ({xs:ys, ys:xs,...rest})`)(data)
     ).toEqual({
       attributes: {
         unit_of_measurement: "w",
