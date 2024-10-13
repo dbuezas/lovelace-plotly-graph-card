@@ -6,7 +6,7 @@
   "scripts": {
     "start": "npm run schema && webpack serve --open --mode development",
     "build": "npm run schema &&rm -rf dist && webpack --mode production",
-    "schema": "cd .. && typescript-json-schema --noExtraProps tsconfig.json InputConfig > yaml-editor/src/schema.json",
+    "schema": "cd .. && typescript-json-schema --required tsconfig.json JsonSchemaRoot > yaml-editor/src/schema.json",
     "deploy": "pnpm run build && gh-pages -d dist"
   },
   "dependencies": {
