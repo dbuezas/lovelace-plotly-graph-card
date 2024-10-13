@@ -6,7 +6,9 @@
   "scripts": {
     "start": "npm run schema && webpack serve --open --mode development",
     "build": "npm run schema &&rm -rf dist && webpack --mode production",
-    "schema": "cd .. && typescript-json-schema --required tsconfig.json JsonSchemaRoot > yaml-editor/src/schema.json",
+    "schema-1": "cd .. && typescript-json-schema --required tsconfig.json JsonSchemaRoot > yaml-editor/src/schema.json",
+    "schema-2": "node patch-schema.js",
+    "schema": "npm run schema-1 && npm run schema-2",
     "deploy": "pnpm run build && gh-pages -d dist"
   },
   "dependencies": {
