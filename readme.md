@@ -35,6 +35,12 @@ Created with this [quick and dirty script](./discussion-index.mjs)
 
 Find more advanced examples in [Show & Tell](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/categories/show-and-tell)
 
+## Yaml syntax validatoin
+
+Web app to assist you with syntax validation and autocomplete: [Plotly graph card yaml editor](https://dbuezas.github.io/lovelace-plotly-graph-card/)
+
+<img width="300" alt="image" src="https://github.com/user-attachments/assets/2c9b3b85-85d4-49c4-80bc-ebc28eeaf141" >
+
 ## Installation
 
 ### Via Home Assistant Community Store (Recommended)
