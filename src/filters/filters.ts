@@ -35,18 +35,16 @@ type FilterParam<K extends keyof typeof filters> = Parameters<
   (typeof filters)[K]
 >[0];
 
+type CheckType<T, IfUndef, IfNonUndef> =
+  | (T extends undefined ? IfUndef : never)
+  | (T extends unknown ? IfNonUndef : never);
+
 export type FilterInput = {
-  [K in keyof typeof filters]: FilterParam<K> extends undefined
-    ? // Case 1: Function accepts `undefined` only, return the key as a string literal
-      K
-    : undefined extends FilterParam<K>
-      ? object extends FilterParam<K>
-        ? // Case 2: Function accepts `object | undefined`, return union of the key or the object
-          { [P in K]: Exclude<FilterParam<K>, undefined> } | K
-        : // Case 3: Function accepts only `undefined`, return the key as a string literal
-          K
-      : // Case 4: Function accepts only an `object`, return object type
-        { [P in K]: FilterParam<K> };
+  [K in keyof typeof filters]: CheckType<
+    FilterParam<K>,
+    K,
+    { [P in K]: Exclude<FilterParam<K>, undefined> }
+  >;
 }[keyof typeof filters];
 
 const mapNumbers = (ys: YValue[], fn: (y: number, i: number) => number) =>

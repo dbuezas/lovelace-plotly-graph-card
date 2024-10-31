@@ -1,4 +1,3 @@
-import { type JSONSchemaForSchemaStoreOrgCatalogFiles } from "@schemastore/schema-catalog";
 import {
   editor,
   languages,
