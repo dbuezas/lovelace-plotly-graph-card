@@ -798,7 +798,7 @@ Remember you can add a `console.log(the_object_you_want_to_inspect)` and see its
 - `path: string;` The path of the current function
 - `css_vars: HATheme;` The colors set by the active Home Assistant theme (see #ha_theme)
 
-#### Only iniside entities
+#### Only inside entities
 
 - `xs: Date[];` Array of timestamps
 - `ys: YValue[];` Array of values of the sensor/attribute/statistic
@@ -813,6 +813,8 @@ Remember you can add a `console.log(the_object_you_want_to_inspect)` and see its
 - Functions cannot return functions for performance reasons. (feature request if you need this)
 - Defaults are not applied to the subelements returned by a function. (feature request if you need this)
 - You can get other values from the yaml with the `getFromConfig` parameter, but if they are functions they need to be defined before.
+- Any function which uses the result of a filter, needs to be placed in the YAML below the filter. For instance, `name: $ex ys.at(-1)` where the filter is modifying `ys`.
+- The same is true of consecutive filters - order matters. This is due to the fact that filters are translated internally to function calls, executed in the order they are parsed.
 
 #### Adding the last value to the entitiy's name
 
