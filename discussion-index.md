@@ -1,8 +1,637 @@
-## [Combined statistics and short term history](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/415)
+## [Electricity prices for today and tomorrow with Nordpool](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/494)
 
 <table>
 <tr>
-<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/777196/b0f46d01-2093-456e-8af2-b09fef032f57" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/c570e74a-f189-46f1-8a3c-849ed57e6544" width="200" /></td>
+</tr>
+
+</table>
+
+---
+
+## [stacked bar-chart like senec-chart](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/491)
+
+<table>
+<tr>
+<td><img src="https://github.com/user-attachments/assets/0f85c894-8ad4-43fe-b316-c6262c2108e9" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/db8e8bdc-c808-4013-abf0-46ff190571b6" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/c74b9a4c-3fcc-4a30-bf74-0f9f5c25a7bb" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/620cd623-a2f1-4cf1-8daf-bc577ae71a72" width="200" /></td>
+</tr>
+
+</table>
+
+---
+
+## [Any docs/guidance on polar bars? 🐻‍❄️💈](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/493)
+
+<table>
+<tr>
+<td><img src="https://github.com/user-attachments/assets/e5911ff4-2c43-4b8f-8de0-ef2506738417" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/c6ca0c98-ced3-4457-88a9-91bfb86e4b7b" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/9b9305fd-d139-46da-a3ac-489d35f6f1a1" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/5161d8ee-682f-47b3-a64f-e4d70f45f728" width="200" /></td>
+</tr>
+
+</table>
+
+---
+
+## [Y axis auto range/zoom but no scroll.](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/492)
+
+<table>
+<tr>
+<td><img src="https://github.com/user-attachments/assets/85dc3ce1-0005-4b2b-a6ee-4173172680f7" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/e361e2a7-09ea-4618-8255-79c681332af3" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/0018e763-333b-4019-bca7-b76c876afaa8" width="200" /></td>
+</tr>
+
+</table>
+
+---
+
+## [Max Solar Power Heatmap over Azimut and Elevation](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/408)
+
+<table>
+<tr>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/2478002/99cc62eb-60a5-4cc7-b14c-c9e86e661281" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/a8c919a6-a5bd-4d7b-9367-e0fbc4c636f8" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/1be3b93f-3ca6-4e5d-bc09-4e7764fc53be" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/74d30846-c2ef-45c9-bb1e-705609d704ac" width="200" /></td>
+</tr>
+<tr>
+<td><img src="https://github.com/user-attachments/assets/27308a63-3db2-46f0-bd25-b37f95320218" width="200" /></td>
+</tr>
+
+</table>
+
+---
+
+## [stacked bars with negative values](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/488)
+
+<table>
+<tr>
+<td><img src="https://github.com/user-attachments/assets/f35f777c-df9a-4191-b56b-a7283df7e877" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/eac43f6d-c26d-4710-93d9-7c332d0cd4bd" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/42fe23b0-5f13-445b-901c-4f2dcebff62d" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/21c0d790-2844-482b-af2e-27bf19b0fe12" width="200" /></td>
+</tr>
+
+</table>
+
+---
+
+## [Hot Water Cylinder Visualiser](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/294)
+
+<table>
+<tr>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/96064472/9881af32-cfb2-4d4d-9df6-5904763c2ff4" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/a3f4dfa4-50f2-47a7-a6b6-0bb298556a08" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/85071a82-1d4f-41d7-85d7-3f6f1dee1e86" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/ecc83516-f0e8-441d-be9d-fb73bd32d963" width="200" /></td>
+</tr>
+<tr>
+<td><img src="https://github.com/user-attachments/assets/94ee5bc7-1edf-4dec-8638-6163e841fed4" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/37127bef-bc0e-48f6-8306-e02bcf8fe389" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/5ba13470-2eba-4dc6-b772-ceb4c68f5d77" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/01ed3ff3-9ebf-43f4-986e-d499e59a4a38" width="200" /></td>
+</tr>
+
+</table>
+
+---
+
+## [How to lock Yaxis range for two sensors using different units?](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/490)
+
+<table>
+<tr>
+<td><img src="https://github.com/user-attachments/assets/38bd4b49-5b87-4a70-ae56-5ccb10ba4cb1" width="200" /></td>
+</tr>
+
+</table>
+
+---
+
+## [Battery Cell Voltage 3D Graph](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/487)
+
+<table>
+<tr>
+<td><img src="https://github.com/user-attachments/assets/43469890-4816-42ee-aa66-6fc90210187c" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/47bd1a41-43a8-4d6c-a58d-fc1d9b9e429d" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/4f0baede-5e08-4ca1-aca7-639dfb97dd48" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/23c2839c-6aa0-45b1-853b-b601acaffe29" width="200" /></td>
+</tr>
+
+</table>
+
+---
+
+## [How to get the Download plot as png button without `raw_plotly_config: true`??](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/486)
+
+<table>
+<tr>
+<td><img src="https://github.com/user-attachments/assets/b640e222-229f-451c-bfa3-ea6dd7e36359" width="200" /></td>
+</tr>
+
+</table>
+
+---
+
+## [Bars being coloured incorrectly on value](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/482)
+
+<table>
+<tr>
+<td><img src="https://github.com/user-attachments/assets/f742e85f-b4ee-40ef-9146-43e50314f3a6" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/0b65709d-fa9e-4a7d-a285-495a50ca341e" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/de0fe3d7-3363-4433-999c-3484e7277c7a" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/751bdef7-0789-4395-9d30-60e7e8b909f3" width="200" /></td>
+</tr>
+<tr>
+<td><img src="https://github.com/user-attachments/assets/bb7fe40d-1261-43bb-8fed-4623b3c557c5" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/e8041e31-e151-40f9-beab-2bbb9ff48818" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/6b114707-74a4-48a8-a2ec-f0c84bbce93b" width="200" /></td>
+</tr>
+
+</table>
+
+---
+
+## [Use Icons as Scatter Point Text](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/481)
+
+<table>
+<tr>
+<td><img src="https://github.com/user-attachments/assets/aa5822a8-c341-445f-b32c-1a9feb19f2e0" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/713b41ca-8a5c-4731-b0d2-4f42d91741f1" width="200" /></td>
+</tr>
+
+</table>
+
+---
+
+## [Possible to get value from hover-text into legend?](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/484)
+
+<table>
+<tr>
+<td><img src="https://github.com/user-attachments/assets/70fe1f64-887f-4c36-aaa3-127b6ecbab89" width="200" /></td>
+</tr>
+
+</table>
+
+---
+
+## [Heat Energy Bar chart](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/223)
+
+<table>
+<tr>
+<td><img src="https://user-images.githubusercontent.com/46648579/215763936-23744107-51a3-49ef-ab21-757c67952df2.png" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/b1cc7032-1486-44a2-9699-e8882e4bd8a2" width="200" /></td>
+</tr>
+
+</table>
+
+---
+
+## [Climate Card, Needs Improvement](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/479)
+
+<table>
+<tr>
+<td><img src="https://github.com/user-attachments/assets/288399ec-1425-45a2-8634-28435cb619fc" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/a77e4076-eb1b-4f9f-9b9b-27fd58978d97" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/cb695e20-32eb-4392-8f94-2f33aa61df9d" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/ae299fa1-5a16-4778-a4f8-ed7160360699" width="200" /></td>
+</tr>
+
+</table>
+
+---
+
+## [Plotly card is resizing after an edit](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/480)
+
+<table>
+<tr>
+<td><img src="https://github.com/user-attachments/assets/5fded133-2022-403a-b89d-7db08a0fc148" width="200" /></td>
+</tr>
+
+</table>
+
+---
+
+## [Plotting clima entities with attributes](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/13)
+
+<table>
+<tr>
+<td><img src="https://user-images.githubusercontent.com/777196/147783211-c83025cd-f02a-4890-892b-9f27a4e7a369.gif" width="200" /></td>
+<td><img src="https://user-images.githubusercontent.com/70835379/151897979-9a27c3bf-33db-48ea-b595-8896da25e121.png" width="200" /></td>
+<td><img src="https://user-images.githubusercontent.com/70835379/152126558-bbc18726-919f-44c3-af9a-064c84880182.png" width="200" /></td>
+<td><img src="https://user-images.githubusercontent.com/70835379/152254054-e80e298a-ced3-4c77-9663-25a8f6be74b5.png" width="200" /></td>
+</tr>
+<tr>
+<td><img src="https://user-images.githubusercontent.com/13886455/154517060-2789c12f-7bec-4b3b-900a-5e0708de21e0.png" width="200" /></td>
+<td><img src="https://user-images.githubusercontent.com/13886455/154701782-70c4bf75-fbd9-456d-91d4-0b4244b03536.png" width="200" /></td>
+<td><img src="https://user-images.githubusercontent.com/13886455/154795608-e41529a5-9a58-4023-b962-c451975f9eda.png" width="200" /></td>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/157421914/2da551ef-5b85-4271-b3b0-7a2df21fc025" width="200" /></td>
+</tr>
+<tr>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/157421914/a190ce0d-e347-47d1-810c-34f87930658b" width="200" /></td>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/157421914/13f3e43b-89fd-4330-bf40-3e49306ba6f2" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/9c5d6a68-559f-445b-a940-930f952073f4" width="200" /></td>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/69385168/b12b8bd1-5eec-4247-afdc-9ab86b0b9c43" width="200" /></td>
+</tr>
+<tr>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/101405902/5cdf5ed9-ae3a-4a8d-a9a0-b958d517b9f9" width="200" /></td>
+</tr>
+
+</table>
+
+---
+
+## [Controlling Pie chart labels (add values) and naming](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/478)
+
+<table>
+<tr>
+<td><img src="https://github.com/user-attachments/assets/43dd8217-ff8e-4a14-877a-bc55db6935e4" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/06a923d3-66cc-475b-bdba-b549508cdfc6" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/24486b91-a612-43c6-8fe5-5b541d15cd0a" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/3d881fcc-eda4-4fa7-b34e-f04c7b4062b2" width="200" /></td>
+</tr>
+<tr>
+<td><img src="https://github.com/user-attachments/assets/0cec2005-92ed-404f-94ef-39863db403fb" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/278c7e30-2122-49b6-921c-4c5a1bb6f83e" width="200" /></td>
+</tr>
+
+</table>
+
+---
+
+## [Table history (not a plot!)](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/477)
+
+<table>
+<tr>
+<td><img src="https://github.com/user-attachments/assets/0d057191-7d4f-46df-83c7-f96b57115943" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/193c671b-0568-4cc3-8f5d-98eb2e255a79" width="200" /></td>
+</tr>
+
+</table>
+
+---
+
+## [Apexcard - I want to remake bar chart with coloured bar based on value](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/473)
+
+<table>
+<tr>
+<td><img src="https://github.com/user-attachments/assets/9769328d-288b-4fdb-aa4f-29b06e95ee5c" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/ca7bb13a-4854-40df-b063-6af5a64393c4" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/35cf330b-c1d4-4f67-9e5a-0b663bc4c7ab" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/9987aaf9-fe36-47ce-970d-18f7e421141f" width="200" /></td>
+</tr>
+
+</table>
+
+---
+
+## [I feel like I shouldn't need a template sensor for a static forecast...](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/474)
+
+<table>
+<tr>
+<td><img src="https://github.com/user-attachments/assets/436bf406-6002-4f22-a816-21fe29f900b8" width="200" /></td>
+</tr>
+
+</table>
+
+---
+
+## [How to display a bar graph using a template sensor](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/155)
+
+<table>
+<tr>
+<td><img src="https://user-images.githubusercontent.com/91130738/202914481-cd5a6376-4535-4340-b17c-a2a5505f4af6.png" width="200" /></td>
+<td><img src="https://user-images.githubusercontent.com/91130738/202914716-c443a938-fbf2-4fdc-b796-9a438dd07ad8.png" width="200" /></td>
+<td><img src="https://user-images.githubusercontent.com/637997/206728626-b2b3b544-541a-4697-9cea-4c48d6623b2a.png" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/21e6b136-511d-4d7b-a286-ca22dd57a4c7" width="200" /></td>
+</tr>
+<tr>
+<td><img src="https://github.com/user-attachments/assets/af0bd35b-5223-435a-87fe-2b449b29d835" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/1817af7d-0b8e-4503-80e9-38ee5d8194b0" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/a63dfe50-edb3-4c99-a17b-5c8a075129b5" width="200" /></td>
+</tr>
+
+</table>
+
+---
+
+## [Help with energi data service plot](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/469)
+
+<table>
+<tr>
+<td><img src="https://github.com/user-attachments/assets/b68853c8-c3f6-4e27-9be3-b70e8ab1f259" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/d51feeb9-1b71-410b-a419-132ceb018d43" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/ef291d79-b01d-4b80-8ef9-f2406e42b34b" width="200" /></td>
+</tr>
+
+</table>
+
+---
+
+## [Horizontal Lines / Thresholds in Line charts](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/466)
+
+<table>
+<tr>
+<td><img src="https://github.com/user-attachments/assets/652fe3b2-e3a3-44bc-8e8b-c05231e4585d" width="200" /></td>
+</tr>
+
+</table>
+
+---
+
+## [Using additional data fields eg text labels from same data source array as X and Y.](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/467)
+
+<table>
+<tr>
+<td><img src="https://github.com/user-attachments/assets/2700f1b2-131c-4d6c-ab68-991b9c0884a8" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/47c3abbf-e2e2-4996-be5d-b598359d4260" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/5b7a94b8-c218-4933-aedc-208fc7d45a72" width="200" /></td>
+</tr>
+
+</table>
+
+---
+
+## [Gaps in data when scrolling](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/314)
+
+<table>
+<tr>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/24851651/73df5b2d-392a-4759-960a-9b54f7e85c23" width="200" /></td>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/24851651/3bddaad8-9d4c-4357-9469-6be12b5c9ead" width="200" /></td>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/27061628/460e5754-dde1-4854-8380-208b8311a629" width="200" /></td>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/27061628/b249faab-492f-414a-afeb-10c78f84f97a" width="200" /></td>
+</tr>
+<tr>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/27061628/405ec820-a91b-432c-8685-a4690fe4d74c" width="200" /></td>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/27061628/c0382172-bdad-4ede-a3dc-652315bf007b" width="200" /></td>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/24851651/d50d4ea3-0f8b-4227-82c9-4bf66bac1024" width="200" /></td>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/24851651/6053a114-2c15-4769-8004-e6bcab43e957" width="200" /></td>
+</tr>
+
+</table>
+
+---
+
+## [Stacking bar chart with total_increasing sensor](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/463)
+
+<table>
+<tr>
+<td><img src="https://github.com/user-attachments/assets/03b4e740-600f-4c8e-9cf8-8029c63c7d81" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/9c5485bf-11ee-4f3d-ad4c-8bfb0db95baf" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/264cb0f0-f5d5-4bba-9aee-ed636aa4fab4" width="200" /></td>
+</tr>
+
+</table>
+
+---
+
+## [Graph from Json Data](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/464)
+
+<table>
+<tr>
+<td><img src="https://github.com/user-attachments/assets/17b38674-ddee-460e-a70e-bac1f130c01d" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/5c7824d6-1912-4dd3-9e32-ee2d0f1970c9" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/21de3529-261e-431b-b39d-8dcf6a695f42" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/2c353c9c-5dcb-4581-8bb4-023fd63d726e" width="200" /></td>
+</tr>
+
+</table>
+
+---
+
+## [Wind direction with two y-axis](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/435)
+
+<table>
+<tr>
+<td><img src="https://github.com/user-attachments/assets/16130f88-de2c-42aa-a9c2-933ce6c6b4a2" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/fa5229e5-4a96-466c-bf4b-4415f27c595c" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/175085dd-359d-4c06-a713-cc3285215b9e" width="200" /></td>
+</tr>
+
+</table>
+
+---
+
+## [Stupid beginner's question #2](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/456)
+
+<table>
+<tr>
+<td><img src="https://github.com/user-attachments/assets/74c1f092-a112-4c97-9421-acac51eaf02b" width="200" /></td>
+</tr>
+
+</table>
+
+---
+
+## [Can´t apply custom x y values to plotly chart](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/462)
+
+<table>
+<tr>
+<td><img src="https://github.com/user-attachments/assets/acd6d8f7-7b9d-40f4-937a-29a5226f39f2" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/d9ac68f1-e6b4-4d4e-8ea3-f0c2d03dcb69" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/8bb07962-fe61-4f69-9ecc-8c97472eb294" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/a3ec4b16-4356-4b29-921d-b24d5be9cbe4" width="200" /></td>
+</tr>
+<tr>
+<td><img src="https://github.com/user-attachments/assets/7ed04098-0029-42dc-9d73-b46dd47b7f62" width="200" /></td>
+</tr>
+
+</table>
+
+---
+
+## [Change the units on the yaxis?](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/461)
+
+<table>
+<tr>
+<td><img src="https://github.com/user-attachments/assets/5d8e9a1a-a6f7-44c7-827e-4e3548a50444" width="200" /></td>
+</tr>
+
+</table>
+
+---
+
+## [New YAML editor with autocomplete](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/460)
+
+<table>
+<tr>
+<td><img src="https://github.com/user-attachments/assets/20516146-9153-4ce9-8cd5-f486a6d5ec89" width="200" /></td>
+</tr>
+
+</table>
+
+---
+
+## [Pie charts](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/335)
+
+<table>
+<tr>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/63543143/b5418c22-814e-4abc-8020-e9628a388749" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/9e8f0f19-0b76-4fa1-b192-54d0a29848d9" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/f6f052d8-8f86-4ca5-ae9e-15f948c11aed" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/9c027ee8-3d13-4b8e-a5f9-32f4e56d24aa" width="200" /></td>
+</tr>
+
+</table>
+
+---
+
+## [Daily and Storm Rain Totals](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/371)
+
+<table>
+<tr>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/49624034/0ec87af4-4078-4821-af0c-bd419d0cffa3" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/55fdd030-9a6a-42b0-88d8-7d5d433dd4ba" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/0f80d58f-4238-4d95-b3ee-57bb0b1697a9" width="200" /></td>
+</tr>
+
+</table>
+
+---
+
+## [Disable / Disappear the axis description](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/454)
+
+<table>
+<tr>
+<td><img src="https://github.com/user-attachments/assets/2c1f0ccc-c715-4387-9e10-a4c473e379b7" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/0a734cae-e63e-437d-a337-fc3e349bfab4" width="200" /></td>
+</tr>
+
+</table>
+
+---
+
+## [Fillgradient](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/447)
+
+<table>
+<tr>
+<td><img src="https://github.com/user-attachments/assets/a8106a6e-25e2-4277-99ea-bfd362c7f58f" width="200" /></td>
+</tr>
+
+</table>
+
+---
+
+## [Trying to mimic the default Home Assistant climate card](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/264)
+
+<table>
+<tr>
+<td><img src="https://user-images.githubusercontent.com/4006944/225804322-c6171055-78ad-40e4-aed4-74327729f0b8.png" width="200" /></td>
+<td><img src="https://user-images.githubusercontent.com/4006944/225804652-605f3449-a9cc-4e3c-a5ec-741899b6d31d.png" width="200" /></td>
+<td><img src="https://user-images.githubusercontent.com/4006944/225805221-961fb6da-bff3-448b-a6a6-aa68d822bfca.png" width="200" /></td>
+<td><img src="https://user-images.githubusercontent.com/4006944/225805952-ab6cddd5-538a-4231-b338-fb0e619b1e4d.png" width="200" /></td>
+</tr>
+<tr>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/47436307/d824ae5a-8b94-4014-b66e-912b91580c29" width="200" /></td>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/74704240/f975ace4-599d-4b08-9029-5b0798629b2a" width="200" /></td>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/74704240/8b347bbd-be2b-4a65-b6e8-4f1b3c8eb158" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/2ff47ff5-21cc-4d57-b41e-c8a976851525" width="200" /></td>
+</tr>
+<tr>
+<td><img src="https://github.com/user-attachments/assets/f854b9f0-10d4-4466-b96e-eb5014154b14" width="200" /></td>
+</tr>
+
+</table>
+
+---
+
+## [Any way to write last values in the card? (not as legend)](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/364)
+
+<table>
+<tr>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/42578174/5438b93d-3cd0-4b2d-994a-8a849af6f621" width="200" /></td>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/42578174/bce207b6-b6ab-4450-b073-b769b6d0b690" width="200" /></td>
+</tr>
+
+</table>
+
+---
+
+## [How to handle missing data with a scatter plot?](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/443)
+
+<table>
+<tr>
+<td><img src="https://github.com/user-attachments/assets/291d8020-9c36-4775-9743-0dec777c34ab" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/f39038b3-9335-4d73-8d01-66092a48419a" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/7d104c6f-63fd-429a-af1f-6c85d6407bf8" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/7e067b64-965d-4c0b-ac6f-0904702a2de0" width="200" /></td>
+</tr>
+
+</table>
+
+---
+
+## [Pixel-perfect alignment for picture element card](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/444)
+
+<table>
+<tr>
+<td><img src="https://github.com/user-attachments/assets/021da18b-54a8-4a76-95fd-26be84ff2f41" width="200" /></td>
+</tr>
+
+</table>
+
+---
+
+## [My energy dashboard for Amber Electric & EMHASS](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/426)
+
+<table>
+<tr>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/271070/66f8b4a2-66f4-4cae-ad4c-b2bd47a7b9c3" width="200" /></td>
+</tr>
+
+</table>
+
+---
+
+## [No long term data is displayed in Home Assistant](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/441)
+
+<table>
+<tr>
+<td><img src="https://github.com/user-attachments/assets/ffb9fce8-d089-496e-85c8-f261f2ba06f1" width="200" /></td>
+</tr>
+
+</table>
+
+---
+
+## [Simple graph to plotly-graph](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/440)
+
+<table>
+<tr>
+<td><img src="https://github.com/user-attachments/assets/29ceb68f-9a38-4dcb-983e-29d422381bf4" width="200" /></td>
+</tr>
+
+</table>
+
+---
+
+## [Display times with HA selected timezone?](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/305)
+
+<table>
+<tr>
+<td><img src="https://github.com/user-attachments/assets/01b4d838-0938-421b-94c9-667beaac87da" width="200" /></td>
+</tr>
+
+</table>
+
+---
+
+## [Scatter with double histogram](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/342)
+
+<table>
+<tr>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/777196/5001e11c-564e-4298-b226-3ccc0ddafcff" width="200" /></td>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/777196/06068617-3b1c-43b1-be76-825639cd0f35" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/a1a84380-ac52-4707-8028-7e704a420bbc" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/bc4e5f84-56ba-4dc1-a77c-5486ef406448" width="200" /></td>
+</tr>
+<tr>
+<td><img src="https://github.com/user-attachments/assets/39ecf76f-c112-47f7-a2eb-090679d879c0" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/62070647-11c1-4555-a421-e6b709c1eb31" width="200" /></td>
 </tr>
 
 </table>
@@ -30,53 +659,299 @@
 <td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/9727894/72f8c0c8-721e-4e1a-9907-ee56dc6b7f74" width="200" /></td>
 <td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/9727894/0765186a-ded1-4179-97bc-a6045fde9b5a" width="200" /></td>
 </tr>
-
-</table>
-
----
-
-## [Plotting clima entities with attributes](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/13)
-
-<table>
 <tr>
-<td><img src="https://user-images.githubusercontent.com/777196/147783211-c83025cd-f02a-4890-892b-9f27a4e7a369.gif" width="200" /></td>
-<td><img src="https://user-images.githubusercontent.com/70835379/151897979-9a27c3bf-33db-48ea-b595-8896da25e121.png" width="200" /></td>
-<td><img src="https://user-images.githubusercontent.com/70835379/152126558-bbc18726-919f-44c3-af9a-064c84880182.png" width="200" /></td>
-<td><img src="https://user-images.githubusercontent.com/70835379/152254054-e80e298a-ced3-4c77-9663-25a8f6be74b5.png" width="200" /></td>
-</tr>
-<tr>
-<td><img src="https://user-images.githubusercontent.com/13886455/154517060-2789c12f-7bec-4b3b-900a-5e0708de21e0.png" width="200" /></td>
-<td><img src="https://user-images.githubusercontent.com/13886455/154701782-70c4bf75-fbd9-456d-91d4-0b4244b03536.png" width="200" /></td>
-<td><img src="https://user-images.githubusercontent.com/13886455/154795608-e41529a5-9a58-4023-b962-c451975f9eda.png" width="200" /></td>
-<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/157421914/2da551ef-5b85-4271-b3b0-7a2df21fc025" width="200" /></td>
-</tr>
-<tr>
-<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/157421914/a190ce0d-e347-47d1-810c-34f87930658b" width="200" /></td>
-<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/157421914/13f3e43b-89fd-4330-bf40-3e49306ba6f2" width="200" /></td>
-<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/69385168/b12b8bd1-5eec-4247-afdc-9ab86b0b9c43" width="200" /></td>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/9727894/5d2f001e-e1f0-41b7-aa6f-1227239ef93d" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/6d2ad366-2802-452d-a4de-cff079ad994c" width="200" /></td>
 </tr>
 
 </table>
 
 ---
 
-## [Max Solar Power Heatmap over Azimut and Elevation](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/408)
+## [Display of cyclically reset values (HCA)](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/438)
 
 <table>
 <tr>
-<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/2478002/99cc62eb-60a5-4cc7-b14c-c9e86e661281" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/c1181450-bc32-4295-a937-3950f7dbe5af" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/fdb2065e-df8a-4113-be17-db1db440bf6f" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/8548c034-1429-4549-8708-5c6c686b9d40" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/26ede8a2-2bdb-49ae-87bb-d2573164835e" width="200" /></td>
+</tr>
+<tr>
+<td><img src="https://github.com/user-attachments/assets/779ba63d-c6ca-45d5-89e0-9278a9aa86a5" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/bbf28729-315a-4d91-9a1e-72b37f823151" width="200" /></td>
 </tr>
 
 </table>
 
 ---
 
-## [Energy Produced, Consumed, Battery Charge & Discharge, SoC](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/413)
+## [symplot or other y axis scaling](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/437)
 
 <table>
 <tr>
-<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/42578174/be7cc7a4-e87a-49cc-8086-9024fa6b35e0" width="200" /></td>
-<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/42578174/99bbfa6c-47a7-4752-b2e9-97f844ca60ed" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/04322473-9537-49eb-91c2-4cb06a84ba35" width="200" /></td>
+</tr>
+
+</table>
+
+---
+
+## [Time offset and number of days in a month.](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/436)
+
+<table>
+<tr>
+<td><img src="https://github.com/user-attachments/assets/f2f2d6ca-77b1-4a80-b254-06269fb482f1" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/f8f0481f-e40a-4069-8253-a6307e12a977" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/29eff7c5-28fe-49f6-832c-c474628c020f" width="200" /></td>
+</tr>
+
+</table>
+
+---
+
+## [Looking for help creating a stacked bar chart using a single sensor](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/434)
+
+<table>
+<tr>
+<td><img src="https://github.com/user-attachments/assets/95a8ce7a-d44f-46c5-8c45-44c4f95f5272" width="200" /></td>
+</tr>
+
+</table>
+
+---
+
+## [Electricity and solar panels into one single chart](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/432)
+
+<table>
+<tr>
+<td><img src="https://github.com/user-attachments/assets/15cbe87c-7bb2-4ff3-b714-b0fc67537a8d" width="200" /></td>
+</tr>
+
+</table>
+
+---
+
+## [strange behaviuor when transitioning from period day to period week/month/etc](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/431)
+
+<table>
+<tr>
+<td><img src="https://github.com/user-attachments/assets/d0a34450-1e65-4062-8f59-5c4e3321cf1d" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/12c8dbfd-aa5a-47e0-84d4-4c6b24136d34" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/5fbab1aa-f663-436e-8492-1ed369a15f57" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/b7e6b4bf-dbca-43f8-8c1b-fd30871a41ec" width="200" /></td>
+</tr>
+<tr>
+<td><img src="https://github.com/user-attachments/assets/763f961e-add7-430a-8ed7-9206b32508b7" width="200" /></td>
+</tr>
+
+</table>
+
+---
+
+## [Stacked graphs with more than one y axis](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/430)
+
+<table>
+<tr>
+<td><img src="https://github.com/user-attachments/assets/74a7ade0-6dea-4403-bc8e-2ce46947a0c6" width="200" /></td>
+<td><img src="https://github.com/user-attachments/assets/51906754-c3bf-48d5-a000-46fe6161ffcb" width="200" /></td>
+</tr>
+
+</table>
+
+---
+
+## [Summate graphs together](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/429)
+
+<table>
+<tr>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/20834594/dd7dd2b3-1701-4d08-9c31-44b2a6abe70c" width="200" /></td>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/20834594/3c6de907-d728-46ea-be30-974f898416eb" width="200" /></td>
+</tr>
+
+</table>
+
+---
+
+## [Stacking multiple plots with differents heights](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/425)
+
+<table>
+<tr>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/85199939/af7e6ded-22d1-49a9-82b7-884029b4a8d3" width="200" /></td>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/85199939/58a68ae6-2ce8-48be-96f3-59a76e663f8e" width="200" /></td>
+</tr>
+
+</table>
+
+---
+
+## [How to lock the y-axis for labels?](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/424)
+
+<table>
+<tr>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/61714583/9ce8f733-4d7e-45b0-9f31-cdbe9ef4274f" width="200" /></td>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/61714583/1423c3f7-70e8-44f7-aef0-03e9e62d29e8" width="200" /></td>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/61714583/68cd5e7a-5235-4d96-9cb6-bcb43adc5fc7" width="200" /></td>
+</tr>
+
+</table>
+
+---
+
+## [Wind speed graph with markers using wind direction dataset](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/423)
+
+<table>
+<tr>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/19633372/8c4534b5-7d71-4cea-8111-1499fc9abf94" width="200" /></td>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/19633372/785deb3a-0f1a-4d90-9802-035f9c04e0b2" width="200" /></td>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/19633372/31c89f11-01d9-4599-8342-8e3d98a8669d" width="200" /></td>
+</tr>
+
+</table>
+
+---
+
+## [Solar Forecast](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/422)
+
+<table>
+<tr>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/7227275/f35bac8c-68d3-466d-adf4-856ae2ad5d3b" width="200" /></td>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/106532164/1f81bcf5-0ba1-415b-96ab-ddcf2a1ce53f" width="200" /></td>
+</tr>
+
+</table>
+
+---
+
+## [Bar Graph with relative energy consumption (network, sold, and solar consumed)](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/379)
+
+<table>
+<tr>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/42578174/080406ce-ea59-4170-8361-4544f711994c" width="200" /></td>
+</tr>
+
+</table>
+
+---
+
+## [Can't plot certain measurements with statistics enabled](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/275)
+
+<table>
+<tr>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/126250034/88343f60-109a-4f30-9014-ab4471ef2b23" width="200" /></td>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/126250034/2480f287-7dd4-45e8-ace6-848ead39007c" width="200" /></td>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/126250034/ac6c6f41-3744-412e-9d97-66564d14b94a" width="200" /></td>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/126250034/d2f50889-7079-471b-a1d7-88a03317992e" width="200" /></td>
+</tr>
+
+</table>
+
+---
+
+## [Heatmap of 30-Panel Solar Array's Current States](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/277)
+
+<table>
+<tr>
+<td><img src="https://user-images.githubusercontent.com/49624034/233813429-1bbd80cf-c87a-4f43-bd1f-ccf20b613a53.png" width="200" /></td>
+<td><img src="https://user-images.githubusercontent.com/49624034/233873781-53d19a32-8e8e-4e44-bb9e-c20a50914212.png" width="200" /></td>
+<td><img src="https://user-images.githubusercontent.com/777196/233843547-dc4faa3b-495d-4b3d-b939-69dced7863cd.png" width="200" /></td>
+<td><img src="https://user-images.githubusercontent.com/49624034/233861219-5223474b-e196-42fb-921e-635c4c7144c2.png" width="200" /></td>
+</tr>
+<tr>
+<td><img src="https://user-images.githubusercontent.com/777196/233864569-903f87e6-c61c-4759-96f6-afb6366da0ee.png" width="200" /></td>
+</tr>
+
+</table>
+
+---
+
+## [Daily data resets 50min before 12pm leads to broken graphs, how to filter/replace broken data](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/328)
+
+<table>
+<tr>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/1019233/135a8315-b592-417b-a4b1-f8b7a0c1c843" width="200" /></td>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/1019233/cd4c591f-977f-4cf6-b3cb-3baa12c7aa3f" width="200" /></td>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/777196/93f87ba6-6a3a-4c27-bc8a-988db4e40c25" width="200" /></td>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/1019233/c393264a-17ea-4a9d-a7e0-0aca9b3fa5b0" width="200" /></td>
+</tr>
+<tr>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/1019233/ec30eeb2-e87c-4088-94c6-8193c847b548" width="200" /></td>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/1019233/606b18fd-7b9c-49c6-9548-6bb3699a4561" width="200" /></td>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/1019233/6514bf24-1a2e-497e-a2d2-24e1e3fd943d" width="200" /></td>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/1019233/a2661daa-974b-4433-bdd3-54ec86b3a90a" width="200" /></td>
+</tr>
+<tr>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/1019233/bea56c63-5422-4803-a3f2-a2060e5bdd16" width="200" /></td>
+</tr>
+
+</table>
+
+---
+
+## [Network bandwidth graph help](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/418)
+
+<table>
+<tr>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/9633358/ee1f3f6c-24ad-42fa-afdc-5fbbfc762354" width="200" /></td>
+</tr>
+
+</table>
+
+---
+
+## [Scatterplot of Sun Azimuth vs Elevation](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/390)
+
+<table>
+<tr>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/49624034/80b06224-8aaf-43d7-9e2f-009b620eeb45" width="200" /></td>
+</tr>
+
+</table>
+
+---
+
+## [xAxis range help](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/419)
+
+<table>
+<tr>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/2676016/642a27a4-c32b-4cf6-b744-f933ba3f1c69" width="200" /></td>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/2676016/7750d925-cc81-400c-9d1b-fe7b75610fb8" width="200" /></td>
+</tr>
+
+</table>
+
+---
+
+## [Statistics does not seems to work if attribute is used in an entity](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/373)
+
+<table>
+<tr>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/9727894/6eb9d669-b69a-44d6-8775-8606959de944" width="200" /></td>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/9727894/b42670f0-f027-4834-81f7-7bc4445de102" width="200" /></td>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/9727894/2bd36368-1acd-4ade-9a89-5057382fc828" width="200" /></td>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/9727894/c4a5d58b-58f1-4285-b054-4e26a2ed3a3b" width="200" /></td>
+</tr>
+<tr>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/9727894/9b9fdabd-64a1-4752-a32c-2b3c3847bff5" width="200" /></td>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/9727894/1afd0baf-71c3-457e-b8b6-5654db77526a" width="200" /></td>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/9727894/4bf70f62-8d3c-42cf-ae54-0b7da2ed22f9" width="200" /></td>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/9727894/366a05f9-2a5b-44c4-b535-dff025bee618" width="200" /></td>
+</tr>
+<tr>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/9727894/f9e8b684-5173-44d0-b98a-e578765f3457" width="200" /></td>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/777196/472b2a12-4dcd-43f7-a995-6e8e028d71b3" width="200" /></td>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/9727894/6439592e-8cc5-4a01-9b7c-ceac9982e318" width="200" /></td>
+</tr>
+
+</table>
+
+---
+
+## [Hourly energy consumption statistics - box plot](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/417)
+
+<table>
+<tr>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/840665/1e014fbc-86bb-4afb-89c0-cb29d169b08a" width="200" /></td>
 </tr>
 
 </table>
@@ -87,7 +962,7 @@
 
 <table>
 <tr>
-<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/49624034/82cea619-794a-4a13-a995-da1773cb69ed" width="200" /></td>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/49624034/a73b0639-2789-4de8-bd26-38c58f33aa4a" width="200" /></td>
 <td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/47436307/233174db-89d7-4e9d-96e9-5a52f40f20bc" width="200" /></td>
 <td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/47436307/8fcccd27-43a1-45ac-aba4-49e6b63589d5" width="200" /></td>
 <td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/47436307/77b9a19f-7138-40d8-b23d-c62140e6cb20" width="200" /></td>
@@ -102,6 +977,68 @@
 <td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/777196/4244cb2b-4232-4b7a-80a0-446927cc3c99" width="200" /></td>
 <td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/49624034/088efc16-8379-462e-85c0-b0bab86e7d27" width="200" /></td>
 <td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/47436307/31cb8fe4-bfab-4f0e-870d-031e901a53e2" width="200" /></td>
+</tr>
+
+</table>
+
+---
+
+## [Weather forecast plot (`meta` and nested attributes)](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/213)
+
+<table>
+<tr>
+<td><img src="https://user-images.githubusercontent.com/777196/215556691-16bc19b6-40a5-4184-87e2-87df7a6ed3da.png" width="200" /></td>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/63028327/da908234-a6b6-49d6-b3d3-4f2ea3063856" width="200" /></td>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/63028327/13e1308b-f99e-4d2b-a36c-3e0cfa596448" width="200" /></td>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/86292646/1430aa61-c369-4bf3-9eed-e9a50837e3a2" width="200" /></td>
+</tr>
+<tr>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/86292646/72a181da-c1f6-4d90-a0a2-207894941ea0" width="200" /></td>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/86292646/e5e48df4-61da-4e55-bf07-5af11947a109" width="200" /></td>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/86292646/f81b5f62-90db-4b51-946f-ab6b3424aa6f" width="200" /></td>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/86292646/f5e2c2e1-8e0c-4253-80c8-98fb818a01d6" width="200" /></td>
+</tr>
+<tr>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/86292646/51f28fcf-c093-4c66-9059-18bf95f8880c" width="200" /></td>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/72790437/75e0104b-d259-44b2-a37b-fbc5552d6a6b" width="200" /></td>
+</tr>
+
+</table>
+
+---
+
+## [Annotation for min and max in a specific timeframe](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/309)
+
+<table>
+<tr>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/92689239/7f4f960c-7808-47f1-8072-c42fd2446960" width="200" /></td>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/777196/379b48be-4284-43ff-83c0-887daaae5bd7" width="200" /></td>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/155846848/036cc17e-67c6-4563-a6be-bda3d785d030" width="200" /></td>
+</tr>
+
+</table>
+
+---
+
+## [Combined statistics and short term history](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/415)
+
+<table>
+<tr>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/777196/b0f46d01-2093-456e-8af2-b09fef032f57" width="200" /></td>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/14946020/19b86c58-5f7e-4bb2-8f3c-21eea265529b" width="200" /></td>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/14946020/220ccfe0-502c-4c03-a814-4cadf068b541" width="200" /></td>
+</tr>
+
+</table>
+
+---
+
+## [Energy Produced, Consumed, Battery Charge & Discharge, SoC](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/413)
+
+<table>
+<tr>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/42578174/be7cc7a4-e87a-49cc-8086-9024fa6b35e0" width="200" /></td>
+<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/42578174/99bbfa6c-47a7-4752-b2e9-97f844ca60ed" width="200" /></td>
 </tr>
 
 </table>
@@ -140,30 +1077,6 @@
 <td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/9727894/acf1fccd-6eb0-4af2-b1be-3e521c5ab90d" width="200" /></td>
 <td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/9727894/9ab5b307-ed12-4e79-b15e-21c9b309d30d" width="200" /></td>
 <td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/9727894/e9872ed6-99fc-4de6-b493-b6e73c2553e3" width="200" /></td>
-</tr>
-
-</table>
-
----
-
-## [Weather forecast plot (`meta` and nested attributes)](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/213)
-
-<table>
-<tr>
-<td><img src="https://user-images.githubusercontent.com/777196/215556691-16bc19b6-40a5-4184-87e2-87df7a6ed3da.png" width="200" /></td>
-<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/63028327/da908234-a6b6-49d6-b3d3-4f2ea3063856" width="200" /></td>
-<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/63028327/13e1308b-f99e-4d2b-a36c-3e0cfa596448" width="200" /></td>
-<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/86292646/1430aa61-c369-4bf3-9eed-e9a50837e3a2" width="200" /></td>
-</tr>
-<tr>
-<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/86292646/72a181da-c1f6-4d90-a0a2-207894941ea0" width="200" /></td>
-<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/86292646/e5e48df4-61da-4e55-bf07-5af11947a109" width="200" /></td>
-<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/86292646/f81b5f62-90db-4b51-946f-ab6b3424aa6f" width="200" /></td>
-<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/86292646/f5e2c2e1-8e0c-4253-80c8-98fb818a01d6" width="200" /></td>
-</tr>
-<tr>
-<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/86292646/51f28fcf-c093-4c66-9059-18bf95f8880c" width="200" /></td>
-<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/72790437/75e0104b-d259-44b2-a37b-fbc5552d6a6b" width="200" /></td>
 </tr>
 
 </table>
@@ -253,23 +1166,6 @@
 
 ---
 
-## [Trying to mimic the default Home Assistant climate card](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/264)
-
-<table>
-<tr>
-<td><img src="https://user-images.githubusercontent.com/4006944/225804322-c6171055-78ad-40e4-aed4-74327729f0b8.png" width="200" /></td>
-<td><img src="https://user-images.githubusercontent.com/4006944/225804652-605f3449-a9cc-4e3c-a5ec-741899b6d31d.png" width="200" /></td>
-<td><img src="https://user-images.githubusercontent.com/4006944/225805221-961fb6da-bff3-448b-a6a6-aa68d822bfca.png" width="200" /></td>
-<td><img src="https://user-images.githubusercontent.com/4006944/225805952-ab6cddd5-538a-4231-b338-fb0e619b1e4d.png" width="200" /></td>
-</tr>
-<tr>
-<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/47436307/d824ae5a-8b94-4014-b66e-912b91580c29" width="200" /></td>
-</tr>
-
-</table>
-
----
-
 ## [Todays Newbie Walkthrough - Using Statistics To Show Difference ('DIFF')](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/397)
 
 <table>
@@ -290,17 +1186,6 @@
 <td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/7259873/0c862ff3-2967-4b7d-b3f5-e011190d3dbd" width="200" /></td>
 <td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/7259873/9a4df5da-88c6-4d09-aafa-7a47910617b7" width="200" /></td>
 <td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/7259873/402c08a8-158a-4144-a63b-bef1507bdc39" width="200" /></td>
-</tr>
-
-</table>
-
----
-
-## [Scatterplot of Sun Azimuth vs Elevation](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/390)
-
-<table>
-<tr>
-<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/49624034/80b06224-8aaf-43d7-9e2f-009b620eeb45" width="200" /></td>
 </tr>
 
 </table>
@@ -333,44 +1218,12 @@
 
 ---
 
-## [Gaps in data when scrolling](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/314)
-
-<table>
-<tr>
-<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/24851651/73df5b2d-392a-4759-960a-9b54f7e85c23" width="200" /></td>
-<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/24851651/3bddaad8-9d4c-4357-9469-6be12b5c9ead" width="200" /></td>
-<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/27061628/460e5754-dde1-4854-8380-208b8311a629" width="200" /></td>
-<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/27061628/b249faab-492f-414a-afeb-10c78f84f97a" width="200" /></td>
-</tr>
-<tr>
-<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/27061628/405ec820-a91b-432c-8685-a4690fe4d74c" width="200" /></td>
-<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/27061628/c0382172-bdad-4ede-a3dc-652315bf007b" width="200" /></td>
-<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/24851651/d50d4ea3-0f8b-4227-82c9-4bf66bac1024" width="200" /></td>
-<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/24851651/6053a114-2c15-4769-8004-e6bcab43e957" width="200" /></td>
-</tr>
-
-</table>
-
----
-
 ## [Spectral power distribution - column and colorful chart](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/385)
 
 <table>
 <tr>
 <td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/3993466/4fb1471b-d03c-401e-80f3-1b2792fe380b" width="200" /></td>
 <td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/3993466/89d8a7c1-2e5e-4811-a9ea-6c8d41c512b5" width="200" /></td>
-</tr>
-
-</table>
-
----
-
-## [Scatter with double histogram](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/342)
-
-<table>
-<tr>
-<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/777196/5001e11c-564e-4298-b226-3ccc0ddafcff" width="200" /></td>
-<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/777196/06068617-3b1c-43b1-be76-825639cd0f35" width="200" /></td>
 </tr>
 
 </table>
@@ -444,17 +1297,6 @@
 
 ---
 
-## [Bar Graph with relative energy consumption (network, sold, and solar consumed)](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/379)
-
-<table>
-<tr>
-<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/42578174/080406ce-ea59-4170-8361-4544f711994c" width="200" /></td>
-</tr>
-
-</table>
-
----
-
 ## [Generating monthly summaries of data, data that starts in middle of month will have no graph](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/338)
 
 <table>
@@ -466,29 +1308,6 @@
 </tr>
 <tr>
 <td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/1019233/2a884784-cfe1-47d4-8831-cb14504a490f" width="200" /></td>
-</tr>
-
-</table>
-
----
-
-## [Daily data resets 50min before 12pm leads to broken graphs, how to filter/replace broken data](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/328)
-
-<table>
-<tr>
-<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/1019233/135a8315-b592-417b-a4b1-f8b7a0c1c843" width="200" /></td>
-<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/1019233/cd4c591f-977f-4cf6-b3cb-3baa12c7aa3f" width="200" /></td>
-<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/777196/93f87ba6-6a3a-4c27-bc8a-988db4e40c25" width="200" /></td>
-<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/1019233/c393264a-17ea-4a9d-a7e0-0aca9b3fa5b0" width="200" /></td>
-</tr>
-<tr>
-<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/1019233/ec30eeb2-e87c-4088-94c6-8193c847b548" width="200" /></td>
-<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/1019233/606b18fd-7b9c-49c6-9548-6bb3699a4561" width="200" /></td>
-<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/1019233/6514bf24-1a2e-497e-a2d2-24e1e3fd943d" width="200" /></td>
-<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/1019233/a2661daa-974b-4433-bdd3-54ec86b3a90a" width="200" /></td>
-</tr>
-<tr>
-<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/1019233/bea56c63-5422-4803-a3f2-a2060e5bdd16" width="200" /></td>
 </tr>
 
 </table>
@@ -548,31 +1367,6 @@
 
 ---
 
-## [Statistics does not seems to work if attribute is used in an entity](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/373)
-
-<table>
-<tr>
-<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/9727894/6eb9d669-b69a-44d6-8775-8606959de944" width="200" /></td>
-<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/9727894/b42670f0-f027-4834-81f7-7bc4445de102" width="200" /></td>
-<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/9727894/2bd36368-1acd-4ade-9a89-5057382fc828" width="200" /></td>
-<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/9727894/c4a5d58b-58f1-4285-b054-4e26a2ed3a3b" width="200" /></td>
-</tr>
-<tr>
-<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/9727894/9b9fdabd-64a1-4752-a32c-2b3c3847bff5" width="200" /></td>
-<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/9727894/1afd0baf-71c3-457e-b8b6-5654db77526a" width="200" /></td>
-<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/9727894/4bf70f62-8d3c-42cf-ae54-0b7da2ed22f9" width="200" /></td>
-<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/9727894/366a05f9-2a5b-44c4-b535-dff025bee618" width="200" /></td>
-</tr>
-<tr>
-<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/9727894/f9e8b684-5173-44d0-b98a-e578765f3457" width="200" /></td>
-<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/777196/472b2a12-4dcd-43f7-a995-6e8e028d71b3" width="200" /></td>
-<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/9727894/6439592e-8cc5-4a01-9b7c-ceac9982e318" width="200" /></td>
-</tr>
-
-</table>
-
----
-
 ## [Space between columns - strange behaviour](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/372)
 
 <table>
@@ -592,17 +1386,6 @@
 <tr>
 <td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/42578174/645e6a6b-b407-468a-98ad-0f421a50087b" width="200" /></td>
 <td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/42578174/043cd504-076d-4f42-ae0f-ee6adefcc255" width="200" /></td>
-</tr>
-
-</table>
-
----
-
-## [Daily and Storm Rain Totals](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/371)
-
-<table>
-<tr>
-<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/49624034/0ec87af4-4078-4821-af0c-bd419d0cffa3" width="200" /></td>
 </tr>
 
 </table>
@@ -692,18 +1475,6 @@
 <tr>
 <td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/42578174/96198b20-6d5c-4aca-a975-6343b3bc379d" width="200" /></td>
 <td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/42578174/80046fcb-a55a-47e3-9a84-a34b334a2fdc" width="200" /></td>
-</tr>
-
-</table>
-
----
-
-## [Any way to write last values in the card? (not as legend)](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/364)
-
-<table>
-<tr>
-<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/42578174/5438b93d-3cd0-4b2d-994a-8a849af6f621" width="200" /></td>
-<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/42578174/bce207b6-b6ab-4450-b073-b769b6d0b690" width="200" /></td>
 </tr>
 
 </table>
@@ -957,17 +1728,6 @@
 
 ---
 
-## [Pie charts](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/335)
-
-<table>
-<tr>
-<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/63543143/b5418c22-814e-4abc-8020-e9628a388749" width="200" /></td>
-</tr>
-
-</table>
-
----
-
 ## [Move all graph displays to the left at startup](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/332)
 
 <table>
@@ -1061,17 +1821,6 @@
 <td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/7259873/29b902dc-156b-4f4b-a5c9-4d25d5f28f3d" width="200" /></td>
 <td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/7259873/843b4a1a-fe35-45fd-bcbf-e5015d7965c0" width="200" /></td>
 <td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/7259873/e9d7239d-f5ca-4fd6-b113-055fdeee91ba" width="200" /></td>
-</tr>
-
-</table>
-
----
-
-## [Hot Water Cylinder Visualiser](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/294)
-
-<table>
-<tr>
-<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/96064472/9881af32-cfb2-4d4d-9df6-5904763c2ff4" width="200" /></td>
 </tr>
 
 </table>
@@ -1220,18 +1969,6 @@
 
 ---
 
-## [Annotation for min and max in a specific timeframe](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/309)
-
-<table>
-<tr>
-<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/92689239/7f4f960c-7808-47f1-8072-c42fd2446960" width="200" /></td>
-<td><img src="https://github.com/dbuezas/lovelace-plotly-graph-card/assets/777196/379b48be-4284-43ff-83c0-887daaae5bd7" width="200" /></td>
-</tr>
-
-</table>
-
----
-
 ## [Question with Filters - Integrating and Resampling Data and filterung x by datetime](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/307)
 
 <table>
@@ -1359,23 +2096,6 @@
 <tr>
 <td><img src="https://user-images.githubusercontent.com/777196/216717136-10eb1b2d-f1f0-422e-a7a1-818cf2ce6124.gif" width="200" /></td>
 <td><img src="https://user-images.githubusercontent.com/777196/216764329-94b9cd7e-fee9-439b-9134-95b7be626592.gif" width="200" /></td>
-</tr>
-
-</table>
-
----
-
-## [Heatmap of 30-Panel Solar Array's Current States](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/277)
-
-<table>
-<tr>
-<td><img src="https://user-images.githubusercontent.com/49624034/233813429-1bbd80cf-c87a-4f43-bd1f-ccf20b613a53.png" width="200" /></td>
-<td><img src="https://user-images.githubusercontent.com/49624034/233873781-53d19a32-8e8e-4e44-bb9e-c20a50914212.png" width="200" /></td>
-<td><img src="https://user-images.githubusercontent.com/777196/233843547-dc4faa3b-495d-4b3d-b939-69dced7863cd.png" width="200" /></td>
-<td><img src="https://user-images.githubusercontent.com/49624034/233861219-5223474b-e196-42fb-921e-635c4c7144c2.png" width="200" /></td>
-</tr>
-<tr>
-<td><img src="https://user-images.githubusercontent.com/777196/233864569-903f87e6-c61c-4759-96f6-afb6366da0ee.png" width="200" /></td>
 </tr>
 
 </table>
@@ -1836,17 +2556,6 @@
 
 ---
 
-## [Heat Energy Bar chart](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/223)
-
-<table>
-<tr>
-<td><img src="https://user-images.githubusercontent.com/46648579/215763936-23744107-51a3-49ef-ab21-757c67952df2.png" width="200" /></td>
-</tr>
-
-</table>
-
----
-
 ## [Universal functions not everywehere?](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/212)
 
 <table>
@@ -2012,19 +2721,6 @@
 <tr>
 <td><img src="https://user-images.githubusercontent.com/18028618/201534373-63bf7048-c6bf-4905-862c-0db2e36759fd.png" width="200" /></td>
 <td><img src="https://user-images.githubusercontent.com/777196/201535691-cf69897b-d29e-4b6e-a16b-24351a6b4727.jpg" width="200" /></td>
-</tr>
-
-</table>
-
----
-
-## [How to display a bar graph using a template sensor](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/155)
-
-<table>
-<tr>
-<td><img src="https://user-images.githubusercontent.com/91130738/202914481-cd5a6376-4535-4340-b17c-a2a5505f4af6.png" width="200" /></td>
-<td><img src="https://user-images.githubusercontent.com/91130738/202914716-c443a938-fbf2-4fdc-b796-9a438dd07ad8.png" width="200" /></td>
-<td><img src="https://user-images.githubusercontent.com/637997/206728626-b2b3b544-541a-4697-9cea-4c48d6623b2a.png" width="200" /></td>
 </tr>
 
 </table>
@@ -2370,5 +3066,3 @@
 </tr>
 
 </table>
-
----
