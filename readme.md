@@ -758,6 +758,44 @@ on_dblclick: |-
   }
 ```
 
+## Annotation and button click handlers
+
+In a similar way, you can respond to clicks on annotations (requiring `captureevents: true`).
+
+```yaml
+type: custom:plotly-graph
+entities:
+  - entity: sensor.temperature1
+layout:
+  annotations:
+    - x: 1
+      xref: paper
+      "y": 1
+      yref: paper
+      showarrow: false
+      text: "📊"
+      captureevents: true
+      on_click: $ex () => { window.location="/history?entity_id=sensor.temperature1"; }
+```
+
+Or to clicks on custom update menu buttons.
+
+```yaml
+type: custom:plotly-graph
+entities:
+  - entity: sensor.temperature1
+layout:
+  updatemenus:
+    - buttons:
+        - label: History
+          method: skip
+          on_click: $ex () => { window.location="/history?entity_id=sensor.temperature1"; }
+      showactive: false
+      type: buttons
+      x: 1
+      "y": 1
+```
+
 See more in plotly's [official docs](https://plotly.com/javascript/plotlyjs-events)
 
 ## Universal functions
