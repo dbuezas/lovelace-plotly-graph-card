@@ -63,6 +63,7 @@ export type InputConfig = {
   } & Partial<Plotly.PlotData>)[];
   defaults?: {
     entity?: Partial<Plotly.PlotData>;
+    xaxes?: Partial<Plotly.Layout["xaxis"]>;
     yaxes?: Partial<Plotly.Layout["yaxis"]>;
   };
   on_dblclick?: Function;
@@ -74,6 +75,7 @@ export type InputConfig = {
   minimal_response?: boolean; // defaults to true
   disable_pinch_to_zoom?: boolean; // defaults to false
   autorange_after_scroll?: boolean; // defaults to false
+  preset?: string | string[];
 };
 
 export type EntityConfig = EntityIdConfig & {
