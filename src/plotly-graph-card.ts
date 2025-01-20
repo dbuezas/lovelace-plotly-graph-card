@@ -54,6 +54,8 @@ export class PlotlyGraph extends HTMLElement {
     legendItemDoubleclick?: EventEmitter;
     dataClick?: EventEmitter;
     doubleclick?: EventEmitter;
+    annotationClick?: EventEmitter;
+    buttonClick?: EventEmitter;
   } = {};
 
   constructor() {
@@ -178,6 +180,15 @@ export class PlotlyGraph extends HTMLElement {
       "plotly_doubleclick",
       this.onDoubleclick
     )!;
+    this.handles.annotationClick = this.contentEl.on(
+      "plotly_clickannotation",
+      this.onAnnotationClick
+    )!;
+    this.handles.buttonClick = this.contentEl.on(
+      // @ts-ignore Not properly typed in @types/plotly.js
+      "plotly_buttonclicked",
+      this.onButtonClick
+    )!;
     this.resetButtonEl.addEventListener("click", this.exitBrowsingMode);
     this.touchController.connect();
     this.plot({ should_fetch: true });
@@ -197,6 +208,8 @@ export class PlotlyGraph extends HTMLElement {
     );
     this.handles.dataClick?.off("plotly_click", this.onDataClick);
     this.handles.doubleclick?.off("plotly_doubleclick", this.onDoubleclick);
+    this.handles.annotationClick?.off("plotly_clickannotation", this.onAnnotationClick);
+    this.handles.buttonClick?.off("plotly_buttonclicked", this.onButtonClick);
     clearTimeout(this.handles.refreshTimeout!);
     this.resetButtonEl.removeEventListener("click", this.exitBrowsingMode);
     this.touchController.disconnect();
@@ -308,6 +321,18 @@ export class PlotlyGraph extends HTMLElement {
   };
   onDoubleclick = () => {
     return this.parsed_config.on_dblclick();
+  };
+  onAnnotationClick = ({ annotation, ...rest }) => {
+    if (annotation.on_click) {
+        return annotation.on_click({ annotation, ...rest });
+    }
+    return true;
+  };
+  onButtonClick = ({ button, ...rest }) => {
+    if (button._input.on_click) {
+        return button._input.on_click({ button, ...rest });
+    }
+    return true;
   };
   onRestyle = async () => {
     // trace visibility changed, fetch missing traces
