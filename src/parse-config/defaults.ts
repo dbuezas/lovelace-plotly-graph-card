@@ -3,6 +3,7 @@ import { Config, InputConfig } from "../types";
 import { parseColorScheme } from "./parse-color-scheme";
 import { getEntityIndex } from "./parse-config";
 import getThemedLayout, { HATheme } from "./themed-layout";
+declare const window: Window & { PlotlyGraphCardPresets?: Record<string, InputConfig> };
 const noop$fn = () => () => {};
 const defaultEntityRequired = {
   entity: "",
@@ -59,6 +60,7 @@ const defaultYamlRequired = {
   raw_plotly: false,
   defaults: {
     entity: {},
+    xaxes: {},
     yaxes: {},
   },
   layout: {},
@@ -67,6 +69,15 @@ const defaultYamlRequired = {
 };
 
 //
+
+const defaultExtraXAxes: Partial<Plotly.LayoutAxis> = {
+  // automargin: true, // it makes zooming very jumpy
+  type: "date",
+  autorange: false,
+  overlaying: "x",
+  showgrid: false,
+  visible: false,
+};
 
 const defaultExtraYAxes: Partial<Plotly.LayoutAxis> = {
   // automargin: true, // it makes zooming very jumpy
@@ -98,6 +109,12 @@ const defaultYamlOptional: {
       type: "date",
       // automargin: true, // it makes zooming very jumpy
     },
+    ...Object.fromEntries(
+      Array.from({ length: 28 }).map((_, i) => [
+        `xaxis${i + 2}`,
+        { ...defaultExtraXAxes },
+      ])
+    ),
     yaxis: {
       // automargin: true, // it makes zooming very jumpy
     },
@@ -144,22 +161,44 @@ const defaultYamlOptional: {
   },
 };
 
+function getPresetYaml(presets: string | string[] | undefined, skips?: Set<string>): Partial<InputConfig> {
+  if (!window.PlotlyGraphCardPresets || presets === undefined) return {};
+  if (!Array.isArray(presets)) presets = [presets];
+  if (presets.length == 0) return {};
+  if (skips === undefined) skips = new Set<string>();
+  const nestedPresets: string[] = [];
+  const presetYamls = presets.map((preset) => {
+    const yaml = window.PlotlyGraphCardPresets![preset] ?? {};
+    if (yaml.preset !== undefined) {
+      if (!Array.isArray(yaml.preset)) yaml.preset = [yaml.preset];
+      nestedPresets.push(...yaml.preset);
+    }
+    return yaml;
+  });
+  const newPresets = nestedPresets.filter((preset) => !skips.has(preset));
+  const nestedYaml = getPresetYaml(newPresets, new Set([...skips, ...presets]));
+  return merge({}, ...presetYamls, nestedYaml);
+}
+
 export function addPreParsingDefaults(
   yaml_in: InputConfig,
   css_vars: HATheme
 ): InputConfig {
   // merging in two steps to ensure ha_theme and raw_plotly_config took its default value
   let yaml = merge({}, yaml_in, defaultYamlRequired, yaml_in);
+  const preset = getPresetYaml(yaml.preset);
   for (let i = 1; i < 31; i++) {
-    const yaxis = "yaxis" + (i == 1 ? "" : i);
-    yaml.layout[yaxis] = merge(
-      {},
-      yaml.layout[yaxis],
-      yaml.defaults.yaxes,
-      yaml.layout[yaxis]
-    );
+    for (const d of ["x", "y"]) {
+      const axis = d + "axis" + (i == 1 ? "" : i);
+      yaml.layout[axis] = merge(
+        {},
+        yaml.layout[axis],
+        yaml.defaults[d + "axes"],
+        preset.defaults?.[d+ "axes"] ?? {},
+        yaml.layout[axis]
+      );
+    }
   }
-
   yaml = merge(
     {},
     yaml,
@@ -167,6 +206,7 @@ export function addPreParsingDefaults(
       layout: yaml.ha_theme ? getThemedLayout(css_vars) : {},
     },
     yaml.raw_plotly_config ? {} : defaultYamlOptional,
+    preset,
     yaml
   );
 

@@ -922,7 +922,7 @@ hours_to_show: current_day
 
 ## Default trace & axis styling
 
-default configurations for all entities and all yaxes (e.g yaxis, yaxis2, yaxis3, etc).
+default configurations for all entities and all xaxes (e.g xaxis, xaxis2, xaxis3, etc) and yaxes (e.g yaxis, yaxis2, yaxis3, etc).
 
 ```yaml
 type: custom:plotly-graph
@@ -934,6 +934,8 @@ defaults:
     fill: tozeroy
     line:
       width: 2
+  xaxes:
+    showgrid: false # Disables vertical gridlines
   yaxes:
     fixedrange: true # disables vertical zoom & scroll
 ```
@@ -1039,6 +1041,110 @@ config:
 ** Home Assistant custom Number and Date format will be ignored, only the language determines the locale **
 
 When using `hours_to_show: current_week`, the "First day of the week" configured in Home Assistant is used
+
+## Presets
+
+If you find yourself reusing the same card configuration frequently, you can save it as a preset.
+
+### Setup
+
+Presets are loaded from the global `PlotlyGraphCardPresets` JS object (such that they can be shared across different dashboards).
+The recommended way to add or modify presets is to set up a `plotly_presets.js` script in the `www` subdirectory of your `config` folder.
+```js
+window.PlotlyGraphCardPresets = {
+  // Add your presets here with the following format (or check the examples below)
+  // PresetName: { PresetConfiguration }
+};
+```
+To ensure this file is loaded on every dashboard, add the following lines to your `configuration.yaml`.
+```yaml
+frontend:
+  extra_module_url:
+    - /local/plotly_presets.js
+```
+You might have to clear your browser cache or restart HA for changes to take effect.
+
+### Examples
+
+The preset configuration should be defined as a JS object instead of the YAML format used by the card.
+Below is an example YAML configuration that is split into several corresponding presets.
+
+<table>
+<tr>
+<th>YAML configuration</th>
+<th>Preset configurations</th>
+</tr>
+<tr style="vertical-align:top">
+<td>
+
+```yaml
+hours_to_show: current_day
+time_offset: -24h
+defaults:
+  entity:
+    hovertemplate: "$fn ({ get }) => `%{y:,.1f} ${get('.unit_of_measurement')}<extra>${get('.name')}</extra>`"
+  xaxes:
+    showspikes: true
+    spikemode: across
+    spikethickness: -2
+```
+
+</td>
+<td>
+
+```js
+window.PlotlyGraphCardPresets = {
+  yesterday: { // Start of preset with name 'yesterday'
+    hours_to_show: "current_day",
+    time_offset: "-24h",
+  },
+  simpleHover: { // Start of preset with name 'simpleHover'
+    defaults: {
+      entity: {
+        hovertemplate: ({get}) => `%{y:,.1f} ${get(".unit_of_measurement")}<extra>${get(".name")}</extra>`,
+      },
+    },
+  },
+  verticalSpikes: { // Start of preset with name 'verticalSpikes'
+    defaults: {
+      xaxes: {
+        showspikes: true,
+        spikemode: "across",
+        spikethickness: -2,
+      },
+    },
+  },
+};
+```
+
+</td>
+</tr>
+</table>
+
+### Usage
+
+To use your defined templates, simply specify the preset name under the `preset` key.
+You can also specify a list of preset names to combine several of them.
+
+E.g. with the above preset definitions, we can show yesterday's temperatures.
+```yaml
+type: custom:plotly-graph
+entities:
+  - sensor.temperature1
+  - sensor.temperature2
+preset: yesterday
+```
+
+Or show a simplified hover tooltip together with vertical spikes.
+```yaml
+type: custom:plotly-graph
+entities:
+  - sensor.temperature1
+  - sensor.temperature2
+preset:
+  - simpleHover
+  - verticalSpikes
+```
 
 # deprecations:
 
