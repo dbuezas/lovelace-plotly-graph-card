@@ -1072,9 +1072,8 @@ Below is an example YAML configuration that is split into several corresponding 
 <table>
 <tr>
 <th>YAML configuration</th>
-<th>Preset configurations</th>
 </tr>
-<tr style="vertical-align:top">
+<tr>
 <td>
 
 ```yaml
@@ -1082,7 +1081,10 @@ hours_to_show: current_day
 time_offset: -24h
 defaults:
   entity:
-    hovertemplate: "$fn ({ get }) => `%{y:,.1f} ${get('.unit_of_measurement')}<extra>${get('.name')}</extra>`"
+    hovertemplate: |
+      $fn ({ get }) => (
+        `%{y:,.1f} ${get('.unit_of_measurement')}<extra>${get('.name')}</extra>`
+      )
   xaxes:
     showspikes: true
     spikemode: across
@@ -1090,6 +1092,11 @@ defaults:
 ```
 
 </td>
+</tr>
+<tr>
+<th>Preset configurations</th>
+</tr>
+<tr>
 <td>
 
 ```js
@@ -1101,7 +1108,9 @@ window.PlotlyGraphCardPresets = {
   simpleHover: { // Start of preset with name 'simpleHover'
     defaults: {
       entity: {
-        hovertemplate: ({get}) => `%{y:,.1f} ${get(".unit_of_measurement")}<extra>${get(".name")}</extra>`,
+        hovertemplate: ({get}) => (
+          `%{y:,.1f} ${get('.unit_of_measurement')}<extra>${get('.name')}</extra>`
+        ),
       },
     },
   },
