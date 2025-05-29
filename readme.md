@@ -45,6 +45,8 @@ Web app to assist you with syntax validation and autocomplete: [Plotly graph car
 
 ### Via Home Assistant Community Store (Recommended)
 
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=dbuezas&repository=lovelace-plotly-graph-card&category=Dashboard)
+
 1. Install [HACS](https://hacs.xyz/docs/configuration/basic)
 2. Search & Install `Plotly Graph Card`.
 
