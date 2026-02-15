@@ -920,6 +920,14 @@ entities:
 hours_to_show: current_day
 ```
 
+#### disabling hover text
+
+can be achieved by setting inside entities:
+```yaml
+hovertemplate: null
+hoverinfo: 'skip'
+```
+
 ## Default trace & axis styling
 
 default configurations for all entities and all xaxes (e.g xaxis, xaxis2, xaxis3, etc) and yaxes (e.g yaxis, yaxis2, yaxis3, etc).
