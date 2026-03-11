@@ -161,7 +161,7 @@ class ConfigParser {
     value = parent[key];
 
     if (path.match(/^entities\.\d+\.filters\.\d+$/)) {
-      this.evalFilter({ parent, path, key, value });
+      await this.evalFilter({ parent, path, key, value });
     }
     if (path.match(/^entities\.\d+$/)) {
       if (!this.fnParam.xs) {
@@ -330,7 +330,7 @@ class ConfigParser {
     }
     return value;
   }
-  private evalFilter(input: {
+  private async evalFilter(input: {
     parent: object;
     path: string;
     key: string;
@@ -356,7 +356,7 @@ class ConfigParser {
     }
     const filterfn = config === null ? filter() : filter(config);
     try {
-      const r = filterfn(this.fnParam);
+      const r = await filterfn(this.fnParam);
       for (const key in r) {
         this.fnParam[key] = r[key];
       }

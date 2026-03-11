@@ -638,6 +638,20 @@ entities:
       - map_y: parseFloat(y) * parseFloat(hass.states['sensor.cost'].state)
 ```
 
+This can also be used to fetch data by calling a HA service. As this is a call that requires a network connection, the function needs to be defined `async`:
+```yaml
+    filters:
+      - fn: |-
+          async ({xs, ys, meta, hass}) => {
+            const weather = await hass.callService("weather", "get_forecasts", {type: "hourly"}, {entity_id:"weather.home"}, true, true)
+            const home = weather.response["weather.home"].forecast
+            return {
+              xs: home.map(h => new Date(h.datetime)),
+              ys: home.map(h => h.temperature)
+            }
+          }
+```
+
 ##### Using vars
 
 Compute absolute humidity
