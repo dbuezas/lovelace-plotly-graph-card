@@ -1,36 +1,42 @@
 import { HomeAssistant } from "custom-card-helpers";
-import { Statistics, StatisticValue } from "../recorder-types";
+import { Statistics } from "../recorder-types";
 import { CachedStatisticsEntity, EntityIdStatisticsConfig } from "../types";
 
 async function fetchStatistics(
   hass: HomeAssistant,
-  entity: EntityIdStatisticsConfig,
+  entities: EntityIdStatisticsConfig[],
   [start, end]: [Date, Date]
-): Promise<CachedStatisticsEntity[]> {
-  let statistics: StatisticValue[] | null = null;
+): Promise<Record<string, CachedStatisticsEntity[]>> {
+  const entityIds = [...new Set(entities.map(({ entity }) => entity))];
+  let statistics: Statistics = {};
   try {
     const statsP = hass.callWS<Statistics>({
       type: "recorder/statistics_during_period",
       start_time: start.toISOString(),
       end_time: end.toISOString(),
-      statistic_ids: [entity.entity],
-      period: entity.period,
+      statistic_ids: entityIds,
+      period: entities[0].period,
     });
-    statistics = (await statsP)[entity.entity];
+    statistics = await statsP;
   } catch (e: any) {
     console.error(e);
     throw new Error(
-      `Error fetching statistics of ${entity.entity}: ${JSON.stringify(
+      `Error fetching statistics of ${entityIds.join(", ")}: ${JSON.stringify(
         e.message || ""
       )}`
     );
   }
-  return (statistics || [])
-    .map((statistics) => ({
-      statistics,
-      x: new Date(statistics.start),
-      y: null, //depends on the statistic, will be set in getHistory
-    }))
-    .filter(({ x }) => x);
+  return Object.fromEntries(
+    entityIds.map((entityId) => [
+      entityId,
+      (statistics[entityId] || [])
+        .map((statistics) => ({
+          statistics,
+          x: new Date(statistics.start),
+          y: null, //depends on the statistic, will be set in getHistory
+        }))
+        .filter(({ x }) => x),
+    ])
+  );
 }
 export default fetchStatistics;
