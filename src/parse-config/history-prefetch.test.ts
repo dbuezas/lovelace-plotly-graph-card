@@ -34,14 +34,14 @@ describe("ConfigParser history prefetch", () => {
       "sensor.three",
       "sensor.four",
     ];
-    const callApi = jest.fn().mockImplementation((_method, uri: string) => {
-      const requestedIds = new URLSearchParams(uri.split("?")[1])
-        .get("filter_entity_id")!
-        .split(",");
+    const callWS = jest.fn().mockImplementation(({ entity_ids }) => {
       return Promise.resolve(
-        requestedIds.map((entityId, index) => [
-          state(entityId, String(index + 1)),
-        ]),
+        Object.fromEntries(
+          entity_ids.map((entityId, index) => [
+            entityId,
+            [state(entityId, String(index + 1))],
+          ]),
+        ),
       );
     });
     const states = Object.fromEntries(
@@ -51,7 +51,7 @@ describe("ConfigParser history prefetch", () => {
       ]),
     );
     const hass = {
-      callApi,
+      callWS,
       states,
       locale: { language: "en", first_weekday: "monday" },
     } as unknown as HomeAssistant;
@@ -68,10 +68,8 @@ describe("ConfigParser history prefetch", () => {
     });
 
     expect(result.errors).toEqual([]);
-    expect(callApi).toHaveBeenCalledTimes(1);
-    expect(callApi.mock.calls[0][1]).toContain(
-      `filter_entity_id=${entityIds.join(",")}`,
-    );
+    expect(callWS).toHaveBeenCalledTimes(1);
+    expect(callWS.mock.calls[0][0].entity_ids).toEqual(entityIds);
     expect(result.parsed.entities.map(({ y }) => y)).toEqual([
       ["1", "1"],
       ["2", "2"],

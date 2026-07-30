@@ -7,13 +7,42 @@ import {
   isEntityIdAttrConfig,
 } from "../types";
 
-function mapStates(list: HassEntity[] | undefined): CachedStateEntity[] {
+type CompressedHistoryState = {
+  s: string;
+  a?: Record<string, unknown>;
+  lc?: number;
+  lu: number;
+};
+
+type HistoryState = HassEntity | CompressedHistoryState;
+type HistoryResponse = Record<string, HistoryState[]>;
+
+function expandState(entityId: string, state: HistoryState): HassEntity {
+  if (!("s" in state)) return state;
+  const lastUpdated = new Date(state.lu * 1000).toISOString();
+  return {
+    entity_id: entityId,
+    state: state.s,
+    attributes: state.a ?? {},
+    last_changed: new Date((state.lc ?? state.lu) * 1000).toISOString(),
+    last_updated: lastUpdated,
+    context: { id: "", parent_id: null, user_id: null },
+  };
+}
+
+function mapStates(
+  entityId: string,
+  list: HistoryState[] | undefined,
+): CachedStateEntity[] {
   return (list || [])
-    .map((state) => ({
-      state,
-      x: new Date(state.last_updated || state.last_changed),
-      y: null, // may be state or an attribute. Will be set when getting the history
-    }))
+    .map((historyState) => {
+      const state = expandState(entityId, historyState);
+      return {
+        state,
+        x: new Date(state.last_updated || state.last_changed),
+        y: null, // may be state or an attribute. Will be set when getting the history
+      };
+    })
     .filter(({ x }) => x);
 }
 
@@ -25,20 +54,19 @@ export async function fetchStatesBatch(
   const entityIds = [...new Set(entities.map(({ entity }) => entity))];
   if (!entityIds.length) return {};
   const includeAttributes = entities.some(isEntityIdAttrConfig);
-  const uri =
-    `history/period/${start.toISOString()}?` +
-    [
-      `filter_entity_id=${entityIds.join(",")}`,
-      `significant_changes_only=0`,
-      includeAttributes ? "" : "no_attributes",
-      includeAttributes ? "" : "minimal_response",
-      `end_time=${end.toISOString()}`,
-    ]
-      .filter(Boolean)
-      .join("&");
-  let lists: HassEntity[][];
+  let history: HistoryResponse;
   try {
-    lists = (await hass.callApi("GET", uri)) || [];
+    history =
+      (await hass.callWS<HistoryResponse>({
+        type: "history/history_during_period",
+        start_time: start.toISOString(),
+        end_time: end.toISOString(),
+        entity_ids: entityIds,
+        include_start_time_state: true,
+        significant_changes_only: false,
+        minimal_response: !includeAttributes,
+        no_attributes: !includeAttributes,
+      })) || {};
   } catch (e: any) {
     console.error(e);
     throw new Error(
@@ -51,11 +79,8 @@ export async function fetchStatesBatch(
   const statesByEntity = Object.fromEntries(
     entityIds.map((entityId) => [entityId, [] as CachedStateEntity[]]),
   );
-  for (const list of lists) {
-    const entityId = list.find(({ entity_id }) => entity_id)?.entity_id;
-    if (entityId && entityId in statesByEntity) {
-      statesByEntity[entityId] = mapStates(list);
-    }
+  for (const entityId of entityIds) {
+    statesByEntity[entityId] = mapStates(entityId, history[entityId]);
   }
   return statesByEntity;
 }
