@@ -386,7 +386,9 @@ export class PlotlyGraph extends HTMLElement {
       await sleep(100);
     }
     const fetch_mask = this.contentEl.data.map(
-      ({ visible }) => should_fetch && visible !== "legendonly"
+      (trace) =>
+        should_fetch &&
+        (trace as Partial<Plotly.PlotData>).visible !== "legendonly"
     );
     const uirevision = this.isBrowsing
       ? this.contentEl.layout?.uirevision || 0

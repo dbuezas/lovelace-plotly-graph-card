@@ -1242,6 +1242,18 @@ Removed in v3.0.0, non significant changes are also fetched now. The bandwidth s
 
 Removed in v3.0.0, if you need access to the attributes use the 'attribute' parameter instead. It doesn't matter which attribute you pick, all of them are still accessible inside filters and universal functions
 
+## Plotly.js 3 compatibility
+
+This card uses Plotly.js 3.x. Existing configurations using supported trace
+types continue to work without changes.
+
+Plotly.js 3 removed the deprecated `pointcloud` and `heatmapgl` trace types,
+as well as the `transforms` API. Configurations using these features must be
+migrated before upgrading.
+
+See the [Plotly.js changelog](https://github.com/plotly/plotly.js/blob/v3.7.0/CHANGELOG.md)
+for additional removed and renamed attributes.
+
 # Development
 
 - Clone the repo
@@ -1266,4 +1278,3 @@ Removed in v3.0.0, if you need access to the attributes use the 'attribute' para
 ## Star History
 
 [![Star History Chart](https://api.star-history.com/svg?repos=dbuezas/lovelace-plotly-graph-card&type=Date)](https://star-history.com/#dbuezas/lovelace-plotly-graph-card&Date)
-
