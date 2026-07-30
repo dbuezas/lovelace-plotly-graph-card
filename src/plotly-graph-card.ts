@@ -18,6 +18,7 @@ import { parseISO } from "date-fns";
 import { TouchController } from "./touch-controller";
 import { ConfigParser } from "./parse-config/parse-config";
 import { merge } from "lodash";
+import { CardSize, getResizeLayoutUpdate } from "./card-size";
 
 const componentName = isProduction ? "plotly-graph" : "plotly-graph-dev";
 
@@ -38,7 +39,7 @@ export class PlotlyGraph extends HTMLElement {
   titleEl: HTMLElement;
   config!: InputConfig;
   parsed_config!: Config;
-  size: { width?: number; height?: number } = {};
+  size: CardSize = {};
   _hass?: HomeAssistant;
   isBrowsing = false;
   isInternalRelayout = 0;
@@ -143,18 +144,37 @@ export class PlotlyGraph extends HTMLElement {
   connectedCallback() {
     const updateCardSize = async () => {
       const width = this.cardEl.offsetWidth;
+      if (width <= 0) return;
       this.contentEl.style.position = "absolute";
       const height = this.cardEl.offsetHeight;
       this.contentEl.style.position = "";
-      this.size = { width };
+      const previousSize = this.size;
+      const nextSize: CardSize = { width };
       if (height > 100) {
         // Panel view type has the cards covering 100% of the height of the window.
         // Masonry lets the cards grow by themselves.
         // if height > 100 ==> Panel ==> use available height
         // else ==> Mansonry ==> let the height be determined by defaults
-        this.size.height = height - this.titleEl.offsetHeight;
+        nextSize.height = height - this.titleEl.offsetHeight;
       }
-      this.plot({ should_fetch: false });
+      this.size = nextSize;
+
+      // Plotly.Plots.resize is a no-op when width and height are both set.
+      // Relayout updates those dimensions without processing the data again.
+      if (!this.parsed_config) return;
+
+      const layoutUpdate = getResizeLayoutUpdate(
+        previousSize,
+        nextSize,
+        this.config.layout
+      );
+      if (layoutUpdate === null) {
+        await this.plot({ should_fetch: false });
+      } else if (Object.keys(layoutUpdate).length) {
+        await this.withoutRelayout(() =>
+          Plotly.relayout(this.contentEl, layoutUpdate)
+        );
+      }
     };
     this.handles.resizeObserver = new ResizeObserver(updateCardSize);
     this.handles.resizeObserver.observe(this.cardEl);
