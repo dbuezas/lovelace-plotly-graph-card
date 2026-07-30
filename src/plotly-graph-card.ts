@@ -75,7 +75,11 @@ export class PlotlyGraph extends HTMLElement {
     shadow.innerHTML = `
         <ha-card class="loading" aria-busy="true">
           <style>
+            :host {
+              display: block;
+            }
             ha-card{
+              display: block;
               overflow: hidden;
               position: relative;
               background: var(
@@ -85,6 +89,10 @@ export class PlotlyGraph extends HTMLElement {
               width: 100%;
               height: calc(100% - 5px);
               direction: ltr;
+            }
+            ha-card.loading {
+              height: auto;
+              min-height: var(--plotly-loading-height, ${DEFAULT_PLOT_HEIGHT}px);
             }
             ha-card > #plotly{
               width: 100px;
