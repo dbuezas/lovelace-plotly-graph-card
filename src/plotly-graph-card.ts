@@ -106,16 +106,16 @@ export class PlotlyGraph extends HTMLElement {
             #loading::before {
               content: "";
               position: absolute;
-              left: 22.5%;
-              width: 55%;
+              left: 27.5%;
+              width: 45%;
               height: 1px;
               background: var(--divider-color, rgba(127, 127, 127, 0.25));
             }
             #loading::after {
               content: "";
               position: absolute;
-              left: 22.5%;
-              width: 12%;
+              left: 27.5%;
+              width: 9%;
               height: 2px;
               border-radius: 2px;
               background: linear-gradient(
@@ -124,8 +124,8 @@ export class PlotlyGraph extends HTMLElement {
                 var(--primary-color) 75%,
                 var(--primary-color)
               );
-              filter: drop-shadow(0 0 3px var(--primary-color));
-              animation: plotly-card-loading 1.4s ease-in-out infinite;
+              filter: drop-shadow(0 0 2px var(--primary-color));
+              animation: plotly-card-loading 2.2s ease-in-out infinite;
             }
             @keyframes plotly-card-loading {
               0% {
@@ -138,7 +138,7 @@ export class PlotlyGraph extends HTMLElement {
               }
               100% {
                 opacity: 0;
-                transform: translateX(360%);
+                transform: translateX(400%);
               }
             }
             @media (prefers-reduced-motion: reduce) {
