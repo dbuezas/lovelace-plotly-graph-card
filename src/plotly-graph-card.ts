@@ -18,6 +18,7 @@ import { parseISO } from "date-fns";
 import { TouchController } from "./touch-controller";
 import { ConfigParser } from "./parse-config/parse-config";
 import { merge } from "lodash";
+import { getFetchMask } from "./plot-state";
 
 const componentName = isProduction ? "plotly-graph" : "plotly-graph-dev";
 
@@ -42,6 +43,7 @@ export class PlotlyGraph extends HTMLElement {
   _hass?: HomeAssistant;
   isBrowsing = false;
   isInternalRelayout = 0;
+  plotlyListenersConnected = false;
   touchController: TouchController;
   configParser = new ConfigParser();
   pausedRendering = false;
@@ -137,7 +139,6 @@ export class PlotlyGraph extends HTMLElement {
         this.plot({ should_fetch: true });
       },
     });
-    this.withoutRelayout(() => Plotly.newPlot(this.contentEl, [], {}));
   }
 
   connectedCallback() {
@@ -160,6 +161,21 @@ export class PlotlyGraph extends HTMLElement {
     this.handles.resizeObserver.observe(this.cardEl);
 
     updateCardSize();
+    this.resetButtonEl.addEventListener("click", this.exitBrowsingMode);
+    this.touchController.connect();
+    this.plot({ should_fetch: true });
+  }
+
+  disconnectedCallback() {
+    this.handles.resizeObserver?.disconnect();
+    this.disconnectPlotlyListeners();
+    clearTimeout(this.handles.refreshTimeout!);
+    this.resetButtonEl.removeEventListener("click", this.exitBrowsingMode);
+    this.touchController.disconnect();
+  }
+
+  connectPlotlyListeners() {
+    if (this.plotlyListenersConnected) return;
     this.handles.relayoutListener = this.contentEl.on(
       "plotly_relayout",
       this.onRelayout
@@ -176,6 +192,10 @@ export class PlotlyGraph extends HTMLElement {
       "plotly_legenddoubleclick",
       this.onLegendItemDoubleclick
     )!;
+    this.handles.dataClick = this.contentEl.on(
+      "plotly_click",
+      this.onDataClick
+    )!;
     this.handles.doubleclick = this.contentEl.on(
       "plotly_doubleclick",
       this.onDoubleclick
@@ -189,13 +209,11 @@ export class PlotlyGraph extends HTMLElement {
       "plotly_buttonclicked",
       this.onButtonClick
     )!;
-    this.resetButtonEl.addEventListener("click", this.exitBrowsingMode);
-    this.touchController.connect();
-    this.plot({ should_fetch: true });
+    this.plotlyListenersConnected = true;
   }
 
-  disconnectedCallback() {
-    this.handles.resizeObserver?.disconnect();
+  disconnectPlotlyListeners() {
+    if (!this.plotlyListenersConnected) return;
     this.handles.relayoutListener?.off("plotly_relayout", this.onRelayout);
     this.handles.restyleListener?.off("plotly_restyle", this.onRestyle);
     this.handles.legendItemClick?.off(
@@ -210,9 +228,7 @@ export class PlotlyGraph extends HTMLElement {
     this.handles.doubleclick?.off("plotly_doubleclick", this.onDoubleclick);
     this.handles.annotationClick?.off("plotly_clickannotation", this.onAnnotationClick);
     this.handles.buttonClick?.off("plotly_buttonclicked", this.onButtonClick);
-    clearTimeout(this.handles.refreshTimeout!);
-    this.resetButtonEl.removeEventListener("click", this.exitBrowsingMode);
-    this.touchController.disconnect();
+    this.plotlyListenersConnected = false;
   }
 
   get hass() {
@@ -385,9 +401,7 @@ export class PlotlyGraph extends HTMLElement {
       console.log("waiting for loading");
       await sleep(100);
     }
-    const fetch_mask = this.contentEl.data.map(
-      ({ visible }) => should_fetch && visible !== "legendonly"
-    );
+    const fetch_mask = getFetchMask(this.contentEl.data, should_fetch);
     const uirevision = this.isBrowsing
       ? this.contentEl.layout?.uirevision || 0
       : Math.random();
@@ -443,11 +457,7 @@ export class PlotlyGraph extends HTMLElement {
       }
       this.contentEl.style.visibility = "";
     });
-    this.handles.dataClick?.off("plotly_click", this.onDataClick)!;
-    this.handles.dataClick = this.contentEl.on(
-      "plotly_click",
-      this.onDataClick
-    )!;
+    if (this.isConnected) this.connectPlotlyListeners();
   });
   // The height of your card. Home Assistant uses this to automatically
   // distribute all cards over the available columns.
