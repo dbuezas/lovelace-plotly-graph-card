@@ -1,4 +1,5 @@
-import Cache from "../cache/Cache";
+import Cache, { getEntityKey } from "../cache/Cache";
+import { updateObservedRange } from "../cache/observed-range";
 import { HATheme } from "./themed-layout";
 
 import propose from "propose";
@@ -30,6 +31,8 @@ class ConfigParser {
   private busy = false;
   private fnParam!: FnParam;
   private observed_range: [number, number] = [Date.now(), Date.now()];
+  private preserveObservedRange = false;
+  private retainedCacheRanges: Record<string, [number, number][]> = {};
   public resetObservedRange() {
     this.observed_range = [Date.now(), Date.now()];
   }
@@ -59,6 +62,11 @@ class ConfigParser {
     this.yaml = {};
     this.errors = [];
     this.hass = hass;
+    this.preserveObservedRange = Object.prototype.hasOwnProperty.call(
+      input_yaml,
+      "visible_range"
+    );
+    this.retainedCacheRanges = {};
     this.yaml_with_defaults = addPreParsingDefaults(input_yaml, css_vars);
     setDateFnDefaultOptions(hass);
 
@@ -83,6 +91,7 @@ class ConfigParser {
         this.errors?.push(e as Error);
       }
     }
+    this.cache.retain(this.retainedCacheRanges);
     this.yaml = addPostParsingDefaults(this.yaml as Config);
 
     return { errors: this.errors, parsed: this.yaml as Config };
@@ -252,11 +261,12 @@ class ConfigParser {
       }
       this.yaml.visible_range = visible_range;
     }
-    if (this.fnParam.getFromConfig("autorange_after_scroll")) {
-      this.observed_range = visible_range.slice();
-    }
-    this.observed_range[0] = Math.min(this.observed_range[0], visible_range[0]);
-    this.observed_range[1] = Math.max(this.observed_range[1], visible_range[1]);
+    this.observed_range = updateObservedRange(
+      this.observed_range,
+      visible_range,
+      this.preserveObservedRange &&
+        !this.fnParam.getFromConfig("autorange_after_scroll")
+    );
     const statisticsParams = parseStatistics(
       visible_range,
       this.fnParam.getFromConfig(path + ".statistic"),
@@ -277,13 +287,28 @@ class ConfigParser {
       visible_range[0] - offset,
       visible_range[1] - offset,
     ];
+    const range_to_retain = [
+      this.observed_range[0] - offset,
+      // A live state can arrive while a history request is in flight. Keeping
+      // the rolling range open-ended avoids pruning that newer state.
+      this.preserveObservedRange
+        ? this.observed_range[1] - offset
+        : Number.POSITIVE_INFINITY,
+    ] as [number, number];
+    const entityKey = getEntityKey(fetchConfig);
+    (this.retainedCacheRanges[entityKey] ??= []).push(range_to_retain);
     const fetch_mask = this.fnParam.getFromConfig("fetch_mask");
     const i = getEntityIndex(path);
     const data =
       // TODO: decide about minimal response
       fetch_mask[i] === false // also fetch if it is undefined. This means the entity is new
-        ? this.cache.getData(fetchConfig)
-        : await this.cache.fetch(range_to_fetch, fetchConfig, this.hass!);
+        ? this.cache.getData(fetchConfig, [range_to_retain])
+        : await this.cache.fetch(
+            range_to_fetch,
+            fetchConfig,
+            this.hass!,
+            [range_to_retain]
+          );
     const extend_to_present =
       this.fnParam.getFromConfig(path + ".extend_to_present") ??
       !statisticsParams;
