@@ -20,6 +20,7 @@ import { has } from "lodash";
 import { StatisticValue } from "../recorder-types";
 import { Config, EntityData, HassEntity, InputConfig, YValue } from "../types";
 import getDeprecationError from "./deprecations";
+import { getRememberedConfiguredAxes } from "./axis-layout";
 
 class ConfigParser {
   private yaml: Partial<Config> = {};
@@ -60,6 +61,9 @@ class ConfigParser {
     this.errors = [];
     this.hass = hass;
     this.yaml_with_defaults = addPreParsingDefaults(input_yaml, css_vars);
+    const explicitlyConfiguredAxes = getRememberedConfiguredAxes(
+      this.yaml_with_defaults
+    );
     setDateFnDefaultOptions(hass);
 
     this.fnParam = {
@@ -83,7 +87,10 @@ class ConfigParser {
         this.errors?.push(e as Error);
       }
     }
-    this.yaml = addPostParsingDefaults(this.yaml as Config);
+    this.yaml = addPostParsingDefaults(
+      this.yaml as Config,
+      explicitlyConfiguredAxes
+    );
 
     return { errors: this.errors, parsed: this.yaml as Config };
   }
