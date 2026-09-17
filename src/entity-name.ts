@@ -2,7 +2,7 @@ import { HomeAssistant } from "custom-card-helpers";
 import { HassEntity } from "home-assistant-js-websocket";
 
 export type EntityNameItem =
-  | { type: "entity" | "device" | "parent_device" | "area" | "floor" }
+  | { type: "entity" | "device" | "area" | "floor" }
   | { type: "text"; text: string };
 
 /** A `name` option: a plain string, or name parts resolved from the registry. */
@@ -40,6 +40,11 @@ export const computeEntityName = (
   stateObj: HassEntity | undefined,
   name: EntityName | undefined
 ): string | undefined => {
+  // A configured empty name has always meant "use Home Assistant's name", but
+  // formatEntityName returns any string verbatim - including the empty one, which
+  // would blank the label. Normalise it to undefined so the formatter composes.
+  if (name === "") name = undefined;
+
   // A string name is the override, exactly as formatEntityName treats it.
   if (typeof name === "string") return name;
   if (!stateObj) return undefined;
