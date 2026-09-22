@@ -1242,20 +1242,38 @@ Removed in v3.0.0, non significant changes are also fetched now. The bandwidth s
 
 Removed in v3.0.0, if you need access to the attributes use the 'attribute' parameter instead. It doesn't matter which attribute you pick, all of them are still accessible inside filters and universal functions
 
-## Plotly.js 3 compatibility
+## Plotly.js 4 compatibility
 
-This card uses Plotly.js 3.x. Existing configurations using supported trace
-types continue to work without changes.
+This card uses Plotly.js 4.1.1. Review custom Plotly configurations when
+upgrading from 2.x or 3.x:
 
 Plotly.js 3 removed the deprecated `pointcloud` and `heatmapgl` trace types,
 as well as the `transforms` API. Configurations using these features must be
 migrated before upgrading.
 
-See the [Plotly.js changelog](https://github.com/plotly/plotly.js/blob/v3.7.0/CHANGELOG.md)
-for additional removed and renamed attributes.
+- Plotly.js 4 removes Mapbox traces and `layout.mapbox`, MathJax 2 support,
+  Chart Studio options and `*src` attributes. Mapbox traces were not registered
+  in this card's bundle; this update does not add map trace support.
+- Colors must use valid CSS syntax. `hsv(...)` is no longer supported, and RGB
+  channels between 0 and 1 are no longer interpreted as fractions of 255.
+  Standard hex colors and `rgba(52, 152, 219, 0.82)` continue to work.
+- Geographic plots now default to fitting their locations. Set
+  `layout.geo.fitbounds: false` to keep the previous behavior.
+- Overlaid axes keep independent ticks in normal card mode. Explicit
+  `tickmode`, `tickvals` and `dtick` settings are respected. In
+  `raw_plotly_config` mode, Plotly's new synchronized-tick default applies.
+- The cloud-upload button remains disabled by default, including in raw mode.
+  Enable it explicitly with `config.showSendToCloud: true` only if you want
+  to send chart data to Plotly Cloud. The previous 300 ms double-click delay
+  is also retained unless configured otherwise.
+
+See the [Plotly.js changelog](https://github.com/plotly/plotly.js/blob/v4.1.1/CHANGELOG.md)
+for the complete list of changes, including changes to SPLOM axis matching
+and event coordinates.
 
 # Development
 
+- Use Node.js 22 or newer (required by Plotly.js 4).
 - Clone the repo
 - run `npm i`
 - run `npm start`
@@ -1266,6 +1284,14 @@ for additional removed and renamed attributes.
 # Build
 
 `npm run build`
+
+## Upgrade checks
+
+Run `npm run tsc` and `npm test -- src/parse-config/defaults.test.ts` for
+the compatibility checks. For rendering checks, install Chromium with
+`npx playwright install chromium` and run `npm run test:browser`.
+The browser test covers every registered trace type, tank shapes and labels,
+axis defaults, cloud-upload opt-in, and a card with a mock Home Assistant state.
 
 # Release
 

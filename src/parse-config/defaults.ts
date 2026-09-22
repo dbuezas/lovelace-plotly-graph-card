@@ -238,10 +238,14 @@ export function addPostParsingDefaults(
    * These cannot be done via defaults because they depend on the entities already being fully evaluated and filtered
    *  */
   const yAxisTitles = Object.fromEntries(
-    yaml.entities.map(({ unit_of_measurement, yaxis }) => [
-      "yaxis" + yaxis?.slice(1),
-      { title: unit_of_measurement },
-    ])
+    yaml.entities.flatMap((entity) =>
+      "yaxis" in entity && entity.yaxis
+        ? [[
+            "yaxis" + entity.yaxis.slice(1),
+            { title: { text: entity.unit_of_measurement } },
+          ]]
+        : []
+    )
   );
   const layout = merge(
     {},
@@ -256,5 +260,34 @@ export function addPostParsingDefaults(
     yaml.raw_plotly_config ? {} : yAxisTitles,
     yaml.layout
   );
-  return merge({}, yaml, { layout }, yaml);
+  if (!yaml.raw_plotly_config) {
+    for (const [key, axis] of Object.entries(layout)) {
+      if (!/^[xy]axis\d*$/.test(key)) continue;
+      const template =
+        typeof layout.template === "object"
+          ? layout.template.layout?.[key]
+          : undefined;
+      const effective = { ...template, ...axis };
+      // Plotly 4 synchronizes overlaid axes by default. Preserve independent
+      // ticks, but leave explicit modes and inferred array/linear ticks alone.
+      if (
+        effective.overlaying &&
+        effective.tickmode == null &&
+        effective.tickvals == null &&
+        effective.dtick == null
+      ) {
+        axis.tickmode = "auto";
+      }
+    }
+  }
+  return {
+    ...yaml,
+    layout,
+    config: {
+      // Keep dashboard data local unless the user explicitly enables upload.
+      showSendToCloud: false,
+      doubleClickDelay: 300,
+      ...yaml.config,
+    },
+  };
 }
