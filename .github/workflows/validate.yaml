@@ -2,7 +2,10 @@ name: HACS-Validate
 
 on:
   push:
+    branches: [master]
   pull_request:
+  schedule:
+    - cron: "0 3 * * 1"
   workflow_dispatch:
 
 permissions:
@@ -12,9 +15,15 @@ jobs:
   hacs:
     name: HACS Action
     runs-on: ubuntu-latest
+    # Forks have no releases and dist/ isn't committed, so HACS can't find
+    # plotly-graph-card.js there. Only run in the upstream repo, and skip
+    # pull requests coming from forks.
+    if: >-
+      github.repository == 'dbuezas/lovelace-plotly-graph-card' &&
+      (github.event_name != 'pull_request' ||
+       github.event.pull_request.head.repo.full_name == github.repository)
     steps:
       - uses: actions/checkout@v7
-      - name: HACS Action
-        uses: hacs/action@main
+      - uses: hacs/action@main
         with:
           category: plugin
