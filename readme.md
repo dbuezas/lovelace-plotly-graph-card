@@ -1254,10 +1254,6 @@ migrated before upgrading.
 See the [Plotly.js changelog](https://github.com/plotly/plotly.js/blob/v3.7.0/CHANGELOG.md)
 for additional removed and renamed attributes.
 
-The bundled Plotly build supports the modern `scattergl`, `splom`, `parcoords`,
-`scattermap`, `choroplethmap`, `densitymap`, `scatterpolargl`, and
-`scattersmith` trace types.
-
 # Development
 
 - Clone the repo
