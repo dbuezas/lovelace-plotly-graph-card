@@ -1,8 +1,6 @@
-# Demo
+# YAML editor
 
-This demo is deployed to [monaco-yaml.js.org](https://monaco-yaml.js.org). It shows how
-`monaco-editor` and `monaco-yaml` can be used with
-[Webpack 5](https://webpack.js.org/concepts/entry-points).
+The card's YAML editor uses Monaco and a generated configuration schema.
 
 ## Table of Contents
 
@@ -12,17 +10,18 @@ This demo is deployed to [monaco-yaml.js.org](https://monaco-yaml.js.org). It sh
 
 ## Prerequisites
 
-- [NodeJS](https://nodejs.org) 16 or higher
-- [npm](https://github.com/npm/cli) 8.1.2 or higher
+- Node.js 22 or newer; CI uses Node.js 24.
+- npm
 
 ## Setup
 
 To run the project locally, clone the repository and set it up:
 
 ```sh
-git clone https://github.com/remcohaszing/monaco-yaml
-cd monaco-yaml
+git clone https://github.com/dbuezas/lovelace-plotly-graph-card
+cd lovelace-plotly-graph-card
 npm ci
+npm ci --prefix yaml-editor
 ```
 
 ## Running
@@ -30,7 +29,7 @@ npm ci
 To start it, simply run:
 
 ```sh
-npm start
+npm start --prefix yaml-editor
 ```
 
 ## Schema generation
@@ -48,7 +47,7 @@ npm run schema --prefix yaml-editor
 npm test --prefix yaml-editor
 ```
 
-`npm run build` regenerates the schema before building the editor. CI also
+`npm run build --prefix yaml-editor` regenerates the schema before building the editor. CI also
 checks that the generated file is reproducible and committed.
 
-The demo will open in your browser.
+The development editor opens in your browser when started.

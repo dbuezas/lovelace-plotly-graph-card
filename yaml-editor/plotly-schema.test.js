@@ -24,7 +24,7 @@ test("converts Plotly scalar constraints and arrayOk", () => {
       description: "Marker size",
       min: 1,
       valType: "number",
-    })
+    }),
   );
 
   assert.equal(schema.description, "Marker size");
@@ -40,7 +40,7 @@ test("keeps literal and regular-expression enum alternatives", () => {
     convertPlotlyNode({
       valType: "enumerated",
       values: ["paper", "/^x([2-9]|[1-9][0-9]+)?$/"],
-    })
+    }),
   );
 
   assert.deepEqual(schema.anyOf, [
@@ -65,18 +65,18 @@ test("converts object arrays and dynamic subplot properties", () => {
         role: "object",
         visible: { valType: "boolean" },
       },
-    })
+    }),
   );
 
   const annotations = valueBranch(schema.properties.annotations);
   assert.equal(annotations.type, "array");
   assert.equal(
     valueBranch(annotations.items).properties.text.anyOf[1].type,
-    "string"
+    "string",
   );
   assert.deepEqual(
     schema.patternProperties["^xaxis([2-9]|[1-9][0-9]+)$"],
-    schema.properties.xaxis
+    schema.properties.xaxis,
   );
 });
 
@@ -161,40 +161,40 @@ test("combines card options with runtime Plotly definitions", () => {
   assert.equal(
     schema.definitions.PlotlyConfig.anyOf[1].properties.staticPlot.anyOf[1]
       .type,
-    "boolean"
+    "boolean",
   );
   assert.ok(
     schema.definitions.PlotlyLayout.anyOf[1].patternProperties[
       "^xaxis([2-9]|[1-9][0-9]+)$"
-    ]
+    ],
   );
   assert.equal(
     schema.definitions.PlotlyTrace_scatter.anyOf[1].properties.type.anyOf[1]
       .const,
-    "scatter"
+    "scatter",
   );
   assert.deepEqual(
     schema.definitions.CardEntity.properties.offset.anyOf[1].anyOf.map(
-      ({ type }) => type
+      ({ type }) => type,
     ),
-    ["string", "number", "array"]
+    ["string", "number", "array"],
   );
 });
 
 test("checked-in schema is generated from Plotly runtime metadata", () => {
   const repository = path.resolve(directory, "..");
   const schema = JSON.parse(
-    fs.readFileSync(path.join(directory, "src/schema.json"), "utf8")
+    fs.readFileSync(path.join(directory, "src/schema.json"), "utf8"),
   );
   const runtime = JSON.parse(
     fs.readFileSync(
       path.join(repository, "node_modules/plotly.js/dist/plot-schema.json"),
-      "utf8"
-    )
+      "utf8",
+    ),
   );
   const source = fs.readFileSync(
     path.join(repository, "src/plotly.ts"),
-    "utf8"
+    "utf8",
   );
   const expectedTraces = registeredTraceTypes(source, runtime);
   const generatedTraces = Object.keys(schema.definitions)
@@ -205,11 +205,26 @@ test("checked-in schema is generated from Plotly runtime metadata", () => {
   assert.ok(schema.definitions.PlotlyConfig);
   assert.ok(schema.definitions.PlotlyTrace_scatter);
   assert.deepEqual(generatedTraces, expectedTraces);
+  for (const trace of expectedTraces) {
+    assert.deepEqual(
+      schema.definitions[`PlotlyTrace_${trace}`],
+      convertPlotlyNode(runtime.traces[trace].attributes),
+      `Regenerate the schema for ${trace}`,
+    );
+  }
+  assert.deepEqual(
+    schema.definitions.PlotlyLayout,
+    convertPlotlyNode(runtime.layout.layoutAttributes),
+  );
+  assert.deepEqual(
+    schema.definitions.PlotlyConfig,
+    convertPlotlyNode(runtime.config),
+  );
   assert.equal(
     Object.keys(schema.definitions).some((name) =>
-      name.includes("Partial<Plotly.")
+      name.includes("Partial<Plotly."),
     ),
-    false
+    false,
   );
 
   const validate = new Ajv({ allErrors: true, strict: false }).compile(schema);
@@ -247,4 +262,47 @@ test("checked-in schema is generated from Plotly runtime metadata", () => {
   });
 
   assert.equal(valid, true, JSON.stringify(validate.errors, null, 2));
+});
+
+test("Plotly 4 schema removes legacy options and validates object titles", () => {
+  const schema = JSON.parse(
+    fs.readFileSync(path.join(directory, "src/schema.json"), "utf8"),
+  );
+  const layout = valueBranch(schema.definitions.PlotlyLayout).properties;
+  const config = valueBranch(schema.definitions.PlotlyConfig).properties;
+  const scatter = valueBranch(
+    schema.definitions.PlotlyTrace_scatter,
+  ).properties;
+  assert.equal(scatter.xsrc, undefined);
+  assert.equal(config.showLink, undefined);
+  assert.equal(layout.mapbox, undefined);
+  assert.equal(layout.titlefont, undefined);
+
+  const validate = new Ajv({ allErrors: true, strict: false }).compile(schema);
+  const card = {
+    type: "custom:plotly-graph",
+    title: "Card title remains a string",
+    entities: [{ entity: "sensor.power", type: "scatter" }],
+    layout: {
+      title: { text: "Energy" },
+      yaxis2: { title: { text: "kW", font: { size: 14 } }, tickmode: "sync" },
+    },
+  };
+  assert.equal(validate(card), true, JSON.stringify(validate.errors));
+  assert.equal(validate({ ...card, layout: { title: "Energy" } }), false);
+  assert.equal(
+    validate({ ...card, layout: { yaxis2: { title: "kW" } } }),
+    false,
+  );
+  assert.equal(
+    validate({ ...card, layout: { title: "$fn () => ({ text: 'Energy' })" } }),
+    true,
+  );
+  assert.equal(
+    validate({
+      ...card,
+      entities: [{ entity: "sensor.power", type: "not-a-trace" }],
+    }),
+    false,
+  );
 });

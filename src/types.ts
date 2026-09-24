@@ -62,9 +62,9 @@ export type InputConfig = {
   color_scheme?: ColorSchemeNames | ColorSchemeArray | number;
   title?: string;
   offset?: TimeDurationStr;
-  entities: (InputEntityOptions & Partial<Plotly.PlotData>)[];
+  entities: (InputEntityOptions & Partial<Plotly.Data>)[];
   defaults?: {
-    entity?: Partial<Plotly.PlotData>;
+    entity?: Partial<Plotly.Data>;
     xaxes?: Partial<Plotly.Layout["xaxis"]>;
     yaxes?: Partial<Plotly.Layout["yaxis"]>;
   };
@@ -94,7 +94,7 @@ export type EntityConfig = EntityIdConfig & {
   on_legend_click: Function;
   on_legend_dblclick: Function;
   on_click: Function;
-} & Partial<Plotly.PlotData>;
+} & Partial<Plotly.Data>;
 
 export type Config = {
   title?: string;
