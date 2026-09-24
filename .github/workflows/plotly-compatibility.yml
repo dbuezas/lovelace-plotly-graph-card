@@ -1,0 +1,27 @@
+name: Plotly compatibility
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+permissions:
+  contents: read
+
+jobs:
+  compatibility:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run tsc
+      - run: npm run build
+      - name: Check Plotly compatibility defaults
+        run: npm test -- --runInBand src/parse-config/defaults.test.ts
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:browser
