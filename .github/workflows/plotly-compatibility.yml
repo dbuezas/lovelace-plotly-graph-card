@@ -23,5 +23,7 @@ jobs:
       - run: npm run build
       - name: Check Plotly compatibility defaults
         run: npm test -- --runInBand src/parse-config/defaults.test.ts
+      - name: Check cache retention and rolling windows
+        run: npm run test:cache
       - run: npx playwright install --with-deps chromium
       - run: npm run test:browser

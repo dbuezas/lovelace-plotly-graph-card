@@ -11,6 +11,7 @@
     "build": "esbuild src/plotly-graph-card.ts --outdir=dist --bundle --minify",
     "tsc": "tsc",
     "test": "jest",
+    "test:cache": "jest --runInBand src/cache/Cache.test.ts src/cache/date-ranges.test.ts src/cache/observed-range.test.ts src/parse-config/cache-retention.test.ts",
     "test:browser": "node script/test-plotly-browser.mjs",
     "test:watch": "jest --watchAll",
     "version": "npm run build && git add .",

@@ -1,5 +1,5 @@
 import Cache, { getEntityKey } from "./Cache";
-import { CachedStateEntity } from "../types";
+import { CachedStateEntity, CachedStatisticsEntity } from "../types";
 
 const entity = { entity: "sensor.test" };
 const key = getEntityKey(entity);
@@ -16,6 +16,84 @@ function state(timestamp: number): CachedStateEntity {
 }
 
 describe("Cache retention", () => {
+  it.each([
+    [[-20, -10], []],
+    [[10, 10], [10]],
+    [[11, 19], [10]],
+    [[40, 50], [30]],
+  ])("selects boundary values for range %p", (range, expected) => {
+    const cache = new Cache();
+    cache.histories[key] = [0, 10, 20, 30].map(state);
+    expect(cache.getData(entity, [range]).xs.map(Number)).toEqual(expected);
+  });
+
+  it("does not duplicate a boundary shared by disjoint ranges", () => {
+    const cache = new Cache();
+    cache.histories[key] = [0, 10, 30].map(state);
+    cache.retain({
+      [key]: [
+        [11, 15],
+        [20, 25],
+      ],
+    });
+    expect(cache.getData(entity).xs.map(Number)).toEqual([10]);
+  });
+
+  it("does not mutate data already handed to a trace", () => {
+    const cache = new Cache();
+    cache.add(entity, [0, 10, 20, 30].map(state), [0, 30]);
+    const data = cache.getData(entity);
+    cache.retain({ [key]: [[20, 30]] });
+    expect(data.xs.map(Number)).toEqual([0, 10, 20, 30]);
+    expect(cache.getData(entity).xs.map(Number)).toEqual([20, 30]);
+  });
+
+  it("retains attribute values using the same boundary selection", () => {
+    const cache = new Cache();
+    const attribute = { ...entity, attribute: "temperature" };
+    const history = [0, 10, 20].map((timestamp) => ({
+      ...state(timestamp),
+      state: {
+        ...state(timestamp).state,
+        attributes: { temperature: timestamp + 1 },
+      },
+    }));
+    cache.add(attribute, history, [0, 20]);
+    cache.retain({ [getEntityKey(attribute)]: [[15, 20]] });
+    expect(cache.getData(attribute).ys).toEqual([11, 21]);
+  });
+
+  it("bounds statistics without dropping their values or mixing periods", () => {
+    const cache = new Cache();
+    const hourly = {
+      ...entity,
+      statistic: "mean" as const,
+      period: "hour" as const,
+    };
+    const daily = { ...hourly, period: "day" as const };
+    const history = [0, 10, 20, 30].map((timestamp) => ({
+      x: new Date(timestamp),
+      y: null,
+      statistics: {
+        start: new Date(timestamp).toISOString(),
+        mean: timestamp,
+        max: timestamp + 1,
+      },
+    })) as CachedStatisticsEntity[];
+    cache.add(hourly, history, [0, 30]);
+    cache.add(daily, history, [0, 30]);
+    cache.retain({ [getEntityKey(hourly)]: [[15, 25]] });
+    expect(cache.getData(hourly).ys).toEqual([10, 20]);
+    expect(cache.getData({ ...hourly, statistic: "max" }).ys).toEqual([11, 21]);
+    expect(cache.histories[getEntityKey(daily)]).toBeUndefined();
+  });
+
+  it("does not mark retained data outside known coverage as fetched", () => {
+    const cache = new Cache();
+    cache.add(entity, [state(0), state(20)], [10, 20]);
+    cache.retain({ [key]: [[0, 30]] });
+    expect(cache.ranges[key]).toEqual([[10, 20]]);
+  });
   it("returns only the requested data and one leading boundary value", () => {
     const cache = new Cache();
     cache.histories[key] = [0, 10, 20, 30].map(state);

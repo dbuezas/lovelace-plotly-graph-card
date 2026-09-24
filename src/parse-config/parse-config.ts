@@ -62,10 +62,12 @@ class ConfigParser {
     this.yaml = {};
     this.errors = [];
     this.hass = hass;
-    this.preserveObservedRange = Object.prototype.hasOwnProperty.call(
-      input_yaml,
-      "visible_range"
-    );
+    // Dynamic ranges advance on refresh; concrete ranges can come from browsing.
+    const inputRange = "visible_range" in input_yaml
+      ? input_yaml.visible_range
+      : undefined;
+    this.preserveObservedRange =
+      Array.isArray(inputRange) && !inputRange.some(is$fn);
     this.retainedCacheRanges = {};
     this.yaml_with_defaults = addPreParsingDefaults(input_yaml, css_vars);
     setDateFnDefaultOptions(hass);
