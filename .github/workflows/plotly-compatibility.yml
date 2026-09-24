@@ -23,5 +23,7 @@ jobs:
       - run: npm run build
       - name: Check Plotly compatibility defaults
         run: npm test -- --runInBand src/parse-config/defaults.test.ts
+      - name: Check statistics batching and fallback
+        run: npm run test:statistics
       - run: npx playwright install --with-deps chromium
       - run: npm run test:browser

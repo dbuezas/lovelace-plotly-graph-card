@@ -40,6 +40,7 @@ class ConfigParser {
   private busy = false;
   private fnParam!: FnParam;
   private observed_range: [number, number] = [Date.now(), Date.now()];
+  private failedStatisticsFetches = new Map<string, unknown>();
   public resetObservedRange() {
     this.observed_range = [Date.now(), Date.now()];
   }
@@ -68,6 +69,7 @@ class ConfigParser {
   }): Promise<{ errors: Error[]; parsed: Config }> {
     this.yaml = {};
     this.errors = [];
+    this.failedStatisticsFetches.clear();
     this.hass = hass;
     this.yaml_with_defaults = addPreParsingDefaults(input_yaml, css_vars);
     setDateFnDefaultOptions(hass);
@@ -372,11 +374,29 @@ class ConfigParser {
     const fetch_mask =
       (this.fnParam.getFromConfig("fetch_mask") as boolean[] | undefined) || [];
     const i = getEntityIndex(path);
-    const data =
-      // TODO: decide about minimal response
-      fetch_mask[i] === false // also fetch if it is undefined. This means the entity is new
-        ? this.cache.getData(fetchConfig)
-        : await this.cache.fetch(range_to_fetch, fetchConfig, this.hass!);
+    let data: EntityData;
+    if (fetch_mask[i] === false) {
+      data = this.cache.getData(fetchConfig);
+    } else {
+      const requestKey = statisticsParams
+        ? JSON.stringify([
+            fetchConfig.entity,
+            statisticsParams.period,
+            ...range_to_fetch,
+          ])
+        : undefined;
+      // Several default functions can request the same entity during parsing.
+      // Reuse failures within this update, but allow retries on the next update.
+      if (requestKey && this.failedStatisticsFetches.has(requestKey)) {
+        throw this.failedStatisticsFetches.get(requestKey);
+      }
+      try {
+        data = await this.cache.fetch(range_to_fetch, fetchConfig, this.hass!);
+      } catch (error) {
+        if (requestKey) this.failedStatisticsFetches.set(requestKey, error);
+        throw error;
+      }
+    }
     const extend_to_present =
       this.fnParam.getFromConfig(path + ".extend_to_present") ??
       !statisticsParams;
