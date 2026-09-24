@@ -1335,6 +1335,8 @@ the compatibility checks. For rendering checks, install Chromium with
 `npx playwright install chromium` and run `npm run test:browser`.
 The browser test covers every registered trace type, tank shapes and labels,
 axis defaults, cloud-upload opt-in, and a card with a mock Home Assistant state.
+Run `npm run test:statistics` for statistics batching, cache reuse, period and
+time-offset separation, dynamic settings and fallback after failed requests.
 
 # Release
 
