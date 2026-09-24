@@ -23,5 +23,7 @@ jobs:
       - run: npm run build
       - name: Check Plotly compatibility defaults
         run: npm test -- --runInBand src/parse-config/defaults.test.ts
+      - name: Check history batching and WebSocket responses
+        run: npm run test:history
       - run: npx playwright install --with-deps chromium
       - run: npm run test:browser
