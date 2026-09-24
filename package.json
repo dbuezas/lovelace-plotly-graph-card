@@ -3,11 +3,15 @@
   "version": "to-be-set-on-release",
   "description": "",
   "main": "index.js",
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "scripts": {
     "start": "(node ./script/hot-reload.mjs & esbuild src/plotly-graph-card.ts --servedir=dist --outdir=dist --bundle --sourcemap=inline)",
     "build": "esbuild src/plotly-graph-card.ts --outdir=dist --bundle --minify",
     "tsc": "tsc",
     "test": "jest",
+    "test:browser": "node script/test-plotly-browser.mjs",
     "test:watch": "jest --watchAll",
     "version": "npm run build && git add .",
     "npm-upgrade": "npx npm-upgrade"
@@ -18,10 +22,10 @@
     "@types/jest": "^29.2.4",
     "@types/lodash": "^4.14.191",
     "@types/node": "^18.11.17",
-    "@types/plotly.js": "^2.12.11",
     "@types/ws": "^8.5.4",
     "chokidar": "^3.5.3",
     "esbuild": "^0.16.10",
+    "playwright": "1.63.0",
     "ts-jest": "^29.0.3",
     "ws": "^8.12.0"
   },
@@ -43,7 +47,7 @@
     "ml-regression-theil-sen": "^2.0.0",
     "ndarray": "^1.0.19",
     "ndarray-fft": "^1.0.3",
-    "plotly.js": "^2.34.0",
+    "plotly.js": "4.1.1",
     "prettier": "^3.3.3",
     "propose": "^0.0.5",
     "typescript": "^5.6.3"
