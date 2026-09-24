@@ -1,7 +1,7 @@
 import { HomeAssistant } from "custom-card-helpers";
 import { compactRanges, subtractRanges } from "./date-ranges";
 import fetchStatistics from "./fetch-statistics";
-import fetchStates from "./fetch-states";
+import fetchStates, { fetchStatesBatch } from "./fetch-states";
 import {
   TimestampRange,
   isEntityIdAttrConfig,
@@ -13,7 +13,7 @@ import {
   CachedStateEntity,
   EntityData,
 } from "../types";
-type FetchConfig =
+export type FetchConfig =
   | {
       statistic: "state" | "sum" | "min" | "max" | "mean";
       period: "5minute" | "hour" | "day" | "week" | "month";
@@ -26,6 +26,14 @@ type FetchConfig =
   | {
       entity: string;
     };
+export type HistoryFetchConfig = Exclude<
+  FetchConfig,
+  { statistic: string; period: string }
+>;
+export type HistoryFetchRequest = {
+  entity: HistoryFetchConfig;
+  range: TimestampRange;
+};
 export function mapValues<T, S>(
   o: Record<string, T>,
   fn: (value: T, key: string) => S
@@ -79,10 +87,9 @@ async function fetchSingleRange(
   //
   // The above does not apply to statistics data where there are no fake data points.
 
-  const l = Math.max(0, 5000 - (endT - startT)); // The HA API doesn't add the fake boundary if the interval requested is too small
-  const start = new Date(startT - 1 - l);
-  endT = Math.min(endT, Date.now());
-  const end = new Date(endT);
+  const apiRange = getHistoryApiRange([startT, endT]);
+  endT = apiRange.range[1];
+  const [start, end] = apiRange.dates;
   let history: CachedEntity[];
   if (isEntityIdStatisticsConfig(entity)) {
     history = await fetchStatistics(hass, entity, [start, end]);
@@ -97,6 +104,15 @@ async function fetchSingleRange(
   return {
     range,
     history,
+  };
+}
+
+function getHistoryApiRange([startT, endT]: TimestampRange, now = Date.now()) {
+  const l = Math.max(0, 5000 - (endT - startT));
+  const range: [number, number] = [startT, Math.min(endT, now)];
+  return {
+    range,
+    dates: [new Date(startT - 1 - l), new Date(range[1])] as [Date, Date],
   };
 }
 
@@ -115,7 +131,7 @@ const MIN_SAFE_TIMESTAMP = Date.parse("0001-01-02T00:00:00.000Z");
 export default class Cache {
   ranges: Record<string, TimestampRange[]> = {};
   histories: Record<string, CachedEntity[]> = {};
-  busy: Promise<EntityData> = Promise.resolve(null as unknown as EntityData); // mutex
+  busy: Promise<unknown> = Promise.resolve(); // mutex
 
   add(entity: FetchConfig, states: CachedEntity[], range: [number, number]) {
     const entityKey = getEntityKey(entity);
@@ -169,8 +185,84 @@ export default class Cache {
     );
     return data;
   }
+
+  async prefetchHistory(
+    requests: HistoryFetchRequest[],
+    hass: HomeAssistant,
+  ): Promise<void> {
+    await (this.busy = this.busy
+      .catch(() => {})
+      .then(async () => {
+        const jobs = new Map<
+          string,
+          {
+            entity: HistoryFetchConfig;
+            range: [number, number];
+          }
+        >();
+        for (const request of requests) {
+          const range = request.range.map((n) =>
+            Math.max(MIN_SAFE_TIMESTAMP, n),
+          ) as [number, number];
+          const entityKey = getEntityKey(request.entity);
+          this.ranges[entityKey] ??= [];
+          for (const missingRange of subtractRanges(
+            [range],
+            this.ranges[entityKey],
+          )) {
+            const jobKey = `${entityKey}:${missingRange[0]}:${missingRange[1]}`;
+            jobs.set(jobKey, {
+              entity: request.entity,
+              range: missingRange as [number, number],
+            });
+          }
+        }
+
+        const groups = new Map<
+          string,
+          {
+            dates: [Date, Date];
+            range: [number, number];
+            jobs: {
+              entity: HistoryFetchConfig;
+              range: [number, number];
+            }[];
+          }
+        >();
+        const now = Date.now();
+        for (const job of jobs.values()) {
+          const apiRange = getHistoryApiRange(job.range, now);
+          const includeAttributes = isEntityIdAttrConfig(job.entity);
+          const groupKey = `${includeAttributes}:${+apiRange.dates[0]}:${+apiRange.dates[1]}`;
+          const group = groups.get(groupKey) ?? {
+            dates: apiRange.dates,
+            range: apiRange.range,
+            jobs: [],
+          };
+          group.jobs.push(job);
+          groups.set(groupKey, group);
+        }
+
+        for (const group of groups.values()) {
+          const statesByEntity = await fetchStatesBatch(
+            hass,
+            group.jobs.map(({ entity }) => entity),
+            group.dates,
+          );
+          for (const { entity, range } of group.jobs) {
+            const history = statesByEntity[entity.entity] ?? [];
+            if (history.length) history[0].fake_boundary_datapoint = true;
+            this.add(entity, history, [
+              range[0],
+              Math.min(range[1], group.range[1]),
+            ]);
+          }
+        }
+      }));
+  }
+
   async fetch(range: TimestampRange, entity: FetchConfig, hass: HomeAssistant) {
-    return (this.busy = this.busy
+    const fetchPromise = this.busy
       .catch(() => {})
       .then(async () => {
         range = range.map((n) => Math.max(MIN_SAFE_TIMESTAMP, n)); // HA API can't handle negative years
@@ -184,6 +276,8 @@ export default class Cache {
           }
         }
         return this.getData(entity);
-      }));
+      });
+    this.busy = fetchPromise;
+    return fetchPromise;
   }
 }

@@ -414,6 +414,89 @@ try {
     return card.contentEl._fullLayout.width <= 320;
   });
   results.results.push("Lovelace card with mock HA state");
+  await page.evaluate(() => {
+    const card = document.getElementById("card-under-test");
+    const end = Date.now() - 60000;
+    const start = end - 3600000;
+    const entityIds = [
+      "sensor.one",
+      "sensor.two",
+      "sensor.three",
+      "sensor.four",
+    ];
+    window.historyRequests = [];
+    card.hass = {
+      ...card.hass,
+      states: Object.fromEntries(
+        entityIds.map((entity_id) => [
+          entity_id,
+          {
+            entity_id,
+            state: "2",
+            attributes: { unit_of_measurement: "W" },
+            last_changed: new Date(end).toISOString(),
+            last_updated: new Date(end).toISOString(),
+          },
+        ]),
+      ),
+      callApi: () => {
+        throw new Error("History must not use REST");
+      },
+      callWS: async (request) => {
+        if (request.type !== "history/history_during_period")
+          throw new Error("Unexpected request");
+        window.historyRequests.push(request);
+        return Object.fromEntries(
+          request.entity_ids.map((id, index) => [
+            id,
+            [
+              { s: String(index + 1), lu: start / 1000 },
+              { s: String(index + 2), lu: end / 1000 },
+            ],
+          ]),
+        );
+      },
+    };
+    card.setConfig({
+      type: "custom:plotly-graph",
+      refresh_interval: 0,
+      visible_range: [start, end],
+      entities: entityIds.map((entity) => ({
+        entity,
+        extend_to_present: false,
+      })),
+    });
+  });
+  await page.waitForFunction(() => {
+    const card = document.getElementById("card-under-test");
+    return card.contentEl?._fullData?.length === 4;
+  });
+  const historyState = await page.evaluate(async () => {
+    const card = document.getElementById("card-under-test");
+    await card.plot({ should_fetch: true });
+    return {
+      requests: window.historyRequests,
+      values: card.contentEl.data.map((trace) => trace.y),
+      error: card.errorMsgEl.textContent,
+    };
+  });
+  assert.equal(historyState.error, "");
+  assert.equal(historyState.requests.length, 1);
+  assert.deepEqual(historyState.requests[0].entity_ids, [
+    "sensor.one",
+    "sensor.two",
+    "sensor.three",
+    "sensor.four",
+  ]);
+  assert.deepEqual(historyState.values, [
+    ["1", "2"],
+    ["2", "3"],
+    ["3", "4"],
+    ["4", "5"],
+  ]);
+  results.results.push(
+    "four history traces render from one WebSocket request and reuse the cache",
+  );
   assert.deepEqual(errors, []);
   console.log(
     `Plotly ${results.version}: ${results.results.length} browser checks passed`,

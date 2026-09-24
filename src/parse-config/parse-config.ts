@@ -1,4 +1,4 @@
-import Cache from "../cache/Cache";
+import Cache, { HistoryFetchConfig, HistoryFetchRequest } from "../cache/Cache";
 import { HATheme } from "./themed-layout";
 
 import propose from "propose";
@@ -30,6 +30,7 @@ class ConfigParser {
   private busy = false;
   private fnParam!: FnParam;
   private observed_range: [number, number] = [Date.now(), Date.now()];
+  private historyPrefetched = false;
   public resetObservedRange() {
     this.observed_range = [Date.now(), Date.now()];
   }
@@ -59,6 +60,7 @@ class ConfigParser {
     this.yaml = {};
     this.errors = [];
     this.hass = hass;
+    this.historyPrefetched = false;
     this.yaml_with_defaults = addPreParsingDefaults(input_yaml, css_vars);
     setDateFnDefaultOptions(hass);
 
@@ -279,6 +281,9 @@ class ConfigParser {
     ];
     const fetch_mask = this.fnParam.getFromConfig("fetch_mask");
     const i = getEntityIndex(path);
+    if (!statisticsParams) {
+      await this.prefetchHistory(visible_range, fetch_mask);
+    }
     const data =
       // TODO: decide about minimal response
       fetch_mask[i] === false // also fetch if it is undefined. This means the entity is new
@@ -307,6 +312,49 @@ class ConfigParser {
     this.fnParam.statistics = data.statistics;
     this.fnParam.states = data.states;
     this.fnParam.meta = this.hass?.states[fetchConfig.entity]?.attributes || {};
+  }
+
+  private async prefetchHistory(
+    visibleRange: [number, number],
+    fetchMask: boolean[],
+  ) {
+    if (this.historyPrefetched) return;
+    this.historyPrefetched = true;
+
+    const requests: HistoryFetchRequest[] = [];
+    for (let i = 0; i < this.yaml_with_defaults!.entities.length; i++) {
+      if (fetchMask[i] === false) continue;
+      const path = `entities.${i}`;
+      try {
+        const entity = this.getEvaledPath(`${path}.entity`, path);
+        const statistic = this.getEvaledPath(`${path}.statistic`, path);
+        const period = this.getEvaledPath(`${path}.period`, path);
+        const attribute = this.getEvaledPath(`${path}.attribute`, path);
+        const timeOffset = this.getEvaledPath(`${path}.time_offset`, path);
+        if (
+          typeof entity !== "string" ||
+          !entity ||
+          statistic ||
+          period ||
+          is$fn(attribute) ||
+          is$fn(timeOffset)
+        ) {
+          continue;
+        }
+        const fetchConfig: HistoryFetchConfig =
+          typeof attribute === "string" && attribute
+            ? { entity, attribute }
+            : { entity };
+        const offset = parseTimeDuration(timeOffset);
+        requests.push({
+          entity: fetchConfig,
+          range: [visibleRange[0] - offset, visibleRange[1] - offset],
+        });
+      } catch {
+        // Dynamic fetch parameters are evaluated later via the existing path.
+      }
+    }
+    await this.cache.prefetchHistory(requests, this.hass!);
   }
 
   private getEvaledPath(path: string, callingPath: string) {
