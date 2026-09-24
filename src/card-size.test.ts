@@ -1,4 +1,4 @@
-import { getResizeLayoutUpdate } from "./card-size";
+import { getResizeLayoutUpdate, hasDynamicSizeConfig } from "./card-size";
 
 describe("getResizeLayoutUpdate", () => {
   it("updates only a changed width", () => {
@@ -64,5 +64,36 @@ describe("getResizeLayoutUpdate", () => {
         { height: 500 },
       ),
     ).toStrictEqual({});
+  });
+});
+
+describe("hasDynamicSizeConfig", () => {
+  it.each([
+    { layout: { height: "$ex get('layout.width') / 2" } },
+    { entities: [{ y: "$fn ({ get }) => [get('layout.width')]" }] },
+    { layout: { width: () => 400 } },
+    { entities: [{ filters: [{ fn: "({ ys }) => ({ ys })" }] }] },
+    { entities: [{ filters: [{ map_y: "y * 2" }] }] },
+    { entities: [{ filters: [{ map_x: "x" }] }] },
+    { entities: [{ filters: [{ map_y_numbers: "y" }] }] },
+    { entities: [{ filters: [{ filter: "y > 0" }] }] },
+  ])("preserves full rendering for executable configuration: %j", (config) => {
+    expect(hasDynamicSizeConfig(config)).toBe(true);
+  });
+
+  it("keeps the fast path for normal data, layouts and built-in filters", () => {
+    expect(
+      hasDynamicSizeConfig({
+        title: "Static chart",
+        layout: { height: 285 },
+        entities: [
+          { y: [1, null, 3], filters: [{ multiply: 2 }, "force_numeric"] },
+        ],
+      }),
+    ).toBe(false);
+  });
+
+  it("handles an absent layout", () => {
+    expect(hasDynamicSizeConfig(undefined)).toBe(false);
   });
 });
