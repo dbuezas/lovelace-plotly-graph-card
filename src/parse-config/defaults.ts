@@ -249,10 +249,14 @@ export function addPostParsingDefaults(
    * These cannot be done via defaults because they depend on the entities already being fully evaluated and filtered
    *  */
   const yAxisTitles = Object.fromEntries(
-    yaml.entities.map(({ unit_of_measurement, yaxis }) => [
-      "yaxis" + yaxis?.slice(1),
-      { title: unit_of_measurement },
-    ])
+    yaml.entities.flatMap((entity) =>
+      "yaxis" in entity && entity.yaxis
+        ? [[
+            "yaxis" + entity.yaxis.slice(1),
+            { title: { text: entity.unit_of_measurement } },
+          ]]
+        : []
+    )
   );
   const layout = merge(
     {},
@@ -267,11 +271,14 @@ export function addPostParsingDefaults(
     yaml.raw_plotly_config ? {} : yAxisTitles,
     yaml.layout
   );
-  const config = merge({}, yaml, { layout }, yaml) as Config;
-  config.layout = pruneUnusedCartesianAxes(
-    config.layout,
-    config.entities,
-    explicitlyConfiguredAxes
-  );
-  return config;
+  return {
+    ...yaml,
+    layout: pruneUnusedCartesianAxes(layout, yaml.entities, explicitlyConfiguredAxes),
+    config: {
+      // Keep dashboard data local unless the user explicitly enables upload.
+      showSendToCloud: false,
+      doubleClickDelay: 300,
+      ...yaml.config,
+    },
+  };
 }
