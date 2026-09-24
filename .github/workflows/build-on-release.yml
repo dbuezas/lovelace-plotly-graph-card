@@ -7,24 +7,26 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
-    - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
 
-    - uses: actions/setup-node@v4
-      with:
-        node-version: 22
-        cache: npm
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
 
-    - name: Install dependencies
-      run: npm install
+      - name: Install dependencies
+        run: npm ci
 
-    - name: Update package.json
-      run: npm version ${{ github.ref_name }} --git-tag-version false
+      - name: Update package.json
+        run: npm version ${{ github.ref_name }} --git-tag-version false
 
-    - name: Build
-      run: npm run build
+      - name: Build
+        run: npm run build
 
-    - name: Upload release asset
-      uses: svenstaro/upload-release-action@v2
-      with:
-        file: dist/plotly-graph-card.js
+      - name: Upload release asset
+        uses: svenstaro/upload-release-action@v2
+        with:
+          file: dist/plotly-graph-card.js
