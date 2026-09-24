@@ -34,8 +34,6 @@ Plotly.register([
   require("plotly.js/lib/streamtube"),
   require("plotly.js/lib/scattergeo"),
   require("plotly.js/lib/choropleth"),
-  require("plotly.js/lib/pointcloud"),
-  require("plotly.js/lib/heatmapgl"),
   require("plotly.js/lib/parcats"),
   // require("plotly.js/lib/scattermapbox"),
   // require("plotly.js/lib/choroplethmapbox"),
@@ -50,12 +48,6 @@ Plotly.register([
   require("plotly.js/lib/candlestick"),
   require("plotly.js/lib/scatterpolar"),
   require("plotly.js/lib/barpolar"),
-
-  // transforms
-  require("plotly.js/lib/aggregate"),
-  require("plotly.js/lib/filter"),
-  require("plotly.js/lib/groupby"),
-  require("plotly.js/lib/sort"),
 
   // components
   require("plotly.js/lib/calendars"),
