@@ -30,7 +30,7 @@ console.info(
 
 export class PlotlyGraph extends HTMLElement {
   contentEl: Plotly.PlotlyHTMLElement & {
-    data: (Plotly.PlotData & { entity: string })[];
+    data: (Plotly.Data & { entity: string })[];
     layout: Plotly.Layout;
   };
   errorMsgEl: HTMLElement;
@@ -277,8 +277,11 @@ export class PlotlyGraph extends HTMLElement {
 
   async withoutRelayout(fn: Function) {
     this.isInternalRelayout++;
-    await fn();
-    this.isInternalRelayout--;
+    try {
+      await fn();
+    } finally {
+      this.isInternalRelayout--;
+    }
   }
 
   getVisibleRange() {
@@ -451,9 +454,11 @@ export class PlotlyGraph extends HTMLElement {
     await this.withoutRelayout(async () => {
       await Plotly.react(this.contentEl, entities, layout, config);
       if (autorange_after_scroll) {
-        await Plotly.relayout(this.contentEl, {
+        const update = {
           "yaxis.autorange": true,
-        });
+        };
+        // Plotly accepts attribute paths, but its public types only list nested keys.
+        await Plotly.relayout(this.contentEl, update as Partial<Plotly.Layout>);
       }
       this.contentEl.style.visibility = "";
     });
