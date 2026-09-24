@@ -260,26 +260,6 @@ export function addPostParsingDefaults(
     yaml.raw_plotly_config ? {} : yAxisTitles,
     yaml.layout
   );
-  if (!yaml.raw_plotly_config) {
-    for (const [key, axis] of Object.entries(layout)) {
-      if (!/^[xy]axis\d*$/.test(key)) continue;
-      const template =
-        typeof layout.template === "object"
-          ? layout.template.layout?.[key]
-          : undefined;
-      const effective = { ...template, ...axis };
-      // Plotly 4 synchronizes overlaid axes by default. Preserve independent
-      // ticks, but leave explicit modes and inferred array/linear ticks alone.
-      if (
-        effective.overlaying &&
-        effective.tickmode == null &&
-        effective.tickvals == null &&
-        effective.dtick == null
-      ) {
-        axis.tickmode = "auto";
-      }
-    }
-  }
   return {
     ...yaml,
     layout,

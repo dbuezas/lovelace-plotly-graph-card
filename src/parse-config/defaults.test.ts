@@ -30,9 +30,9 @@ describe("Plotly 4 compatibility", () => {
     ).toMatchObject({ showSendToCloud: true, doubleClickDelay: 600 });
   });
 
-  test("overlaid axes retain independent ticks without mutating input", () => {
+  test("overlaid axes leave tick defaults to Plotly without mutating input", () => {
     const layout = { yaxis2: { overlaying: "y" as const } };
-    expect(apply({ layout }).layout.yaxis2?.tickmode).toBe("auto");
+    expect(apply({ layout }).layout.yaxis2).not.toHaveProperty("tickmode");
     expect(layout.yaxis2).not.toHaveProperty("tickmode");
   });
 

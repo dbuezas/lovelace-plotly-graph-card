@@ -270,8 +270,8 @@ try {
       defaults.config,
     );
     check(
-      div._fullLayout.yaxis2.tickmode === "auto",
-      "Independent ticks changed",
+      div._fullLayout.yaxis2.tickmode === "sync",
+      "Overlaid axis did not use Plotly's synchronized-tick default",
     );
     check(
       div._context.showSendToCloud === false,
@@ -288,6 +288,54 @@ try {
     );
     await Plotly.relayout(div, { "yaxis.autorange": true });
     check(div._fullLayout.yaxis.autorange, "Dotted relayout failed");
+    const axisCases = [
+      { name: "single axis", single: true, axis: {}, mode: "auto" },
+      { name: "non-overlaid axis", axis: { overlaying: false }, mode: "auto" },
+      {
+        name: "raw overlaid axis",
+        raw: true,
+        axis: { overlaying: "y" },
+        mode: "sync",
+      },
+      {
+        name: "explicit independent ticks",
+        axis: { overlaying: "y", tickmode: "auto" },
+        mode: "auto",
+      },
+      {
+        name: "inferred array ticks",
+        axis: { overlaying: "y", tickvals: [1, 2, 3] },
+        mode: "array",
+      },
+      {
+        name: "inferred linear ticks",
+        axis: { overlaying: "y", dtick: 1 },
+        mode: "linear",
+      },
+      {
+        name: "categorical overlaid axis",
+        axis: { overlaying: "y", type: "category" },
+        mode: "auto",
+      },
+    ];
+    for (const test of axisCases) {
+      const input = DefaultsTest.addPostParsingDefaults({
+        entities: [],
+        visible_range: [0, 4],
+        raw_plotly_config: !!test.raw,
+        config: {},
+        layout: { width: 480, height: 285, yaxis2: test.axis },
+      });
+      const traces = [{ ...xy, type: "scatter" }];
+      if (!test.single) traces.push({ ...xy, type: "scatter", yaxis: "y2" });
+      await Plotly.react(div, traces, input.layout, input.config);
+      const axis = div._fullLayout[test.single ? "yaxis" : "yaxis2"];
+      check(
+        axis.tickmode === test.mode,
+        `${test.name}: expected ${test.mode}, got ${axis.tickmode}`,
+      );
+      results.push(test.name);
+    }
     Plotly.purge(div);
     div.remove();
     results.push("axes, privacy, tank shapes, annotations, relayout");
@@ -303,9 +351,14 @@ try {
     assert(results.results.includes(type), `Missing browser fixture: ${type}`);
   assert.equal(results.version, "4.1.1");
   await page.evaluate(() => {
-    customElements.define("ha-card", class extends HTMLElement {
-      connectedCallback() { this.style.display = "block"; }
-    });
+    customElements.define(
+      "ha-card",
+      class extends HTMLElement {
+        connectedCallback() {
+          this.style.display = "block";
+        }
+      },
+    );
     const card = new CardTest.PlotlyGraph();
     card.id = "card-under-test";
     card.style.cssText =
