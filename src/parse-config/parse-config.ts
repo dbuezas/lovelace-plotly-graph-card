@@ -55,11 +55,16 @@ class ConfigParser {
     yaml: InputConfig;
     hass: HomeAssistant;
     css_vars: HATheme;
-  }): Promise<{ errors: Error[]; parsed: Config }> {
+  }): Promise<{
+    errors: Error[];
+    parsed: Config;
+    dragmodeConfigured: boolean;
+  }> {
     this.yaml = {};
     this.errors = [];
     this.hass = hass;
-    this.yaml_with_defaults = addPreParsingDefaults(input_yaml, css_vars);
+    const provenance = { dragmode: false };
+    this.yaml_with_defaults = addPreParsingDefaults(input_yaml, css_vars, provenance);
     setDateFnDefaultOptions(hass);
 
     this.fnParam = {
@@ -85,7 +90,11 @@ class ConfigParser {
     }
     this.yaml = addPostParsingDefaults(this.yaml as Config);
 
-    return { errors: this.errors, parsed: this.yaml as Config };
+    return {
+      errors: this.errors,
+      parsed: this.yaml as Config,
+      dragmodeConfigured: provenance.dragmode,
+    };
   }
   private async evalNode({
     parent,

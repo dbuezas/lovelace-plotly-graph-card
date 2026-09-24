@@ -182,11 +182,24 @@ function getPresetYaml(presets: string | string[] | undefined, skips?: Set<strin
 
 export function addPreParsingDefaults(
   yaml_in: InputConfig,
-  css_vars: HATheme
+  css_vars: HATheme,
+  provenance?: { dragmode: boolean }
 ): InputConfig {
   // merging in two steps to ensure ha_theme and raw_plotly_config took its default value
   let yaml = merge({}, yaml_in, defaultYamlRequired, yaml_in);
   const preset = getPresetYaml(yaml.preset);
+  if (provenance) {
+    // Use the same preset/card precedence, before the optional pan fallback.
+    const { layout } = merge(
+      {},
+      { layout: preset.layout },
+      { layout: yaml.layout }
+    );
+    provenance.dragmode =
+      layout?.dragmode !== undefined ||
+      typeof layout === "string" ||
+      typeof layout === "function";
+  }
   for (let i = 1; i < 31; i++) {
     for (const d of ["x", "y"]) {
       const axis = d + "axis" + (i == 1 ? "" : i);
@@ -228,6 +241,7 @@ export function addPreParsingDefaults(
     );
     return entity;
   });
+  if (yaml.touch_hover === undefined) yaml.touch_hover = false;
   return yaml;
 }
 

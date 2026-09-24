@@ -1013,6 +1013,18 @@ disable_pinch_to_zoom: true # defaults to false
 
 When true, the custom implementations of pinch-to-zoom and double-tap-drag-to-zooming will be disabled.
 
+## touch_hover
+
+```yaml
+touch_hover: true # defaults to false
+```
+
+Setting `touch_hover: true` adds a **Scan** tool on touch-capable Cartesian plots. Scan lets a one-finger drag inspect values through Plotly hover, while a stationary touch retains normal click behavior. It changes only touch handling; mouse and keyboard behavior and Plotly's `layout.dragmode` remain native.
+
+Scan is initially selected unless the effective card configuration (including presets and expressions) supplies a valid `layout.dragmode`. The card's fallback Pan mode does not count as an explicit setting. Selecting Scan does not change `layout.dragmode`; selecting a native drag tool changes future touch gestures back to native Plotly handling.
+
+The existing double-tap-drag zoom and two-finger custom pinch remain available. Setting `disable_pinch_to_zoom: true` disables both custom zoom gestures without disabling Scan.
+
 ## hours_to_show:
 
 How many hours are shown.
