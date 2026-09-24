@@ -243,7 +243,7 @@ export function addPreParsingDefaults(
 
 export function addPostParsingDefaults(
   yaml: Config & { visible_range: [number, number] },
-  explicitlyConfiguredAxes: ReadonlySet<string> = new Set()
+  explicitlyConfiguredAxes: ReadonlySet<string> = getCartesianLayoutAxes(yaml.layout)
 ): Config {
   /**
    * These cannot be done via defaults because they depend on the entities already being fully evaluated and filtered

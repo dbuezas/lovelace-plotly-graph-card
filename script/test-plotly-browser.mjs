@@ -414,6 +414,174 @@ try {
     return card.contentEl._fullLayout.width <= 320;
   });
   results.results.push("Lovelace card with mock HA state");
+  const axisResults = await page.evaluate(async () => {
+    const card = document.getElementById("card-under-test");
+    const results = [];
+    const axes = (layout) =>
+      Object.keys(layout)
+        .filter((key) => /^[xy]axis\d*$/.test(key))
+        .sort();
+    const trace = { entity: "", type: "scatter", x: [1, 2], y: [1, 2] };
+    const fixtures = [
+      {
+        name: "simple card sends only two Cartesian axes",
+        config: {},
+        expected: ["xaxis", "yaxis"],
+      },
+      {
+        name: "automatic axes for different units survive pruning",
+        config: {
+          raw_plotly_config: false,
+          entities: [
+            { ...trace, unit_of_measurement: "W" },
+            { ...trace, unit_of_measurement: "V" },
+          ],
+        },
+        expected: ["xaxis", "yaxis", "yaxis2"],
+      },
+      {
+        name: "dynamic trace axis assignments survive pruning",
+        config: {
+          entities: [{ ...trace, xaxis: "$ex 'x3'", yaxis: "$ex 'y4'" }],
+        },
+        expected: ["xaxis", "xaxis3", "yaxis", "yaxis4"],
+      },
+      {
+        name: "explicit axes without traces survive pruning",
+        config: { layout: { xaxis7: {}, yaxis8: {} } },
+        expected: ["xaxis", "xaxis7", "yaxis", "yaxis8"],
+      },
+      {
+        name: "nested preset axes survive pruning",
+        config: { preset: "axis-test", layout: { xaxis5: {} } },
+        expected: ["xaxis", "xaxis5", "yaxis", "yaxis8", "yaxis9"],
+      },
+      {
+        name: "domain-referenced shapes and annotations retain axes",
+        config: {
+          layout: {
+            shapes: [
+              {
+                type: "rect",
+                xref: "x3 domain",
+                yref: "y4 domain",
+                x0: 0.1,
+                x1: 0.9,
+                y0: 0.1,
+                y1: 0.9,
+              },
+            ],
+            annotations: [
+              {
+                xref: "x5 domain",
+                yref: "y6 domain",
+                x: 0.5,
+                y: 0.5,
+                text: "domain label",
+                showarrow: false,
+              },
+            ],
+          },
+        },
+        expected: ["xaxis", "xaxis3", "xaxis5", "yaxis", "yaxis4", "yaxis6"],
+        annotation: "domain label",
+        shape: true,
+      },
+      {
+        name: "grid subplot identifiers retain generated axes",
+        config: {
+          layout: { grid: { rows: 1, columns: 2, subplots: [["xy", "x2y3"]] } },
+        },
+        expected: ["xaxis", "xaxis2", "yaxis", "yaxis3"],
+      },
+      {
+        name: "independent grid references retain generated axes",
+        config: {
+          layout: {
+            grid: { rows: 1, columns: 2, xaxes: ["x", "x2"], yaxes: ["y3"] },
+          },
+        },
+        expected: ["xaxis", "xaxis2", "yaxis", "yaxis3"],
+      },
+      {
+        name: "axis anchors retain their target axes",
+        config: { layout: { xaxis4: { anchor: "y3" } } },
+        expected: ["xaxis", "xaxis4", "yaxis", "yaxis3"],
+      },
+      {
+        name: "update menu paths retain generated axes",
+        config: {
+          layout: {
+            updatemenus: [
+              {
+                buttons: [
+                  {
+                    label: "Range",
+                    method: "relayout",
+                    args: [{ "yaxis6.range": [0, 10] }],
+                  },
+                ],
+              },
+            ],
+          },
+        },
+        expected: ["xaxis", "yaxis", "yaxis6"],
+      },
+      {
+        name: "removed configuration axes are pruned on the next update",
+        config: {},
+        expected: ["xaxis", "yaxis"],
+      },
+    ];
+    window.PlotlyGraphCardPresets = {
+      "axis-test": { preset: "axis-nested", layout: { yaxis8: {} } },
+      "axis-nested": { layout: { yaxis9: {} } },
+    };
+    try {
+      for (const fixture of fixtures) {
+        await card.setConfig({
+          type: "custom:plotly-graph",
+          refresh_interval: 0,
+          hours_to_show: "24h",
+          raw_plotly_config: true,
+          ha_theme: false,
+          entities: [{ ...trace }],
+          ...fixture.config,
+        });
+        await card.plot({ should_fetch: false });
+        if (card.errorMsgEl.textContent)
+          throw new Error(`${fixture.name}: ${card.errorMsgEl.textContent}`);
+        const actual = axes(card.parsed_config.layout);
+        if (
+          JSON.stringify(actual) !== JSON.stringify(fixture.expected.sort())
+        ) {
+          throw new Error(
+            `${fixture.name}: expected ${fixture.expected}, got ${actual}`,
+          );
+        }
+        if (
+          fixture.annotation &&
+          !card.contentEl.textContent.includes(fixture.annotation)
+        ) {
+          throw new Error(`${fixture.name}: annotation did not render`);
+        }
+        if (
+          fixture.shape &&
+          !card.contentEl.querySelector(".shapelayer path")
+        ) {
+          throw new Error(`${fixture.name}: shape did not render`);
+        }
+        if (card.contentEl._context.showSendToCloud !== false) {
+          throw new Error(`${fixture.name}: upload default was lost`);
+        }
+        results.push(fixture.name);
+      }
+    } finally {
+      delete window.PlotlyGraphCardPresets;
+    }
+    return results;
+  });
+  results.results.push(...axisResults);
   assert.deepEqual(errors, []);
   console.log(
     `Plotly ${results.version}: ${results.results.length} browser checks passed`,
