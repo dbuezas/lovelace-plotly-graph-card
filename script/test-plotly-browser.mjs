@@ -23,15 +23,23 @@ for (const [name, entry] of [
     `/${name}.js`,
     result.outputFiles.find((file) => file.path.endsWith(".js")).text,
   );
+  const stylesheet = result.outputFiles.find((file) =>
+    file.path.endsWith(".css"),
+  );
+  if (stylesheet) assets.set(`/${name}.css`, stylesheet.text);
 }
 const server = createServer((request, response) => {
   response.setHeader(
     "Content-Type",
-    request.url.endsWith(".js") ? "text/javascript" : "text/html",
+    request.url.endsWith(".js")
+      ? "text/javascript"
+      : request.url.endsWith(".css")
+        ? "text/css"
+        : "text/html",
   );
   response.end(
     assets.get(request.url) ||
-      `<!doctype html><body>
+      `<!doctype html><link rel="stylesheet" href="/PlotlyTest.css"><body>
     <script src="/PlotlyTest.js"></script><script src="/DefaultsTest.js"></script>
     <script src="/CardTest.js"></script></body>`,
   );
@@ -45,6 +53,9 @@ try {
   });
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
+  page.on("console", (message) => {
+    if (message.type() === "error") console.error(message.text());
+  });
   await page.goto(`http://127.0.0.1:${server.address().port}`);
   const results = await page.evaluate(async () => {
     const Plotly = PlotlyTest.default;
@@ -74,8 +85,39 @@ try {
         [2, 3, 4],
       ],
     };
+    const modernTypes = [
+      "scattergl",
+      "splom",
+      "parcoords",
+      "scatterpolargl",
+      "scattersmith",
+    ];
     const fixtures = {
       scatter: xy,
+      scattergl: { ...xy, mode: "lines+markers" },
+      splom: {
+        dimensions: [
+          { label: "Temperature", values: [18, 21, 24] },
+          { label: "Humidity", values: [45, 52, 48] },
+        ],
+      },
+      parcoords: {
+        line: { color: [1, 2, 3] },
+        dimensions: [
+          { label: "Power", values: [1, 3, 2] },
+          { label: "Voltage", values: [220, 230, 225] },
+        ],
+      },
+      scatterpolargl: {
+        mode: "lines+markers",
+        r: [1, 2, 1.5],
+        theta: [0, 120, 240],
+      },
+      scattersmith: {
+        mode: "lines+markers",
+        real: [0.5, 1, 2],
+        imag: [-0.5, 0, 0.5],
+      },
       bar: xy,
       box: xy,
       violin: xy,
@@ -193,6 +235,10 @@ try {
         },
       },
     };
+    window.modernTraceCases = modernTypes.map((type) => ({
+      type,
+      data: fixtures[type],
+    }));
     for (const [type, data] of Object.entries(fixtures)) {
       const div = document.createElement("div");
       document.body.append(div);
@@ -216,6 +262,14 @@ try {
         },
       };
       try {
+        if (modernTypes.includes(type)) {
+          const validation =
+            Plotly.validate(traces, {
+              width: layout.width,
+              height: layout.height,
+            }) || [];
+          check(!validation.length, `${type}: ${JSON.stringify(validation)}`);
+        }
         await Plotly.newPlot(div, traces, layout, { showSendToCloud: false });
         check(
           div._fullData.at(-1).type === type,
@@ -226,6 +280,9 @@ try {
           `${type}: invisible trace`,
         );
         check(div.querySelector("svg"), `${type}: no rendered SVG`);
+        if (modernTypes.includes(type) && type !== "scattersmith") {
+          check(div.querySelector("canvas"), `${type}: no rendered canvas`);
+        }
         await Plotly.react(
           div,
           traces,
@@ -414,6 +471,35 @@ try {
     return card.contentEl._fullLayout.width <= 320;
   });
   results.results.push("Lovelace card with mock HA state");
+  const modernCardResults = await page.evaluate(async () => {
+    const card = document.getElementById("card-under-test");
+    const rendered = [];
+    for (const { type, data } of window.modernTraceCases) {
+      await card.setConfig({
+        type: "custom:plotly-graph",
+        raw_plotly_config: true,
+        refresh_interval: 0,
+        layout: {},
+        entities: [{ entity: "", ...data, type }],
+      });
+      try {
+        await card.plot({ should_fetch: true });
+      } catch (error) {
+        throw new Error(`${type}: ${error.message}`);
+      }
+      if (card.errorMsgEl.textContent)
+        throw new Error(card.errorMsgEl.textContent);
+      if (
+        card.contentEl._fullData[0].type !== type ||
+        card.contentEl._fullData[0].visible === false
+      ) {
+        throw new Error(`${type}: card did not render the requested trace`);
+      }
+      rendered.push(`Lovelace card: ${type}`);
+    }
+    return rendered;
+  });
+  results.results.push(...modernCardResults);
   assert.deepEqual(errors, []);
   console.log(
     `Plotly ${results.version}: ${results.results.length} browser checks passed`,

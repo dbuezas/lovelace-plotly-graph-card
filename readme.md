@@ -1314,6 +1314,11 @@ properties are not interchangeable with Cartesian axis titles, which use
 
 The card's own top-level `title:` option is unchanged.
 
+The bundled Plotly build also supports `scattergl`, `splom`, `parcoords`,
+`scatterpolargl`, and `scattersmith`. WebGL traces require browser WebGL support.
+The MapLibre types `scattermap`, `choroplethmap`, and `densitymap` are not included
+to keep the bundle size down.
+
 # Development
 
 - Use Node.js 22 or newer (required by Plotly.js 4).
@@ -1335,6 +1340,7 @@ the compatibility checks. For rendering checks, install Chromium with
 `npx playwright install chromium` and run `npm run test:browser`.
 The browser test covers every registered trace type, tank shapes and labels,
 axis defaults, cloud-upload opt-in, and a card with a mock Home Assistant state.
+The five additional trace types are also validated and rendered through the card.
 
 # Release
 
