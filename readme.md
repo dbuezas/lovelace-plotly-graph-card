@@ -1314,12 +1314,10 @@ properties are not interchangeable with Cartesian axis titles, which use
 
 The card's own top-level `title:` option is unchanged.
 
-The bundled Plotly build supports the modern `scattergl`, `splom`, `parcoords`,
-`scattermap`, `choroplethmap`, `densitymap`, `scatterpolargl`, and
-`scattersmith` trace types.
-The MapLibre traces (`scattermap`, `choroplethmap`, `densitymap`) use
-`layout.map`, not the legacy `layout.mapbox`. These additional modules increase
-the bundle size; WebGL traces also require browser WebGL support.
+The bundled Plotly build also supports `scattergl`, `splom`, `parcoords`,
+`scatterpolargl`, and `scattersmith`. WebGL traces require browser WebGL support.
+The MapLibre types `scattermap`, `choroplethmap`, and `densitymap` are not included
+to keep the bundle size down.
 
 # Development
 
@@ -1342,8 +1340,7 @@ the compatibility checks. For rendering checks, install Chromium with
 `npx playwright install chromium` and run `npm run test:browser`.
 The browser test covers every registered trace type, tank shapes and labels,
 axis defaults, cloud-upload opt-in, and a card with a mock Home Assistant state.
-The eight modern trace types are also validated and rendered through the card.
-Map tests use the built-in `white-bg` style, so they do not require map tiles or tokens.
+The five additional trace types are also validated and rendered through the card.
 
 # Release
 

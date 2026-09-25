@@ -85,21 +85,10 @@ try {
         [2, 3, 4],
       ],
     };
-    const mapLayout = {
-      map: {
-        // No external tiles, access tokens or network-dependent map style.
-        style: "white-bg",
-        center: { lon: 8.55, lat: 47.37 },
-        zoom: 6,
-      },
-    };
     const modernTypes = [
       "scattergl",
       "splom",
       "parcoords",
-      "scattermap",
-      "choroplethmap",
-      "densitymap",
       "scatterpolargl",
       "scattersmith",
     ];
@@ -118,44 +107,6 @@ try {
           { label: "Power", values: [1, 3, 2] },
           { label: "Voltage", values: [220, 230, 225] },
         ],
-      },
-      scattermap: {
-        mode: "markers",
-        lat: [47.37, 47.4],
-        lon: [8.54, 8.58],
-        marker: { size: [12, 16] },
-      },
-      choroplethmap: {
-        locations: ["test-area"],
-        z: [1],
-        geojson: {
-          type: "FeatureCollection",
-          features: [
-            {
-              type: "Feature",
-              id: "test-area",
-              properties: {},
-              geometry: {
-                type: "Polygon",
-                coordinates: [
-                  [
-                    [8.4, 47.3],
-                    [8.7, 47.3],
-                    [8.7, 47.5],
-                    [8.4, 47.5],
-                    [8.4, 47.3],
-                  ],
-                ],
-              },
-            },
-          ],
-        },
-      },
-      densitymap: {
-        lat: [47.36, 47.38, 47.4],
-        lon: [8.52, 8.55, 8.58],
-        z: [1, 3, 2],
-        radius: 20,
       },
       scatterpolargl: {
         mode: "lines+markers",
@@ -287,9 +238,6 @@ try {
     window.modernTraceCases = modernTypes.map((type) => ({
       type,
       data: fixtures[type],
-      layout: ["scattermap", "choroplethmap", "densitymap"].includes(type)
-        ? mapLayout
-        : {},
     }));
     for (const [type, data] of Object.entries(fixtures)) {
       const div = document.createElement("div");
@@ -300,9 +248,6 @@ try {
       const layout = {
         width: 480,
         height: 285,
-        ...(["scattermap", "choroplethmap", "densitymap"].includes(type)
-          ? mapLayout
-          : {}),
         geo: {
           showcoastlines: false,
           showland: false,
@@ -322,7 +267,6 @@ try {
             Plotly.validate(traces, {
               width: layout.width,
               height: layout.height,
-              ...(layout.map ? mapLayout : {}),
             }) || [];
           check(!validation.length, `${type}: ${JSON.stringify(validation)}`);
         }
@@ -530,12 +474,12 @@ try {
   const modernCardResults = await page.evaluate(async () => {
     const card = document.getElementById("card-under-test");
     const rendered = [];
-    for (const { type, data, layout } of window.modernTraceCases) {
+    for (const { type, data } of window.modernTraceCases) {
       await card.setConfig({
         type: "custom:plotly-graph",
         raw_plotly_config: true,
         refresh_interval: 0,
-        layout: structuredClone(layout),
+        layout: {},
         entities: [{ entity: "", ...data, type }],
       });
       try {
