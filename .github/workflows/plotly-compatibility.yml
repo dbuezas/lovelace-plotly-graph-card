@@ -22,6 +22,6 @@ jobs:
       - run: npm run tsc
       - run: npm run build
       - name: Check Plotly compatibility defaults
-        run: npm test -- --runInBand src/parse-config/defaults.test.ts
+        run: npm test -- --runInBand src/parse-config/defaults.test.ts src/parse-config/axis-layout.test.ts
       - run: npx playwright install --with-deps chromium
       - run: npm run test:browser

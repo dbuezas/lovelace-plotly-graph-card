@@ -3,6 +3,11 @@ import { Config, InputConfig } from "../types";
 import { parseColorScheme } from "./parse-color-scheme";
 import { getEntityIndex } from "./parse-config";
 import getThemedLayout, { HATheme } from "./themed-layout";
+import {
+  getCartesianLayoutAxes,
+  pruneUnusedCartesianAxes,
+  rememberConfiguredAxes,
+} from "./axis-layout";
 declare const window: Window & { PlotlyGraphCardPresets?: Record<string, InputConfig> };
 const noop$fn = () => () => {};
 const defaultEntityRequired = {
@@ -187,6 +192,10 @@ export function addPreParsingDefaults(
   // merging in two steps to ensure ha_theme and raw_plotly_config took its default value
   let yaml = merge({}, yaml_in, defaultYamlRequired, yaml_in);
   const preset = getPresetYaml(yaml.preset);
+  const explicitlyConfiguredAxes = new Set([
+    ...getCartesianLayoutAxes(yaml.layout),
+    ...getCartesianLayoutAxes(preset.layout),
+  ]);
   for (let i = 1; i < 31; i++) {
     for (const d of ["x", "y"]) {
       const axis = d + "axis" + (i == 1 ? "" : i);
@@ -209,6 +218,7 @@ export function addPreParsingDefaults(
     preset,
     yaml
   );
+  rememberConfiguredAxes(yaml, explicitlyConfiguredAxes);
 
   yaml.entities = yaml.entities.map((entity) => {
     if (typeof entity === "string") entity = { entity };
@@ -232,7 +242,8 @@ export function addPreParsingDefaults(
 }
 
 export function addPostParsingDefaults(
-  yaml: Config & { visible_range: [number, number] }
+  yaml: Config & { visible_range: [number, number] },
+  explicitlyConfiguredAxes: ReadonlySet<string> = getCartesianLayoutAxes(yaml.layout)
 ): Config {
   /**
    * These cannot be done via defaults because they depend on the entities already being fully evaluated and filtered
@@ -262,7 +273,7 @@ export function addPostParsingDefaults(
   );
   return {
     ...yaml,
-    layout,
+    layout: pruneUnusedCartesianAxes(layout, yaml.entities, explicitlyConfiguredAxes),
     config: {
       // Keep dashboard data local unless the user explicitly enables upload.
       showSendToCloud: false,
