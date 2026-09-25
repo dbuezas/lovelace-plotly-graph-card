@@ -3,6 +3,7 @@ import { Config, InputConfig } from "../types";
 import { parseColorScheme } from "./parse-color-scheme";
 import { getEntityIndex } from "./parse-config";
 import getThemedLayout, { HATheme } from "./themed-layout";
+import { DEFAULT_PLOT_HEIGHT } from "../loading-state";
 declare const window: Window & { PlotlyGraphCardPresets?: Record<string, InputConfig> };
 const noop$fn = () => () => {};
 const defaultEntityRequired = {
@@ -102,7 +103,7 @@ const defaultYamlOptional: {
     locale: ({ hass }) => hass.locale?.language,
   },
   layout: {
-    height: 285,
+    height: DEFAULT_PLOT_HEIGHT,
     dragmode: "pan",
     xaxis: {
       autorange: false,

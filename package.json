@@ -12,6 +12,7 @@
     "tsc": "tsc",
     "test": "jest",
     "test:browser": "node script/test-plotly-browser.mjs",
+    "test:loading": "node script/test-loading-state.mjs",
     "test:watch": "jest --watchAll",
     "version": "npm run build && git add .",
     "npm-upgrade": "npx npm-upgrade"
