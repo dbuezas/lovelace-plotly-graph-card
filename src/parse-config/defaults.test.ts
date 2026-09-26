@@ -1,5 +1,5 @@
-import { addPostParsingDefaults } from "./defaults";
-import { Config } from "../types";
+import { addPostParsingDefaults, addPreParsingDefaults } from "./defaults";
+import { Config, InputConfig } from "../types";
 
 function apply(overrides: Partial<Config> = {}) {
   return addPostParsingDefaults({
@@ -85,5 +85,62 @@ describe("Plotly 4 compatibility", () => {
     const result = apply({ layout, entities: entities as Config["entities"] });
     expect(result.layout.yaxis?.title).toEqual({ text: "Power" });
     expect(result.layout.xaxis?.range).toEqual([20, 30]);
+  });
+});
+
+describe("touch hover defaults", () => {
+  beforeEach(() => {
+    (global as any).window = { PlotlyGraphCardPresets: {} };
+  });
+  const input = (overrides: Partial<InputConfig> = {}) =>
+    ({
+      type: "custom:plotly-graph",
+      entities: [],
+      ...overrides,
+    }) as InputConfig;
+
+  test.each([
+    [undefined, undefined, false],
+    [true, undefined, true],
+    [false, undefined, false],
+    [undefined, true, true],
+    [undefined, false, false],
+    [false, true, false],
+    [true, false, true],
+  ])("card %s / preset %s resolves to %s", (card, preset, expected) => {
+    (global as any).window.PlotlyGraphCardPresets = {
+      test: { touch_hover: preset },
+    };
+    const yaml = input({ preset: "test", touch_hover: card });
+    expect(addPreParsingDefaults(yaml, {} as any).touch_hover).toBe(expected);
+    expect(yaml.touch_hover).toBe(card);
+  });
+
+  test.each(["$ex true", "$fn ({ hass }) => !!hass", () => true])(
+    "keeps expressions for the normal parser: %s",
+    (expression) => {
+      (global as any).window.PlotlyGraphCardPresets = {
+        test: { touch_hover: expression },
+      };
+      expect(
+        addPreParsingDefaults(input({ preset: "test" }), {} as any).touch_hover,
+      ).toBe(expression);
+    },
+  );
+
+  test.each([
+    [undefined, undefined, "pan", false],
+    ["pan", undefined, "pan", true],
+    [undefined, "zoom", "zoom", true],
+    ["pan", "zoom", "pan", true],
+    [false, "pan", false, true],
+    ["$ex 'zoom'", undefined, "$ex 'zoom'", true],
+  ])("tracks dragmode before defaults: card %s / preset %s", (card, preset, expected, explicit) => {
+    (global as any).window.PlotlyGraphCardPresets = { test: { layout: { dragmode: preset } } };
+    const provenance = { dragmode: false };
+    const yaml = input({ preset: "test", layout: { dragmode: card } } as any);
+    expect(addPreParsingDefaults(yaml, {} as any, provenance).layout?.dragmode).toBe(expected);
+    expect(provenance.dragmode).toBe(explicit);
+    expect(yaml.layout?.dragmode).toBe(card);
   });
 });

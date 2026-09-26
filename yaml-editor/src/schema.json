@@ -44,7 +44,7 @@
     },
     "With$fn<Function>": {
       "properties": {
-        "__@hasInstance@8121": {
+        "__@hasInstance@8231": {
           "anyOf": [
             {
               "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
@@ -160,7 +160,7 @@
         }
       },
       "required": [
-        "__@hasInstance@8121",
+        "__@hasInstance@8231",
         "apply",
         "arguments",
         "bind",
@@ -175,7 +175,7 @@
     },
     "With$fn<Function>_1": {
       "properties": {
-        "__@hasInstance@8121": {
+        "__@hasInstance@8231": {
           "anyOf": [
             {
               "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
@@ -291,7 +291,7 @@
         }
       },
       "required": [
-        "__@hasInstance@8121",
+        "__@hasInstance@8231",
         "apply",
         "arguments",
         "bind",
@@ -198074,6 +198074,17 @@
     },
     "title": {
       "$ref": "#/definitions/With$fn<string|undefined>"
+    },
+    "touch_hover": {
+      "anyOf": [
+        {
+          "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
+          "type": "string"
+        },
+        {
+          "type": "boolean"
+        }
+      ]
     },
     "type": {
       "anyOf": [
