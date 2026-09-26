@@ -44,7 +44,7 @@
     },
     "With$fn<Function>": {
       "properties": {
-        "__@hasInstance@8121": {
+        "__@hasInstance@8136": {
           "anyOf": [
             {
               "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
@@ -160,7 +160,7 @@
         }
       },
       "required": [
-        "__@hasInstance@8121",
+        "__@hasInstance@8136",
         "apply",
         "arguments",
         "bind",
@@ -175,7 +175,7 @@
     },
     "With$fn<Function>_1": {
       "properties": {
-        "__@hasInstance@8121": {
+        "__@hasInstance@8136": {
           "anyOf": [
             {
               "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
@@ -291,7 +291,7 @@
         }
       },
       "required": [
-        "__@hasInstance@8121",
+        "__@hasInstance@8136",
         "apply",
         "arguments",
         "bind",
@@ -382,7 +382,7 @@
                     "$ref": "#/definitions/With$fn<{map_x:string;}>"
                   },
                   {
-                    "$ref": "#/definitions/With$fn<{resample:TimeDurationStr;}>"
+                    "$ref": "#/definitions/With$fn<{resample:TimeDurationStr|{interval?:TimeDurationStr|undefined;interpolate?:boolean|undefined;};}>"
                   },
                   {
                     "$ref": "#/definitions/With$fn<{load_var:string;}>"
@@ -897,6 +897,66 @@
       ],
       "type": "object"
     },
+    "With$fn<{interval?:TimeDurationStr|undefined;interpolate?:boolean|undefined;}>": {
+      "properties": {
+        "interpolate": {
+          "anyOf": [
+            {
+              "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
+              "type": "string"
+            },
+            {
+              "type": "boolean"
+            }
+          ]
+        },
+        "interval": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9]*ms$",
+              "type": "string"
+            },
+            {
+              "pattern": "^[0-9]*s$",
+              "type": "string"
+            },
+            {
+              "pattern": "^[0-9]*m$",
+              "type": "string"
+            },
+            {
+              "pattern": "^[0-9]*h$",
+              "type": "string"
+            },
+            {
+              "pattern": "^[0-9]*d$",
+              "type": "string"
+            },
+            {
+              "pattern": "^[0-9]*w$",
+              "type": "string"
+            },
+            {
+              "pattern": "^[0-9]*M$",
+              "type": "string"
+            },
+            {
+              "pattern": "^[0-9]*y$",
+              "type": "string"
+            },
+            {
+              "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
+              "type": "string"
+            },
+            {
+              "const": "0",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "type": "object"
+    },
     "With$fn<{load_var:string;}>": {
       "properties": {
         "load_var": {
@@ -979,7 +1039,7 @@
       ],
       "type": "object"
     },
-    "With$fn<{resample:TimeDurationStr;}>": {
+    "With$fn<{resample:TimeDurationStr|{interval?:TimeDurationStr|undefined;interpolate?:boolean|undefined;};}>": {
       "properties": {
         "resample": {
           "anyOf": [
@@ -1018,6 +1078,9 @@
             {
               "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
               "type": "string"
+            },
+            {
+              "$ref": "#/definitions/With$fn<{interval?:TimeDurationStr|undefined;interpolate?:boolean|undefined;}>"
             },
             {
               "const": "0",
