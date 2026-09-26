@@ -362,7 +362,7 @@ const filters = {
       const x1 = +xs[xs.length - 1];
       let i = 0;
       for (let x = x0; x < x1; x += interval) {
-        while (+xs[i + 1] < x && i < xs.length - 1) {
+        while (+xs[i + 1] <= x && i < xs.length - 1) {
           i++;
         }
         data.xs.push(new Date(x));

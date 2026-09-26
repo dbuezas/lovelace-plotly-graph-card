@@ -152,11 +152,11 @@ describe("resample", () => {
   it("holds the last value by default", () => {
     const result = filters.resample("5s")(input([0, 10, 40]));
     expect(result.xs).toEqual(at(0, 5, 10, 15));
-    expect(result.ys).toEqual([0, 0, 0, 10]);
+    expect(result.ys).toEqual([0, 0, 10, 10]);
   });
   it("accepts an object without interpolate", () => {
     const result = filters.resample({ interval: "5s" })(input([0, 10, 40]));
-    expect(result.ys).toEqual([0, 0, 0, 10]);
+    expect(result.ys).toEqual([0, 0, 10, 10]);
   });
   it("interpolates linearly between neighbours", () => {
     const result = filters.resample({ interval: "5s", interpolate: true })(
@@ -169,6 +169,6 @@ describe("resample", () => {
     const result = filters.resample({ interval: "5s", interpolate: true })(
       input([0, null, 40]),
     );
-    expect(result.ys).toEqual([0, 0, 0, null]);
+    expect(result.ys).toEqual([0, 0, null, null]);
   });
 });
