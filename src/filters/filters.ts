@@ -326,14 +326,36 @@ const filters = {
       ),
     });
   },
-  resample:
-    (intervalStr: TimeDurationStr = "5m") =>
-    ({ xs, ys, states, statistics }) => {
+  resample: (
+    intervalOrObject:
+      | TimeDurationStr
+      | {
+          interval?: TimeDurationStr;
+          interpolate?: boolean;
+        } = "5m",
+  ) => {
+    const { interval: intervalStr = "5m", interpolate = false } =
+      typeof intervalOrObject == "string"
+        ? { interval: intervalOrObject }
+        : intervalOrObject;
+    return ({ xs, ys, states, statistics }) => {
       const data = {
         xs: [] as Date[],
         ys: [] as YValue[],
         states: [] as HassEntity[],
         statistics: [] as StatisticValue[],
+      };
+      // Linear interpolation between neighbours, or hold the last value
+      const lerp = (x: number, i: number) => {
+        const [xa, xb, ya, yb] = [+xs[i], +xs[i + 1], ys[i], ys[i + 1]];
+        if (
+          typeof ya !== "number" ||
+          typeof yb !== "number" ||
+          !(xa <= x && x <= xb) ||
+          xa === xb
+        )
+          return ys[i];
+        return ya + ((yb - ya) * (x - xa)) / (xb - xa);
       };
       const interval = parseTimeDuration(intervalStr);
       const x0 = Math.floor(+xs[0] / interval) * interval;
@@ -344,36 +366,13 @@ const filters = {
           i++;
         }
         data.xs.push(new Date(x));
-        data.ys.push(ys[i]);
+        data.ys.push(interpolate ? lerp(x, i) : ys[i]);
         if (states[i]) data.states.push(states[i]);
         if (statistics[i]) data.statistics.push(statistics[i]);
       }
       return data;
-    },
-    resample_int:
-    (intervalStr: TimeDurationStr = "5m") =>
-    ({ xs, ys, states, statistics }) => {
-      const data = {
-        xs: [] as Date[],
-        ys: [] as YValue[],
-        states: [] as HassEntity[],
-        statistics: [] as StatisticValue[],
-      };
-      const interval = parseTimeDuration(intervalStr);
-      const x0 = Math.floor(+xs[0] / interval) * interval;
-      const x1 = +xs[xs.length - 1];
-      let i = 0;
-      for (let x = x0; x < x1; x += interval) {
-        while (+xs[i + 1] < x && i < xs.length - 1) {
-          i++;
-        }
-        data.xs.push(new Date(x));
-        data.ys.push( ys[i] + (ys[i+1]-ys[i])/(xs[i+1]-xs[i])*(x-xs[i]) ); //linear interpolation between xs[i] and xs[i+1] at time x
-        if (states[i]) data.states.push(states[i]);
-        if (statistics[i]) data.statistics.push(statistics[i]);
-      }
-      return data;
-    },
+    };
+  },
   load_var:
     (var_name: string) =>
     ({ vars }) =>
