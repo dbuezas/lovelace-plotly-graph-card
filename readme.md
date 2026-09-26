@@ -35,9 +35,17 @@ Created with this [quick and dirty script](./discussion-index.mjs)
 
 Find more advanced examples in [Show & Tell](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/categories/show-and-tell)
 
+## Yaml syntax validatoin
+
+Web app to assist you with syntax validation and autocomplete: [Plotly graph card yaml editor](https://dbuezas.github.io/lovelace-plotly-graph-card/)
+
+<img width="300" alt="image" src="https://github.com/user-attachments/assets/2c9b3b85-85d4-49c4-80bc-ebc28eeaf141" >
+
 ## Installation
 
 ### Via Home Assistant Community Store (Recommended)
+
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=dbuezas&repository=lovelace-plotly-graph-card&category=Dashboard)
 
 1. Install [HACS](https://hacs.xyz/docs/configuration/basic)
 2. Search & Install `Plotly Graph Card`.
@@ -632,6 +640,20 @@ entities:
       - map_y: parseFloat(y) * parseFloat(hass.states['sensor.cost'].state)
 ```
 
+This can also be used to fetch data by calling a HA service. As this is a call that requires a network connection, the function needs to be defined `async`:
+```yaml
+    filters:
+      - fn: |-
+          async ({xs, ys, meta, hass}) => {
+            const weather = await hass.callService("weather", "get_forecasts", {type: "hourly"}, {entity_id:"weather.home"}, true, true)
+            const home = weather.response["weather.home"].forecast
+            return {
+              xs: home.map(h => new Date(h.datetime)),
+              ys: home.map(h => h.temperature)
+            }
+          }
+```
+
 ##### Using vars
 
 Compute absolute humidity
@@ -752,6 +774,44 @@ on_dblclick: |-
   }
 ```
 
+## Annotation and button click handlers
+
+In a similar way, you can respond to clicks on annotations (requiring `captureevents: true`).
+
+```yaml
+type: custom:plotly-graph
+entities:
+  - entity: sensor.temperature1
+layout:
+  annotations:
+    - x: 1
+      xref: paper
+      "y": 1
+      yref: paper
+      showarrow: false
+      text: "📊"
+      captureevents: true
+      on_click: $ex () => { window.location="/history?entity_id=sensor.temperature1"; }
+```
+
+Or to clicks on custom update menu buttons.
+
+```yaml
+type: custom:plotly-graph
+entities:
+  - entity: sensor.temperature1
+layout:
+  updatemenus:
+    - buttons:
+        - label: History
+          method: skip
+          on_click: $ex () => { window.location="/history?entity_id=sensor.temperature1"; }
+      showactive: false
+      type: buttons
+      x: 1
+      "y": 1
+```
+
 See more in plotly's [official docs](https://plotly.com/javascript/plotlyjs-events)
 
 ## Universal functions
@@ -792,7 +852,7 @@ Remember you can add a `console.log(the_object_you_want_to_inspect)` and see its
 - `path: string;` The path of the current function
 - `css_vars: HATheme;` The colors set by the active Home Assistant theme (see #ha_theme)
 
-#### Only iniside entities
+#### Only inside entities
 
 - `xs: Date[];` Array of timestamps
 - `ys: YValue[];` Array of values of the sensor/attribute/statistic
@@ -807,6 +867,8 @@ Remember you can add a `console.log(the_object_you_want_to_inspect)` and see its
 - Functions cannot return functions for performance reasons. (feature request if you need this)
 - Defaults are not applied to the subelements returned by a function. (feature request if you need this)
 - You can get other values from the yaml with the `getFromConfig` parameter, but if they are functions they need to be defined before.
+- Any function which uses the result of a filter, needs to be placed in the YAML below the filter. For instance, `name: $ex ys.at(-1)` where the filter is modifying `ys`.
+- The same is true of consecutive filters - order matters. This is due to the fact that filters are translated internally to function calls, executed in the order they are parsed.
 
 #### Adding the last value to the entitiy's name
 
@@ -874,9 +936,17 @@ entities:
 hours_to_show: current_day
 ```
 
+#### disabling hover text
+
+can be achieved by setting inside entities:
+```yaml
+hovertemplate: null
+hoverinfo: 'skip'
+```
+
 ## Default trace & axis styling
 
-default configurations for all entities and all yaxes (e.g yaxis, yaxis2, yaxis3, etc).
+default configurations for all entities and all xaxes (e.g xaxis, xaxis2, xaxis3, etc) and yaxes (e.g yaxis, yaxis2, yaxis3, etc).
 
 ```yaml
 type: custom:plotly-graph
@@ -888,6 +958,8 @@ defaults:
     fill: tozeroy
     line:
       width: 2
+  xaxes:
+    showgrid: false # Disables vertical gridlines
   yaxes:
     fixedrange: true # disables vertical zoom & scroll
 ```
@@ -994,6 +1066,119 @@ config:
 
 When using `hours_to_show: current_week`, the "First day of the week" configured in Home Assistant is used
 
+## Presets
+
+If you find yourself reusing the same card configuration frequently, you can save it as a preset.
+
+### Setup
+
+Presets are loaded from the global `PlotlyGraphCardPresets` JS object (such that they can be shared across different dashboards).
+The recommended way to add or modify presets is to set up a `plotly_presets.js` script in the `www` subdirectory of your `config` folder.
+```js
+window.PlotlyGraphCardPresets = {
+  // Add your presets here with the following format (or check the examples below)
+  // PresetName: { PresetConfiguration }
+};
+```
+To ensure this file is loaded on every dashboard, add the following lines to your `configuration.yaml`.
+```yaml
+frontend:
+  extra_module_url:
+    - /local/plotly_presets.js
+```
+You might have to clear your browser cache or restart HA for changes to take effect.
+
+### Examples
+
+The preset configuration should be defined as a JS object instead of the YAML format used by the card.
+Below is an example YAML configuration that is split into several corresponding presets.
+
+<table>
+<tr>
+<th>YAML configuration</th>
+</tr>
+<tr>
+<td>
+
+```yaml
+hours_to_show: current_day
+time_offset: -24h
+defaults:
+  entity:
+    hovertemplate: |
+      $fn ({ get }) => (
+        `%{y:,.1f} ${get('.unit_of_measurement')}<extra>${get('.name')}</extra>`
+      )
+  xaxes:
+    showspikes: true
+    spikemode: across
+    spikethickness: -2
+```
+
+</td>
+</tr>
+<tr>
+<th>Preset configurations</th>
+</tr>
+<tr>
+<td>
+
+```js
+window.PlotlyGraphCardPresets = {
+  yesterday: { // Start of preset with name 'yesterday'
+    hours_to_show: "current_day",
+    time_offset: "-24h",
+  },
+  simpleHover: { // Start of preset with name 'simpleHover'
+    defaults: {
+      entity: {
+        hovertemplate: ({get}) => (
+          `%{y:,.1f} ${get('.unit_of_measurement')}<extra>${get('.name')}</extra>`
+        ),
+      },
+    },
+  },
+  verticalSpikes: { // Start of preset with name 'verticalSpikes'
+    defaults: {
+      xaxes: {
+        showspikes: true,
+        spikemode: "across",
+        spikethickness: -2,
+      },
+    },
+  },
+};
+```
+
+</td>
+</tr>
+</table>
+
+### Usage
+
+To use your defined templates, simply specify the preset name under the `preset` key.
+You can also specify a list of preset names to combine several of them.
+
+E.g. with the above preset definitions, we can show yesterday's temperatures.
+```yaml
+type: custom:plotly-graph
+entities:
+  - sensor.temperature1
+  - sensor.temperature2
+preset: yesterday
+```
+
+Or show a simplified hover tooltip together with vertical spikes.
+```yaml
+type: custom:plotly-graph
+entities:
+  - sensor.temperature1
+  - sensor.temperature2
+preset:
+  - simpleHover
+  - verticalSpikes
+```
+
 # deprecations:
 
 ### `no_theme`
@@ -1059,8 +1244,84 @@ Removed in v3.0.0, non significant changes are also fetched now. The bandwidth s
 
 Removed in v3.0.0, if you need access to the attributes use the 'attribute' parameter instead. It doesn't matter which attribute you pick, all of them are still accessible inside filters and universal functions
 
+## Plotly.js 4 compatibility
+
+This card uses Plotly.js 4.1.1. Review custom Plotly configurations when
+upgrading from 2.x or 3.x:
+
+Plotly.js 3 removed the deprecated `pointcloud` and `heatmapgl` trace types,
+as well as the `transforms` API. Configurations using these features must be
+migrated before upgrading.
+
+- Plotly.js 4 removes Mapbox traces and `layout.mapbox`, MathJax 2 support,
+  Chart Studio options and `*src` attributes. Mapbox traces were not registered
+  in this card's bundle; this update does not add map trace support.
+- Colors must use valid CSS syntax. `hsv(...)` is no longer supported, and RGB
+  channels between 0 and 1 are no longer interpreted as fractions of 255.
+  Standard hex colors and `rgba(52, 152, 219, 0.82)` continue to work.
+- Geographic plots now default to fitting their locations. Set
+  `layout.geo.fitbounds: false` to keep the previous behavior.
+- Overlaid, non-categorical axes now default to synchronized ticks (`sync`)
+  when no other tick settings are provided. Other axes default to `auto`.
+  Explicit `tickmode`, `tickvals` and `dtick` settings are respected. Set
+  `tickmode: auto` on an overlaid axis to keep independent ticks.
+- The cloud-upload button remains disabled by default, including in raw mode.
+  Enable it explicitly with `config.showSendToCloud: true` only if you want
+  to send chart data to Plotly Cloud. The previous 300 ms double-click delay
+  is also retained unless configured otherwise.
+
+See the [Plotly.js changelog](https://github.com/plotly/plotly.js/blob/v4.1.1/CHANGELOG.md)
+for the complete list of changes, including changes to SPLOM axis matching
+and event coordinates.
+
+### Titles must use the object form
+
+Plotly.js 3 and later no longer accept a plain string for `title`. Charts
+using the old form silently lose their titles. An old-style axis title can
+also hide the automatic unit title generated by the card.
+
+Before (no longer works):
+
+```yaml
+layout:
+  title: Energy
+  yaxis:
+    title: kW
+    titlefont:
+      size: 14
+```
+
+After:
+
+```yaml
+layout:
+  title:
+    text: Energy
+  yaxis:
+    title:
+      text: kW
+      font:
+        size: 14
+```
+
+This applies to every axis, including `xaxis` and `yaxis2`. Replace
+`titlefont` with `title.font`. The other removed title attributes have
+component-specific replacements: `titleside` becomes `title.side` on
+colorbars, `titleposition` becomes `title.position` on pie traces, and
+`titleoffset` becomes `title.offset` on carpet axes. These positioning
+properties are not interchangeable with Cartesian axis titles, which use
+`title.standoff` for spacing.
+
+The card's own top-level `title:` option is unchanged.
+
+The bundled Plotly build also supports `scattergl`, `splom`, `parcoords`,
+`scatterpolargl`, and `scattersmith`. WebGL traces require browser WebGL support.
+The MapLibre types `scattermap`, `choroplethmap`, and `densitymap` are not included
+to keep the bundle size down.
+
 # Development
 
+- Use Node.js 22 or newer (required by Plotly.js 4).
 - Clone the repo
 - run `npm i`
 - run `npm start`
@@ -1071,6 +1332,15 @@ Removed in v3.0.0, if you need access to the attributes use the 'attribute' para
 # Build
 
 `npm run build`
+
+## Upgrade checks
+
+Run `npm run tsc` and `npm test -- src/parse-config/defaults.test.ts` for
+the compatibility checks. For rendering checks, install Chromium with
+`npx playwright install chromium` and run `npm run test:browser`.
+The browser test covers every registered trace type, tank shapes and labels,
+axis defaults, cloud-upload opt-in, and a card with a mock Home Assistant state.
+The five additional trace types are also validated and rendered through the card.
 
 # Release
 
@@ -1083,4 +1353,3 @@ Removed in v3.0.0, if you need access to the attributes use the 'attribute' para
 ## Star History
 
 [![Star History Chart](https://api.star-history.com/svg?repos=dbuezas/lovelace-plotly-graph-card&type=Date)](https://star-history.com/#dbuezas/lovelace-plotly-graph-card&Date)
-

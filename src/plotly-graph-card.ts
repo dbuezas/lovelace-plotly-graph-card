@@ -29,7 +29,7 @@ console.info(
 
 export class PlotlyGraph extends HTMLElement {
   contentEl: Plotly.PlotlyHTMLElement & {
-    data: (Plotly.PlotData & { entity: string })[];
+    data: (Plotly.Data & { entity: string })[];
     layout: Plotly.Layout;
   };
   errorMsgEl: HTMLElement;
@@ -54,6 +54,8 @@ export class PlotlyGraph extends HTMLElement {
     legendItemDoubleclick?: EventEmitter;
     dataClick?: EventEmitter;
     doubleclick?: EventEmitter;
+    annotationClick?: EventEmitter;
+    buttonClick?: EventEmitter;
   } = {};
 
   constructor() {
@@ -178,6 +180,15 @@ export class PlotlyGraph extends HTMLElement {
       "plotly_doubleclick",
       this.onDoubleclick
     )!;
+    this.handles.annotationClick = this.contentEl.on(
+      "plotly_clickannotation",
+      this.onAnnotationClick
+    )!;
+    this.handles.buttonClick = this.contentEl.on(
+      // @ts-ignore Not properly typed in @types/plotly.js
+      "plotly_buttonclicked",
+      this.onButtonClick
+    )!;
     this.resetButtonEl.addEventListener("click", this.exitBrowsingMode);
     this.touchController.connect();
     this.plot({ should_fetch: true });
@@ -197,6 +208,8 @@ export class PlotlyGraph extends HTMLElement {
     );
     this.handles.dataClick?.off("plotly_click", this.onDataClick);
     this.handles.doubleclick?.off("plotly_doubleclick", this.onDoubleclick);
+    this.handles.annotationClick?.off("plotly_clickannotation", this.onAnnotationClick);
+    this.handles.buttonClick?.off("plotly_buttonclicked", this.onButtonClick);
     clearTimeout(this.handles.refreshTimeout!);
     this.resetButtonEl.removeEventListener("click", this.exitBrowsingMode);
     this.touchController.disconnect();
@@ -309,6 +322,18 @@ export class PlotlyGraph extends HTMLElement {
   onDoubleclick = () => {
     return this.parsed_config.on_dblclick();
   };
+  onAnnotationClick = ({ annotation, ...rest }) => {
+    if (annotation.on_click) {
+        return annotation.on_click({ annotation, ...rest });
+    }
+    return true;
+  };
+  onButtonClick = ({ button, ...rest }) => {
+    if (button._input.on_click) {
+        return button._input.on_click({ button, ...rest });
+    }
+    return true;
+  };
   onRestyle = async () => {
     // trace visibility changed, fetch missing traces
     if (this.isInternalRelayout) return;
@@ -361,7 +386,7 @@ export class PlotlyGraph extends HTMLElement {
       await sleep(100);
     }
     const fetch_mask = this.contentEl.data.map(
-      ({ visible }) => should_fetch && visible !== "legendonly"
+      (trace) => should_fetch && trace.visible !== "legendonly"
     );
     const uirevision = this.isBrowsing
       ? this.contentEl.layout?.uirevision || 0
@@ -412,9 +437,11 @@ export class PlotlyGraph extends HTMLElement {
     await this.withoutRelayout(async () => {
       await Plotly.react(this.contentEl, entities, layout, config);
       if (autorange_after_scroll) {
-        await Plotly.relayout(this.contentEl, {
+        const update = {
           "yaxis.autorange": true,
-        });
+        };
+        // Plotly accepts attribute paths, but its public types only list nested keys.
+        await Plotly.relayout(this.contentEl, update as Partial<Plotly.Layout>);
       }
       this.contentEl.style.visibility = "";
     });

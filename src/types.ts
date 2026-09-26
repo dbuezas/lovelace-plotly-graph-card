@@ -2,7 +2,8 @@ import {
   ColorSchemeArray,
   ColorSchemeNames,
 } from "./parse-config/parse-color-scheme";
-import { TimeDurationStr } from "./duration/duration";
+
+import { RelativeTimeStr, TimeDurationStr } from "./duration/duration";
 import {
   AutoPeriodConfig,
   StatisticPeriod,
@@ -11,38 +12,60 @@ import {
 } from "./recorder-types";
 
 import { HassEntity } from "home-assistant-js-websocket";
-import { FilterFn } from "./filters/filters";
+import { FilterFn, FilterInput } from "./filters/filters";
+import type filters from "./filters/filters";
+import internal from "stream";
+
 export { HassEntity } from "home-assistant-js-websocket";
 
 export type YValue = number | string | null;
+
+export type InputEntityOptions = {
+  entity?: string;
+  name?: string;
+  attribute?: string;
+  statistic?: StatisticType;
+  period?: StatisticPeriod | "auto" | AutoPeriodConfig;
+  unit_of_measurement?: string;
+  internal?: boolean;
+  show_value?:
+    | boolean
+    | {
+        right_margin: number;
+      };
+  offset?: TimeDurationStr;
+  extend_to_present?: boolean;
+  filters?: FilterInput[];
+  on_legend_click?: Function;
+  on_legend_dblclick?: Function;
+  on_click?: Function;
+};
+
 export type InputConfig = {
-  type: "custom:plotly-graph-card";
-  hours_to_show?: number;
+  type: "custom:plotly-graph";
+  /**
+   * The time to show on load.
+   * It can be the number of hour (e.g 12),
+   * a duration string, e.g 100ms, 10s, 30.5m, 2h, 7d, 2w, 1M, 1y,
+   * or relative time, i.e:
+   *  * current_minute
+   *  * current_hour
+   *  * current_day
+   *  * current_week
+   *  * current_month
+   *  * current_quarter
+   *  * current_year
+   */
+  hours_to_show?: number | TimeDurationStr | RelativeTimeStr;
+  /** Either a number (seconds), or "auto" */
   refresh_interval?: number | "auto"; // in seconds
   color_scheme?: ColorSchemeNames | ColorSchemeArray | number;
   title?: string;
   offset?: TimeDurationStr;
-  entities: ({
-    entity?: string;
-    attribute?: string;
-    statistic?: StatisticType;
-    period?: StatisticPeriod | "auto" | AutoPeriodConfig;
-    unit_of_measurement?: string;
-    internal?: boolean;
-    show_value?:
-      | boolean
-      | {
-          right_margin: number;
-        };
-    offset?: TimeDurationStr;
-    extend_to_present?: boolean;
-    filters?: (Record<string, any> | string)[];
-    on_legend_click?: Function;
-    on_legend_dblclick?: Function;
-    on_click?: Function;
-  } & Partial<Plotly.PlotData>)[];
+  entities: (InputEntityOptions & Partial<Plotly.Data>)[];
   defaults?: {
-    entity?: Partial<Plotly.PlotData>;
+    entity?: Partial<Plotly.Data>;
+    xaxes?: Partial<Plotly.Layout["xaxis"]>;
     yaxes?: Partial<Plotly.Layout["yaxis"]>;
   };
   on_dblclick?: Function;
@@ -54,6 +77,7 @@ export type InputConfig = {
   minimal_response?: boolean; // defaults to true
   disable_pinch_to_zoom?: boolean; // defaults to false
   autorange_after_scroll?: boolean; // defaults to false
+  preset?: string | string[];
 };
 
 export type EntityConfig = EntityIdConfig & {
@@ -70,7 +94,7 @@ export type EntityConfig = EntityIdConfig & {
   on_legend_click: Function;
   on_legend_dblclick: Function;
   on_click: Function;
-} & Partial<Plotly.PlotData>;
+} & Partial<Plotly.Data>;
 
 export type Config = {
   title?: string;
@@ -107,7 +131,7 @@ export type EntityIdConfig =
   | EntityIdStatisticsConfig;
 
 export function isEntityIdStateConfig(
-  entityConfig: EntityIdConfig
+  entityConfig: EntityIdConfig,
 ): entityConfig is EntityIdStateConfig {
   return !(
     isEntityIdAttrConfig(entityConfig) ||
@@ -115,12 +139,12 @@ export function isEntityIdStateConfig(
   );
 }
 export function isEntityIdAttrConfig(
-  entityConfig: EntityIdConfig
+  entityConfig: EntityIdConfig,
 ): entityConfig is EntityIdAttrConfig {
   return !!entityConfig["attribute"];
 }
 export function isEntityIdStatisticsConfig(
-  entityConfig: EntityIdConfig
+  entityConfig: EntityIdConfig,
 ): entityConfig is EntityIdStatisticsConfig {
   return !!entityConfig["statistic"];
 }

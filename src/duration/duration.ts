@@ -40,7 +40,7 @@ export const parseTimeDuration = (str: TimeDurationStr | undefined): number => {
   if (!str || !str.match)
     throw new Error(`Cannot parse "${str}" as a duration`);
   const match = str.match(
-    /^(?<sign>[+-])?(?<number>\d*(\.\d)?)(?<unit>(ms|s|m|h|d|w|M|y))$/
+    /^(?<sign>[+-])?(?<number>\d*(\.\d)?)(?<unit>(ms|s|m|h|d|w|M|y))$/,
   );
   if (!match || !match.groups)
     throw new Error(`Cannot parse "${str}" as a duration`);
@@ -87,7 +87,16 @@ export const setDateFnDefaultOptions = (hass: HomeAssistant) => {
     weekStartsOn,
   });
 };
-export const parseRelativeTime = (str: string): [number, number] => {
+export type RelativeTimeStr =
+  | "current_minute"
+  | "current_hour"
+  | "current_day"
+  | "current_week"
+  | "current_month"
+  | "current_quarter"
+  | "current_year";
+
+export const parseRelativeTime = (str: RelativeTimeStr): [number, number] => {
   const now = new Date();
   switch (str) {
     case "current_minute":
