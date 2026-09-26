@@ -45,6 +45,8 @@ Web app to assist you with syntax validation and autocomplete: [Plotly graph car
 
 ### Via Home Assistant Community Store (Recommended)
 
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=dbuezas&repository=lovelace-plotly-graph-card&category=Dashboard)
+
 1. Install [HACS](https://hacs.xyz/docs/configuration/basic)
 2. Search & Install `Plotly Graph Card`.
 
@@ -1312,6 +1314,11 @@ properties are not interchangeable with Cartesian axis titles, which use
 
 The card's own top-level `title:` option is unchanged.
 
+The bundled Plotly build also supports `scattergl`, `splom`, `parcoords`,
+`scatterpolargl`, and `scattersmith`. WebGL traces require browser WebGL support.
+The MapLibre types `scattermap`, `choroplethmap`, and `densitymap` are not included
+to keep the bundle size down.
+
 # Development
 
 - Use Node.js 22 or newer (required by Plotly.js 4).
@@ -1333,6 +1340,7 @@ the compatibility checks. For rendering checks, install Chromium with
 `npx playwright install chromium` and run `npm run test:browser`.
 The browser test covers every registered trace type, tank shapes and labels,
 axis defaults, cloud-upload opt-in, and a card with a mock Home Assistant state.
+The five additional trace types are also validated and rendered through the card.
 
 # Release
 
