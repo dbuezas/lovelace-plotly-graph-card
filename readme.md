@@ -179,6 +179,33 @@ entities:
   - sensor.humidity
 ```
 
+## Structured names
+
+*Requires Home Assistant 2026.4 or later.*
+
+Home Assistant composes an entity's display name out of its registry context
+(entity, device, area, floor) rather than one `friendly_name` string. A trace's
+default name now comes from that context, so it matches what the built-in cards
+show instead of repeating the device name in every legend entry.
+
+To pick the parts yourself, set `name` to a list:
+
+```yaml
+type: custom:plotly-graph
+entities:
+  - entity: sensor.living_room_thermostat_temperature
+    name:
+      - type: area
+      - type: entity
+```
+
+Available part types are `entity`, `device`, `area`, `floor`, and
+`text` (a literal, written as `{type: text, text: Indoor}`). Parts that resolve to
+nothing are dropped. A plain string `name`, including a `$ex` expression, keeps
+working exactly as before.
+
+See the [Home Assistant developer documentation](https://developers.home-assistant.io/docs/frontend/data#hassformatentitynamestateobj-name-options) for details.
+
 ## Color schemes
 
 Changes default line colors.

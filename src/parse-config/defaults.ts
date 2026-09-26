@@ -3,6 +3,7 @@ import { Config, InputConfig } from "../types";
 import { parseColorScheme } from "./parse-color-scheme";
 import { getEntityIndex } from "./parse-config";
 import getThemedLayout, { HATheme } from "./themed-layout";
+import { computeEntityName } from "../entity-name";
 declare const window: Window & { PlotlyGraphCardPresets?: Record<string, InputConfig> };
 const noop$fn = () => () => {};
 const defaultEntityRequired = {
@@ -26,8 +27,11 @@ const defaultEntityOptional = {
   },
   // extend_to_present: true unless using statistics. Defined inside parse-config.ts to avoid forward depndency
   unit_of_measurement: ({ meta }) => meta.unit_of_measurement || "",
-  name: ({ meta, getFromConfig }) => {
-    let name = meta.friendly_name || getFromConfig(`.entity`);
+  name: ({ hass, getFromConfig }) => {
+    const entity = getFromConfig(`.entity`);
+    // Resolve the entity's own name from its registry context rather than
+    // reading friendly_name, so the trace label matches the built-in cards.
+    let name = computeEntityName(hass, hass?.states[entity], undefined) || entity;
     const attribute = getFromConfig(`.attribute`);
     if (attribute) name += ` (${attribute}) `;
     return name;
