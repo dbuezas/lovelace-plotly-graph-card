@@ -2,7 +2,15 @@ name: YAML editor
 
 on:
   push:
+    branches: [master]
   pull_request:
+    paths:
+      - "src/**"
+      - "yaml-editor/**"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.json"
+      - ".github/workflows/yaml-editor.yaml"
 
 permissions:
   contents: read

@@ -7,7 +7,9 @@ import Ajv from "ajv";
 
 import {
   buildYamlSchema,
+  configAttributesFor,
   convertPlotlyNode,
+  layoutAttributesFor,
   registeredTraceTypes,
 } from "./plotly-schema.js";
 
@@ -16,6 +18,109 @@ const directory = path.dirname(fileURLToPath(import.meta.url));
 function valueBranch(schema) {
   return schema.anyOf.find((branch) => branch.$ref === undefined);
 }
+
+test("keeps data fields whose names also occur in schema metadata", () => {
+  const schema = valueBranch(
+    convertPlotlyNode({
+      role: "object",
+      description: "Data object",
+      values: { valType: "data_array" },
+      min: { valType: "number" },
+      max: { valType: "number" },
+    }),
+  );
+  assert.equal(valueBranch(schema.properties.values).type, "array");
+  assert.equal(valueBranch(schema.properties.min).type, "number");
+  assert.equal(valueBranch(schema.properties.max).type, "number");
+  assert.equal(schema.properties.description, undefined);
+});
+
+test("patches expression placeholders without mutating the card schema", () => {
+  const card = {
+    type: "object",
+    properties: {
+      entities: { type: "array", items: { type: "object" } },
+      hours_to_show: { type: "string", pattern: "^.*\\$ex\\$fn_REPLACER$" },
+    },
+  };
+  const runtime = {
+    config: {},
+    layout: { layoutAttributes: { xaxis: {} } },
+    traces: { scatter: { attributes: { type: "scatter" } } },
+  };
+  const schema = buildYamlSchema(card, runtime, ["scatter"]);
+  assert.doesNotMatch(JSON.stringify(schema), /REPLACER/);
+  assert.match(JSON.stringify(card), /REPLACER/);
+  const validate = new Ajv({ strict: false }).compile(schema);
+  for (const expression of [
+    "$ex 24",
+    "$fn () => 300",
+    "  $fn () => {\n return 24;\n}",
+  ]) {
+    assert.equal(validate({ entities: [], hours_to_show: expression }), true);
+  }
+  assert.equal(validate({ entities: [], hours_to_show: "$ex" }), false);
+});
+
+test("merges only registered trace layout attributes into the correct subplot", () => {
+  const runtime = {
+    layout: { layoutAttributes: { polar: { _isSubplotObj: true } } },
+    traces: {
+      bar: {
+        attributes: {},
+        layoutAttributes: {
+          barmode: { valType: "enumerated", values: ["group", "relative"] },
+        },
+      },
+      barpolar: {
+        attributes: { subplot: { valType: "subplotid", dflt: "polar" } },
+        layoutAttributes: {
+          barmode: { valType: "enumerated", values: ["stack", "overlay"] },
+        },
+      },
+      box: {
+        attributes: {},
+        layoutAttributes: { boxmode: { valType: "string" } },
+      },
+    },
+  };
+  const original = structuredClone(runtime);
+  const attrs = layoutAttributesFor(runtime, ["bar", "barpolar"]);
+  assert.deepEqual(attrs.barmode.values, ["group", "relative"]);
+  assert.deepEqual(attrs.polar.barmode.values, ["stack", "overlay"]);
+  assert.equal(attrs.boxmode, undefined);
+  assert.deepEqual(runtime, original);
+});
+
+test("omits unregistered subplot suggestions but preserves shared components", () => {
+  const runtime = {
+    layout: {
+      layoutAttributes: {
+        geo: {},
+        map: {},
+        polar: {},
+        legend: {},
+        coloraxis: {},
+      },
+    },
+    traces: {
+      scattergeo: {
+        attributes: { geo: { valType: "subplotid", dflt: "geo" } },
+      },
+      scattermap: {
+        attributes: { subplot: { valType: "subplotid", dflt: "map" } },
+      },
+      scatterpolar: {
+        attributes: { subplot: { valType: "subplotid", dflt: "polar" } },
+      },
+    },
+  };
+  assert.deepEqual(
+    Object.keys(layoutAttributesFor(runtime, ["scattergeo"])).sort(),
+    ["coloraxis", "geo", "legend"],
+  );
+  assert.ok(layoutAttributesFor(runtime, ["scattermap"]).map);
+});
 
 test("converts Plotly scalar constraints and arrayOk", () => {
   const schema = valueBranch(
@@ -214,11 +319,11 @@ test("checked-in schema is generated from Plotly runtime metadata", () => {
   }
   assert.deepEqual(
     schema.definitions.PlotlyLayout,
-    convertPlotlyNode(runtime.layout.layoutAttributes),
+    convertPlotlyNode(layoutAttributesFor(runtime, expectedTraces)),
   );
   assert.deepEqual(
     schema.definitions.PlotlyConfig,
-    convertPlotlyNode(runtime.config),
+    convertPlotlyNode(configAttributesFor(runtime, expectedTraces)),
   );
   assert.equal(
     Object.keys(schema.definitions).some((name) =>
@@ -230,9 +335,11 @@ test("checked-in schema is generated from Plotly runtime metadata", () => {
   const validate = new Ajv({ allErrors: true, strict: false }).compile(schema);
   const valid = validate({
     type: "custom:plotly-graph",
-    hours_to_show: "24h",
-    refresh_interval: 300,
+    hours_to_show: "$ex 24",
+    refresh_interval: "$fn () => 300",
     layout: {
+      barmode: "group",
+      polar: { barmode: "stack" },
       annotations: [{ text: "Current value", x: 1, y: 2 }],
       xaxis2: { visible: false },
       yaxis: { range: [0, 50] },
@@ -251,6 +358,7 @@ test("checked-in schema is generated from Plotly runtime metadata", () => {
         period: "5minute",
         statistic: "mean",
         type: "scatter",
+        filters: "$ex []",
       },
       {
         entity: "sensor.west",
@@ -303,6 +411,117 @@ test("Plotly 4 schema removes legacy options and validates object titles", () =>
       ...card,
       entities: [{ entity: "sensor.power", type: "not-a-trace" }],
     }),
+    false,
+  );
+});
+
+test("generated schema includes trace-owned layout and data fields", () => {
+  const schema = JSON.parse(
+    fs.readFileSync(path.join(directory, "src/schema.json"), "utf8"),
+  );
+  const layout = valueBranch(schema.definitions.PlotlyLayout).properties;
+  for (const key of [
+    "barmode",
+    "bargap",
+    "barcornerradius",
+    "boxmode",
+    "violinmode",
+    "funnelmode",
+    "waterfallmode",
+    "piecolorway",
+    "hiddenlabels",
+  ]) {
+    assert.ok(layout[key], `Missing layout.${key}`);
+  }
+  assert.ok(layout.geo);
+  assert.equal(layout.map, undefined);
+  assert.equal(
+    valueBranch(schema.definitions.PlotlyLayout).patternProperties[
+      "^map([2-9]|[1-9][0-9]+)$"
+    ],
+    undefined,
+  );
+  assert.ok(
+    valueBranch(schema.definitions.PlotlyLayoutYAxis).properties.autoshift,
+  );
+  assert.ok(valueBranch(schema.definitions.PlotlyLayoutYAxis).properties.shift);
+  assert.equal(
+    valueBranch(schema.definitions.PlotlyLayoutAxis).properties.autoshift,
+    undefined,
+  );
+  const pie = valueBranch(schema.definitions.PlotlyTrace_pie).properties;
+  assert.equal(valueBranch(pie.values).type, "array");
+  const parcoords = valueBranch(
+    schema.definitions.PlotlyTrace_parcoords,
+  ).properties;
+  assert.ok(
+    valueBranch(valueBranch(parcoords.dimensions).items).properties.values,
+  );
+  assert.doesNotMatch(JSON.stringify(schema), /REPLACER/);
+
+  const validate = new Ajv({ allErrors: true, strict: false }).compile(schema);
+  const card = {
+    type: "custom:plotly-graph",
+    entities: [{ entity: "sensor.test", type: "bar" }],
+    layout: { barmode: "group", polar: { barmode: "stack" } },
+    defaults: { yaxes: { autoshift: true, shift: 20 } },
+  };
+  assert.equal(validate(card), true, JSON.stringify(validate.errors));
+  assert.equal(validate({ ...card, layout: { barmode: "relative" } }), true);
+  assert.equal(
+    validate({ ...card, layout: { polar: { barmode: "group" } } }),
+    false,
+  );
+});
+
+test("config suggestions only include registered geographic subplots", () => {
+  const runtime = {
+    config: {
+      scrollZoom: {
+        valType: "flaglist",
+        flags: ["cartesian", "geo", "map"],
+        dflt: "geo+map",
+        extras: [true, false],
+      },
+      topojsonURL: { valType: "string" },
+    },
+    traces: {
+      scattergeo: {
+        attributes: { geo: { valType: "subplotid", dflt: "geo" } },
+      },
+      scattermap: {
+        attributes: { subplot: { valType: "subplotid", dflt: "map" } },
+      },
+    },
+  };
+  const original = structuredClone(runtime);
+  const config = configAttributesFor(runtime, ["scattergeo"]);
+  assert.deepEqual(config.scrollZoom.flags, ["cartesian", "geo"]);
+  assert.equal(config.scrollZoom.dflt, "geo");
+  assert.ok(config.topojsonURL);
+  assert.equal(
+    configAttributesFor(runtime, ["scattermap"]).topojsonURL,
+    undefined,
+  );
+  assert.deepEqual(runtime, original);
+  const schema = JSON.parse(
+    fs.readFileSync(path.join(directory, "src/schema.json"), "utf8"),
+  );
+  const zoom = valueBranch(
+    valueBranch(schema.definitions.PlotlyConfig).properties.scrollZoom,
+  );
+  const suggestions = [];
+  const collectEnums = (node) => {
+    if (!node || typeof node !== "object") return;
+    if (node.enum) suggestions.push(...node.enum);
+    Object.values(node).forEach(collectEnums);
+  };
+  collectEnums(zoom);
+  assert.ok(suggestions.includes("geo"));
+  assert.equal(
+    suggestions.some(
+      (value) => typeof value === "string" && value.split("+").includes("map"),
+    ),
     false,
   );
 });

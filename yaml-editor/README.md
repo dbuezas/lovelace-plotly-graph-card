@@ -37,6 +37,9 @@ npm start --prefix yaml-editor
 The checked-in `src/schema.json` combines the card-specific configuration
 types with Plotly's runtime schema from `plotly.js/dist/plot-schema.json`.
 Only traces registered in `src/plotly.ts` are included.
+Trace-specific layout options are included at their matching layout or subplot
+level. Subplots without registered trace types are omitted from suggestions.
+Regenerate the schema after changing either Plotly or the trace registrations.
 
 From the repository root, install both lockfiles and run:
 

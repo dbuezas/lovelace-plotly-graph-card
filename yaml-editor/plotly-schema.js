@@ -1,4 +1,6 @@
 const EXPRESSION_REF = "#/definitions/PlotlyExpression";
+const EXPRESSION_PATTERN = "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$";
+const REPLACER_PATTERN = "^.*\\$ex\\$fn_REPLACER$";
 
 const METADATA_KEYS = new Set([
   "anim",
@@ -70,7 +72,7 @@ function flaglistSchema(node) {
   const combinations = [];
   for (let mask = 1; mask < 2 ** flags.length; mask += 1) {
     combinations.push(
-      flags.filter((_, index) => mask & (1 << index)).join("+")
+      flags.filter((_, index) => mask & (1 << index)).join("+"),
     );
   }
   const suggestions = [...new Set([...(node.extras || []), ...combinations])];
@@ -202,7 +204,7 @@ function infoArraySchema(node) {
 
 function objectArraySchema(node) {
   const variants = Object.entries(node.items || {}).map(([, item]) =>
-    convertPlotlyNode(item)
+    convertPlotlyNode(item),
   );
 
   return {
@@ -227,7 +229,7 @@ function objectSchema(attributes) {
   for (const [name, attribute] of Object.entries(attributes)) {
     if (
       name.startsWith("_") ||
-      METADATA_KEYS.has(name) ||
+      (METADATA_KEYS.has(name) && !isDescriptor(attribute)) ||
       attribute === undefined
     ) {
       continue;
@@ -338,7 +340,7 @@ function pruneDefinitions(schema) {
   }
 
   schema.definitions = Object.fromEntries(
-    Object.entries(definitions).filter(([name]) => retained.has(name))
+    Object.entries(definitions).filter(([name]) => retained.has(name)),
   );
 }
 
@@ -356,33 +358,104 @@ export function registeredTraceTypes(source, plotlySchema) {
   const missing = unique.filter((trace) => !plotlySchema.traces[trace]);
   if (missing.length > 0) {
     throw new Error(
-      `Missing traces in Plotly runtime schema: ${missing.join(", ")}`
+      `Missing traces in Plotly runtime schema: ${missing.join(", ")}`,
     );
   }
   return unique;
 }
 
+function patchExpressionPlaceholders(value) {
+  if (!value || typeof value !== "object") return;
+  if (value.pattern === REPLACER_PATTERN) value.pattern = EXPRESSION_PATTERN;
+  for (const child of Object.values(value)) patchExpressionPlaceholders(child);
+}
+
+function traceSubplot(trace) {
+  for (const key of ["subplot", "geo", "scene"]) {
+    const attribute = trace.attributes?.[key];
+    if (
+      attribute?.valType === "subplotid" &&
+      typeof attribute.dflt === "string"
+    ) {
+      return attribute.dflt;
+    }
+  }
+}
+
+export function layoutAttributesFor(plotlySchema, traceTypes) {
+  const attributes = structuredClone(plotlySchema.layout.layoutAttributes);
+  const supportedSubplots = new Set(
+    traceTypes.map((type) => traceSubplot(plotlySchema.traces[type])),
+  );
+  for (const trace of Object.values(plotlySchema.traces)) {
+    const subplot = traceSubplot(trace);
+    if (subplot && !supportedSubplots.has(subplot)) delete attributes[subplot];
+  }
+  for (const type of traceTypes) {
+    const trace = plotlySchema.traces[type];
+    if (!trace.layoutAttributes) continue;
+    const subplot = traceSubplot(trace);
+    // Polar bar options belong under layout.polar, not the Cartesian layout.
+    const target = subplot ? (attributes[subplot] ||= {}) : attributes;
+    Object.assign(target, structuredClone(trace.layoutAttributes));
+  }
+  return attributes;
+}
+
+export function configAttributesFor(plotlySchema, traceTypes) {
+  const attributes = structuredClone(plotlySchema.config);
+  const knownSubplots = new Set(
+    Object.values(plotlySchema.traces).map(traceSubplot),
+  );
+  const supportedSubplots = new Set(
+    traceTypes.map((type) => traceSubplot(plotlySchema.traces[type])),
+  );
+  const scrollZoom = attributes.scrollZoom;
+  if (scrollZoom?.flags) {
+    scrollZoom.flags = scrollZoom.flags.filter((flag) => {
+      const subplot = flag === "gl3d" ? "scene" : flag;
+      return !knownSubplots.has(subplot) || supportedSubplots.has(subplot);
+    });
+    if (typeof scrollZoom.dflt === "string") {
+      scrollZoom.dflt =
+        scrollZoom.dflt
+          .split("+")
+          .filter((flag) => scrollZoom.flags.includes(flag))
+          .join("+") || false;
+    }
+  }
+  if (!supportedSubplots.has("geo")) delete attributes.topojsonURL;
+  return attributes;
+}
+
 export function buildYamlSchema(cardSchema, plotlySchema, traceTypes) {
   const schema = structuredClone(cardSchema);
+  patchExpressionPlaceholders(schema);
   schema.definitions ||= {};
   schema.definitions.PlotlyExpression = {
     type: "string",
-    pattern: "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
+    pattern: EXPRESSION_PATTERN,
   };
 
   schema.definitions.PlotlyLayout = convertPlotlyNode(
-    plotlySchema.layout.layoutAttributes
+    layoutAttributesFor(plotlySchema, traceTypes),
   );
-  schema.definitions.PlotlyConfig = convertPlotlyNode(plotlySchema.config);
+  schema.definitions.PlotlyConfig = convertPlotlyNode(
+    configAttributesFor(plotlySchema, traceTypes),
+  );
   schema.definitions.PlotlyLayoutAxis = convertPlotlyNode(
-    plotlySchema.layout.layoutAttributes.xaxis
+    plotlySchema.layout.layoutAttributes.xaxis,
+  );
+  schema.definitions.PlotlyLayoutYAxis = convertPlotlyNode(
+    plotlySchema.layout.layoutAttributes.yaxis ||
+      plotlySchema.layout.layoutAttributes.xaxis,
   );
 
   const traceRefs = [];
   for (const traceType of traceTypes) {
     const name = `PlotlyTrace_${traceType}`;
     schema.definitions[name] = convertPlotlyNode(
-      plotlySchema.traces[traceType].attributes
+      plotlySchema.traces[traceType].attributes,
     );
     traceRefs.push({ $ref: `#/definitions/${name}` });
   }
@@ -412,7 +485,7 @@ export function buildYamlSchema(cardSchema, plotlySchema, traceTypes) {
     properties: {
       entity: expressionOr({ $ref: "#/definitions/PlotlyTrace" }),
       xaxes: expressionOr({ $ref: "#/definitions/PlotlyLayoutAxis" }),
-      yaxes: expressionOr({ $ref: "#/definitions/PlotlyLayoutAxis" }),
+      yaxes: expressionOr({ $ref: "#/definitions/PlotlyLayoutYAxis" }),
     },
   });
 
