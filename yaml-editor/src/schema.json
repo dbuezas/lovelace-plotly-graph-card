@@ -1,21 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "definitions": {
-    "With$fn<()=>string>": {
-      "type": "object"
-    },
-    "With$fn<(this:Function,thisArg:any,...argArray:any[])=>any>": {
-      "type": "object"
-    },
-    "With$fn<(this:Function,thisArg:any,...argArray:any[])=>any>_1": {
-      "type": "object"
-    },
-    "With$fn<(this:Function,thisArg:any,argArray?:any)=>any>": {
-      "type": "object"
-    },
-    "With$fn<(value:any)=>boolean>": {
-      "type": "object"
-    },
     "With$fn<AutoPeriodConfig>": {
       "properties": {
         "0": {
@@ -39,268 +24,6 @@
       },
       "required": [
         "0"
-      ],
-      "type": "object"
-    },
-    "With$fn<Function>": {
-      "properties": {
-        "__@hasInstance@8320": {
-          "anyOf": [
-            {
-              "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
-              "type": "string"
-            },
-            {
-              "$ref": "#/definitions/With$fn<(value:any)=>boolean>"
-            }
-          ]
-        },
-        "apply": {
-          "anyOf": [
-            {
-              "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
-              "type": "string"
-            },
-            {
-              "$ref": "#/definitions/With$fn<(this:Function,thisArg:any,argArray?:any)=>any>"
-            }
-          ]
-        },
-        "arguments": {
-          "anyOf": [
-            {
-              "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
-              "type": "string"
-            },
-            {
-              "items": {
-                "$ref": "#/definitions/With$fn<unknown>"
-              },
-              "type": "array"
-            },
-            {
-              "$ref": "#/definitions/With$fn<any>"
-            }
-          ]
-        },
-        "bind": {
-          "anyOf": [
-            {
-              "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
-              "type": "string"
-            },
-            {
-              "$ref": "#/definitions/With$fn<(this:Function,thisArg:any,...argArray:any[])=>any>_1"
-            }
-          ]
-        },
-        "call": {
-          "anyOf": [
-            {
-              "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
-              "type": "string"
-            },
-            {
-              "$ref": "#/definitions/With$fn<(this:Function,thisArg:any,...argArray:any[])=>any>"
-            }
-          ]
-        },
-        "caller": {
-          "anyOf": [
-            {
-              "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
-              "type": "string"
-            },
-            {
-              "$ref": "#/definitions/With$fn<Function>_1"
-            }
-          ]
-        },
-        "length": {
-          "anyOf": [
-            {
-              "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
-              "type": "string"
-            },
-            {
-              "type": "number"
-            }
-          ]
-        },
-        "name": {
-          "type": "string"
-        },
-        "prototype": {
-          "anyOf": [
-            {
-              "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
-              "type": "string"
-            },
-            {
-              "items": {
-                "$ref": "#/definitions/With$fn<unknown>"
-              },
-              "type": "array"
-            },
-            {
-              "$ref": "#/definitions/With$fn<any>"
-            }
-          ]
-        },
-        "toString": {
-          "anyOf": [
-            {
-              "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
-              "type": "string"
-            },
-            {
-              "$ref": "#/definitions/With$fn<()=>string>"
-            }
-          ]
-        }
-      },
-      "required": [
-        "__@hasInstance@8320",
-        "apply",
-        "arguments",
-        "bind",
-        "call",
-        "caller",
-        "length",
-        "name",
-        "prototype",
-        "toString"
-      ],
-      "type": "object"
-    },
-    "With$fn<Function>_1": {
-      "properties": {
-        "__@hasInstance@8320": {
-          "anyOf": [
-            {
-              "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
-              "type": "string"
-            },
-            {
-              "$ref": "#/definitions/With$fn<(value:any)=>boolean>"
-            }
-          ]
-        },
-        "apply": {
-          "anyOf": [
-            {
-              "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
-              "type": "string"
-            },
-            {
-              "$ref": "#/definitions/With$fn<(this:Function,thisArg:any,argArray?:any)=>any>"
-            }
-          ]
-        },
-        "arguments": {
-          "anyOf": [
-            {
-              "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
-              "type": "string"
-            },
-            {
-              "items": {
-                "$ref": "#/definitions/With$fn<unknown>"
-              },
-              "type": "array"
-            },
-            {
-              "$ref": "#/definitions/With$fn<any>"
-            }
-          ]
-        },
-        "bind": {
-          "anyOf": [
-            {
-              "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
-              "type": "string"
-            },
-            {
-              "$ref": "#/definitions/With$fn<(this:Function,thisArg:any,...argArray:any[])=>any>_1"
-            }
-          ]
-        },
-        "call": {
-          "anyOf": [
-            {
-              "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
-              "type": "string"
-            },
-            {
-              "$ref": "#/definitions/With$fn<(this:Function,thisArg:any,...argArray:any[])=>any>"
-            }
-          ]
-        },
-        "caller": {
-          "anyOf": [
-            {
-              "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
-              "type": "string"
-            },
-            {
-              "$ref": "#/definitions/With$fn<Function>_1"
-            }
-          ]
-        },
-        "length": {
-          "anyOf": [
-            {
-              "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
-              "type": "string"
-            },
-            {
-              "type": "number"
-            }
-          ]
-        },
-        "name": {
-          "type": "string"
-        },
-        "prototype": {
-          "anyOf": [
-            {
-              "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
-              "type": "string"
-            },
-            {
-              "items": {
-                "$ref": "#/definitions/With$fn<unknown>"
-              },
-              "type": "array"
-            },
-            {
-              "$ref": "#/definitions/With$fn<any>"
-            }
-          ]
-        },
-        "toString": {
-          "anyOf": [
-            {
-              "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
-              "type": "string"
-            },
-            {
-              "$ref": "#/definitions/With$fn<()=>string>"
-            }
-          ]
-        }
-      },
-      "required": [
-        "__@hasInstance@8320",
-        "apply",
-        "arguments",
-        "bind",
-        "call",
-        "caller",
-        "length",
-        "name",
-        "prototype",
-        "toString"
       ],
       "type": "object"
     },
@@ -455,37 +178,16 @@
           ]
         },
         "on_click": {
-          "anyOf": [
-            {
-              "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
-              "type": "string"
-            },
-            {
-              "$ref": "#/definitions/With$fn<Function>"
-            }
-          ]
+          "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
+          "type": "string"
         },
         "on_legend_click": {
-          "anyOf": [
-            {
-              "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
-              "type": "string"
-            },
-            {
-              "$ref": "#/definitions/With$fn<Function>"
-            }
-          ]
+          "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
+          "type": "string"
         },
         "on_legend_dblclick": {
-          "anyOf": [
-            {
-              "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
-              "type": "string"
-            },
-            {
-              "$ref": "#/definitions/With$fn<Function>"
-            }
-          ]
+          "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
+          "type": "string"
         },
         "period": {
           "anyOf": [
@@ -693,9 +395,6 @@
       },
       "type": "object"
     },
-    "With$fn<any>": {
-      "type": "object"
-    },
     "With$fn<string|string[]|undefined>": {
       "anyOf": [
         {
@@ -711,9 +410,6 @@
     },
     "With$fn<string|undefined>": {
       "type": "string"
-    },
-    "With$fn<unknown>": {
-      "type": "object"
     },
     "With$fn<{add:number;}>": {
       "properties": {
@@ -776,18 +472,8 @@
     "With$fn<{deduplicate_adjacent:never;}>": {
       "properties": {
         "deduplicate_adjacent": {
-          "anyOf": [
-            {
-              "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
-              "type": "string"
-            },
-            {
-              "items": {
-                "$ref": "#/definitions/With$fn<unknown>"
-              },
-              "type": "array"
-            }
-          ]
+          "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
+          "type": "string"
         }
       },
       "required": [
@@ -798,18 +484,8 @@
     "With$fn<{delta:never;}>": {
       "properties": {
         "delta": {
-          "anyOf": [
-            {
-              "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
-              "type": "string"
-            },
-            {
-              "items": {
-                "$ref": "#/definitions/With$fn<unknown>"
-              },
-              "type": "array"
-            }
-          ]
+          "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
+          "type": "string"
         }
       },
       "required": [
@@ -890,18 +566,8 @@
     "With$fn<{force_numeric:never;}>": {
       "properties": {
         "force_numeric": {
-          "anyOf": [
-            {
-              "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
-              "type": "string"
-            },
-            {
-              "items": {
-                "$ref": "#/definitions/With$fn<unknown>"
-              },
-              "type": "array"
-            }
-          ]
+          "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
+          "type": "string"
         }
       },
       "required": [
@@ -198128,15 +197794,8 @@
       ]
     },
     "on_dblclick": {
-      "anyOf": [
-        {
-          "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
-          "type": "string"
-        },
-        {
-          "$ref": "#/definitions/With$fn<Function>"
-        }
-      ]
+      "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
+      "type": "string"
     },
     "preset": {
       "$ref": "#/definitions/With$fn<string|string[]|undefined>"
