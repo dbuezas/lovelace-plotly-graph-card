@@ -1,0 +1,41 @@
+name: YAML editor
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    paths:
+      - "src/**"
+      - "yaml-editor/**"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.json"
+      - ".github/workflows/yaml-editor.yaml"
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            yaml-editor/package-lock.json
+
+      - run: npm ci
+      - run: npm ci
+        working-directory: yaml-editor
+      - run: npm run tsc
+      - run: npm test
+        working-directory: yaml-editor
+      - run: npm run build
+        working-directory: yaml-editor
+      - run: git diff --exit-code -- yaml-editor/src/schema.json

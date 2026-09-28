@@ -2,10 +2,9 @@ jest.mock("../filters/filters", () => ({}));
 
 import {
   getCartesianLayoutAxes,
-  getRememberedConfiguredAxes,
   pruneUnusedCartesianAxes,
 } from "./axis-layout";
-import { Config, EntityConfig, InputConfig } from "../types";
+import { EntityConfig } from "../types";
 import { addPostParsingDefaults, addPreParsingDefaults } from "./defaults";
 
 const axes = {
@@ -230,7 +229,7 @@ describe("configured axes", () => {
     ).toStrictEqual(new Set(["xaxis2", "yaxis4"]));
   });
 
-  it("remembers axes configured directly and through a preset", () => {
+  it("returns axes configured directly and through a preset", () => {
     const previousWindow = global.window;
     global.window = {
       PlotlyGraphCardPresets: {
@@ -240,7 +239,7 @@ describe("configured axes", () => {
       },
     } as unknown as Window & typeof globalThis;
     try {
-      const config = addPreParsingDefaults(
+      const { yaml, explicitlyConfiguredAxes } = addPreParsingDefaults(
         {
           type: "custom:plotly-graph",
           entities: [],
@@ -252,9 +251,11 @@ describe("configured axes", () => {
         {} as Parameters<typeof addPreParsingDefaults>[1],
       );
 
-      expect(getRememberedConfiguredAxes(config)).toStrictEqual(
+      expect(explicitlyConfiguredAxes).toStrictEqual(
         new Set(["xaxis2", "yaxis4"]),
       );
+      expect(yaml.layout).toHaveProperty("xaxis2");
+      expect(yaml.layout).toHaveProperty("yaxis4");
     } finally {
       global.window = previousWindow;
     }
@@ -269,7 +270,7 @@ describe("post-parsing axis defaults", () => {
         layout: axes,
         raw_plotly_config: true,
         visible_range: [0, 1],
-      } as Config & { visible_range: [number, number] },
+      } as Parameters<typeof addPostParsingDefaults>[0],
       new Set(),
     );
 
@@ -284,7 +285,7 @@ describe("post-parsing axis defaults", () => {
       layout: axes,
       raw_plotly_config: true,
       visible_range: [0, 1],
-    } as Config & { visible_range: [number, number] });
+    } as Parameters<typeof addPostParsingDefaults>[0]);
     expect(getCartesianLayoutAxes(config.layout)).toEqual(
       getCartesianLayoutAxes(axes),
     );

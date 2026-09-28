@@ -6,7 +6,6 @@ import getThemedLayout, { HATheme } from "./themed-layout";
 import {
   getCartesianLayoutAxes,
   pruneUnusedCartesianAxes,
-  rememberConfiguredAxes,
 } from "./axis-layout";
 declare const window: Window & { PlotlyGraphCardPresets?: Record<string, InputConfig> };
 const noop$fn = () => () => {};
@@ -188,7 +187,7 @@ function getPresetYaml(presets: string | string[] | undefined, skips?: Set<strin
 export function addPreParsingDefaults(
   yaml_in: InputConfig,
   css_vars: HATheme
-): InputConfig {
+): { yaml: InputConfig; explicitlyConfiguredAxes: ReadonlySet<string> } {
   // merging in two steps to ensure ha_theme and raw_plotly_config took its default value
   let yaml = merge({}, yaml_in, defaultYamlRequired, yaml_in);
   const preset = getPresetYaml(yaml.preset);
@@ -218,8 +217,6 @@ export function addPreParsingDefaults(
     preset,
     yaml
   );
-  rememberConfiguredAxes(yaml, explicitlyConfiguredAxes);
-
   yaml.entities = yaml.entities.map((entity) => {
     if (typeof entity === "string") entity = { entity };
     entity.entity ??= "";
@@ -228,6 +225,7 @@ export function addPreParsingDefaults(
       entity.entity = oldAPI_entity;
       entity.attribute = oldAPI_attribute;
     }
+    const entityFilters = entity.filters;
     entity = merge(
       {},
       entity,
@@ -236,9 +234,14 @@ export function addPreParsingDefaults(
       yaml.defaults?.entity,
       entity
     );
+    // Entity filters replace defaults.entity.filters instead of being merged by index
+    if (entityFilters !== undefined)
+      entity.filters = Array.isArray(entityFilters)
+        ? merge([], entityFilters)
+        : entityFilters;
     return entity;
   });
-  return yaml;
+  return { yaml, explicitlyConfiguredAxes };
 }
 
 export function addPostParsingDefaults(

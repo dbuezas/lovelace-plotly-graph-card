@@ -1,10 +1,9 @@
-import { EntityConfig, InputConfig } from "../types";
+import { EntityConfig } from "../types";
 
 const axisLayoutKey = /^[xy]axis(?:\d+)?$/;
 const axisReference = /^([xy])(\d+)?(?: domain)?$/;
 const subplotReference = /^(x\d*)(y\d*)$/;
 const axisLayoutPath = /^([xy]axis(?:\d+)?)(?:[.\[]|$)/;
-const configuredAxes = new WeakMap<InputConfig, Set<string>>();
 
 export function getCartesianLayoutAxes(
   layout: Partial<Plotly.Layout> | undefined,
@@ -12,19 +11,6 @@ export function getCartesianLayoutAxes(
   return new Set(
     Object.keys(layout || {}).filter((key) => axisLayoutKey.test(key)),
   );
-}
-
-export function rememberConfiguredAxes(
-  config: InputConfig,
-  axes: Iterable<string>,
-) {
-  configuredAxes.set(config, new Set(axes));
-}
-
-export function getRememberedConfiguredAxes(
-  config: InputConfig,
-): ReadonlySet<string> {
-  return configuredAxes.get(config) || new Set();
 }
 
 function collectAxisReferences(
