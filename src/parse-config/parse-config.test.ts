@@ -17,6 +17,9 @@ const cssVars: HATheme = {
   "primary-color": "#000",
   "primary-text-color": "#000",
   "secondary-text-color": "#000",
+  "font-family": "Roboto, Noto, sans-serif",
+  "font-size": "12px",
+  "font-weight": "400",
 };
 const compatibleEntities: InputConfig["entities"] = [
   {

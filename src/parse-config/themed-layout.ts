@@ -4,6 +4,10 @@ export type HATheme = {
   "primary-color": string;
   "primary-text-color": string;
   "secondary-text-color": string;
+  // Resolved from Home Assistant's typography CSS variables (see getCSSVars)
+  "font-family": string;
+  "font-size": string;
+  "font-weight": string;
 };
 
 const themeAxisStyle = {
@@ -21,7 +25,9 @@ export default function getThemedLayout(
     plot_bgcolor: haTheme["card-background-color"],
     font: {
       color: haTheme["secondary-text-color"],
-      size: 11,
+      family: haTheme["font-family"] || undefined,
+      size: parseFloat(haTheme["font-size"]) || 12,
+      weight: parseInt(haTheme["font-weight"]) || undefined,
     },
     xaxis: { ...themeAxisStyle },
     yaxis: { ...themeAxisStyle },

@@ -853,7 +853,7 @@ Remember you can add a `console.log(the_object_you_want_to_inspect)` and see its
 - `hass: HomeAssistant object;` For example: `hass.states["sensor.garden_temperature"].state` to get its current state
 - `vars: Record<string, any>;` You can communicate between functions with this. E.g `vars.temperatures = ys`
 - `path: string;` The path of the current function
-- `css_vars: HATheme;` The colors set by the active Home Assistant theme (see #ha_theme)
+- `css_vars: HATheme;` The colors and fonts set by the active Home Assistant theme (see #ha_theme)
 
 #### Only inside entities
 
@@ -974,13 +974,16 @@ Anything from https://plotly.com/javascript/reference/layout/.
 
 ### Home Assistant theming:
 
-Toggle Home Assistant theme colors:
+Toggle Home Assistant theme colors and fonts:
 
 - card-background-color
 - primary-background-color
 - primary-color
 - primary-text-color
 - secondary-text-color
+- font-family, font-size and font-weight (from Home Assistant's typography variables, e.g. `--ha-font-family-body`, `--ha-font-size-s`, `--ha-font-weight-normal`)
+
+Anything set in `layout.font` still takes precedence.
 
 ```yaml
 type: custom:plotly-graph
