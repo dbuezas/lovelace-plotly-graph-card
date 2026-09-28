@@ -218,6 +218,7 @@ export function addPreParsingDefaults(
       entity.entity = oldAPI_entity;
       entity.attribute = oldAPI_attribute;
     }
+    const entityFilters = entity.filters;
     entity = merge(
       {},
       entity,
@@ -226,6 +227,11 @@ export function addPreParsingDefaults(
       yaml.defaults?.entity,
       entity
     );
+    // Entity filters replace defaults.entity.filters instead of being merged by index
+    if (entityFilters !== undefined)
+      entity.filters = Array.isArray(entityFilters)
+        ? merge([], entityFilters)
+        : entityFilters;
     return entity;
   });
   return yaml;
