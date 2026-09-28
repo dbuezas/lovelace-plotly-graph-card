@@ -282,15 +282,13 @@ class ConfigParser {
     const entities = this.yaml_with_defaults?.entities;
     if (!entities) return;
 
+    let visible_range: [number, number];
     try {
-      for (const path of ["visible_range", "time_offset", "hours_to_show"]) {
-        this.fnParam.getFromConfig(path);
-      }
+      visible_range = this.getVisibleRange();
     } catch {
       return;
     }
 
-    const visible_range = this.getVisibleRange();
     const fetch_mask: boolean[] = this.fnParam.getFromConfig("fetch_mask") || [];
     const requests: {
       entity: EntityIdStatisticsConfig;

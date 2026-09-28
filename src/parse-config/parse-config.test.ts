@@ -285,6 +285,32 @@ describe("statistics request batching", () => {
     ).toBe(true);
   });
 
+  it("skips batching an invalid time range without a batching warning", async () => {
+    const callWS = successfulCallWS();
+    const warn = jest.spyOn(console, "warn").mockImplementation();
+    jest.spyOn(console, "error").mockImplementation();
+    const result = await new ConfigParser().update({
+      yaml: {
+        type: "custom:plotly-graph",
+        entities: compatibleEntities,
+        hours_to_show: "banana",
+      } as unknown as InputConfig,
+      hass: createHass(callWS),
+      css_vars: cssVars,
+    });
+    expect(callWS).not.toHaveBeenCalled();
+    expect(
+      result.errors.some((error) =>
+        error.message.includes("banana is not a valid duration"),
+      ),
+    ).toBe(true);
+    expect(
+      warn.mock.calls.some(([message]) =>
+        String(message).includes("Could not batch"),
+      ),
+    ).toBe(false);
+  });
+
   it("evaluates dynamic periods without adding them to the static batch", async () => {
     const callWS = successfulCallWS();
     const result = await update(new ConfigParser(), callWS, [
