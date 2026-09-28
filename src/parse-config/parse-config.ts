@@ -1,4 +1,4 @@
-import Cache from "../cache/Cache";
+import Cache, { getEntityKey } from "../cache/Cache";
 import { HATheme } from "./themed-layout";
 
 import propose from "propose";
@@ -10,9 +10,7 @@ import {
   isTimeDuration,
   parseRelativeTime,
   parseTimeDuration,
-  RelativeTimeStr,
   setDateFnDefaultOptions,
-  TimeDurationStr,
 } from "../duration/duration";
 import { parseStatistics } from "./parse-statistics";
 import { HomeAssistant } from "custom-card-helpers";
@@ -40,7 +38,7 @@ class ConfigParser {
   private busy = false;
   private fnParam!: FnParam;
   private observed_range: [number, number] = [Date.now(), Date.now()];
-  private failedStatisticsFetches = new Map<string, unknown>();
+  private failedFetches = new Map<string, unknown>();
   public resetObservedRange() {
     this.observed_range = [Date.now(), Date.now()];
   }
@@ -69,7 +67,7 @@ class ConfigParser {
   }): Promise<{ errors: Error[]; parsed: Config }> {
     this.yaml = {};
     this.errors = [];
-    this.failedStatisticsFetches.clear();
+    this.failedFetches.clear();
     this.hass = hass;
     this.yaml_with_defaults = addPreParsingDefaults(input_yaml, css_vars);
     setDateFnDefaultOptions(hass);
@@ -248,27 +246,20 @@ class ConfigParser {
   }
 
   private getVisibleRange(): [number, number] {
-    let visible_range = this.fnParam.getFromConfig("visible_range") as
-      [number, number] | undefined;
+    let visible_range: [number, number] | undefined =
+      this.fnParam.getFromConfig("visible_range");
     if (!visible_range) {
       let global_offset = parseTimeDuration(
-        this.fnParam.getFromConfig("time_offset") as TimeDurationStr
+        this.fnParam.getFromConfig("time_offset")
       );
-      const hours_to_show = this.fnParam.getFromConfig(
-        "hours_to_show"
-      ) as InputConfig["hours_to_show"];
+      const hours_to_show = this.fnParam.getFromConfig("hours_to_show");
       if (isRelativeTime(hours_to_show)) {
-        const [start, end] = parseRelativeTime(
-          hours_to_show as RelativeTimeStr
-        );
-        visible_range = [start + global_offset, end + global_offset] as [
-          number,
-          number,
-        ];
+        const [start, end] = parseRelativeTime(hours_to_show);
+        visible_range = [start + global_offset, end + global_offset];
       } else {
         let ms_to_show;
         if (isTimeDuration(hours_to_show)) {
-          ms_to_show = parseTimeDuration(hours_to_show as TimeDurationStr);
+          ms_to_show = parseTimeDuration(hours_to_show);
         } else if (typeof hours_to_show === "number") {
           ms_to_show = hours_to_show * 60 * 60 * 1000;
         } else {
@@ -280,7 +271,7 @@ class ConfigParser {
         visible_range = [
           now - ms_to_show + global_offset,
           now + global_offset,
-        ] as [number, number];
+        ];
       }
       this.yaml.visible_range = visible_range;
     }
@@ -291,19 +282,16 @@ class ConfigParser {
     const entities = this.yaml_with_defaults?.entities;
     if (!entities) return;
 
-    let rangeInputs;
     try {
-      rangeInputs = ["visible_range", "time_offset", "hours_to_show"].map(
-        (path) => this.fnParam.getFromConfig(path)
-      );
+      for (const path of ["visible_range", "time_offset", "hours_to_show"]) {
+        this.fnParam.getFromConfig(path);
+      }
     } catch {
       return;
     }
-    if (rangeInputs.some(is$fn)) return;
 
     const visible_range = this.getVisibleRange();
-    const fetch_mask =
-      (this.fnParam.getFromConfig("fetch_mask") as boolean[] | undefined) || [];
+    const fetch_mask: boolean[] = this.fnParam.getFromConfig("fetch_mask") || [];
     const requests: {
       entity: EntityIdStatisticsConfig;
       range: TimestampRange;
@@ -314,9 +302,7 @@ class ConfigParser {
         statistic,
         period,
         time_offset: timeOffset,
-      } = entity as typeof entity & {
-        time_offset?: TimeDurationStr | Function;
-      };
+      } = entity;
       if (
         fetch_mask[i] === false ||
         !entityId ||
@@ -332,7 +318,7 @@ class ConfigParser {
           period
         );
         if (!statisticsParams) return;
-        const offset = parseTimeDuration(timeOffset as TimeDurationStr);
+        const offset = parseTimeDuration(timeOffset);
         requests.push({
           entity: { entity: entityId, ...statisticsParams },
           range: [visible_range[0] - offset, visible_range[1] - offset],
@@ -350,52 +336,47 @@ class ConfigParser {
   private async fetchDataForEntity(path: string) {
     const visible_range = this.getVisibleRange();
     if (this.fnParam.getFromConfig("autorange_after_scroll")) {
-      this.observed_range = visible_range.slice() as [number, number];
+      this.observed_range = [...visible_range];
     }
     this.observed_range[0] = Math.min(this.observed_range[0], visible_range[0]);
     this.observed_range[1] = Math.max(this.observed_range[1], visible_range[1]);
     const statisticsParams = parseStatistics(
       visible_range,
-      this.fnParam.getFromConfig(path + ".statistic") as any,
-      this.fnParam.getFromConfig(path + ".period") as any
+      this.fnParam.getFromConfig(path + ".statistic"),
+      this.fnParam.getFromConfig(path + ".period")
     );
-    const attribute = this.fnParam.getFromConfig(path + ".attribute") as
-      string | undefined;
+    const attribute = this.fnParam.getFromConfig(path + ".attribute");
     const fetchConfig = {
-      entity: this.fnParam.getFromConfig(path + ".entity") as string,
+      entity: this.fnParam.getFromConfig(path + ".entity"),
       ...(statisticsParams ? statisticsParams : attribute ? { attribute } : {}),
     };
     const offset = parseTimeDuration(
-      this.fnParam.getFromConfig(path + ".time_offset") as TimeDurationStr
+      this.fnParam.getFromConfig(path + ".time_offset")
     );
 
     const range_to_fetch = [
       visible_range[0] - offset,
       visible_range[1] - offset,
     ];
-    const fetch_mask =
-      (this.fnParam.getFromConfig("fetch_mask") as boolean[] | undefined) || [];
+    const fetch_mask: boolean[] = this.fnParam.getFromConfig("fetch_mask") || [];
     const i = getEntityIndex(path);
     let data: EntityData;
     if (fetch_mask[i] === false) {
       data = this.cache.getData(fetchConfig);
     } else {
-      const requestKey = statisticsParams
-        ? JSON.stringify([
-            fetchConfig.entity,
-            statisticsParams.period,
-            ...range_to_fetch,
-          ])
-        : undefined;
+      const requestKey = JSON.stringify([
+        getEntityKey(fetchConfig),
+        ...range_to_fetch,
+      ]);
       // Several default functions can request the same entity during parsing.
       // Reuse failures within this update, but allow retries on the next update.
-      if (requestKey && this.failedStatisticsFetches.has(requestKey)) {
-        throw this.failedStatisticsFetches.get(requestKey);
+      if (this.failedFetches.has(requestKey)) {
+        throw this.failedFetches.get(requestKey);
       }
       try {
         data = await this.cache.fetch(range_to_fetch, fetchConfig, this.hass!);
       } catch (error) {
-        if (requestKey) this.failedStatisticsFetches.set(requestKey, error);
+        this.failedFetches.set(requestKey, error);
         throw error;
       }
     }

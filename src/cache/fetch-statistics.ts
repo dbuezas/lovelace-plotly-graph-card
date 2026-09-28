@@ -7,6 +7,11 @@ async function fetchStatistics(
   entities: EntityIdStatisticsConfig[],
   [start, end]: [Date, Date]
 ): Promise<Record<string, CachedStatisticsEntity[]>> {
+  if (entities.length === 0) return {};
+  const period = entities[0].period;
+  if (entities.some((entity) => entity.period !== period)) {
+    throw new Error("Cannot batch statistics with different periods");
+  }
   const entityIds = [...new Set(entities.map(({ entity }) => entity))];
   let statistics: Statistics = {};
   try {
@@ -15,7 +20,7 @@ async function fetchStatistics(
       start_time: start.toISOString(),
       end_time: end.toISOString(),
       statistic_ids: entityIds,
-      period: entities[0].period,
+      period,
     });
     statistics = await statsP;
   } catch (e: any) {

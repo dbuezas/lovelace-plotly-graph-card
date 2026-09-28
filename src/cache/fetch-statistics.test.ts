@@ -12,6 +12,24 @@ const entity = (id: string): EntityIdStatisticsConfig => ({
 });
 
 describe("fetchStatistics", () => {
+  it("rejects mixed periods before sending a request", async () => {
+    const callWS = jest.fn();
+    await expect(
+      fetchStatistics(
+        { callWS } as any,
+        [entity("sensor.one"), { ...entity("sensor.two"), period: "day" }],
+        range,
+      ),
+    ).rejects.toThrow("Cannot batch statistics with different periods");
+    expect(callWS).not.toHaveBeenCalled();
+  });
+
+  it("does not request all statistics for an empty list", async () => {
+    const callWS = jest.fn();
+    expect(await fetchStatistics({ callWS } as any, [], range)).toEqual({});
+    expect(callWS).not.toHaveBeenCalled();
+  });
+
   it("deduplicates ids and maps reordered or missing responses by id", async () => {
     const point = {
       start: +range[0],

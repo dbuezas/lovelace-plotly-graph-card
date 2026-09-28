@@ -44,7 +44,7 @@
     },
     "With$fn<Function>": {
       "properties": {
-        "__@hasInstance@8136": {
+        "__@hasInstance@8216": {
           "anyOf": [
             {
               "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
@@ -160,7 +160,7 @@
         }
       },
       "required": [
-        "__@hasInstance@8136",
+        "__@hasInstance@8216",
         "apply",
         "arguments",
         "bind",
@@ -175,7 +175,7 @@
     },
     "With$fn<Function>_1": {
       "properties": {
-        "__@hasInstance@8136": {
+        "__@hasInstance@8216": {
           "anyOf": [
             {
               "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
@@ -291,7 +291,7 @@
         }
       },
       "required": [
-        "__@hasInstance@8136",
+        "__@hasInstance@8216",
         "apply",
         "arguments",
         "bind",
@@ -537,6 +537,50 @@
                 "state",
                 "sum"
               ],
+              "type": "string"
+            }
+          ]
+        },
+        "time_offset": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9]*ms$",
+              "type": "string"
+            },
+            {
+              "pattern": "^[0-9]*s$",
+              "type": "string"
+            },
+            {
+              "pattern": "^[0-9]*m$",
+              "type": "string"
+            },
+            {
+              "pattern": "^[0-9]*h$",
+              "type": "string"
+            },
+            {
+              "pattern": "^[0-9]*d$",
+              "type": "string"
+            },
+            {
+              "pattern": "^[0-9]*w$",
+              "type": "string"
+            },
+            {
+              "pattern": "^[0-9]*M$",
+              "type": "string"
+            },
+            {
+              "pattern": "^[0-9]*y$",
+              "type": "string"
+            },
+            {
+              "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
+              "type": "string"
+            },
+            {
+              "const": "0",
               "type": "string"
             }
           ]

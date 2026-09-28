@@ -227,7 +227,7 @@ describe("statistics request batching", () => {
     const callWS = successfulCallWS();
     const result = await update(new ConfigParser(), callWS, [
       compatibleEntities[0],
-      { ...compatibleEntities[1], time_offset: "1h" } as any,
+      { ...compatibleEntities[1], time_offset: "1h" },
     ]);
     expect(result.errors).toEqual([]);
     expect(callWS).toHaveBeenCalledTimes(2);
@@ -246,6 +246,43 @@ describe("statistics request batching", () => {
     expect(result.errors).toEqual([]);
     expect(callWS).toHaveBeenCalledTimes(1);
     expect(callWS.mock.calls[0][0].period).toBe("5minute");
+  });
+
+  it("batches after a dynamic time range has been evaluated", async () => {
+    const callWS = successfulCallWS();
+    const result = await update(
+      new ConfigParser(),
+      callWS,
+      compatibleEntities,
+      {
+        hours_to_show: "$fn () => 12",
+      } as unknown as Partial<InputConfig>,
+    );
+    expect(result.errors).toEqual([]);
+    expect(callWS).toHaveBeenCalledTimes(1);
+    expect(Date.parse(callWS.mock.calls[0][0].start_time)).toBe(
+      NOW - 12 * 3600000 - 1,
+    );
+  });
+
+  it("does not prefetch an unevaluated dynamic time range", async () => {
+    const callWS = successfulCallWS();
+    jest.spyOn(console, "warn").mockImplementation();
+    const result = await new ConfigParser().update({
+      yaml: {
+        type: "custom:plotly-graph",
+        entities: compatibleEntities,
+        hours_to_show: "$fn () => 12",
+      } as unknown as InputConfig,
+      hass: createHass(callWS),
+      css_vars: cssVars,
+    });
+    expect(callWS).not.toHaveBeenCalled();
+    expect(
+      result.errors.some((error) =>
+        error.message.includes("has to be defined before"),
+      ),
+    ).toBe(true);
   });
 
   it("evaluates dynamic periods without adding them to the static batch", async () => {
@@ -283,5 +320,71 @@ describe("statistics request batching", () => {
     expect(recovered.errors).toEqual([]);
     expect(callWS).toHaveBeenCalledTimes(4);
     expect(recovered.parsed.entities.map(yValues)).toEqual([[1], [2]]);
+  });
+
+  it.each([undefined, "temperature"])(
+    "reuses history failures for attribute %s and retries on the next update",
+    async (attribute) => {
+      const callApi = jest.fn().mockRejectedValue(new Error("offline"));
+      const parser = new ConfigParser();
+      jest.spyOn(console, "error").mockImplementation();
+      jest.spyOn(console, "warn").mockImplementation();
+      const input = {
+        yaml: {
+          type: "custom:plotly-graph" as const,
+          hours_to_show: 24,
+          entities: [{ entity: "sensor.east", attribute }],
+        },
+        hass: { ...createHass(successfulCallWS()), callApi },
+        css_vars: cssVars,
+      };
+
+      const failed = await parser.update(input);
+      expect(failed.errors.length).toBeGreaterThan(0);
+      expect(callApi).toHaveBeenCalledTimes(1);
+
+      callApi.mockResolvedValue([
+        [
+          {
+            entity_id: "sensor.east",
+            state: "4",
+            attributes: { temperature: 8 },
+            last_changed: "2025-01-02T11:00:00.000Z",
+          },
+        ],
+      ]);
+      const recovered = await parser.update(input);
+      expect(recovered.errors).toEqual([]);
+      expect(callApi).toHaveBeenCalledTimes(2);
+      expect(yValues(recovered.parsed.entities[0])).toEqual(
+        attribute ? [8, 8] : ["4", "4"],
+      );
+    },
+  );
+
+  it("keeps failures separate for state, attribute, statistics and time ranges", async () => {
+    const callApi = jest.fn().mockRejectedValue(new Error("offline"));
+    const callWS = jest.fn().mockRejectedValue(new Error("offline"));
+    jest.spyOn(console, "error").mockImplementation();
+    jest.spyOn(console, "warn").mockImplementation();
+    await new ConfigParser().update({
+      yaml: {
+        type: "custom:plotly-graph",
+        hours_to_show: 24,
+        entities: [
+          { entity: "sensor.east" },
+          { entity: "sensor.east", attribute: "temperature" },
+          { entity: "sensor.east", statistic: "mean", period: "hour" },
+          { entity: "sensor.east", time_offset: "1h" },
+          { entity: "sensor.east" },
+          { entity: "sensor.east", attribute: "humidity" },
+        ],
+      },
+      hass: { ...createHass(callWS), callApi },
+      css_vars: cssVars,
+    });
+    // Attributes share one history response; states, statistics and offsets do not.
+    expect(callApi).toHaveBeenCalledTimes(3);
+    expect(callWS).toHaveBeenCalledTimes(1);
   });
 });
