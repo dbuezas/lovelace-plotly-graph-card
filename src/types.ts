@@ -20,6 +20,27 @@ export { HassEntity } from "home-assistant-js-websocket";
 
 export type YValue = number | string | null;
 
+export type InputEntityOptions = {
+  entity?: string;
+  name?: string;
+  attribute?: string;
+  statistic?: StatisticType;
+  period?: StatisticPeriod | "auto" | AutoPeriodConfig;
+  unit_of_measurement?: string;
+  internal?: boolean;
+  show_value?:
+    | boolean
+    | {
+        right_margin: number;
+      };
+  offset?: TimeDurationStr;
+  extend_to_present?: boolean;
+  filters?: FilterInput[];
+  on_legend_click?: Function;
+  on_legend_dblclick?: Function;
+  on_click?: Function;
+};
+
 export type InputConfig = {
   type: "custom:plotly-graph";
   /**
@@ -41,26 +62,7 @@ export type InputConfig = {
   color_scheme?: ColorSchemeNames | ColorSchemeArray | number;
   title?: string;
   offset?: TimeDurationStr;
-  entities: ({
-    entity?: string;
-    name?: string;
-    attribute?: string;
-    statistic?: StatisticType;
-    period?: StatisticPeriod | "auto" | AutoPeriodConfig;
-    unit_of_measurement?: string;
-    internal?: boolean;
-    show_value?:
-      | boolean
-      | {
-          right_margin: number;
-        };
-    offset?: TimeDurationStr;
-    extend_to_present?: boolean;
-    filters?: FilterInput[];
-    on_legend_click?: Function;
-    on_legend_dblclick?: Function;
-    on_click?: Function;
-  } & Partial<Plotly.Data>)[];
+  entities: (InputEntityOptions & Partial<Plotly.Data>)[];
   defaults?: {
     entity?: Partial<Plotly.Data>;
     xaxes?: Partial<Plotly.Layout["xaxis"]>;
