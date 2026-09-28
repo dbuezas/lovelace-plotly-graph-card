@@ -384,7 +384,26 @@ export class PlotlyGraph extends HTMLElement {
       "primary-text-color": "red",
       "secondary-text-color": "red",
     };
-    return mapValues(haTheme, (_, key) => styles.getPropertyValue("--" + key));
+    const cssVar = (...names: string[]) =>
+      names.map((name) => styles.getPropertyValue(name).trim()).find(Boolean);
+    return {
+      ...mapValues(haTheme, (_, key) => styles.getPropertyValue("--" + key)),
+      // Home Assistant typography: current frontend tokens first, then the
+      // legacy paper/mdc ones, then whatever the card inherits.
+      "font-family":
+        cssVar(
+          "--ha-font-family-body",
+          "--paper-font-body1_-_font-family",
+          "--mdc-typography-body1-font-family"
+        ) || styles.fontFamily,
+      "font-size": cssVar("--ha-font-size-s") || "12px",
+      "font-weight":
+        cssVar(
+          "--ha-font-weight-normal",
+          "--paper-font-body1_-_font-weight",
+          "--mdc-typography-body1-font-weight"
+        ) || "400",
+    };
   }
   fetchScheduled = false;
   plot = async (
