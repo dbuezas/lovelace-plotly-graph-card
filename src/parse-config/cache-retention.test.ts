@@ -75,6 +75,38 @@ describe("ConfigParser cache retention", () => {
     jest.useRealTimers();
   });
 
+  it("rejects concurrent updates until the pending history request completes", async () => {
+    const { callApi, update } = setup();
+    let complete!: (value: ReturnType<typeof state>[][]) => void;
+    let markStarted!: () => void;
+    const started = new Promise<void>((resolve) => {
+      markStarted = resolve;
+    });
+    callApi.mockImplementationOnce(() => {
+      markStarted();
+      return new Promise((resolve) => {
+        complete = resolve;
+      });
+    });
+
+    const pending = update();
+    await started;
+    await expect(update()).rejects.toThrow(
+      "ParseConfig was updated while busy",
+    );
+    expect(callApi).toHaveBeenCalledTimes(1);
+
+    complete([[state(Date.now(), "24")]]);
+    expect((await pending).errors).toEqual([]);
+    expect((await update()).errors).toEqual([]);
+  });
+
+  it("releases the update guard after a rejected update", async () => {
+    const { update } = setup();
+    await expect(update({}, [{ entity: 42 }])).rejects.toThrow();
+    expect((await update()).errors).toEqual([]);
+  });
+
   it.each([
     ["hours_to_show", {}],
     [

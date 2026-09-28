@@ -16,6 +16,35 @@ function state(timestamp: number): CachedStateEntity {
 }
 
 describe("Cache retention", () => {
+  it("reuses unchanged history while still trimming cached coverage", () => {
+    const cache = new Cache();
+    cache.add(entity, [0, 10, 20].map(state), [-100, 100]);
+    const history = cache.histories[key];
+
+    cache.retain({ [key]: [[1, 20]] });
+
+    expect(cache.histories[key]).toBe(history);
+    expect(cache.ranges[key]).toEqual([[1, 20]]);
+    cache.retain({ [key]: [[1, 20]] });
+    expect(cache.histories[key]).toBe(history);
+  });
+
+  it("does not reuse history when disjoint ranges leave a gap", () => {
+    const cache = new Cache();
+    cache.add(entity, [0, 10, 20, 30, 40].map(state), [0, 40]);
+    const history = cache.histories[key];
+
+    cache.retain({
+      [key]: [
+        [0, 10],
+        [30, 40],
+      ],
+    });
+
+    expect(cache.histories[key]).not.toBe(history);
+    expect(cache.getData(entity).xs.map(Number)).toEqual([0, 10, 30, 40]);
+  });
+
   it.each([
     [[-20, -10], []],
     [[10, 10], [10]],

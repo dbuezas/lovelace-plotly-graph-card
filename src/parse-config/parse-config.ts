@@ -19,7 +19,14 @@ import filters from "../filters/filters";
 import bounds from "binary-search-bounds";
 import { has } from "lodash";
 import { StatisticValue } from "../recorder-types";
-import { Config, EntityData, HassEntity, InputConfig, YValue } from "../types";
+import {
+  Config,
+  EntityData,
+  HassEntity,
+  InputConfig,
+  TimestampRange,
+  YValue,
+} from "../types";
 import getDeprecationError from "./deprecations";
 
 class ConfigParser {
@@ -32,7 +39,7 @@ class ConfigParser {
   private fnParam!: FnParam;
   private observed_range: [number, number] = [Date.now(), Date.now()];
   private preserveObservedRange = false;
-  private retainedCacheRanges: Record<string, [number, number][]> = {};
+  private retainedCacheRanges: Record<string, TimestampRange[]> = {};
   public resetObservedRange() {
     this.observed_range = [Date.now(), Date.now()];
   }
@@ -45,7 +52,7 @@ class ConfigParser {
     if (this.busy) throw new Error("ParseConfig was updated while busy");
     this.busy = true;
     try {
-      return this._update(input);
+      return await this._update(input);
     } finally {
       this.busy = false;
     }

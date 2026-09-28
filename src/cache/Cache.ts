@@ -135,6 +135,7 @@ function selectHistory(
     const firstAfterStart = upperBound(history, start);
     const first = Math.max(0, firstAfterStart - 1);
     const last = upperBound(history, end);
+    if (first === 0 && last === history.length) return history;
     for (let index = first; index < last; index++) {
       const state = history[index];
       const previous = selected[selected.length - 1];

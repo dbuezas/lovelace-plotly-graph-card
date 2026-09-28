@@ -516,11 +516,11 @@ try {
       await card.plot({ should_fetch: true });
       if (card.errorMsgEl.textContent)
         throw new Error(card.errorMsgEl.textContent);
-      const history = card.configParser.cache.histories[entity];
-      maxPoints = Math.max(maxPoints, history.length);
-      if (+history[0].x !== window.cacheNow - 60000)
-        throw new Error("Cache start did not advance");
-      if (card.contentEl.data[0].y.at(-1) !== String(window.cacheNow))
+      const trace = card.contentEl.data[0];
+      maxPoints = Math.max(maxPoints, trace.x.length);
+      if (+new Date(trace.x[0]) !== window.cacheNow - 60000)
+        throw new Error("Plotted range did not advance");
+      if (trace.y.at(-1) !== String(window.cacheNow))
         throw new Error("Latest sample missing");
     }
     return { maxPoints, plottedPoints: card.contentEl.data[0].y.length };
