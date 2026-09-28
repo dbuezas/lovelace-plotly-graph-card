@@ -1347,6 +1347,8 @@ The five additional trace types are also validated and rendered through the card
 Run `npm run test:card-lifecycle` to check initial rendering, recovery from
 render failures, event suppression, listener cleanup on reconnect, and mouse
 interactions with data points, legend toggles and the reset button.
+Run `npm run test:statistics` for statistics batching, cache reuse, period and
+time-offset separation, dynamic settings and fallback after failed requests.
 
 # Release
 
