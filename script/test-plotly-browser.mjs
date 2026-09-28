@@ -471,6 +471,50 @@ try {
     return card.contentEl._fullLayout.width <= 320;
   });
   results.results.push("Lovelace card with mock HA state");
+  const themeColors = await page.evaluate(async () => {
+    const card = document.getElementById("card-under-test");
+    document.documentElement.style.setProperty("--blue-color", "#123456");
+    card.style.setProperty("--red-color", "#654321");
+    const config = {
+      type: "custom:plotly-graph",
+      refresh_interval: 0,
+      entities: [
+        {
+          entity: "",
+          x: [1, 2],
+          y: [1, 2],
+          line: { color: "$ex css_vars['blue-color']" },
+        },
+        {
+          entity: "",
+          x: [1, 2],
+          y: [2, 3],
+          line: { color: "$fn ({ css_vars }) => css_vars['red-color']" },
+        },
+      ],
+    };
+    await card.setConfig(config);
+    await card.plot({ should_fetch: false });
+    const initial = card.contentEl._fullData.map((trace) => trace.line.color);
+    document.documentElement.style.setProperty("--blue-color", "#abcdef");
+    card.style.setProperty("--red-color", "#fedcba");
+    await card.plot({ should_fetch: false });
+    const changed = card.contentEl._fullData.map((trace) => trace.line.color);
+    await card.setConfig({ ...config, ha_theme: false });
+    await card.plot({ should_fetch: false });
+    const noTheme = card.contentEl._fullData.map((trace) => trace.line.color);
+    document.documentElement.style.removeProperty("--blue-color");
+    card.style.removeProperty("--red-color");
+    return { initial, changed, noTheme, error: card.errorMsgEl.textContent };
+  });
+  assert.equal(themeColors.error, "");
+  assert.deepEqual(themeColors.initial, ["#123456", "#654321"]);
+  assert.deepEqual(themeColors.changed, ["#abcdef", "#fedcba"]);
+  assert.deepEqual(themeColors.noTheme, ["#abcdef", "#fedcba"]);
+  results.results.push(
+    "theme colors resolve through $ex/$fn and update on render",
+  );
+  results.results.push("theme colors remain available with ha_theme disabled");
   const modernCardResults = await page.evaluate(async () => {
     const card = document.getElementById("card-under-test");
     const rendered = [];
