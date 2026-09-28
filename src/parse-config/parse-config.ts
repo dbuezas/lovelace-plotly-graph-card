@@ -368,7 +368,6 @@ class ConfigParser {
         getEntityKey(fetchConfig),
         ...range_to_fetch,
       ]);
-      // Several default functions can request the same entity during parsing.
       // Reuse failures within this update, but allow retries on the next update.
       if (this.failedFetches.has(requestKey)) {
         throw this.failedFetches.get(requestKey);
