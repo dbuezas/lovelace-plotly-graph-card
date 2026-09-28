@@ -18,7 +18,6 @@ import { parseISO } from "date-fns";
 import { TouchController } from "./touch-controller";
 import { ConfigParser } from "./parse-config/parse-config";
 import { merge } from "lodash";
-import { CardSize, getResizeLayoutUpdate, hasDynamicSizeConfig } from "./card-size";
 
 const componentName = isProduction ? "plotly-graph" : "plotly-graph-dev";
 
@@ -39,10 +38,7 @@ export class PlotlyGraph extends HTMLElement {
   titleEl: HTMLElement;
   config!: InputConfig;
   parsed_config!: Config;
-  size: CardSize = {};
-  private renderedSize: CardSize = {};
-  private dynamicSizeConfig = false;
-  private plotQueue: Promise<void> = Promise.resolve();
+  size: { width?: number; height?: number } = {};
   _hass?: HomeAssistant;
   isBrowsing = false;
   isInternalRelayout = 0;
@@ -151,7 +147,7 @@ export class PlotlyGraph extends HTMLElement {
       this.contentEl.style.position = "absolute";
       const height = this.cardEl.offsetHeight;
       this.contentEl.style.position = "";
-      const nextSize: CardSize = { width };
+      const nextSize: { width: number; height?: number } = { width };
       if (height > 100) {
         // Panel view type has the cards covering 100% of the height of the window.
         // Masonry lets the cards grow by themselves.
@@ -159,8 +155,12 @@ export class PlotlyGraph extends HTMLElement {
         // else ==> Mansonry ==> let the height be determined by defaults
         nextSize.height = height - this.titleEl.offsetHeight;
       }
+      if (
+        this.size.width === nextSize.width &&
+        this.size.height === nextSize.height
+      ) return;
       this.size = nextSize;
-      this.resizePlot();
+      this.plot({ should_fetch: false });
     };
     this.handles.resizeObserver = new ResizeObserver(updateCardSize);
     this.handles.resizeObserver.observe(this.cardEl);
@@ -274,38 +274,6 @@ export class PlotlyGraph extends HTMLElement {
     }
   }
 
-  private withPlotQueue(action: () => Promise<void>) {
-    // A resize must not race with an in-flight config/history update.
-    const result = this.plotQueue.catch(() => {}).then(action);
-    this.plotQueue = result;
-    return result;
-  }
-
-  private resizePlot = debounce(() =>
-    this.withPlotQueue(async () => {
-      if (
-        !this.isConnected || this.pausedRendering || !this.parsed_config ||
-        this.cardEl.offsetWidth <= 0
-      ) return;
-      const size = { ...this.size };
-      const changed = getResizeLayoutUpdate(this.renderedSize, size);
-      if (changed !== null && !Object.keys(changed).length) return;
-
-      const update = getResizeLayoutUpdate(
-        this.renderedSize, size, this.config.layout
-      );
-      if (update === null || this.dynamicSizeConfig) {
-        await this.renderPlot(false);
-      } else {
-        // Plots.resize is a no-op when both dimensions are set by the card.
-        if (Object.keys(update).length) {
-          await this.withoutRelayout(() => Plotly.relayout(this.contentEl, update));
-        }
-        this.renderedSize = size;
-      }
-    })
-  );
-
   getVisibleRange() {
     // TODO: if the x axis is not there, or is not time, don't fetch & replot
     return this.contentEl.layout.xaxis?.range?.map((date) => {
@@ -393,7 +361,6 @@ export class PlotlyGraph extends HTMLElement {
   async setConfig(config: InputConfig) {
     const was = this.config;
     this.config = config;
-    this.dynamicSizeConfig = hasDynamicSizeConfig(config);
     const is = this.config;
     this.touchController.isEnabled = !is.disable_pinch_to_zoom;
     this.exitBrowsingMode();
@@ -417,15 +384,10 @@ export class PlotlyGraph extends HTMLElement {
     if (should_fetch) this.fetchScheduled = true;
     await this._plot(delay);
   };
-  _plot = debounce(() =>
-    this.withPlotQueue(async () => {
-      if (this.pausedRendering) return;
-      const should_fetch = this.fetchScheduled;
-      this.fetchScheduled = false;
-      await this.renderPlot(should_fetch);
-    })
-  );
-  private async renderPlot(should_fetch: boolean) {
+  _plot = debounce(async () => {
+    if (this.pausedRendering) return;
+    const should_fetch = this.fetchScheduled;
+    this.fetchScheduled = false;
     let i = 0;
     while (!(this.config && this.hass && this.isConnected)) {
       if (i++ > 50) throw new Error("Card didn't load");
@@ -438,13 +400,12 @@ export class PlotlyGraph extends HTMLElement {
     const uirevision = this.isBrowsing
       ? this.contentEl.layout?.uirevision || 0
       : Math.random();
-    const renderSize = { ...this.size };
     const yaml = merge(
       {},
       this.config,
       {
         layout: {
-          ...renderSize,
+          ...this.size,
           ...{ uirevision },
         },
         fetch_mask,
@@ -498,9 +459,7 @@ export class PlotlyGraph extends HTMLElement {
       "plotly_click",
       this.onDataClick
     )!;
-    this.renderedSize = renderSize;
-    this.resizePlot();
-  }
+  });
   // The height of your card. Home Assistant uses this to automatically
   // distribute all cards over the available columns.
   getCardSize() {

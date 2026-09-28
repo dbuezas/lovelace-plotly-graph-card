@@ -49,7 +49,6 @@ try {
           throw new Error(
             `Timed out after ${results.at(-1)}: ${JSON.stringify({
               measured: card.size,
-              rendered: card.renderedSize,
               width: card.contentEl._fullLayout?.width,
               height: card.contentEl._fullLayout?.height,
               error: card.errorMsgEl.textContent,
@@ -130,26 +129,27 @@ try {
     let card = create();
     await ready(card);
     let before = { ...counts };
-    const data = card.contentEl.data;
     await resize(card, 620);
     check(
-      counts.parse === before.parse && counts.react === before.react,
-      "Resize rebuilt the chart",
+      counts.parse > before.parse && counts.react > before.react,
+      "Resize did not follow the normal render path",
     );
     check(
-      counts.relayout > before.relayout && card.contentEl.data === data,
-      "Resize did not use relayout",
+      counts.relayout === before.relayout,
+      "Resize used a separate relayout path",
     );
     check(
       !card.isBrowsing && card.isInternalRelayout === 0,
       "Internal resize entered browsing mode",
     );
     results.push(
-      "width-only relayout without config parsing or trace rebuilding",
+      "width changes reparse config and render through the normal path",
     );
 
     before = { ...counts };
-    card.style.width = "620px";
+    // A reconnect triggers the initial ResizeObserver notification at the same size.
+    card.handles.resizeObserver.unobserve(card.cardEl);
+    card.handles.resizeObserver.observe(card.cardEl);
     await settle();
     check(
       JSON.stringify(counts) === JSON.stringify(before),
@@ -186,8 +186,8 @@ try {
       "Resize lost zoom",
     );
     check(
-      counts.parse === before.parse && counts.react === before.react,
-      "Zoomed resize rebuilt chart",
+      counts.parse > before.parse && counts.react > before.react,
+      "Zoomed resize skipped config parsing",
     );
     results.push("browsing range survives resize");
 
@@ -213,8 +213,8 @@ try {
       "Explicit height overwritten",
     );
     check(
-      JSON.stringify(counts) === JSON.stringify(before),
-      "Explicit sizes caused resize work",
+      counts.parse > before.parse && counts.react > before.react,
+      "Explicit sizes skipped normal rendering",
     );
     results.push("explicit width and height are preserved");
     card.remove();
@@ -240,10 +240,10 @@ try {
     );
     await settle();
     check(
-      counts.parse === before.parse && counts.react === before.react,
-      "Panel resize rebuilt chart",
+      counts.parse > before.parse && counts.react > before.react,
+      "Panel resize skipped config parsing",
     );
-    results.push("panel height uses relayout");
+    results.push("panel height uses the normal render path");
     card.style.height = "auto";
     card.style.width = "500px";
     await wait(() => card.contentEl._fullLayout.height === 285);
@@ -269,6 +269,19 @@ try {
     );
     results.push("dimension-dependent expressions are reevaluated");
     card.remove();
+
+    window.PlotlyGraphCardPresets = {
+      responsive: { layout: { height: "$ex get('layout.width') / 2" } },
+    };
+    card = create();
+    card.setConfig({ ...config(), preset: "responsive" });
+    await ready(card);
+    await resize(card, 640);
+    check(card.contentEl._fullLayout.height === 320,
+      "Preset height was not reevaluated");
+    results.push("preset expressions are reevaluated on resize");
+    card.remove();
+    delete window.PlotlyGraphCardPresets;
 
     card = create();
     let release;
@@ -337,7 +350,7 @@ try {
     before = { ...counts };
     await resize(card, 610);
     check(
-      counts.fetch === before.fetch && counts.parse === before.parse,
+      counts.fetch === before.fetch && counts.parse > before.parse,
       "History entity was reloaded on resize",
     );
     results.push("history-backed chart resizes without new HA requests");
@@ -351,9 +364,9 @@ try {
     await resize(card, 680);
     check(
       counts.fetch === before.fetch && counts.parse > before.parse,
-      "Dynamic fallback refetched history",
+      "Dynamic resize refetched history",
     );
-    results.push("dynamic fallback reuses cached history");
+    results.push("dynamic resizing reuses cached history");
     card.remove();
     return results;
   });
