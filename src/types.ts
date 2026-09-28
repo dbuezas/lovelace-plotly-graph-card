@@ -34,6 +34,7 @@ export type InputEntityOptions = {
         right_margin: number;
       };
   offset?: TimeDurationStr;
+  time_offset?: TimeDurationStr;
   extend_to_present?: boolean;
   filters?: FilterInput[];
   on_legend_click?: Function;

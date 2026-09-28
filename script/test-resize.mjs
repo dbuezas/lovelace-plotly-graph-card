@@ -83,9 +83,9 @@ try {
         { entity: "", x: [Date.now() - 3600000, Date.now()], y: [1, 2] },
       ],
     });
-    const create = (layout, panelHeight) => {
+    const create = (layout, panelHeight, host = document.body) => {
       const card = new PlotlyGraph();
-      card.style.cssText = `display:block;width:480px;${panelHeight ? `height:${panelHeight}px;` : ""}
+      card.style.cssText = `display:block;min-width:0;width:${host === document.body ? "480px" : "100%"};${panelHeight ? `height:${panelHeight}px;` : ""}
         --card-background-color:white;--primary-background-color:white;
         --primary-color:blue;--primary-text-color:black;--secondary-text-color:gray`;
       card.hass = {
@@ -108,7 +108,7 @@ try {
         return update(...args);
       };
       card.setConfig(config(layout));
-      document.body.append(card);
+      host.append(card);
       return card;
     };
     const ready = async (card) => {
@@ -367,6 +367,46 @@ try {
       "Dynamic resize refetched history",
     );
     results.push("dynamic resizing reuses cached history");
+    card.remove();
+
+    for (const fixture of [
+      { name: "masonry-like columns", style: "columns:2;column-gap:16px" },
+      { name: "sidebar-like grid", style: "display:grid;grid-template-columns:2fr 1fr;gap:16px" },
+      { name: "sections-like grid", style: "display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px" },
+      { name: "panel-like container", style: "height:500px" },
+    ]) {
+      const host = document.createElement("div");
+      host.style.cssText = `width:800px;${fixture.style}`;
+      document.body.append(host);
+      card = create({}, undefined, host);
+      if (fixture.name === "panel-like container") card.style.height = "100%";
+      await ready(card);
+      const originalWidth = card.contentEl._fullLayout.width;
+      before = { ...counts };
+      host.style.width = "640px";
+      await wait(() =>
+        card.contentEl._fullLayout.width === card.cardEl.offsetWidth &&
+        card.contentEl._fullLayout.width < originalWidth,
+      );
+      await settle();
+      check(counts.parse > before.parse && counts.react > before.react,
+        `${fixture.name}: resize did not use the normal render path`);
+      check(counts.fetch === before.fetch,
+        `${fixture.name}: resize fetched history`);
+      results.push(`${fixture.name} tracks its available width`);
+      host.remove();
+    }
+
+    card = create();
+    await ready(card);
+    const originalWidth = card.contentEl._fullLayout.width;
+    card.remove();
+    document.body.append(card);
+    await settle();
+    check(card.contentEl._fullLayout.width === originalWidth,
+      "Reconnect changed the rendered width");
+    await resize(card, 530);
+    results.push("reconnecting at the same size keeps resize observation working");
     card.remove();
     return results;
   });
