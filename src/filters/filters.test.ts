@@ -140,3 +140,35 @@ describe("filters", () => {
     });
   });
 });
+
+describe("resample", () => {
+  const t0 = +new Date("2022-12-20T18:00:00.000Z");
+  const input = (ys: (number | null)[]) => ({
+    ...data,
+    xs: [0, 10, 20].map((s) => new Date(t0 + s * 1000)),
+    ys,
+  });
+  const at = (...s: number[]) => s.map((s) => new Date(t0 + s * 1000));
+  it("holds the last value by default", () => {
+    const result = filters.resample("5s")(input([0, 10, 40]));
+    expect(result.xs).toEqual(at(0, 5, 10, 15));
+    expect(result.ys).toEqual([0, 0, 10, 10]);
+  });
+  it("accepts an object without interpolate", () => {
+    const result = filters.resample({ interval: "5s" })(input([0, 10, 40]));
+    expect(result.ys).toEqual([0, 0, 10, 10]);
+  });
+  it("interpolates linearly between neighbours", () => {
+    const result = filters.resample({ interval: "5s", interpolate: true })(
+      input([0, 10, 40]),
+    );
+    expect(result.xs).toEqual(at(0, 5, 10, 15));
+    expect(result.ys).toEqual([0, 5, 10, 25]);
+  });
+  it("holds the last value next to non-numeric values", () => {
+    const result = filters.resample({ interval: "5s", interpolate: true })(
+      input([0, null, 40]),
+    );
+    expect(result.ys).toEqual([0, 0, null, null]);
+  });
+});

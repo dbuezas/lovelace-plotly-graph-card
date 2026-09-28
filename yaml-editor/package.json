@@ -5,10 +5,9 @@
   "type": "module",
   "scripts": {
     "start": "npm run schema && webpack serve --open --mode development",
-    "build": "npm run schema &&rm -rf dist && webpack --mode production",
-    "schema-1": "cd .. && typescript-json-schema --required tsconfig.json JsonSchemaRoot > yaml-editor/src/schema.json",
-    "schema-2": "node patch-schema.js",
-    "schema": "npm run schema-1 && npm run schema-2",
+    "build": "npm run schema && rm -rf dist && webpack --mode production",
+    "schema": "node generate-schema.js",
+    "test": "node --test plotly-schema.test.js",
     "deploy": "pnpm run build && gh-pages -d dist"
   },
   "dependencies": {
@@ -27,6 +26,7 @@
     "webpack-dev-server": "^5.0.0"
   },
   "devDependencies": {
+    "ajv": "^8.17.1",
     "gh-pages": "^6.2.0"
   }
 }
