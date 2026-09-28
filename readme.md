@@ -1370,6 +1370,8 @@ render failures, event suppression, listener cleanup on reconnect, and mouse
 interactions with data points, legend toggles and the reset button.
 Run `npm run test:statistics` for statistics batching, cache reuse, period and
 time-offset separation, dynamic settings and fallback after failed requests.
+Run `npm run test:cache` for rolling-window retention, boundary values,
+time offsets, browsing, refetching pruned history and in-flight live updates.
 
 # Release
 

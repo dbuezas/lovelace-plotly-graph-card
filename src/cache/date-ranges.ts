@@ -1,4 +1,3 @@
-import { json } from "stream/consumers";
 import { TimestampRange } from "../types";
 
 const subtract_single_single = (
@@ -45,7 +44,10 @@ export const compactRanges = (ranges: TimestampRange[]) =>
       if (acc.length === 0) return [next];
       const prev = acc[acc.length - 1];
       if (prev[1] + 1 >= next[0]) {
-        const merged: TimestampRange = [prev[0], next[1]];
+        const merged: TimestampRange = [
+          prev[0],
+          Math.max(prev[1], next[1]),
+        ];
         return [...acc.slice(0, -1), merged];
       }
       return [...acc, next];

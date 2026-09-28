@@ -120,6 +120,54 @@ export function getEntityKey(entity: FetchConfig) {
 }
 
 const MIN_SAFE_TIMESTAMP = Date.parse("0001-01-02T00:00:00.000Z");
+
+function upperBound(history: CachedEntity[], timestamp: number) {
+  let low = 0;
+  let high = history.length;
+  while (low < high) {
+    const middle = Math.floor((low + high) / 2);
+    if (+history[middle].x <= timestamp) low = middle + 1;
+    else high = middle;
+  }
+  return low;
+}
+
+function selectHistory(
+  history: CachedEntity[],
+  ranges: TimestampRange[]
+): CachedEntity[] {
+  const selected: CachedEntity[] = [];
+  for (const [start, end] of compactRanges(ranges)) {
+    // Keep the latest point at or before the range so the trace reaches the
+    // left edge even when no state changed there.
+    const firstAfterStart = upperBound(history, start);
+    const first = Math.max(0, firstAfterStart - 1);
+    const last = upperBound(history, end);
+    if (first === 0 && last === history.length) return history;
+    for (let index = first; index < last; index++) {
+      const state = history[index];
+      const previous = selected[selected.length - 1];
+      if (!previous || +previous.x !== +state.x) selected.push(state);
+    }
+  }
+  return selected;
+}
+
+function intersectRanges(
+  cachedRanges: TimestampRange[],
+  retainedRanges: TimestampRange[]
+) {
+  return compactRanges(
+    cachedRanges.flatMap(([cachedStart, cachedEnd]) =>
+      retainedRanges.flatMap(([retainedStart, retainedEnd]) => {
+        const start = Math.max(cachedStart, retainedStart);
+        const end = Math.min(cachedEnd, retainedEnd);
+        return start <= end ? [[start, end]] : [];
+      })
+    )
+  );
+}
+
 export default class Cache {
   ranges: Record<string, TimestampRange[]> = {};
   histories: Record<string, CachedEntity[]> = {};
@@ -151,9 +199,12 @@ export default class Cache {
     this.histories = {};
   }
 
-  getData(entity: FetchConfig): EntityData {
+  getData(entity: FetchConfig, ranges?: TimestampRange[]): EntityData {
     let key = getEntityKey(entity);
-    const history = this.histories[key] || [];
+    const cachedHistory = this.histories[key] || [];
+    const history = ranges
+      ? selectHistory(cachedHistory, ranges)
+      : cachedHistory;
     const data: EntityData = {
       xs: [],
       ys: [],
@@ -182,6 +233,23 @@ export default class Cache {
       y === "unavailable" || y === "none" || y === "unknown" ? null : y
     );
     return data;
+  }
+
+  retain(retainedRanges: Record<string, TimestampRange[]>) {
+    const keys = new Set([
+      ...Object.keys(this.histories),
+      ...Object.keys(this.ranges),
+    ]);
+    for (const key of keys) {
+      const ranges = compactRanges(retainedRanges[key] || []);
+      if (ranges.length === 0) {
+        delete this.histories[key];
+        delete this.ranges[key];
+        continue;
+      }
+      this.histories[key] = selectHistory(this.histories[key] || [], ranges);
+      this.ranges[key] = intersectRanges(this.ranges[key] || [], ranges);
+    }
   }
 
   async prefetchStatistics(
@@ -241,7 +309,12 @@ export default class Cache {
     });
   }
 
-  async fetch(range: TimestampRange, entity: FetchConfig, hass: HomeAssistant) {
+  async fetch(
+    range: TimestampRange,
+    entity: FetchConfig,
+    hass: HomeAssistant,
+    dataRanges: TimestampRange[] = [range]
+  ) {
     return this.enqueue(async () => {
       range = range.map((n) => Math.max(MIN_SAFE_TIMESTAMP, n)); // HA API can't handle negative years
       if (entity.entity) {
@@ -253,7 +326,7 @@ export default class Cache {
           this.add(entity, fetchedHistory.history, fetchedHistory.range);
         }
       }
-      return this.getData(entity);
+      return this.getData(entity, dataRanges);
     });
   }
 }
