@@ -1373,6 +1373,8 @@ time-offset separation, dynamic settings and fallback after failed requests.
 Run `npm run test:resize` for unchanged and hidden sizes, fixed and dynamic
 dimensions, zoom, reconnects and resizing during loading. These browser tests
 include layout-like containers; they do not run Home Assistant's view components.
+Run `npm run test:cache` for rolling-window retention, boundary values,
+time offsets, browsing, refetching pruned history and in-flight live updates.
 
 # Release
 

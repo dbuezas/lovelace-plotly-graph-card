@@ -3,6 +3,7 @@ import { Statistics, StatisticValue } from "../recorder-types";
 import { EntityConfig, InputConfig } from "../types";
 import { ConfigParser } from "./parse-config";
 import { HATheme } from "./themed-layout";
+import { getEntityKey } from "../cache/Cache";
 
 jest.mock("../filters/filters", () => ({
   __esModule: true,
@@ -76,7 +77,7 @@ function update(
   parser: ConfigParser,
   callWS: jest.Mock<Promise<Statistics>, [Record<string, any>]>,
   entities = compatibleEntities,
-  config: Partial<InputConfig> = {},
+  config: Partial<InputConfig> & { visible_range?: [number, number] } = {},
 ) {
   return parser.update({
     yaml: {
@@ -120,6 +121,67 @@ describe("statistics request batching", () => {
 
     await update(parser, callWS);
     expect(callWS).toHaveBeenCalledTimes(1);
+  });
+
+  it("bounds batched statistics and refetches pruned data when browsing back", async () => {
+    const hour = 3600000;
+    const samples = Array.from({ length: 40 }, (_, i) => ({
+      timestamp: NOW + (i - 24) * hour,
+      value: i,
+    }));
+    const callWS = jest.fn(async ({ statistic_ids, start_time, end_time }) =>
+      Object.fromEntries(
+        statistic_ids.map((id: string) => [
+          id,
+          samples
+            .filter(({ timestamp }) =>
+              timestamp >= Date.parse(start_time) &&
+              timestamp <= Date.parse(end_time),
+            )
+            .map(({ timestamp, value }) => ({
+              ...statistic(id, value),
+              start: new Date(timestamp).toISOString(),
+              end: new Date(timestamp + hour).toISOString(),
+            })),
+        ]),
+      ),
+    );
+    const parser = new ConfigParser();
+
+    for (let elapsed = 0; elapsed <= 6; elapsed++) {
+      const now = NOW + elapsed * hour;
+      jest.mocked(Date.now).mockReturnValue(now);
+      const result = await update(parser, callWS, compatibleEntities, {
+        hours_to_show: 3,
+      });
+      expect(result.errors).toEqual([]);
+      expect(callWS).toHaveBeenCalledTimes(elapsed + 1);
+      expect(callWS.mock.calls[elapsed][0].statistic_ids).toEqual([
+        "sensor.east", "sensor.west",
+      ]);
+      const expected = [21, 22, 23, 24].map((value) => value + elapsed);
+      expect(result.parsed.entities.map(yValues)).toEqual([expected, expected]);
+      for (const entity of ["sensor.east", "sensor.west"]) {
+        const key = getEntityKey({
+          entity,
+          statistic: "mean",
+          period: "5minute",
+        });
+        expect(parser.cache.histories[key]).toHaveLength(4);
+        expect(parser.cache.ranges[key]).toEqual([[now - 3 * hour, now]]);
+      }
+    }
+
+    const result = await update(parser, callWS, compatibleEntities, {
+      visible_range: [NOW - 3 * hour, NOW],
+    });
+    expect(result.errors).toEqual([]);
+    expect(callWS).toHaveBeenCalledTimes(8);
+    expect(callWS.mock.calls[7][0].statistic_ids).toEqual([
+      "sensor.east", "sensor.west",
+    ]);
+    expect(result.parsed.entities.map((trace) => yValues(trace)?.slice(0, 4)))
+      .toEqual([[21, 22, 23, 24], [21, 22, 23, 24]]);
   });
 
   it("keeps incompatible statistics periods in separate requests", async () => {
