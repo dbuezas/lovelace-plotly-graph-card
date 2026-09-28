@@ -1345,7 +1345,8 @@ The browser test covers every registered trace type, tank shapes and labels,
 axis defaults, cloud-upload opt-in, and a card with a mock Home Assistant state.
 The five additional trace types are also validated and rendered through the card.
 Run `npm run test:card-lifecycle` to check initial rendering, recovery from
-render failures, event suppression, and listener cleanup on reconnect.
+render failures, event suppression, listener cleanup on reconnect, and mouse
+interactions with data points, legend toggles and the reset button.
 
 # Release
 

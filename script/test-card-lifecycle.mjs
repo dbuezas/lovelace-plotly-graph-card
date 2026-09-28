@@ -21,6 +21,8 @@ const bundle = await build({
 const browser = await chromium.launch();
 try {
   const page = await browser.newPage();
+  page.setDefaultTimeout(5000);
+  page.setDefaultNavigationTimeout(5000);
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.setContent("<!doctype html><body></body>");
@@ -59,6 +61,31 @@ try {
       },
     );
     const card = new PlotlyGraph();
+    const noop = () => {};
+    const handlerEvents = [
+      ["plotly_relayout", "onRelayout", {}],
+      ["plotly_restyle", "onRestyle", {}],
+      ["plotly_legendclick", "onLegendItemClick", { curveNumber: 0 }],
+      [
+        "plotly_legenddoubleclick",
+        "onLegendItemDoubleclick",
+        { curveNumber: 0 },
+      ],
+      ["plotly_click", "onDataClick", { points: [{ curveNumber: 0 }] }],
+      ["plotly_doubleclick", "onDoubleclick", undefined],
+      ["plotly_clickannotation", "onAnnotationClick", { annotation: {} }],
+      ["plotly_buttonclicked", "onButtonClick", { button: { _input: {} } }],
+    ];
+    // Install counters before the card registers its handlers.
+    const handlerCalls = {};
+    for (const [, name] of handlerEvents) {
+      const original = card[name];
+      handlerCalls[name] = 0;
+      card[name] = (...args) => {
+        handlerCalls[name]++;
+        return original(...args);
+      };
+    }
     check(
       emptyPlots === 0 && card.contentEl.data === undefined,
       "Constructor created an empty plot",
@@ -104,7 +131,17 @@ try {
     card.hass = { states: {}, locale: { language: "en" } };
     await card.setConfig({ type: "custom:plotly-graph", entities: [] });
     const parsed = {
-      entities: [{ type: "scatter", x: [1, 2], y: [10, 20] }],
+      entities: [
+        {
+          type: "scatter",
+          x: [1, 2],
+          y: [10, 20],
+          on_click: noop,
+          on_legend_click: noop,
+          on_legend_dblclick: noop,
+        },
+      ],
+      on_dblclick: noop,
       layout: { width: 480, height: 285 },
       config: { showSendToCloud: false },
       refresh_interval: 0,
@@ -135,26 +172,17 @@ try {
       title: "Corrected",
     });
     await card._plot();
-    const listeners = [
-      ["plotly_relayout", card.onRelayout],
-      ["plotly_restyle", card.onRestyle],
-      ["plotly_legendclick", card.onLegendItemClick],
-      ["plotly_legenddoubleclick", card.onLegendItemDoubleclick],
-      ["plotly_click", card.onDataClick],
-      ["plotly_doubleclick", card.onDoubleclick],
-      ["plotly_clickannotation", card.onAnnotationClick],
-      ["plotly_buttonclicked", card.onButtonClick],
-    ];
     const checkListeners = (count) => {
-      for (const [event, callback] of listeners) {
-        const actual = card.contentEl._ev
-          .listeners(event)
-          .filter((listener) => listener === callback).length;
+      for (const [event, name, payload] of handlerEvents) {
+        const before = handlerCalls[name];
+        card.contentEl.emit(event, payload);
+        const actual = handlerCalls[name] - before;
         check(
           actual === count,
           `${event}: expected ${count} card listener(s), got ${actual}`,
         );
       }
+      card.isBrowsing = false;
     };
     check(
       card.isInternalRelayout === 0 && card.plotlyListenersConnected,
@@ -237,6 +265,143 @@ try {
     Plotly.purge(card.contentEl);
     Plotly.newPlot = realNewPlot;
     return results;
+  });
+  await page.evaluate(async () => {
+    const { PlotlyGraph } = LifecycleTest;
+    const log = {
+      plots: [],
+      dataClicks: [],
+      legendClicks: [],
+      legendResult: undefined,
+      rangeResets: 0,
+    };
+    const card = new PlotlyGraph();
+    card.id = "interaction-card";
+    window.interaction = { card, log };
+    card.plot = async (options) => {
+      log.plots.push(options);
+    };
+    card.hass = { states: {}, locale: { language: "en" } };
+    await card.setConfig({ type: "custom:plotly-graph", entities: [] });
+    const entity = (name, y) => ({
+      type: "scatter",
+      mode: "markers",
+      marker: { size: 14 },
+      name,
+      x: [1, 2, 3],
+      y,
+      on_click: ({ points }) =>
+        log.dataClicks.push({ name, curveNumber: points[0].curveNumber }),
+      on_legend_click: ({ curveNumber }) => {
+        log.legendClicks.push({ name, curveNumber });
+        return log.legendResult;
+      },
+      on_legend_dblclick: () => {},
+    });
+    const parsed = {
+      entities: [entity("A", [1, 3, 2]), entity("B", [4, 5, 6])],
+      layout: {
+        width: 480,
+        height: 285,
+        showlegend: true,
+        hovermode: "closest",
+        dragmode: "pan",
+      },
+      config: { showSendToCloud: false, doubleClickDelay: 300 },
+      refresh_interval: 0,
+      autorange_after_scroll: false,
+      on_dblclick: () => {},
+    };
+    card.configParser.update = async () => ({ errors: [], parsed });
+    const resetObservedRange = card.configParser.resetObservedRange.bind(
+      card.configParser,
+    );
+    card.configParser.resetObservedRange = () => {
+      log.rangeResets++;
+      return resetObservedRange();
+    };
+    document.body.append(card);
+    await card._plot();
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    log.plots.length = 0;
+  });
+  const fetchRequests = () =>
+    page.evaluate(
+      () =>
+        interaction.log.plots.filter((options) => options?.should_fetch).length,
+    );
+  const card = page.locator("#interaction-card");
+  const point = await card
+    .locator(".scatterlayer .trace")
+    .nth(1)
+    .locator("path.point")
+    .nth(1)
+    .boundingBox();
+  assert.ok(point, "Trace B's middle marker was not rendered");
+  const px = point.x + point.width / 2;
+  const py = point.y + point.height / 2;
+  await page.mouse.move(px, py);
+  await page.waitForTimeout(100); // Plotly throttles hover detection.
+  await page.mouse.click(px, py);
+  await page.waitForFunction(() => interaction.log.dataClicks.length > 0);
+  assert.deepEqual(await page.evaluate(() => interaction.log.dataClicks), [
+    { name: "B", curveNumber: 1 },
+  ]);
+  results.push("data click runs the clicked entity's on_click");
+
+  await card.locator(".legend .traces").nth(0).locator(".legendtoggle").click();
+  await page.waitForFunction(
+    () => interaction.card.contentEl.data[0].visible === "legendonly",
+  );
+  const afterToggle = await page.evaluate(() => ({
+    legendClicks: interaction.log.legendClicks,
+    isBrowsing: interaction.card.isBrowsing,
+    resetVisible: !interaction.card.resetButtonEl.classList.contains("hidden"),
+  }));
+  assert.deepEqual(afterToggle.legendClicks, [{ name: "A", curveNumber: 0 }]);
+  assert.ok(
+    afterToggle.isBrowsing,
+    "Legend toggle did not enter browsing mode",
+  );
+  assert.ok(afterToggle.resetVisible, "Reset button not shown");
+  assert.equal(
+    await fetchRequests(),
+    1,
+    "Legend toggle did not request a fetch",
+  );
+  results.push("legend click toggles the trace and requests a fetch");
+
+  await page.evaluate(() => {
+    interaction.log.legendResult = false;
+  });
+  await card.locator(".legend .traces").nth(1).locator(".legendtoggle").click();
+  await page.waitForFunction(() => interaction.log.legendClicks.length === 2);
+  await page.waitForTimeout(500); // Longer than Plotly's doubleClickDelay.
+  const visibility = await page.evaluate(
+    () => interaction.card.contentEl.data[1].visible,
+  );
+  assert.ok(
+    visibility === undefined || visibility === true,
+    "Returning false did not leave the trace visible",
+  );
+  assert.equal(await fetchRequests(), 1, "Cancelled toggle requested a fetch");
+  results.push("on_legend_click returning false cancels the toggle");
+
+  await card.locator("button#reset").click();
+  await page.waitForFunction(() => interaction.log.rangeResets > 0);
+  assert.deepEqual(
+    await page.evaluate(() => ({
+      isBrowsing: interaction.card.isBrowsing,
+      resetHidden: interaction.card.resetButtonEl.classList.contains("hidden"),
+      rangeResets: interaction.log.rangeResets,
+    })),
+    { isBrowsing: false, resetHidden: true, rangeResets: 1 },
+  );
+  assert.equal(await fetchRequests(), 2, "Reset did not request a fetch");
+  results.push("reset button exits browsing mode and refetches");
+  await page.evaluate(() => {
+    interaction.card.remove();
+    LifecycleTest.Plotly.purge(interaction.card.contentEl);
   });
   assert.deepEqual(errors, []);
   console.log(`${results.length} card lifecycle checks passed`);
