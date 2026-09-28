@@ -967,6 +967,24 @@ defaults:
     fixedrange: true # disables vertical zoom & scroll
 ```
 
+`filters` defined in an entity replace the ones in `defaults.entity.filters` (they are not merged or appended). Use `filters: []` to disable the default filters for one entity.
+
+```yaml
+type: custom:plotly-graph
+defaults:
+  entity:
+    filters:
+      - force_numeric
+entities:
+  - sensor.temperature1 # uses force_numeric
+  - entity: sensor.temperature2
+    filters: # only these filters are applied, force_numeric is not
+      - force_numeric
+      - multiply: 2
+  - entity: sensor.temperature3
+    filters: [] # no filters at all
+```
+
 ## layout:
 
 To define layout aspects, like margins, title, axes names, ...
