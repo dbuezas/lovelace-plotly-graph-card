@@ -44,7 +44,7 @@
     },
     "With$fn<Function>": {
       "properties": {
-        "__@hasInstance@8136": {
+        "__@hasInstance@8150": {
           "anyOf": [
             {
               "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
@@ -160,7 +160,7 @@
         }
       },
       "required": [
-        "__@hasInstance@8136",
+        "__@hasInstance@8150",
         "apply",
         "arguments",
         "bind",
@@ -175,7 +175,7 @@
     },
     "With$fn<Function>_1": {
       "properties": {
-        "__@hasInstance@8136": {
+        "__@hasInstance@8150": {
           "anyOf": [
             {
               "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
@@ -291,7 +291,7 @@
         }
       },
       "required": [
-        "__@hasInstance@8136",
+        "__@hasInstance@8150",
         "apply",
         "arguments",
         "bind",
