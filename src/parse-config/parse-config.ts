@@ -206,6 +206,8 @@ class ConfigParser {
             mode: "text+markers",
             showlegend: false,
             hoverinfo: "skip",
+// hovertemplate overrides hoverinfo in Plotly; must be cleared for "skip" to apply
+            hovertemplate: null,
             textposition: "middle right",
             marker: {
               color: trace.line?.color,
