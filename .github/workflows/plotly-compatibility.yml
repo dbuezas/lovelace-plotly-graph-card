@@ -22,8 +22,13 @@ jobs:
       - run: npm run tsc
       - run: npm run build
       - name: Check Plotly compatibility defaults
-        run: npm test -- --runInBand src/parse-config/defaults.test.ts
+        run: npm test -- --runInBand src/parse-config/defaults.test.ts src/plot-state.test.ts
+      - name: Check cache retention and rolling windows
+        run: npm run test:cache
+      - name: Check statistics batching and fallback
+        run: npm run test:statistics
       - name: Check history batching and WebSocket responses
         run: npm run test:history
       - run: npx playwright install --with-deps chromium
       - run: npm run test:browser
+      - run: npm run test:card-lifecycle

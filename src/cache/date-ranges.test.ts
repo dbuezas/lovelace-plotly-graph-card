@@ -1,4 +1,4 @@
-import { subtractRanges } from "./date-ranges";
+import { compactRanges, subtractRanges } from "./date-ranges";
 describe("data-ranges", () => {
   it("Should subtract left ", () => {
     const result = subtractRanges([[0, 10]], [[0, 5]]);
@@ -29,5 +29,13 @@ describe("data-ranges", () => {
       [0, 0],
       [10, 10],
     ]);
+  });
+  it("Should not shrink a range containing another range", () => {
+    expect(
+      compactRanges([
+        [0, 10],
+        [2, 5],
+      ])
+    ).toEqual([[0, 10]]);
   });
 });

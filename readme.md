@@ -45,6 +45,8 @@ Web app to assist you with syntax validation and autocomplete: [Plotly graph car
 
 ### Via Home Assistant Community Store (Recommended)
 
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=dbuezas&repository=lovelace-plotly-graph-card&category=Dashboard)
+
 1. Install [HACS](https://hacs.xyz/docs/configuration/basic)
 2. Search & Install `Plotly Graph Card`.
 
@@ -512,6 +514,9 @@ entities:
             };
           },
       - resample: 5m # Rebuilds data so that the timestamps in xs are exact multiples of the specified interval, and without gaps. The parameter is the length of the interval and defaults to 5 minutes (see #duration for the format). This is useful when combining data from multiple entities, as the index of each datapoint will correspond to the same instant of time across them.
+      - resample:
+          interval: 5m # defaults to 5m
+          interpolate: true # defaults to false (each new point holds the last known value). When true, values are linearly interpolated between the surrounding datapoints. Only numbers are interpolated, so use it after force_numeric (or map_y_numbers)
       - filter: y !== null && +y > 0 && x > new Date(Date.now()-1000*60*60) # filter out datapoints for which this returns false. Also filters from xs, states and statistics. Same variables as map_y are in scope
       - force_numeric # converts number-lookinig-strings to actual js numbers and removes the rest. Any filters used after this one will receive numbers, not strings or nulls. Also removes respective elements from xs, states and statistics parameters
 ```
@@ -848,7 +853,7 @@ Remember you can add a `console.log(the_object_you_want_to_inspect)` and see its
 - `hass: HomeAssistant object;` For example: `hass.states["sensor.garden_temperature"].state` to get its current state
 - `vars: Record<string, any>;` You can communicate between functions with this. E.g `vars.temperatures = ys`
 - `path: string;` The path of the current function
-- `css_vars: HATheme;` The colors set by the active Home Assistant theme (see #ha_theme)
+- `css_vars: HATheme;` The colors and fonts set by the active Home Assistant theme (see #ha_theme)
 
 #### Only inside entities
 
@@ -962,6 +967,24 @@ defaults:
     fixedrange: true # disables vertical zoom & scroll
 ```
 
+`filters` defined in an entity replace the ones in `defaults.entity.filters` (they are not merged or appended). Use `filters: []` to disable the default filters for one entity.
+
+```yaml
+type: custom:plotly-graph
+defaults:
+  entity:
+    filters:
+      - force_numeric
+entities:
+  - sensor.temperature1 # uses force_numeric
+  - entity: sensor.temperature2
+    filters: # only these filters are applied, force_numeric is not
+      - force_numeric
+      - multiply: 2
+  - entity: sensor.temperature3
+    filters: [] # no filters at all
+```
+
 ## layout:
 
 To define layout aspects, like margins, title, axes names, ...
@@ -969,13 +992,16 @@ Anything from https://plotly.com/javascript/reference/layout/.
 
 ### Home Assistant theming:
 
-Toggle Home Assistant theme colors:
+Toggle Home Assistant theme colors and fonts:
 
 - card-background-color
 - primary-background-color
 - primary-color
 - primary-text-color
 - secondary-text-color
+- font-family, font-size and font-weight (from Home Assistant's typography variables, e.g. `--ha-font-family-body`, `--ha-font-size-s`, `--ha-font-weight-normal`)
+
+Anything set in `layout.font` still takes precedence.
 
 ```yaml
 type: custom:plotly-graph
@@ -1312,6 +1338,11 @@ properties are not interchangeable with Cartesian axis titles, which use
 
 The card's own top-level `title:` option is unchanged.
 
+The bundled Plotly build also supports `scattergl`, `splom`, `parcoords`,
+`scatterpolargl`, and `scattersmith`. WebGL traces require browser WebGL support.
+The MapLibre types `scattermap`, `choroplethmap`, and `densitymap` are not included
+to keep the bundle size down.
+
 # Development
 
 - Use Node.js 22 or newer (required by Plotly.js 4).
@@ -1335,6 +1366,14 @@ The browser test covers every registered trace type, tank shapes and labels,
 axis defaults, cloud-upload opt-in, and a card with a mock Home Assistant state.
 Run `npm run test:history` for history batching, compressed WebSocket responses,
 cache reuse, attributes, time offsets and request failure recovery.
+The five additional trace types are also validated and rendered through the card.
+Run `npm run test:card-lifecycle` to check initial rendering, recovery from
+render failures, event suppression, listener cleanup on reconnect, and mouse
+interactions with data points, legend toggles and the reset button.
+Run `npm run test:statistics` for statistics batching, cache reuse, period and
+time-offset separation, dynamic settings and fallback after failed requests.
+Run `npm run test:cache` for rolling-window retention, boundary values,
+time offsets, browsing, refetching pruned history and in-flight live updates.
 
 # Release
 

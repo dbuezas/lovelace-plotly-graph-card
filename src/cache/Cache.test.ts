@@ -1,248 +1,181 @@
-import { HomeAssistant } from "custom-card-helpers";
-import Cache, { HistoryFetchRequest } from "./Cache";
+import Cache, { getEntityKey } from "./Cache";
+import { CachedStateEntity, CachedStatisticsEntity } from "../types";
 
-const range: [number, number] = [
-  Date.parse("2025-01-01T00:00:00.000Z"),
-  Date.parse("2025-01-02T00:00:00.000Z"),
-];
+const entity = { entity: "sensor.test" };
+const key = getEntityKey(entity);
 
-function createHass() {
-  const callWS = jest.fn().mockImplementation(({ entity_ids }) => {
-    return Promise.resolve(
-      Object.fromEntries(
-        entity_ids.map((entity_id, index) => [
-          entity_id,
-          [
-            {
-              entity_id,
-              state: String(index + 1),
-              attributes: { value: index + 10 },
-              last_changed: new Date(range[0]).toISOString(),
-              last_updated: new Date(range[0]).toISOString(),
-              context: { id: "", parent_id: null, user_id: null },
-            },
-          ],
-        ]),
-      ),
-    );
-  });
+function state(timestamp: number): CachedStateEntity {
   return {
-    hass: { callWS } as unknown as HomeAssistant,
-    callWS,
+    x: new Date(timestamp),
+    y: null,
+    state: {
+      attributes: {},
+      state: String(timestamp),
+    } as CachedStateEntity["state"],
   };
 }
 
-describe("Cache.prefetchHistory", () => {
-  it("reuses prefetched data through the normal fetch path", async () => {
+describe("Cache retention", () => {
+  it("reuses unchanged history while still trimming cached coverage", () => {
     const cache = new Cache();
-    const { hass, callWS } = createHass();
-    const entity = { entity: "sensor.one" };
-    await cache.prefetchHistory([{ entity, range }], hass);
-    expect((await cache.fetch(range, entity, hass)).ys).toEqual(["1"]);
-    expect(callWS).toHaveBeenCalledTimes(1);
+    cache.add(entity, [0, 10, 20].map(state), [-100, 100]);
+    const history = cache.histories[key];
+
+    cache.retain({ [key]: [[1, 20]] });
+
+    expect(cache.histories[key]).toBe(history);
+    expect(cache.ranges[key]).toEqual([[1, 20]]);
+    cache.retain({ [key]: [[1, 20]] });
+    expect(cache.histories[key]).toBe(history);
   });
 
-  it("serializes concurrent prefetch and fetch calls without duplicate requests", async () => {
+  it("does not reuse history when disjoint ranges leave a gap", () => {
     const cache = new Cache();
-    const { hass, callWS } = createHass();
-    const entity = { entity: "sensor.one" };
-    await Promise.all([
-      cache.prefetchHistory([{ entity, range }], hass),
-      cache.prefetchHistory([{ entity, range }], hass),
-      cache.fetch(range, entity, hass),
-    ]);
-    expect(callWS).toHaveBeenCalledTimes(1);
-  });
+    cache.add(entity, [0, 10, 20, 30, 40].map(state), [0, 40]);
+    const history = cache.histories[key];
 
-  it("only fetches missing cache intervals", async () => {
-    const cache = new Cache();
-    const { hass, callWS } = createHass();
-    const entity = { entity: "sensor.one" };
-    const middle: [number, number] = [range[0] + 10000, range[1] - 10000];
-    cache.add(entity, [], middle);
-    await cache.prefetchHistory([{ entity, range }], hass);
-    expect(callWS).toHaveBeenCalledTimes(2);
-    expect(
-      callWS.mock.calls.map(([request]) => [
-        request.start_time,
-        request.end_time,
-      ]),
-    ).toEqual([
-      [
-        new Date(range[0] - 1).toISOString(),
-        new Date(middle[0] - 1).toISOString(),
-      ],
-      [new Date(middle[1]).toISOString(), new Date(range[1]).toISOString()],
-    ]);
-    expect(cache.ranges[entity.entity]).toEqual([range]);
-  });
-
-  it("shares full attribute histories without mixing state-only data", async () => {
-    const cache = new Cache();
-    const { hass, callWS } = createHass();
-    await cache.prefetchHistory(
-      [
-        { entity: { entity: "sensor.one", attribute: "value" }, range },
-        { entity: { entity: "sensor.one", attribute: "missing" }, range },
-        { entity: { entity: "sensor.one" }, range },
-      ],
-      hass,
-    );
-    expect(callWS).toHaveBeenCalledTimes(2);
-    expect(
-      cache.getData({ entity: "sensor.one", attribute: "value" }).ys,
-    ).toEqual([10]);
-    expect(
-      cache.getData({ entity: "sensor.one", attribute: "missing" }).ys,
-    ).toEqual([undefined]);
-    expect(cache.getData({ entity: "sensor.one" }).ys).toEqual(["1"]);
-  });
-
-  it("marks empty responses as cached and can explicitly clear them", async () => {
-    const cache = new Cache();
-    const { hass, callWS } = createHass();
-    callWS.mockResolvedValue({});
-    const requests = [{ entity: { entity: "sensor.one" }, range }];
-    await cache.prefetchHistory(requests, hass);
-    await cache.prefetchHistory(requests, hass);
-    expect(callWS).toHaveBeenCalledTimes(1);
-    cache.clearCache();
-    await cache.prefetchHistory(requests, hass);
-    expect(callWS).toHaveBeenCalledTimes(2);
-  });
-
-  it("retries after a failed batch without marking its range cached", async () => {
-    const log = jest.spyOn(console, "error").mockImplementation(() => {});
-    try {
-      const cache = new Cache();
-      const { hass, callWS } = createHass();
-      callWS.mockRejectedValueOnce(new Error("Disconnected"));
-      const requests = [{ entity: { entity: "sensor.one" }, range }];
-      await expect(cache.prefetchHistory(requests, hass)).rejects.toThrow(
-        "Disconnected",
-      );
-      expect(cache.ranges["sensor.one"]).toEqual([]);
-      await cache.prefetchHistory(requests, hass);
-      expect(callWS).toHaveBeenCalledTimes(2);
-      expect(cache.getData({ entity: "sensor.one" }).ys).toEqual(["1"]);
-    } finally {
-      log.mockRestore();
-    }
-  });
-
-  it("preserves unavailable states as gaps", async () => {
-    const cache = new Cache();
-    const { hass, callWS } = createHass();
-    callWS.mockResolvedValue({
-      "sensor.one": [
-        { s: "1", lu: range[0] / 1000 },
-        { s: "unavailable", lu: range[0] / 1000 + 1 },
-        { s: "unknown", lu: range[0] / 1000 + 2 },
-        { s: "2", lu: range[0] / 1000 + 3 },
+    cache.retain({
+      [key]: [
+        [0, 10],
+        [30, 40],
       ],
     });
-    await cache.prefetchHistory(
-      [{ entity: { entity: "sensor.one" }, range }],
-      hass,
-    );
-    expect(cache.getData({ entity: "sensor.one" }).ys).toEqual([
-      "1",
-      null,
-      null,
-      "2",
-    ]);
+
+    expect(cache.histories[key]).not.toBe(history);
+    expect(cache.getData(entity).xs.map(Number)).toEqual([0, 10, 30, 40]);
   });
 
-  it("removes intermediate synthetic boundary points when extending history", async () => {
+  it.each([
+    [[-20, -10], []],
+    [[10, 10], [10]],
+    [[11, 19], [10]],
+    [[40, 50], [30]],
+  ])("selects boundary values for range %p", (range, expected) => {
     const cache = new Cache();
-    const { hass, callWS } = createHass();
-    const end = range[0] + 10000;
-    callWS
-      .mockResolvedValueOnce({
-        "sensor.one": [
-          { s: "1", lu: (range[0] - 1) / 1000 },
-          { s: "2", lu: (range[0] + 1000) / 1000 },
-        ],
-      })
-      .mockResolvedValueOnce({
-        "sensor.one": [
-          { s: "2", lu: end / 1000 },
-          { s: "3", lu: (end + 1000) / 1000 },
-        ],
-      });
-    const entity = { entity: "sensor.one" };
-    await cache.prefetchHistory([{ entity, range: [range[0], end] }], hass);
-    await cache.prefetchHistory(
-      [{ entity, range: [range[0], end + 10000] }],
-      hass,
-    );
-    expect(cache.getData(entity).ys).toEqual(["1", "2", "3"]);
-    expect(cache.getData(entity).xs.map(Number)).toEqual([
-      range[0] - 1,
-      range[0] + 1000,
-      end + 1000,
-    ]);
-  });
-  it("batches state entities with the same range", async () => {
-    const cache = new Cache();
-    const { hass, callWS } = createHass();
-    const requests: HistoryFetchRequest[] = [
-      { entity: { entity: "sensor.one" }, range },
-      { entity: { entity: "sensor.two" }, range },
-      { entity: { entity: "sensor.three" }, range },
-      { entity: { entity: "sensor.four" }, range },
-    ];
-
-    await cache.prefetchHistory(requests, hass);
-
-    expect(callWS).toHaveBeenCalledTimes(1);
-    expect(callWS.mock.calls[0][0].entity_ids).toEqual([
-      "sensor.one",
-      "sensor.two",
-      "sensor.three",
-      "sensor.four",
-    ]);
-    expect(cache.getData({ entity: "sensor.three" }).ys).toEqual(["3"]);
+    cache.histories[key] = [0, 10, 20, 30].map(state);
+    expect(cache.getData(entity, [range]).xs.map(Number)).toEqual(expected);
   });
 
-  it("separates different ranges and attribute requests", async () => {
+  it("does not duplicate a boundary shared by disjoint ranges", () => {
     const cache = new Cache();
-    const { hass, callWS } = createHass();
-
-    await cache.prefetchHistory(
-      [
-        { entity: { entity: "sensor.state" }, range },
-        {
-          entity: { entity: "sensor.offset" },
-          range: [range[0] - 1000, range[1] - 1000],
-        },
-        {
-          entity: { entity: "sensor.attribute", attribute: "value" },
-          range,
-        },
+    cache.histories[key] = [0, 10, 30].map(state);
+    cache.retain({
+      [key]: [
+        [11, 15],
+        [20, 25],
       ],
-      hass,
-    );
-
-    expect(callWS).toHaveBeenCalledTimes(3);
-    const attributeRequest = callWS.mock.calls
-      .map((call) => call[0])
-      .find(({ entity_ids }) => entity_ids.includes("sensor.attribute"));
-    expect(attributeRequest.minimal_response).toBe(false);
-    expect(attributeRequest.no_attributes).toBe(false);
+    });
+    expect(cache.getData(entity).xs.map(Number)).toEqual([10]);
   });
 
-  it("does not refetch ranges already cached by a batch", async () => {
+  it("does not mutate data already handed to a trace", () => {
     const cache = new Cache();
-    const { hass, callWS } = createHass();
-    const requests: HistoryFetchRequest[] = [
-      { entity: { entity: "sensor.one" }, range },
-      { entity: { entity: "sensor.two" }, range },
-    ];
+    cache.add(entity, [0, 10, 20, 30].map(state), [0, 30]);
+    const data = cache.getData(entity);
+    cache.retain({ [key]: [[20, 30]] });
+    expect(data.xs.map(Number)).toEqual([0, 10, 20, 30]);
+    expect(cache.getData(entity).xs.map(Number)).toEqual([20, 30]);
+  });
 
-    await cache.prefetchHistory(requests, hass);
-    await cache.prefetchHistory(requests, hass);
+  it("retains attribute values using the same boundary selection", () => {
+    const cache = new Cache();
+    const attribute = { ...entity, attribute: "temperature" };
+    const history = [0, 10, 20].map((timestamp) => ({
+      ...state(timestamp),
+      state: {
+        ...state(timestamp).state,
+        attributes: { temperature: timestamp + 1 },
+      },
+    }));
+    cache.add(attribute, history, [0, 20]);
+    cache.retain({ [getEntityKey(attribute)]: [[15, 20]] });
+    expect(cache.getData(attribute).ys).toEqual([11, 21]);
+  });
 
-    expect(callWS).toHaveBeenCalledTimes(1);
+  it("bounds statistics without dropping their values or mixing periods", () => {
+    const cache = new Cache();
+    const hourly = {
+      ...entity,
+      statistic: "mean" as const,
+      period: "hour" as const,
+    };
+    const daily = { ...hourly, period: "day" as const };
+    const history = [0, 10, 20, 30].map((timestamp) => ({
+      x: new Date(timestamp),
+      y: null,
+      statistics: {
+        start: new Date(timestamp).toISOString(),
+        mean: timestamp,
+        max: timestamp + 1,
+      },
+    })) as CachedStatisticsEntity[];
+    cache.add(hourly, history, [0, 30]);
+    cache.add(daily, history, [0, 30]);
+    cache.retain({ [getEntityKey(hourly)]: [[15, 25]] });
+    expect(cache.getData(hourly).ys).toEqual([10, 20]);
+    expect(cache.getData({ ...hourly, statistic: "max" }).ys).toEqual([11, 21]);
+    expect(cache.histories[getEntityKey(daily)]).toBeUndefined();
+  });
+
+  it("does not mark retained data outside known coverage as fetched", () => {
+    const cache = new Cache();
+    cache.add(entity, [state(0), state(20)], [10, 20]);
+    cache.retain({ [key]: [[0, 30]] });
+    expect(cache.ranges[key]).toEqual([[10, 20]]);
+  });
+  it("returns only the requested data and one leading boundary value", () => {
+    const cache = new Cache();
+    cache.histories[key] = [0, 10, 20, 30].map(state);
+
+    const data = cache.getData(entity, [[15, 25]]);
+
+    expect(data.xs.map(Number)).toEqual([10, 20]);
+    expect(data.ys).toEqual(["10", "20"]);
+  });
+
+  it("retains disjoint ranges for traces sharing a sensor", () => {
+    const cache = new Cache();
+    cache.histories[key] = [0, 10, 20, 30, 100, 110, 120].map(state);
+    cache.ranges[key] = [[0, 120]];
+
+    cache.retain({
+      [key]: [
+        [15, 25],
+        [105, 115],
+      ],
+    });
+
+    expect(cache.histories[key].map(({ x }) => +x)).toEqual([10, 20, 100, 110]);
+    expect(cache.ranges[key]).toEqual([
+      [15, 25],
+      [105, 115],
+    ]);
+  });
+
+  it("removes cache entries that are no longer configured", () => {
+    const cache = new Cache();
+    cache.histories[key] = [state(0)];
+    cache.ranges[key] = [[0, 0]];
+
+    cache.retain({});
+
+    expect(cache.histories).toEqual({});
+    expect(cache.ranges).toEqual({});
+  });
+
+  it("stays bounded over repeated rolling-window updates", () => {
+    const cache = new Cache();
+
+    for (let timestamp = 0; timestamp < 1_000; timestamp++) {
+      cache.add(entity, [state(timestamp)], [timestamp, timestamp]);
+      cache.retain({
+        [key]: [[Math.max(0, timestamp - 59), Number.POSITIVE_INFINITY]],
+      });
+    }
+
+    expect(cache.histories[key]).toHaveLength(60);
+    expect(cache.histories[key][0].x).toEqual(new Date(940));
+    expect(cache.histories[key][59].x).toEqual(new Date(999));
+    expect(cache.ranges[key]).toEqual([[940, 999]]);
   });
 });

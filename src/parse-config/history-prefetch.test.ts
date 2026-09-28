@@ -140,6 +140,77 @@ describe("ConfigParser history prefetch", () => {
     );
   });
 
+  it("batches history and statistics independently in a mixed card", async () => {
+    const { callWS, result, parser, input } = await parse([
+      { entity: "sensor.one" },
+      { entity: "sensor.stats", statistic: "mean", period: "5minute" },
+      { entity: "sensor.two" },
+      { entity: "sensor.three", statistic: "mean", period: "5minute" },
+    ]);
+    expect(callWS).toHaveBeenCalledTimes(2);
+    expect(callWS.mock.calls.map(([request]) => request)).toEqual([
+      expect.objectContaining({
+        type: "recorder/statistics_during_period",
+        statistic_ids: ["sensor.stats", "sensor.three"],
+      }),
+      expect.objectContaining({
+        type: "history/history_during_period",
+        entity_ids: ["sensor.one", "sensor.two"],
+      }),
+    ]);
+    expect(result.parsed.entities.map(yValues)).toEqual([
+      ["5"], [42], ["5"], [42],
+    ]);
+    expect((await parser.update(input)).errors).toEqual([]);
+    expect(callWS).toHaveBeenCalledTimes(2);
+  });
+
+  it("falls back to individual history requests after a failed batch", async () => {
+    const { callWS, parser, input } = await parse([
+      { entity: "sensor.one" },
+      { entity: "sensor.two" },
+    ]);
+    parser.cache.clearCache();
+    callWS.mockClear().mockRejectedValueOnce(new Error("Disconnected"));
+    const error = jest.spyOn(console, "error").mockImplementation();
+    const warn = jest.spyOn(console, "warn").mockImplementation();
+    try {
+      const result = await parser.update(input);
+      expect(result.errors).toEqual([]);
+      expect(result.parsed.entities.map(yValues)).toEqual([["5"], ["5"]]);
+      expect(callWS.mock.calls.map(([request]) => request.entity_ids)).toEqual([
+        ["sensor.one", "sensor.two"], ["sensor.one"], ["sensor.two"],
+      ]);
+    } finally {
+      error.mockRestore();
+      warn.mockRestore();
+    }
+  });
+
+  it("limits failed history retries and recovers on the next update", async () => {
+    const { callWS, parser, input } = await parse([
+      { entity: "sensor.one" },
+      { entity: "sensor.two" },
+    ]);
+    const successful = callWS.getMockImplementation()!;
+    parser.cache.clearCache();
+    callWS.mockClear().mockRejectedValue(new Error("Disconnected"));
+    const error = jest.spyOn(console, "error").mockImplementation();
+    const warn = jest.spyOn(console, "warn").mockImplementation();
+    try {
+      expect((await parser.update(input)).errors.length).toBeGreaterThan(0);
+      expect(callWS).toHaveBeenCalledTimes(3);
+      callWS.mockImplementation(successful);
+      const recovered = await parser.update(input);
+      expect(recovered.errors).toEqual([]);
+      expect(recovered.parsed.entities.map(yValues)).toEqual([["5"], ["5"]]);
+      expect(callWS).toHaveBeenCalledTimes(4);
+    } finally {
+      error.mockRestore();
+      warn.mockRestore();
+    }
+  });
+
   it("preserves attributes through the complete parsing path", async () => {
     const { callWS, result } = await parse([
       { entity: "sensor.one" },
