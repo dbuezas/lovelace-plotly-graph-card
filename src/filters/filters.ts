@@ -7,7 +7,7 @@ import {
 } from "../duration/duration";
 import { StatisticValue } from "../recorder-types";
 import { HassEntity, YValue } from "../types";
-import { inTimeZone, resolveTimeZone } from "../timezone";
+import { resolveTimeZone, startOfInTimeZone } from "../timezone";
 import { startOfDay } from "date-fns";
 
 import BaseRegression from "ml-regression-base";
@@ -179,7 +179,11 @@ const filters = {
     checkTimeUnits(unit);
     return ({ xs, ys, meta, hass, getFromConfig }) => {
       const timeZone = resolveTimeZone(getFromConfig?.("time_zone"), hass);
-      const t0 = inTimeZone(Date.now(), timeZone, startOfDay) + offset;
+      const now = Date.now();
+      const t0 =
+        (timeZone
+          ? startOfInTimeZone(now, "day", timeZone)
+          : +startOfDay(now)) + offset;
       let yAcc = 0;
       let last = {
         x: NaN,

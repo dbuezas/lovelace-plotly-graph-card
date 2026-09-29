@@ -21,7 +21,7 @@ const browserTimeZone = () => {
 
 export function resolveTimeZone(
   time_zone: TimeZoneConfig | undefined,
-  hass: HomeAssistant | undefined
+  hass: HomeAssistant | undefined,
 ): string | undefined {
   // Home Assistant's profile setting ("local" | "server") is the default
   time_zone ??= (hass?.locale as any)?.time_zone;
@@ -94,47 +94,126 @@ export function fromWallTime(wall: number, timeZone: string) {
   return timestamp;
 }
 
-/** Wall clock time of a timestamp in the browser's timezone, as UTC ms */
-export function toBrowserWallTime(timestamp: number) {
-  const d = new Date(timestamp);
+/** Parses a naive Plotly date string ("2024-03-31 02:30:00.000") as UTC ms */
+export function parseWallTime(str: string) {
+  const match = str.match(
+    /^(-?\d{1,4})-(\d\d?)(?:-(\d\d?))?(?:[ T](\d\d?)(?::(\d\d?)(?::(\d\d?)(?:\.(\d+))?)?)?)?$/,
+  );
+  if (!match) return NaN;
+  const [
+    ,
+    year,
+    month,
+    day = 1,
+    hour = 0,
+    minute = 0,
+    second = 0,
+    fraction = "0",
+  ] = match;
   const wall = new Date(0);
-  wall.setUTCFullYear(d.getFullYear(), d.getMonth(), d.getDate());
+  wall.setUTCFullYear(+year, +month - 1, +day);
   wall.setUTCHours(
-    d.getHours(),
-    d.getMinutes(),
-    d.getSeconds(),
-    d.getMilliseconds()
+    +hour,
+    +minute,
+    +second,
+    Math.round(+`0.${fraction}` * 1000),
   );
   return +wall;
 }
 
-/** Browser-local Date with the given wall clock time (as UTC ms) */
-function fromBrowserWallTime(wall: number) {
-  const w = new Date(wall);
-  const d = new Date(0);
-  d.setFullYear(w.getUTCFullYear(), w.getUTCMonth(), w.getUTCDate());
-  d.setHours(
-    w.getUTCHours(),
-    w.getUTCMinutes(),
-    w.getUTCSeconds(),
-    w.getUTCMilliseconds()
-  );
-  return d;
+export type CalendarUnit =
+  | "minute"
+  | "hour"
+  | "day"
+  | "week"
+  | "month"
+  | "quarter"
+  | "year";
+
+/** Start of the calendar unit containing a wall clock time (both as UTC ms) */
+function startOfWall(wall: number, unit: CalendarUnit, weekStartsOn: number) {
+  const d = new Date(wall);
+  switch (unit) {
+    case "minute":
+      d.setUTCSeconds(0, 0);
+      break;
+    case "hour":
+      d.setUTCMinutes(0, 0, 0);
+      break;
+    case "week":
+      d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() - weekStartsOn + 7) % 7));
+      d.setUTCHours(0, 0, 0, 0);
+      break;
+    case "year":
+      d.setUTCMonth(0, 1);
+      d.setUTCHours(0, 0, 0, 0);
+      break;
+    case "quarter":
+      d.setUTCMonth(d.getUTCMonth() - (d.getUTCMonth() % 3), 1);
+      d.setUTCHours(0, 0, 0, 0);
+      break;
+    case "month":
+      d.setUTCDate(1);
+      d.setUTCHours(0, 0, 0, 0);
+      break;
+    case "day":
+      d.setUTCHours(0, 0, 0, 0);
+      break;
+  }
+  return +d;
 }
 
-/**
- * Applies a browser-local date function (e.g. date-fns' startOfDay) as if the
- * browser was in `timeZone`.
- */
-export function inTimeZone(
+/** Adds one calendar unit to the start of a unit (both as UTC ms) */
+function nextWall(start: number, unit: CalendarUnit) {
+  const d = new Date(start);
+  switch (unit) {
+    case "minute":
+      return start + 60 * 1000;
+    case "hour":
+      return start + 60 * 60 * 1000;
+    case "day":
+      d.setUTCDate(d.getUTCDate() + 1);
+      break;
+    case "week":
+      d.setUTCDate(d.getUTCDate() + 7);
+      break;
+    case "month":
+      d.setUTCMonth(d.getUTCMonth() + 1);
+      break;
+    case "quarter":
+      d.setUTCMonth(d.getUTCMonth() + 3);
+      break;
+    case "year":
+      d.setUTCFullYear(d.getUTCFullYear() + 1);
+      break;
+  }
+  return +d;
+}
+
+/** Start of the calendar unit containing `timestamp`, as seen in `timeZone` */
+export function startOfInTimeZone(
   timestamp: number,
-  timeZone: string | undefined,
-  fn: (date: Date) => Date | number
-): number {
-  if (!timeZone) return +fn(new Date(timestamp));
-  const local = fromBrowserWallTime(toWallTime(timestamp, timeZone));
-  const result = +fn(local);
-  return fromWallTime(toBrowserWallTime(result), timeZone);
+  unit: CalendarUnit,
+  timeZone: string,
+  weekStartsOn = 0,
+) {
+  const wall = toWallTime(timestamp, timeZone);
+  return fromWallTime(startOfWall(wall, unit, weekStartsOn), timeZone);
+}
+
+/** Last ms of the calendar unit containing `timestamp`, as seen in `timeZone` */
+export function endOfInTimeZone(
+  timestamp: number,
+  unit: CalendarUnit,
+  timeZone: string,
+  weekStartsOn = 0,
+) {
+  const start = startOfWall(
+    toWallTime(timestamp, timeZone),
+    unit,
+    weekStartsOn,
+  );
+  return fromWallTime(nextWall(start, unit) - 1, timeZone);
 }
 
 /** Naive date string Plotly draws as-is, e.g. "2024-03-31 02:30:00.000" */
@@ -172,7 +251,7 @@ function convertDates(value: any, timeZone: string): any {
  * all Dates in traces and layout, and numeric ranges of date x axes.
  */
 export function toPlotlyTimeZone<
-  T extends { entities: any[]; layout: Record<string, any> }
+  T extends { entities: any[]; layout: Record<string, any> },
 >(parsed: T, timeZone: string | undefined): T {
   if (!timeZone) return parsed;
   const layout = convertDates(parsed.layout, timeZone);
@@ -183,7 +262,7 @@ export function toPlotlyTimeZone<
       axis.range = axis.range.map((v: any) =>
         typeof v === "number" && isFinite(v)
           ? toPlotlyDateString(v, timeZone)
-          : v
+          : v,
       );
     }
   }

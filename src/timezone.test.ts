@@ -1,13 +1,13 @@
 import {
   fromWallTime,
-  inTimeZone,
+  parseWallTime,
   resolveTimeZone,
   toPlotlyDateString,
   toPlotlyTimeZone,
   toWallTime,
 } from "./timezone";
 import { parseRelativeTime } from "./duration/duration";
-import { startOfDay } from "date-fns";
+import { endOfWeek, setDefaultOptions, startOfWeek } from "date-fns";
 
 const hass = (time_zone: string, server = "Pacific/Chatham") =>
   ({ locale: { time_zone }, config: { time_zone: server } }) as any;
@@ -22,7 +22,7 @@ describe("resolveTimeZone", () => {
     expect(resolveTimeZone("local", hass("server"))).toBeUndefined();
     expect(resolveTimeZone("server", hass("local"))).toBe("Pacific/Chatham");
     expect(resolveTimeZone("Pacific/Auckland", hass("server"))).toBe(
-      "Pacific/Auckland"
+      "Pacific/Auckland",
     );
   });
   it("skips the conversion when it matches the browser", () => {
@@ -31,7 +31,7 @@ describe("resolveTimeZone", () => {
   });
   it("rejects unknown timezones", () => {
     expect(() => resolveTimeZone("Mars/Olympus", undefined)).toThrow(
-      "Mars/Olympus"
+      "Mars/Olympus",
     );
   });
 });
@@ -40,19 +40,19 @@ describe("wall clock conversion", () => {
   it("formats timestamps as wall clock strings across DST", () => {
     const rome = "Europe/Rome";
     expect(toPlotlyDateString(Date.UTC(2024, 2, 31, 0, 59, 59), rome)).toBe(
-      "2024-03-31 01:59:59.000"
+      "2024-03-31 01:59:59.000",
     );
     expect(toPlotlyDateString(Date.UTC(2024, 2, 31, 1), rome)).toBe(
-      "2024-03-31 03:00:00.000"
+      "2024-03-31 03:00:00.000",
     );
     expect(toPlotlyDateString(Date.UTC(2024, 9, 27, 0, 30), rome)).toBe(
-      "2024-10-27 02:30:00.000"
+      "2024-10-27 02:30:00.000",
     );
     expect(toPlotlyDateString(Date.UTC(2024, 9, 27, 1, 30), rome)).toBe(
-      "2024-10-27 02:30:00.000"
+      "2024-10-27 02:30:00.000",
     );
     expect(toPlotlyDateString(Date.UTC(2024, 5, 1, 12), "Asia/Kolkata")).toBe(
-      "2024-06-01 17:30:00.000"
+      "2024-06-01 17:30:00.000",
     );
   });
   it("round trips timestamps", () => {
@@ -66,6 +66,19 @@ describe("wall clock conversion", () => {
   });
 });
 
+describe("parseWallTime", () => {
+  it("parses the date strings Plotly returns", () => {
+    expect(parseWallTime("2024-03-31 02:30:00.5")).toBe(
+      Date.UTC(2024, 2, 31, 2, 30, 0, 500),
+    );
+    expect(parseWallTime("2024-03-31 02:30")).toBe(
+      Date.UTC(2024, 2, 31, 2, 30),
+    );
+    expect(parseWallTime("2024-03-31")).toBe(Date.UTC(2024, 2, 31));
+    expect(parseWallTime("nonsense")).toBeNaN();
+  });
+});
+
 describe("relative times", () => {
   it("computes day boundaries in the given timezone", () => {
     const tz = "Pacific/Auckland";
@@ -75,9 +88,36 @@ describe("relative times", () => {
     expect(start).toBeLessThanOrEqual(Date.now());
     expect(end).toBeGreaterThanOrEqual(Date.now());
   });
-  it("uses the browser's timezone when none is given", () => {
-    const now = Date.now();
-    expect(inTimeZone(now, undefined, startOfDay)).toBe(+startOfDay(now));
+  it("matches date-fns when no timezone is given", () => {
+    const [start, end] = parseRelativeTime("current_week");
+    expect(start).toBe(+startOfWeek(Date.now()));
+    expect(end).toBe(+endOfWeek(Date.now()));
+  });
+  it("is not affected by DST gaps of the browser", () => {
+    // 02:00-02:59 on 2024-03-31 doesn't exist in e.g. Europe/Rome (DST
+    // starts), but it does in Cairo. Run with TZ=Europe/Rome to exercise it.
+    jest.spyOn(Date, "now").mockReturnValue(Date.UTC(2024, 2, 31, 0, 30));
+    const tz = "Africa/Cairo"; // no DST in March 2024
+    const [start, end] = parseRelativeTime("current_hour", tz);
+    expect(toPlotlyDateString(start, tz)).toBe("2024-03-31 02:00:00.000");
+    expect(toPlotlyDateString(end, tz)).toBe("2024-03-31 02:59:59.999");
+    jest.restoreAllMocks();
+  });
+  it.each([
+    ["current_week", "2024-02-26 00:00:00.000", "2024-03-03 23:59:59.999"],
+    ["current_month", "2024-02-01 00:00:00.000", "2024-02-29 23:59:59.999"],
+    ["current_quarter", "2024-01-01 00:00:00.000", "2024-03-31 23:59:59.999"],
+    ["current_year", "2024-01-01 00:00:00.000", "2024-12-31 23:59:59.999"],
+  ] as const)("computes %s boundaries", (str, from, to) => {
+    // Thursday 2024-02-29 23:30 in Kolkata
+    jest.spyOn(Date, "now").mockReturnValue(Date.UTC(2024, 1, 29, 18));
+    setDefaultOptions({ weekStartsOn: 1 });
+    const tz = "Asia/Kolkata";
+    const [start, end] = parseRelativeTime(str, tz);
+    expect(toPlotlyDateString(start, tz)).toBe(from);
+    expect(toPlotlyDateString(end, tz)).toBe(to);
+    setDefaultOptions({});
+    jest.restoreAllMocks();
   });
 });
 
