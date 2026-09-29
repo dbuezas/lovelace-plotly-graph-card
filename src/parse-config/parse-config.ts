@@ -44,6 +44,7 @@ class ConfigParser {
   private fnParam!: FnParam;
   private observed_range: [number, number] = [Date.now(), Date.now()];
   private historyPrefetched = false;
+  private fetchTime = Date.now();
   private preserveObservedRange = false;
   private retainedCacheRanges: Record<string, TimestampRange[]> = {};
   private failedFetches = new Map<string, unknown>();
@@ -78,6 +79,8 @@ class ConfigParser {
     this.failedFetches.clear();
     this.hass = hass;
     this.historyPrefetched = false;
+    // All fetch paths in this update share one cutoff, even after slow requests.
+    this.fetchTime = Date.now();
     // Dynamic ranges advance on refresh; concrete ranges can come from browsing.
     const inputRange = "visible_range" in input_yaml
       ? input_yaml.visible_range
@@ -336,7 +339,10 @@ class ConfigParser {
         const offset = parseTimeDuration(timeOffset);
         requests.push({
           entity: { entity: entityId, ...statisticsParams },
-          range: [visible_range[0] - offset, visible_range[1] - offset],
+          range: [
+            visible_range[0] - offset,
+            Math.min(visible_range[1] - offset, this.fetchTime),
+          ],
         });
       } catch {
         // The regular entity parser reports malformed dynamic configurations.
@@ -372,7 +378,7 @@ class ConfigParser {
 
     const range_to_fetch = [
       visible_range[0] - offset,
-      visible_range[1] - offset,
+      Math.min(visible_range[1] - offset, this.fetchTime),
     ];
     const range_to_retain = [
       this.observed_range[0] - offset,
@@ -466,9 +472,7 @@ class ConfigParser {
           typeof entity !== "string" ||
           !entity ||
           statistic ||
-          period ||
-          is$fn(attribute) ||
-          is$fn(timeOffset)
+          period
         ) {
           continue;
         }
@@ -479,7 +483,10 @@ class ConfigParser {
         const offset = parseTimeDuration(timeOffset);
         requests.push({
           entity: fetchConfig,
-          range: [visibleRange[0] - offset, visibleRange[1] - offset],
+          range: [
+            visibleRange[0] - offset,
+            Math.min(visibleRange[1] - offset, this.fetchTime),
+          ],
         });
       } catch {
         // Dynamic fetch parameters are evaluated later via the existing path.

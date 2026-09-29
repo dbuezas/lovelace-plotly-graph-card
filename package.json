@@ -11,7 +11,6 @@
     "build": "esbuild src/plotly-graph-card.ts --outdir=dist --bundle --minify",
     "tsc": "tsc",
     "test": "jest",
-    "test:history": "jest --runInBand src/cache/history-cache.test.ts src/cache/fetch-states.test.ts src/cache/date-ranges.test.ts src/parse-config/history-prefetch.test.ts",
     "test:cache": "jest --runInBand src/cache/Cache.test.ts src/cache/date-ranges.test.ts src/cache/observed-range.test.ts src/parse-config/cache-retention.test.ts",
     "test:statistics": "jest --runInBand src/cache/fetch-statistics.test.ts src/cache/statistics-cache.test.ts src/cache/date-ranges.test.ts src/parse-config/parse-config.test.ts",
     "test:browser": "node script/test-plotly-browser.mjs",
@@ -30,7 +29,7 @@
     "chokidar": "^3.5.3",
     "esbuild": "^0.16.10",
     "playwright": "1.63.0",
-    "ts-jest": "^29.0.3",
+    "ts-jest": "^29.4.13",
     "ws": "^8.12.0"
   },
   "dependencies": {

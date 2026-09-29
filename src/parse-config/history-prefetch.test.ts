@@ -30,6 +30,56 @@ describe("ConfigParser history prefetch", () => {
     (global as any).window = {};
   });
 
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it.each(["current_day", "current_week", "future range"] as const)(
+    "uses one batch for %s even when time advances during the request",
+    async (window) => {
+      const now = new Date("2025-01-08T12:00:00.000Z");
+      jest.useFakeTimers().setSystemTime(now);
+      const entityIds = ["sensor.one", "sensor.two", "sensor.three"];
+      const callWS = jest.fn().mockImplementation(({ entity_ids, end_time }) => {
+        jest.setSystemTime(Date.now() + 4);
+        return Promise.resolve(Object.fromEntries(entity_ids.map((id) => [
+          id, [{ s: "5", lu: Date.parse(end_time) / 1000 - 60 }],
+        ])));
+      });
+      const parser = new ConfigParser();
+      const input: Parameters<ConfigParser["update"]>[0] = {
+        yaml: {
+          type: "custom:plotly-graph",
+          ...(window === "future range"
+            ? { visible_range: [+now - 3600000, +now + 3600000] }
+            : { hours_to_show: window }),
+          entities: entityIds.map((entity) => ({ entity, extend_to_present: false })),
+        },
+        hass: {
+          callWS,
+          states: Object.fromEntries(entityIds.map((id) => [id, state(id, "5")])),
+          locale: { language: "en", first_weekday: "monday" },
+        } as unknown as HomeAssistant,
+        css_vars: {} as HATheme,
+      };
+      expect((await parser.update(input)).errors).toEqual([]);
+      expect(callWS).toHaveBeenCalledTimes(1);
+      expect(callWS.mock.calls[0][0]).toEqual(expect.objectContaining({
+        entity_ids: entityIds,
+        end_time: now.toISOString(),
+      }));
+
+      // A later refresh must still fetch the new tail, once for all entities.
+      jest.setSystemTime(+now + 300000);
+      expect((await parser.update(input)).errors).toEqual([]);
+      expect(callWS).toHaveBeenCalledTimes(2);
+      expect(callWS.mock.calls[1][0]).toEqual(expect.objectContaining({
+        entity_ids: entityIds,
+        end_time: new Date(+now + 300000).toISOString(),
+      }));
+    },
+  );
+
   async function parse(entities: any[], fetch_mask: boolean[] = []) {
     const start = Date.parse("2025-01-01T00:00:00.000Z");
     const end = start + 86400000;

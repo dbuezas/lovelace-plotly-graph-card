@@ -175,9 +175,7 @@ const filters = {
     const offset = parseTimeDuration(param.offset ?? "0s");
     checkTimeUnits(unit);
     const date = new Date();
-    date.setHours(0);
-    date.setMinutes(0);
-    date.setSeconds(0);
+    date.setHours(0, 0, 0, 0);
     const t0 = +date + offset;
     return ({ xs, ys, meta }) => {
       let yAcc = 0;
@@ -194,17 +192,23 @@ const filters = {
         xs: xs,
         ys: mapNumbers(ys, (y, i) => {
           const x = +xs[i];
+          let intervalStart = last.x;
           if (reset_every > 0) {
             const laps = Math.floor((x - t0) / reset_every);
             if (laps !== last.laps) {
               yAcc = 0;
               last.laps = laps;
+              // only the part after the reset belongs to the new period
+              intervalStart = Math.max(intervalStart, t0 + laps * reset_every);
             }
           }
-          const dateDelta = (x - last.x) / timeUnits[unit];
+          const dateDelta = (x - intervalStart) / timeUnits[unit];
           const isFirst = isNaN(last.x);
           last.x = x;
-          if (isFirst) return NaN;
+          if (isFirst) {
+            last.y = y;
+            return NaN;
+          }
           yAcc += last.y * dateDelta;
           last.y = y;
           return yAcc;
@@ -227,7 +231,7 @@ const filters = {
         count: 0,
         x: 0,
       };
-      for (let i = 0; i < ys.length + window_size; i++) {
+      for (let i = 0; i < ys.length + window_size - 1; i++) {
         if (i < ys.length) {
           acc.x += +xs[i];
           acc.y += ys[i];
@@ -238,7 +242,7 @@ const filters = {
           acc.y -= ys[i - window_size];
           acc.count--;
         }
-        if ((i >= window_size && i < ys.length) || extended) {
+        if (shouldEmitWindow(i, ys.length, window_size, extended, centered)) {
           if (centered) xs2.push(new Date(acc.x / acc.count));
           else xs2.push(xs[i]);
           ys2.push(acc.y / acc.count);
@@ -260,7 +264,7 @@ const filters = {
         ys: [] as number[],
         x: 0,
       };
-      for (let i = 0; i < ys.length + window_size; i++) {
+      for (let i = 0; i < ys.length + window_size - 1; i++) {
         if (i < ys.length) {
           acc.x += +xs[i];
           acc.ys.push(ys[i]);
@@ -269,12 +273,12 @@ const filters = {
           acc.x -= +xs[i - window_size];
           acc.ys.shift();
         }
-        if ((i >= window_size && i < ys.length) || extended) {
+        if (shouldEmitWindow(i, ys.length, window_size, extended, centered)) {
           if (centered) xs2.push(new Date(acc.x / acc.ys.length));
           else xs2.push(xs[i]);
-          const sorted = acc.ys.slice().sort();
-          const mid1 = Math.floor(sorted.length / 2);
-          const mid2 = Math.ceil(sorted.length / 2);
+          const sorted = acc.ys.slice().sort((a, b) => a - b);
+          const mid1 = Math.floor((sorted.length - 1) / 2);
+          const mid2 = Math.floor(sorted.length / 2);
           ys2.push((sorted[mid1] + sorted[mid2]) / 2);
         }
       }
@@ -469,6 +473,22 @@ const filters = {
   },
 } satisfies Record<string, (...args: any[]) => FilterFn>;
 export default filters;
+/**
+ * Whether a sliding window filter outputs a point at step i. The window
+ * covering indexes (i - window_size, i] is full for window_size - 1 <= i < n.
+ * With `extended`, the partial windows at the start are output too, and so
+ * are the ones at the end when centered (uncentered ones have no x there).
+ */
+function shouldEmitWindow(
+  i: number,
+  n: number,
+  window_size: number,
+  extended: boolean,
+  centered: boolean,
+) {
+  if (i < n) return extended || i >= window_size - 1;
+  return extended && centered;
+}
 function checkTimeUnits(unit: string) {
   if (!timeUnits[unit]) {
     throw new Error(
