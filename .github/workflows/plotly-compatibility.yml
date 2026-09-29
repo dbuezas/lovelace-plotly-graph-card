@@ -21,8 +21,8 @@ jobs:
       - run: npm ci
       - run: npm run tsc
       - run: npm run build
-      - name: Check Plotly compatibility defaults
-        run: npm test -- --runInBand src/parse-config/defaults.test.ts src/plot-state.test.ts
+      - name: Check Plotly defaults, render state and debounce
+        run: npm test -- --runInBand src/parse-config/defaults.test.ts src/plot-state.test.ts src/utils.test.ts
       - name: Check cache retention and rolling windows
         run: npm run test:cache
       - name: Check statistics batching and fallback
