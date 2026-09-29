@@ -1,5 +1,7 @@
-import { addPostParsingDefaults } from "./defaults";
-import { Config } from "../types";
+import { addPostParsingDefaults, addPreParsingDefaults } from "./defaults";
+import { Config, InputConfig, InputEntityOptions } from "../types";
+import { HATheme } from "./themed-layout";
+import { FilterInput } from "../filters/filters";
 
 function apply(overrides: Partial<Config> = {}) {
   return addPostParsingDefaults({
@@ -85,5 +87,92 @@ describe("Plotly 4 compatibility", () => {
     const result = apply({ layout, entities: entities as Config["entities"] });
     expect(result.layout.yaxis?.title).toEqual({ text: "Power" });
     expect(result.layout.xaxis?.range).toEqual([20, 30]);
+  });
+});
+
+describe("entity filters and defaults.entity.filters", () => {
+  const cssVars = {} as HATheme;
+
+  beforeEach(() => {
+    (global as any).window = {};
+  });
+
+  afterEach(() => {
+    delete (global as any).window;
+  });
+  const defaultFilters: FilterInput[] = [{ multiply: 2 }, "force_numeric"];
+
+  function entityFilters(
+    entities: InputConfig["entities"],
+    defaults: { entity?: Pick<InputEntityOptions, "filters"> } = {
+      entity: { filters: defaultFilters },
+    },
+  ) {
+    const yaml = addPreParsingDefaults(
+      {
+        type: "custom:plotly-graph",
+        ha_theme: false,
+        entities,
+        defaults: defaults as InputConfig["defaults"],
+      },
+      cssVars,
+    );
+    return yaml.entities.map((entity) => entity.filters);
+  }
+
+  test("entities without filters use the default filters", () => {
+    expect(entityFilters([{ entity: "sensor.a" }, "sensor.b"])).toEqual([
+      defaultFilters,
+      defaultFilters,
+    ]);
+  });
+
+  test("entity filters replace the default filters", () => {
+    expect(
+      entityFilters([
+        { entity: "sensor.a", filters: [{ add: 1 }] },
+        { entity: "sensor.b" },
+      ]),
+    ).toEqual([[{ add: 1 }], defaultFilters]);
+  });
+
+  test("longer entity filters are not padded with default filters", () => {
+    expect(
+      entityFilters([
+        {
+          entity: "sensor.a",
+          filters: [{ add: 1 }, { multiply: 3 }, "delta"],
+        },
+      ]),
+    ).toEqual([[{ add: 1 }, { multiply: 3 }, "delta"]]);
+  });
+
+  test("filters with the same position and name are not merged", () => {
+    expect(
+      entityFilters(
+        [{ entity: "sensor.a", filters: [{ resample: { interval: "1h" } }] }],
+        { entity: { filters: [{ resample: { interpolate: true } }] } },
+      ),
+    ).toEqual([[{ resample: { interval: "1h" } }]]);
+  });
+
+  test("an empty filter list disables the default filters", () => {
+    expect(entityFilters([{ entity: "sensor.a", filters: [] }])).toEqual([[]]);
+  });
+
+  test("entity filters are used when there are no default filters", () => {
+    expect(
+      entityFilters([{ entity: "sensor.a", filters: ["delta"] }], {}),
+    ).toEqual([["delta"]]);
+  });
+
+  test("entities get their own copy of the filters", () => {
+    const entityFilter: FilterInput = { add: 1 };
+    const [a, b] = entityFilters([
+      { entity: "sensor.a" },
+      { entity: "sensor.b", filters: [entityFilter] },
+    ]);
+    expect(a![0]).not.toBe(defaultFilters[0]);
+    expect(b![0]).not.toBe(entityFilter);
   });
 });
