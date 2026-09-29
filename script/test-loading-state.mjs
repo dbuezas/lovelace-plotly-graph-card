@@ -88,6 +88,10 @@ try {
         getComputedStyle(card.loadingEl).display === "none",
         "Loader visible",
       );
+      check(
+        getComputedStyle(card.cardEl).backgroundColor === "rgba(0, 0, 0, 0)",
+        "Card background not transparent after loading",
+      );
       check(card.isInternalRelayout === 0, "Relayout guard remained set");
     };
     const destroy = (card) => {

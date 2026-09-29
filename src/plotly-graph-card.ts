@@ -84,15 +84,16 @@ export class PlotlyGraph extends HTMLElement {
               display: block;
               overflow: hidden;
               position: relative;
-              background: var(
-                --ha-card-background,
-                var(--card-background-color, var(--primary-background-color))
-              );
+              background: transparent;
               width: 100%;
               height: calc(100% - 5px);
               direction: ltr;
             }
             ha-card.loading {
+              background: var(
+                --ha-card-background,
+                var(--card-background-color, var(--primary-background-color))
+              );
               height: auto;
               min-height: var(--plotly-loading-height, ${DEFAULT_PLOT_HEIGHT}px);
             }
