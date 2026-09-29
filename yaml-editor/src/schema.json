@@ -197838,6 +197838,10 @@
         }
       ]
     },
+    "time_zone": {
+      "$ref": "#/definitions/With$fn<string|undefined>",
+      "description": "Timezone the x axis is drawn in: \"local\" (the browser's), \"server\"\n(Home Assistant's), or an IANA name like \"Europe/Rome\".\nDefaults to the Home Assistant user profile setting."
+    },
     "title": {
       "$ref": "#/definitions/With$fn<string|undefined>"
     },

@@ -7,6 +7,8 @@ import {
 } from "../duration/duration";
 import { StatisticValue } from "../recorder-types";
 import { HassEntity, YValue } from "../types";
+import { inTimeZone, resolveTimeZone } from "../timezone";
+import { startOfDay } from "date-fns";
 
 import BaseRegression from "ml-regression-base";
 import LinearRegression from "ml-regression-simple-linear";
@@ -28,6 +30,7 @@ type FilterData = {
   meta: HassEntity["attributes"];
   vars: Record<any, any>;
   hass: HomeAssistant;
+  getFromConfig?: (path: string) => any;
 };
 export type FilterFn = (p: FilterData) => Partial<FilterData>;
 
@@ -174,10 +177,9 @@ const filters = {
     const reset_every = parseTimeDuration(param.reset_every ?? "0s");
     const offset = parseTimeDuration(param.offset ?? "0s");
     checkTimeUnits(unit);
-    const date = new Date();
-    date.setHours(0, 0, 0, 0);
-    const t0 = +date + offset;
-    return ({ xs, ys, meta }) => {
+    return ({ xs, ys, meta, hass, getFromConfig }) => {
+      const timeZone = resolveTimeZone(getFromConfig?.("time_zone"), hass);
+      const t0 = inTimeZone(Date.now(), timeZone, startOfDay) + offset;
       let yAcc = 0;
       let last = {
         x: NaN,

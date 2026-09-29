@@ -33,6 +33,7 @@ import {
   YValue,
 } from "../types";
 import getDeprecationError from "./deprecations";
+import { resolveTimeZone, toPlotlyTimeZone } from "../timezone";
 
 class ConfigParser {
   private yaml: Partial<Config> = {};
@@ -48,6 +49,8 @@ class ConfigParser {
   private preserveObservedRange = false;
   private retainedCacheRanges: Record<string, TimestampRange[]> = {};
   private failedFetches = new Map<string, unknown>();
+  /** IANA timezone the plot is drawn in, undefined for the browser's */
+  public timeZone?: string;
   public resetObservedRange() {
     this.observed_range = [Date.now(), Date.now()];
   }
@@ -114,6 +117,13 @@ class ConfigParser {
     }
     this.cache.retain(this.retainedCacheRanges);
     this.yaml = addPostParsingDefaults(this.yaml as Config);
+    try {
+      this.timeZone = this.getTimeZone();
+    } catch (e) {
+      this.timeZone = undefined;
+      this.errors.push(e as Error);
+    }
+    this.yaml = toPlotlyTimeZone(this.yaml as Config, this.timeZone);
 
     return { errors: this.errors, parsed: this.yaml as Config };
   }
@@ -274,7 +284,10 @@ class ConfigParser {
       );
       const hours_to_show = this.fnParam.getFromConfig("hours_to_show");
       if (isRelativeTime(hours_to_show)) {
-        const [start, end] = parseRelativeTime(hours_to_show);
+        const [start, end] = parseRelativeTime(
+          hours_to_show,
+          this.getTimeZone()
+        );
         visible_range = [start + global_offset, end + global_offset];
       } else {
         let ms_to_show;
@@ -296,6 +309,10 @@ class ConfigParser {
       this.yaml.visible_range = visible_range;
     }
     return visible_range;
+  }
+
+  private getTimeZone() {
+    return resolveTimeZone(this.fnParam.getFromConfig("time_zone"), this.hass);
   }
 
   private async prefetchStatistics() {

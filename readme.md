@@ -1090,6 +1090,18 @@ config:
 
 When using `hours_to_show: current_week`, the "First day of the week" configured in Home Assistant is used
 
+## time_zone:
+
+Dates are shown in the "Time zone" chosen in the Home Assistant user profile (your browser's or the server's), but it can be overridden like this:
+
+```yaml
+time_zone: server # Home Assistant's timezone
+time_zone: local # the browser's timezone
+time_zone: Europe/Rome # any IANA timezone
+```
+
+This also applies to the boundaries of `hours_to_show: current_day` and friends, and to `integrate`'s `reset_every`.
+
 ## Presets
 
 If you find yourself reusing the same card configuration frequently, you can save it as a preset.
