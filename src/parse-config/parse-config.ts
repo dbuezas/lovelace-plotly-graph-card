@@ -1,4 +1,5 @@
 import Cache, { getEntityKey } from "../cache/Cache";
+import { updateObservedRange } from "../cache/observed-range";
 import { HATheme } from "./themed-layout";
 
 import propose from "propose";
@@ -38,6 +39,8 @@ class ConfigParser {
   private busy = false;
   private fnParam!: FnParam;
   private observed_range: [number, number] = [Date.now(), Date.now()];
+  private preserveObservedRange = false;
+  private retainedCacheRanges: Record<string, TimestampRange[]> = {};
   private failedFetches = new Map<string, unknown>();
   public resetObservedRange() {
     this.observed_range = [Date.now(), Date.now()];
@@ -51,7 +54,7 @@ class ConfigParser {
     if (this.busy) throw new Error("ParseConfig was updated while busy");
     this.busy = true;
     try {
-      return this._update(input);
+      return await this._update(input);
     } finally {
       this.busy = false;
     }
@@ -69,6 +72,13 @@ class ConfigParser {
     this.errors = [];
     this.failedFetches.clear();
     this.hass = hass;
+    // Dynamic ranges advance on refresh; concrete ranges can come from browsing.
+    const inputRange = "visible_range" in input_yaml
+      ? input_yaml.visible_range
+      : undefined;
+    this.preserveObservedRange =
+      Array.isArray(inputRange) && !inputRange.some(is$fn);
+    this.retainedCacheRanges = {};
     const { yaml, explicitlyConfiguredAxes } = addPreParsingDefaults(
       input_yaml,
       css_vars
@@ -97,6 +107,7 @@ class ConfigParser {
         this.errors?.push(e as Error);
       }
     }
+    this.cache.retain(this.retainedCacheRanges);
     this.yaml = addPostParsingDefaults(
       this.yaml as Config,
       explicitlyConfiguredAxes
@@ -340,11 +351,12 @@ class ConfigParser {
 
   private async fetchDataForEntity(path: string) {
     const visible_range = this.getVisibleRange();
-    if (this.fnParam.getFromConfig("autorange_after_scroll")) {
-      this.observed_range = [...visible_range];
-    }
-    this.observed_range[0] = Math.min(this.observed_range[0], visible_range[0]);
-    this.observed_range[1] = Math.max(this.observed_range[1], visible_range[1]);
+    this.observed_range = updateObservedRange(
+      this.observed_range,
+      visible_range,
+      this.preserveObservedRange &&
+        !this.fnParam.getFromConfig("autorange_after_scroll")
+    );
     const statisticsParams = parseStatistics(
       visible_range,
       this.fnParam.getFromConfig(path + ".statistic"),
@@ -363,14 +375,24 @@ class ConfigParser {
       visible_range[0] - offset,
       visible_range[1] - offset,
     ];
+    const range_to_retain = [
+      this.observed_range[0] - offset,
+      // A live state can arrive while a history request is in flight. Keeping
+      // the rolling range open-ended avoids pruning that newer state.
+      this.preserveObservedRange
+        ? this.observed_range[1] - offset
+        : Number.POSITIVE_INFINITY,
+    ] as [number, number];
+    const entityKey = getEntityKey(fetchConfig);
+    (this.retainedCacheRanges[entityKey] ??= []).push(range_to_retain);
     const fetch_mask: boolean[] = this.fnParam.getFromConfig("fetch_mask") || [];
     const i = getEntityIndex(path);
     let data: EntityData;
     if (fetch_mask[i] === false) {
-      data = this.cache.getData(fetchConfig);
+      data = this.cache.getData(fetchConfig, [range_to_retain]);
     } else {
       const requestKey = JSON.stringify([
-        getEntityKey(fetchConfig),
+        entityKey,
         ...range_to_fetch,
       ]);
       // Reuse failures within this update, but allow retries on the next update.
@@ -378,7 +400,12 @@ class ConfigParser {
         throw this.failedFetches.get(requestKey);
       }
       try {
-        data = await this.cache.fetch(range_to_fetch, fetchConfig, this.hass!);
+        data = await this.cache.fetch(
+          range_to_fetch,
+          fetchConfig,
+          this.hass!,
+          [range_to_retain]
+        );
       } catch (error) {
         this.failedFetches.set(requestKey, error);
         throw error;

@@ -669,6 +669,65 @@ try {
     return results;
   });
   results.results.push(...axisResults);
+  const retention = await page.evaluate(async () => {
+    const card = document.getElementById("card-under-test");
+    const entity = "sensor.retention";
+    window.cacheNow = Math.floor(Date.now() / 1000) * 1000 - 120000;
+    card.hass = {
+      ...card.hass,
+      states: {
+        [entity]: {
+          entity_id: entity,
+          state: "1",
+          attributes: {},
+          last_updated: new Date(window.cacheNow).toISOString(),
+          last_changed: new Date(window.cacheNow).toISOString(),
+        },
+      },
+      callApi: async (_method, uri) => {
+        const [path, query] = uri.split("?");
+        const start = Date.parse(path.replace("history/period/", ""));
+        const end = Date.parse(new URLSearchParams(query).get("end_time"));
+        const timestamps = [start];
+        for (let t = Math.ceil(start / 1000) * 1000; t <= end; t += 1000)
+          timestamps.push(t);
+        return [
+          timestamps.map((timestamp) => ({
+            entity_id: entity,
+            state: String(timestamp),
+            attributes: {},
+            last_updated: new Date(timestamp).toISOString(),
+            last_changed: new Date(timestamp).toISOString(),
+          })),
+        ];
+      },
+    };
+    await card.setConfig({
+      type: "custom:plotly-graph",
+      refresh_interval: 0,
+      visible_range: "$fn () => [window.cacheNow - 60000, window.cacheNow]",
+      entities: [{ entity, extend_to_present: false }],
+    });
+    let maxPoints = 0;
+    for (let i = 0; i < 20; i++) {
+      window.cacheNow += 1000;
+      await card.plot({ should_fetch: true });
+      if (card.errorMsgEl.textContent)
+        throw new Error(card.errorMsgEl.textContent);
+      const trace = card.contentEl.data[0];
+      maxPoints = Math.max(maxPoints, trace.x.length);
+      if (+new Date(trace.x[0]) !== window.cacheNow - 60000)
+        throw new Error("Plotted range did not advance");
+      if (trace.y.at(-1) !== String(window.cacheNow))
+        throw new Error("Latest sample missing");
+    }
+    return { maxPoints, plottedPoints: card.contentEl.data[0].y.length };
+  });
+  assert.equal(retention.maxPoints, 61);
+  assert.equal(retention.plottedPoints, 61);
+  results.results.push(
+    "rolling dynamic range keeps 61 samples across 20 card refreshes",
+  );
   const modernCardResults = await page.evaluate(async () => {
     const card = document.getElementById("card-under-test");
     const rendered = [];
