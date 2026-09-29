@@ -110,11 +110,18 @@ try {
     results.push("subtle scan-line animation");
 
     let releaseFetch;
+    let parseCalls = 0;
     card.configParser.update = () =>
       new Promise((resolve) => {
+        parseCalls++;
         releaseFetch = () => resolve({ errors: [], parsed });
       });
+    const superseded = card._plot(500);
+    await frame();
     const rendering = card._plot();
+    await superseded;
+    checkLoading(card, 285);
+    results.push("superseded render does not finish initial loading");
     while (!releaseFetch) await frame();
     await frame();
     checkLoading(card, 285);
@@ -131,6 +138,7 @@ try {
     releaseRender();
     await rendering;
     Plotly.react = realReact;
+    check(parseCalls === 1, "Superseded request parsed the config");
     checkFinished(card);
     check(card.contentEl.style.visibility === "", "Rendered graph hidden");
     check(

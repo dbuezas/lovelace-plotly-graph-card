@@ -6,28 +6,44 @@ export function getIsPureObject(val: any) {
 
 export function debounce(func: (delay?: number) => Promise<void>) {
   let lastRunningPromise = Promise.resolve();
-  let waiting = {
-    cancelled: false,
-  };
+  let cancelWaiting = () => {};
   return (delay?: number) => {
-    waiting.cancelled = true;
-    const me = {
-      cancelled: false,
+    cancelWaiting();
+    let cancelled = false;
+    let cancelWait = () => {};
+    cancelWaiting = () => {
+      cancelled = true;
+      cancelWait();
     };
-    waiting = me;
-    return (lastRunningPromise = lastRunningPromise
+    const result = lastRunningPromise
       .catch(() => {})
-      .then(
-        () =>
-          new Promise(async (resolve) => {
-            if (delay) {
-              await sleep(delay);
-            }
-            requestAnimationFrame(async () => {
-              if (me.cancelled) resolve();
-              else resolve(func());
-            });
-          })
-      ));
+      .then(async () => {
+        if (cancelled) return;
+        if (delay) {
+          await new Promise<void>((resolve) => {
+            const timer = setTimeout(resolve, delay);
+            cancelWait = () => {
+              clearTimeout(timer);
+              resolve();
+            };
+          });
+        }
+        if (cancelled) return;
+        await new Promise<void>((resolve) => {
+          const frame = requestAnimationFrame(() => {
+            cancelWait = () => {};
+            resolve();
+          });
+          cancelWait = () => {
+            cancelAnimationFrame(frame);
+            resolve();
+          };
+        });
+        if (cancelled) return;
+        // Only waiting work is cancelled; an active render must finish first.
+        await func();
+      });
+    lastRunningPromise = result;
+    return result;
   };
 }
