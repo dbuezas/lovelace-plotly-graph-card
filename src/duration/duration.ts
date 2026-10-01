@@ -7,7 +7,6 @@ import {
   endOfQuarter,
   endOfWeek,
   endOfYear,
-  getDefaultOptions,
   setDefaultOptions,
   startOfDay,
   startOfHour,
@@ -17,11 +16,7 @@ import {
   startOfWeek,
   startOfYear,
 } from "date-fns";
-import {
-  CalendarUnit,
-  endOfInTimeZone,
-  startOfInTimeZone,
-} from "../timezone";
+import { inTimeZone } from "../timezone";
 
 export const timeUnits = {
   ms: 1,
@@ -102,13 +97,13 @@ export type RelativeTimeStr =
   | "current_year";
 
 const relativeTimes = {
-  current_minute: ["minute", startOfMinute, endOfMinute],
-  current_hour: ["hour", startOfHour, endOfHour],
-  current_day: ["day", startOfDay, endOfDay],
-  current_week: ["week", startOfWeek, endOfWeek],
-  current_month: ["month", startOfMonth, endOfMonth],
-  current_quarter: ["quarter", startOfQuarter, endOfQuarter],
-  current_year: ["year", startOfYear, endOfYear],
+  current_minute: [startOfMinute, endOfMinute],
+  current_hour: [startOfHour, endOfHour],
+  current_day: [startOfDay, endOfDay],
+  current_week: [startOfWeek, endOfWeek],
+  current_month: [startOfMonth, endOfMonth],
+  current_quarter: [startOfQuarter, endOfQuarter],
+  current_year: [startOfYear, endOfYear],
 } as const;
 
 /**
@@ -116,19 +111,14 @@ const relativeTimes = {
  */
 export const parseRelativeTime = (
   str: RelativeTimeStr,
-  timeZone?: string
+  timeZone?: string,
 ): [number, number] => {
   if (!Object.prototype.hasOwnProperty.call(relativeTimes, str))
     throw new Error(`${str} is not a dynamic relative time`);
-  const [unit, startOf, endOf] = relativeTimes[str];
+  const [startOf, endOf] = relativeTimes[str];
   const now = Date.now();
-  if (!timeZone) return [+startOf(now), +endOf(now)];
-  const weekStartsOn =
-    (getDefaultOptions() as { weekStartsOn?: number }).weekStartsOn ?? 0;
-  return [
-    startOfInTimeZone(now, unit as CalendarUnit, timeZone, weekStartsOn),
-    endOfInTimeZone(now, unit as CalendarUnit, timeZone, weekStartsOn),
-  ];
+  const options = inTimeZone(timeZone);
+  return [+startOf(now, options), +endOf(now, options)];
 };
 
 export const isRelativeTime = (str: any) => {

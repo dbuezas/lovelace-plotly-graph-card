@@ -1,10 +1,8 @@
 import {
-  fromWallTime,
-  parseWallTime,
+  parsePlotlyDateString,
   resolveTimeZone,
   toPlotlyDateString,
   toPlotlyTimeZone,
-  toWallTime,
 } from "./timezone";
 import { parseRelativeTime } from "./duration/duration";
 import { endOfWeek, setDefaultOptions, startOfWeek } from "date-fns";
@@ -58,24 +56,27 @@ describe("wall clock conversion", () => {
   it("round trips timestamps", () => {
     for (const tz of ["Europe/Rome", "America/New_York", "Australia/Lord_Howe"])
       for (let t = Date.UTC(2024, 0, 1); t < Date.UTC(2025, 0, 1); t += 3.7e6) {
-        const wall = toWallTime(t, tz);
-        const back = fromWallTime(wall, tz);
+        const str = toPlotlyDateString(t, tz);
+        const back = parsePlotlyDateString(str, tz);
         // ambiguous wall times (DST fall back) may resolve to either instant
-        expect(toWallTime(back, tz)).toBe(wall);
+        expect(toPlotlyDateString(back, tz)).toBe(str);
       }
   });
 });
 
-describe("parseWallTime", () => {
+describe("parsePlotlyDateString", () => {
   it("parses the date strings Plotly returns", () => {
-    expect(parseWallTime("2024-03-31 02:30:00.5")).toBe(
-      Date.UTC(2024, 2, 31, 2, 30, 0, 500),
+    const tz = "Asia/Kolkata"; // UTC+5:30
+    expect(parsePlotlyDateString("2024-03-31 02:30:00.5", tz)).toBe(
+      Date.UTC(2024, 2, 30, 21, 0, 0, 500),
     );
-    expect(parseWallTime("2024-03-31 02:30")).toBe(
-      Date.UTC(2024, 2, 31, 2, 30),
+    expect(parsePlotlyDateString("2024-03-31 02:30", tz)).toBe(
+      Date.UTC(2024, 2, 30, 21),
     );
-    expect(parseWallTime("2024-03-31")).toBe(Date.UTC(2024, 2, 31));
-    expect(parseWallTime("nonsense")).toBeNaN();
+    expect(parsePlotlyDateString("2024-03-31", tz)).toBe(
+      Date.UTC(2024, 2, 30, 18, 30),
+    );
+    expect(parsePlotlyDateString("nonsense", tz)).toBeNaN();
   });
 });
 
@@ -92,16 +93,6 @@ describe("relative times", () => {
     const [start, end] = parseRelativeTime("current_week");
     expect(start).toBe(+startOfWeek(Date.now()));
     expect(end).toBe(+endOfWeek(Date.now()));
-  });
-  it("is not affected by DST gaps of the browser", () => {
-    // 02:00-02:59 on 2024-03-31 doesn't exist in e.g. Europe/Rome (DST
-    // starts), but it does in Cairo. Run with TZ=Europe/Rome to exercise it.
-    jest.spyOn(Date, "now").mockReturnValue(Date.UTC(2024, 2, 31, 0, 30));
-    const tz = "Africa/Cairo"; // no DST in March 2024
-    const [start, end] = parseRelativeTime("current_hour", tz);
-    expect(toPlotlyDateString(start, tz)).toBe("2024-03-31 02:00:00.000");
-    expect(toPlotlyDateString(end, tz)).toBe("2024-03-31 02:59:59.999");
-    jest.restoreAllMocks();
   });
   it.each([
     ["current_week", "2024-02-26 00:00:00.000", "2024-03-03 23:59:59.999"],

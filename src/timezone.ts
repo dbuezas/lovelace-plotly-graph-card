@@ -1,4 +1,6 @@
+import { tz, tzOffset } from "@date-fns/tz";
 import { HomeAssistant } from "custom-card-helpers";
+import { parseISO } from "date-fns";
 
 /**
  * Plotly has no timezone support: it draws JS Dates and numeric ranges in the
@@ -26,200 +28,29 @@ export function resolveTimeZone(
   // Home Assistant's profile setting ("local" | "server") is the default
   time_zone ??= (hass?.locale as any)?.time_zone;
   if (!time_zone || time_zone === "local") return undefined;
-  const tz =
+  const timeZone =
     time_zone === "server" ? (hass?.config as any)?.time_zone : time_zone;
-  if (!tz || tz === browserTimeZone()) return undefined;
-  try {
-    getFormatter(tz);
-  } catch {
-    throw new Error(`time_zone: unknown timezone '${tz}'`);
-  }
-  return tz;
+  if (!timeZone || timeZone === browserTimeZone()) return undefined;
+  if (isNaN(tzOffset(timeZone, new Date())))
+    throw new Error(`time_zone: unknown timezone '${timeZone}'`);
+  return timeZone;
 }
 
-const formatters = new Map<string, Intl.DateTimeFormat>();
-function getFormatter(timeZone: string) {
-  let formatter = formatters.get(timeZone);
-  if (!formatter) {
-    formatter = new Intl.DateTimeFormat("en-US", {
-      timeZone,
-      hourCycle: "h23",
-      era: "short",
-      year: "numeric",
-      month: "numeric",
-      day: "numeric",
-      hour: "numeric",
-      minute: "numeric",
-      second: "numeric",
-    });
-    formatters.set(timeZone, formatter);
-  }
-  return formatter;
-}
-
-// Offsets only change on transitions, which happen on 15 minute boundaries.
-const OFFSET_BUCKET = 15 * 60 * 1000;
-const offsets = new Map<string, number>();
-/** ms to add to a timestamp to get its wall clock time in `timeZone`, as UTC */
-function getOffset(timestamp: number, timeZone: string) {
-  const bucket = Math.floor(timestamp / OFFSET_BUCKET) * OFFSET_BUCKET;
-  const key = timeZone + bucket;
-  let offset = offsets.get(key);
-  if (offset === undefined) {
-    const parts: Record<string, string> = {};
-    for (const { type, value } of getFormatter(timeZone).formatToParts(bucket))
-      parts[type] = value;
-    let year = +parts.year;
-    if (parts.era === "BC" || parts.era === "B") year = 1 - year;
-    const wall = new Date(0);
-    wall.setUTCFullYear(year, +parts.month - 1, +parts.day);
-    wall.setUTCHours(+parts.hour, +parts.minute, +parts.second);
-    offset = +wall - bucket;
-    if (offsets.size > 10000) offsets.clear();
-    offsets.set(key, offset);
-  }
-  return offset;
-}
-
-/** Timestamp -> wall clock time in `timeZone`, expressed as UTC ms */
-export function toWallTime(timestamp: number, timeZone: string) {
-  return timestamp + getOffset(timestamp, timeZone);
-}
-
-/** Wall clock time in `timeZone` (as UTC ms) -> timestamp */
-export function fromWallTime(wall: number, timeZone: string) {
-  let timestamp = wall - getOffset(wall, timeZone);
-  // A second pass settles the offset near DST transitions
-  timestamp = wall - getOffset(timestamp, timeZone);
-  return timestamp;
-}
-
-/** Parses a naive Plotly date string ("2024-03-31 02:30:00.000") as UTC ms */
-export function parseWallTime(str: string) {
-  const match = str.match(
-    /^(-?\d{1,4})-(\d\d?)(?:-(\d\d?))?(?:[ T](\d\d?)(?::(\d\d?)(?::(\d\d?)(?:\.(\d+))?)?)?)?$/,
-  );
-  if (!match) return NaN;
-  const [
-    ,
-    year,
-    month,
-    day = 1,
-    hour = 0,
-    minute = 0,
-    second = 0,
-    fraction = "0",
-  ] = match;
-  const wall = new Date(0);
-  wall.setUTCFullYear(+year, +month - 1, +day);
-  wall.setUTCHours(
-    +hour,
-    +minute,
-    +second,
-    Math.round(+`0.${fraction}` * 1000),
-  );
-  return +wall;
-}
-
-export type CalendarUnit =
-  | "minute"
-  | "hour"
-  | "day"
-  | "week"
-  | "month"
-  | "quarter"
-  | "year";
-
-/** Start of the calendar unit containing a wall clock time (both as UTC ms) */
-function startOfWall(wall: number, unit: CalendarUnit, weekStartsOn: number) {
-  const d = new Date(wall);
-  switch (unit) {
-    case "minute":
-      d.setUTCSeconds(0, 0);
-      break;
-    case "hour":
-      d.setUTCMinutes(0, 0, 0);
-      break;
-    case "week":
-      d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() - weekStartsOn + 7) % 7));
-      d.setUTCHours(0, 0, 0, 0);
-      break;
-    case "year":
-      d.setUTCMonth(0, 1);
-      d.setUTCHours(0, 0, 0, 0);
-      break;
-    case "quarter":
-      d.setUTCMonth(d.getUTCMonth() - (d.getUTCMonth() % 3), 1);
-      d.setUTCHours(0, 0, 0, 0);
-      break;
-    case "month":
-      d.setUTCDate(1);
-      d.setUTCHours(0, 0, 0, 0);
-      break;
-    case "day":
-      d.setUTCHours(0, 0, 0, 0);
-      break;
-  }
-  return +d;
-}
-
-/** Adds one calendar unit to the start of a unit (both as UTC ms) */
-function nextWall(start: number, unit: CalendarUnit) {
-  const d = new Date(start);
-  switch (unit) {
-    case "minute":
-      return start + 60 * 1000;
-    case "hour":
-      return start + 60 * 60 * 1000;
-    case "day":
-      d.setUTCDate(d.getUTCDate() + 1);
-      break;
-    case "week":
-      d.setUTCDate(d.getUTCDate() + 7);
-      break;
-    case "month":
-      d.setUTCMonth(d.getUTCMonth() + 1);
-      break;
-    case "quarter":
-      d.setUTCMonth(d.getUTCMonth() + 3);
-      break;
-    case "year":
-      d.setUTCFullYear(d.getUTCFullYear() + 1);
-      break;
-  }
-  return +d;
-}
-
-/** Start of the calendar unit containing `timestamp`, as seen in `timeZone` */
-export function startOfInTimeZone(
-  timestamp: number,
-  unit: CalendarUnit,
-  timeZone: string,
-  weekStartsOn = 0,
-) {
-  const wall = toWallTime(timestamp, timeZone);
-  return fromWallTime(startOfWall(wall, unit, weekStartsOn), timeZone);
-}
-
-/** Last ms of the calendar unit containing `timestamp`, as seen in `timeZone` */
-export function endOfInTimeZone(
-  timestamp: number,
-  unit: CalendarUnit,
-  timeZone: string,
-  weekStartsOn = 0,
-) {
-  const start = startOfWall(
-    toWallTime(timestamp, timeZone),
-    unit,
-    weekStartsOn,
-  );
-  return fromWallTime(nextWall(start, unit) - 1, timeZone);
-}
+/** date-fns context option computing in `timeZone` (the browser's if undefined) */
+export const inTimeZone = (timeZone: string | undefined) =>
+  timeZone ? { in: tz(timeZone) } : {};
 
 /** Naive date string Plotly draws as-is, e.g. "2024-03-31 02:30:00.000" */
 export function toPlotlyDateString(timestamp: number, timeZone: string) {
-  const iso = new Date(toWallTime(timestamp, timeZone)).toISOString();
+  // Faster than date-fns' format, which matters for long traces
+  const offset = tzOffset(timeZone, new Date(timestamp)) * 60 * 1000;
+  const iso = new Date(timestamp + offset).toISOString();
   return iso.replace(/^\+/, "").replace("T", " ").slice(0, -1);
+}
+
+/** Timestamp of a naive date string from Plotly, read as wall clock time in `timeZone` */
+export function parsePlotlyDateString(str: string, timeZone: string) {
+  return +parseISO(str, { in: tz(timeZone) });
 }
 
 function isPlainObject(value: any) {

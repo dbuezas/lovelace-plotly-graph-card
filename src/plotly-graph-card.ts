@@ -19,7 +19,7 @@ import { TouchController } from "./touch-controller";
 import { ConfigParser } from "./parse-config/parse-config";
 import { merge } from "lodash";
 import { getFetchMask } from "./plot-state";
-import { fromWallTime, parseWallTime } from "./timezone";
+import { parsePlotlyDateString } from "./timezone";
 
 const componentName = isProduction ? "plotly-graph" : "plotly-graph-dev";
 
@@ -297,8 +297,8 @@ export class PlotlyGraph extends HTMLElement {
     return this.contentEl.layout.xaxis?.range?.map((date) => {
       if (timeZone && typeof date === "string") {
         // Plotly was given wall clock times in `timeZone`, not the browser's
-        const wall = parseWallTime(date);
-        if (!isNaN(wall)) return fromWallTime(wall, timeZone);
+        const timestamp = parsePlotlyDateString(date, timeZone);
+        if (!isNaN(timestamp)) return timestamp;
       }
       return this.parsePlotlyDate(date);
     });

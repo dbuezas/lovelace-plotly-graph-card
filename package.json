@@ -34,6 +34,7 @@
     "ws": "^8.12.0"
   },
   "dependencies": {
+    "@date-fns/tz": "^1.5.0",
     "binary-search-bounds": "^2.0.5",
     "buffer": "^6.0.3",
     "custom-card-helpers": "^1.9.0",
