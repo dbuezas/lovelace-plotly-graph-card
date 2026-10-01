@@ -142,19 +142,25 @@ export class PlotlyGraph extends HTMLElement {
   }
 
   connectedCallback() {
-    const updateCardSize = async () => {
+    const updateCardSize = () => {
       const width = this.cardEl.offsetWidth;
+      if (width <= 0) return;
       this.contentEl.style.position = "absolute";
       const height = this.cardEl.offsetHeight;
       this.contentEl.style.position = "";
-      this.size = { width };
+      const nextSize: { width: number; height?: number } = { width };
       if (height > 100) {
         // Panel view type has the cards covering 100% of the height of the window.
         // Masonry lets the cards grow by themselves.
         // if height > 100 ==> Panel ==> use available height
         // else ==> Mansonry ==> let the height be determined by defaults
-        this.size.height = height - this.titleEl.offsetHeight;
+        nextSize.height = height - this.titleEl.offsetHeight;
       }
+      if (
+        this.size.width === nextSize.width &&
+        this.size.height === nextSize.height
+      ) return;
+      this.size = nextSize;
       this.plot({ should_fetch: false });
     };
     this.handles.resizeObserver = new ResizeObserver(updateCardSize);
