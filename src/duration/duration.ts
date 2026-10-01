@@ -82,10 +82,9 @@ export const setDateFnDefaultOptions = (hass: HomeAssistant) => {
     } as const
   )[first_weekday];
 
-  setDefaultOptions({
-    locale: { code: hass.locale.language },
-    weekStartsOn,
-  });
+  // No locale is set: nothing here formats dates, and since date-fns 3 a
+  // locale must be a full Locale object, not just its code.
+  setDefaultOptions({ weekStartsOn });
 };
 export type RelativeTimeStr =
   | "current_minute"
