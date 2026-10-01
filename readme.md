@@ -853,7 +853,7 @@ Remember you can add a `console.log(the_object_you_want_to_inspect)` and see its
 - `hass: HomeAssistant object;` For example: `hass.states["sensor.garden_temperature"].state` to get its current state
 - `vars: Record<string, any>;` You can communicate between functions with this. E.g `vars.temperatures = ys`
 - `path: string;` The path of the current function
-- `css_vars: HATheme;` The colors set by the active Home Assistant theme (see #ha_theme)
+- `css_vars: HATheme;` The colors and fonts set by the active Home Assistant theme (see #ha_theme)
 
 #### Only inside entities
 
@@ -967,6 +967,24 @@ defaults:
     fixedrange: true # disables vertical zoom & scroll
 ```
 
+`filters` defined in an entity replace the ones in `defaults.entity.filters` (they are not merged or appended). Use `filters: []` to disable the default filters for one entity.
+
+```yaml
+type: custom:plotly-graph
+defaults:
+  entity:
+    filters:
+      - force_numeric
+entities:
+  - sensor.temperature1 # uses force_numeric
+  - entity: sensor.temperature2
+    filters: # only these filters are applied, force_numeric is not
+      - force_numeric
+      - multiply: 2
+  - entity: sensor.temperature3
+    filters: [] # no filters at all
+```
+
 ## layout:
 
 To define layout aspects, like margins, title, axes names, ...
@@ -974,13 +992,16 @@ Anything from https://plotly.com/javascript/reference/layout/.
 
 ### Home Assistant theming:
 
-Toggle Home Assistant theme colors:
+Toggle Home Assistant theme colors and fonts:
 
 - card-background-color
 - primary-background-color
 - primary-color
 - primary-text-color
 - secondary-text-color
+- font-family, font-size and font-weight (from Home Assistant's typography variables, e.g. `--ha-font-family-body`, `--ha-font-size-s`, `--ha-font-weight-normal`)
+
+Anything set in `layout.font` still takes precedence.
 
 ```yaml
 type: custom:plotly-graph
@@ -1000,7 +1021,8 @@ entities:
       color: $ex css_vars['blue-color']
 ```
 
-Available colors: `disabled-color`, `red-color`, `pink-color`, `purple-color`,
+Available colors: `accent-color`, `error-color`, `warning-color`, `success-color`,
+`info-color`, `divider-color`, `disabled-color`, `red-color`, `pink-color`, `purple-color`,
 `deep-purple-color`, `indigo-color`, `blue-color`, `light-blue-color`, `cyan-color`,
 `teal-color`, `green-color`, `light-green-color`, `lime-color`, `yellow-color`,
 `amber-color`, `orange-color`, `deep-orange-color`, `brown-color`, `light-grey-color`,
@@ -1362,7 +1384,18 @@ the compatibility checks. For rendering checks, install Chromium with
 `npx playwright install chromium` and run `npm run test:browser`.
 The browser test covers every registered trace type, tank shapes and labels,
 axis defaults, cloud-upload opt-in, and a card with a mock Home Assistant state.
+`npm test` includes history batching, compressed WebSocket responses, cache reuse,
+attributes, time offsets and request failure recovery.
 The five additional trace types are also validated and rendered through the card.
+Run `npm run test:card-lifecycle` to check initial rendering, recovery from
+render failures, event suppression, listener cleanup on reconnect, and mouse
+interactions with data points, legend toggles and the reset button.
+Run `npm run test:statistics` for statistics batching, cache reuse, period and
+time-offset separation, dynamic settings and fallback after failed requests.
+Run `npm run test:resize` for unchanged-size callbacks, hidden cards and normal
+width changes. These tests do not run Home Assistant's view components.
+Run `npm run test:cache` for rolling-window retention, boundary values,
+time offsets, browsing, refetching pruned history and in-flight live updates.
 
 # Release
 

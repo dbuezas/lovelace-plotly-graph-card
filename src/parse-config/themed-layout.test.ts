@@ -7,8 +7,14 @@ describe("Home Assistant theme colors", () => {
   it("reads every supported color from CSS rather than hardcoded defaults", () => {
     const getPropertyValue = jest.fn((name: string) => `  ${name}-value  `);
     const colors = readThemeColors({ getPropertyValue });
-    expect(HA_THEME_VARIABLES).toHaveLength(29);
-    expect(new Set(HA_THEME_VARIABLES).size).toBe(29);
+    expect(HA_THEME_VARIABLES).toHaveLength(35);
+    expect(new Set(HA_THEME_VARIABLES).size).toBe(35);
+    expect(HA_THEME_VARIABLES).toEqual(
+      expect.arrayContaining([
+        "accent-color", "error-color", "warning-color", "success-color",
+        "info-color", "divider-color",
+      ]),
+    );
     for (const name of HA_THEME_VARIABLES) {
       expect(getPropertyValue).toHaveBeenCalledWith(`--${name}`);
       expect(colors[name]).toBe(`--${name}-value`);
@@ -37,14 +43,20 @@ describe("Home Assistant theme colors", () => {
       "--secondary-text-color": "#eeeeee",
       "--blue-color": "#123456",
     };
-    const layout = getThemedLayout(
-      readThemeColors({
+    const layout = getThemedLayout({
+      ...readThemeColors({
         getPropertyValue: (name) => values[name] || "",
       }),
-    );
+      "font-family": "Test Sans",
+      "font-size": "14px",
+      "font-weight": "500",
+    });
     expect(layout.paper_bgcolor).toBe("#222222");
     expect(layout.plot_bgcolor).toBe("#222222");
     expect(layout.font?.color).toBe("#eeeeee");
+    expect(layout.font?.family).toBe("Test Sans");
+    expect(layout.font?.size).toBe(14);
+    expect(layout.font?.weight).toBe(500);
     expect(layout.colorway).toBeUndefined();
   });
 });

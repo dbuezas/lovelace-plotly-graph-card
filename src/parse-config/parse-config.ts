@@ -1,4 +1,9 @@
-import Cache from "../cache/Cache";
+import Cache, {
+  getEntityKey,
+  HistoryFetchConfig,
+  HistoryFetchRequest,
+} from "../cache/Cache";
+import { updateObservedRange } from "../cache/observed-range";
 import { HATheme } from "./themed-layout";
 
 import propose from "propose";
@@ -18,7 +23,15 @@ import filters from "../filters/filters";
 import bounds from "binary-search-bounds";
 import { has } from "lodash";
 import { StatisticValue } from "../recorder-types";
-import { Config, EntityData, HassEntity, InputConfig, YValue } from "../types";
+import {
+  Config,
+  EntityData,
+  EntityIdStatisticsConfig,
+  HassEntity,
+  InputConfig,
+  TimestampRange,
+  YValue,
+} from "../types";
 import getDeprecationError from "./deprecations";
 
 class ConfigParser {
@@ -30,6 +43,11 @@ class ConfigParser {
   private busy = false;
   private fnParam!: FnParam;
   private observed_range: [number, number] = [Date.now(), Date.now()];
+  private historyPrefetched = false;
+  private fetchTime = Date.now();
+  private preserveObservedRange = false;
+  private retainedCacheRanges: Record<string, TimestampRange[]> = {};
+  private failedFetches = new Map<string, unknown>();
   public resetObservedRange() {
     this.observed_range = [Date.now(), Date.now()];
   }
@@ -42,7 +60,7 @@ class ConfigParser {
     if (this.busy) throw new Error("ParseConfig was updated while busy");
     this.busy = true;
     try {
-      return this._update(input);
+      return await this._update(input);
     } finally {
       this.busy = false;
     }
@@ -58,7 +76,18 @@ class ConfigParser {
   }): Promise<{ errors: Error[]; parsed: Config }> {
     this.yaml = {};
     this.errors = [];
+    this.failedFetches.clear();
     this.hass = hass;
+    this.historyPrefetched = false;
+    // All fetch paths in this update share one cutoff, even after slow requests.
+    this.fetchTime = Date.now();
+    // Dynamic ranges advance on refresh; concrete ranges can come from browsing.
+    const inputRange = "visible_range" in input_yaml
+      ? input_yaml.visible_range
+      : undefined;
+    this.preserveObservedRange =
+      Array.isArray(inputRange) && !inputRange.some(is$fn);
+    this.retainedCacheRanges = {};
     this.yaml_with_defaults = addPreParsingDefaults(input_yaml, css_vars);
     setDateFnDefaultOptions(hass);
 
@@ -83,6 +112,7 @@ class ConfigParser {
         this.errors?.push(e as Error);
       }
     }
+    this.cache.retain(this.retainedCacheRanges);
     this.yaml = addPostParsingDefaults(this.yaml as Config);
 
     return { errors: this.errors, parsed: this.yaml as Config };
@@ -103,6 +133,18 @@ class ConfigParser {
     this.fnParam.getFromConfig = (pathQuery: string) =>
       this.getEvaledPath(pathQuery, path /* caller */);
     this.fnParam.get = this.fnParam.getFromConfig;
+
+    if (path === "entities") {
+      // Static statistics can be fetched together before entity traversal.
+      try {
+        await this.prefetchStatistics();
+      } catch (e) {
+        console.warn(
+          "Plotly Graph Card: Could not batch statistics requests, falling back to individual requests",
+          e
+        );
+      }
+    }
 
     if (
       !this.fnParam.xs && // hasn't fetched yet
@@ -223,8 +265,9 @@ class ConfigParser {
     }
   }
 
-  private async fetchDataForEntity(path: string) {
-    let visible_range = this.fnParam.getFromConfig("visible_range");
+  private getVisibleRange(): [number, number] {
+    let visible_range: [number, number] | undefined =
+      this.fnParam.getFromConfig("visible_range");
     if (!visible_range) {
       let global_offset = parseTimeDuration(
         this.fnParam.getFromConfig("time_offset")
@@ -232,10 +275,7 @@ class ConfigParser {
       const hours_to_show = this.fnParam.getFromConfig("hours_to_show");
       if (isRelativeTime(hours_to_show)) {
         const [start, end] = parseRelativeTime(hours_to_show);
-        visible_range = [start + global_offset, end + global_offset] as [
-          number,
-          number
-        ];
+        visible_range = [start + global_offset, end + global_offset];
       } else {
         let ms_to_show;
         if (isTimeDuration(hours_to_show)) {
@@ -247,26 +287,87 @@ class ConfigParser {
             `${hours_to_show} is not a valid duration. Use numbers, durations (e.g 1d) or dynamic time (e.g current_day)`
           );
         }
+        const now = Date.now();
         visible_range = [
-          +new Date() - ms_to_show + global_offset,
-          +new Date() + global_offset,
-        ] as [number, number];
+          now - ms_to_show + global_offset,
+          now + global_offset,
+        ];
       }
       this.yaml.visible_range = visible_range;
     }
-    if (this.fnParam.getFromConfig("autorange_after_scroll")) {
-      this.observed_range = visible_range.slice();
+    return visible_range;
+  }
+
+  private async prefetchStatistics() {
+    const entities = this.yaml_with_defaults?.entities;
+    if (!entities) return;
+
+    let visible_range: [number, number];
+    try {
+      visible_range = this.getVisibleRange();
+    } catch {
+      return;
     }
-    this.observed_range[0] = Math.min(this.observed_range[0], visible_range[0]);
-    this.observed_range[1] = Math.max(this.observed_range[1], visible_range[1]);
+
+    const fetch_mask: boolean[] = this.fnParam.getFromConfig("fetch_mask") || [];
+    const requests: {
+      entity: EntityIdStatisticsConfig;
+      range: TimestampRange;
+    }[] = [];
+    entities.forEach((entity, i) => {
+      const {
+        entity: entityId,
+        statistic,
+        period,
+        time_offset: timeOffset,
+      } = entity;
+      if (
+        fetch_mask[i] === false ||
+        !entityId ||
+        [entityId, statistic, period, timeOffset].some(is$fn)
+      ) {
+        return;
+      }
+
+      try {
+        const statisticsParams = parseStatistics(
+          visible_range,
+          statistic,
+          period
+        );
+        if (!statisticsParams) return;
+        const offset = parseTimeDuration(timeOffset);
+        requests.push({
+          entity: { entity: entityId, ...statisticsParams },
+          range: [
+            visible_range[0] - offset,
+            Math.min(visible_range[1] - offset, this.fetchTime),
+          ],
+        });
+      } catch {
+        // The regular entity parser reports malformed dynamic configurations.
+        return;
+      }
+    });
+
+    if (requests.length < 2) return;
+    await this.cache.prefetchStatistics(requests, this.hass!);
+  }
+
+  private async fetchDataForEntity(path: string) {
+    const visible_range = this.getVisibleRange();
+    this.observed_range = updateObservedRange(
+      this.observed_range,
+      visible_range,
+      this.preserveObservedRange &&
+        !this.fnParam.getFromConfig("autorange_after_scroll")
+    );
     const statisticsParams = parseStatistics(
       visible_range,
       this.fnParam.getFromConfig(path + ".statistic"),
       this.fnParam.getFromConfig(path + ".period")
     );
-    const attribute = this.fnParam.getFromConfig(path + ".attribute") as
-      | string
-      | undefined;
+    const attribute = this.fnParam.getFromConfig(path + ".attribute");
     const fetchConfig = {
       entity: this.fnParam.getFromConfig(path + ".entity"),
       ...(statisticsParams ? statisticsParams : attribute ? { attribute } : {}),
@@ -277,15 +378,54 @@ class ConfigParser {
 
     const range_to_fetch = [
       visible_range[0] - offset,
-      visible_range[1] - offset,
+      Math.min(visible_range[1] - offset, this.fetchTime),
     ];
-    const fetch_mask = this.fnParam.getFromConfig("fetch_mask");
+    const range_to_retain = [
+      this.observed_range[0] - offset,
+      // A live state can arrive while a history request is in flight. Keeping
+      // the rolling range open-ended avoids pruning that newer state.
+      this.preserveObservedRange
+        ? this.observed_range[1] - offset
+        : Number.POSITIVE_INFINITY,
+    ] as [number, number];
+    const entityKey = getEntityKey(fetchConfig);
+    (this.retainedCacheRanges[entityKey] ??= []).push(range_to_retain);
+    const fetch_mask: boolean[] = this.fnParam.getFromConfig("fetch_mask") || [];
     const i = getEntityIndex(path);
-    const data =
-      // TODO: decide about minimal response
-      fetch_mask[i] === false // also fetch if it is undefined. This means the entity is new
-        ? this.cache.getData(fetchConfig)
-        : await this.cache.fetch(range_to_fetch, fetchConfig, this.hass!);
+    if (!statisticsParams) {
+      try {
+        await this.prefetchHistory(visible_range, fetch_mask);
+      } catch (error) {
+        console.warn(
+          "Plotly Graph Card: Could not batch history requests, falling back to individual requests",
+          error
+        );
+      }
+    }
+    let data: EntityData;
+    if (fetch_mask[i] === false) {
+      data = this.cache.getData(fetchConfig, [range_to_retain]);
+    } else {
+      const requestKey = JSON.stringify([
+        entityKey,
+        ...range_to_fetch,
+      ]);
+      // Reuse failures within this update, but allow retries on the next update.
+      if (this.failedFetches.has(requestKey)) {
+        throw this.failedFetches.get(requestKey);
+      }
+      try {
+        data = await this.cache.fetch(
+          range_to_fetch,
+          fetchConfig,
+          this.hass!,
+          [range_to_retain]
+        );
+      } catch (error) {
+        this.failedFetches.set(requestKey, error);
+        throw error;
+      }
+    }
     const extend_to_present =
       this.fnParam.getFromConfig(path + ".extend_to_present") ??
       !statisticsParams;
@@ -309,6 +449,51 @@ class ConfigParser {
     this.fnParam.statistics = data.statistics;
     this.fnParam.states = data.states;
     this.fnParam.meta = this.hass?.states[fetchConfig.entity]?.attributes || {};
+  }
+
+  private async prefetchHistory(
+    visibleRange: [number, number],
+    fetchMask: boolean[],
+  ) {
+    if (this.historyPrefetched) return;
+    this.historyPrefetched = true;
+
+    const requests: HistoryFetchRequest[] = [];
+    for (let i = 0; i < this.yaml_with_defaults!.entities.length; i++) {
+      if (fetchMask[i] === false) continue;
+      const path = `entities.${i}`;
+      try {
+        const entity = this.getEvaledPath(`${path}.entity`, path);
+        const statistic = this.getEvaledPath(`${path}.statistic`, path);
+        const period = this.getEvaledPath(`${path}.period`, path);
+        const attribute = this.getEvaledPath(`${path}.attribute`, path);
+        const timeOffset = this.getEvaledPath(`${path}.time_offset`, path);
+        if (
+          typeof entity !== "string" ||
+          !entity ||
+          statistic ||
+          period
+        ) {
+          continue;
+        }
+        const fetchConfig: HistoryFetchConfig =
+          typeof attribute === "string" && attribute
+            ? { entity, attribute }
+            : { entity };
+        const offset = parseTimeDuration(timeOffset);
+        requests.push({
+          entity: fetchConfig,
+          range: [
+            visibleRange[0] - offset,
+            Math.min(visibleRange[1] - offset, this.fetchTime),
+          ],
+        });
+      } catch {
+        // Dynamic fetch parameters are evaluated later via the existing path.
+      }
+    }
+    if (requests.length < 2) return;
+    await this.cache.prefetchHistory(requests, this.hass!);
   }
 
   private getEvaledPath(path: string, callingPath: string) {

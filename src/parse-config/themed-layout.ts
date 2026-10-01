@@ -4,6 +4,12 @@ export const HA_THEME_VARIABLES = [
   "primary-color",
   "primary-text-color",
   "secondary-text-color",
+  "accent-color",
+  "error-color",
+  "warning-color",
+  "success-color",
+  "info-color",
+  "divider-color",
   "disabled-color",
   "red-color",
   "pink-color",
@@ -30,17 +36,24 @@ export const HA_THEME_VARIABLES = [
   "white-color",
 ] as const;
 
-export type HATheme = Record<(typeof HA_THEME_VARIABLES)[number], string>;
+type HAThemeColors = Record<(typeof HA_THEME_VARIABLES)[number], string>;
+
+export type HATheme = HAThemeColors & {
+  // Resolved from Home Assistant's typography CSS variables (see getCSSVars)
+  "font-family": string;
+  "font-size": string;
+  "font-weight": string;
+};
 
 export function readThemeColors(
   styles: Pick<CSSStyleDeclaration, "getPropertyValue">,
-): HATheme {
+): HAThemeColors {
   return Object.fromEntries(
     HA_THEME_VARIABLES.map((name) => [
       name,
       styles.getPropertyValue(`--${name}`).trim(),
     ]),
-  ) as HATheme;
+  ) as HAThemeColors;
 }
 
 const themeAxisStyle = {
@@ -58,7 +71,9 @@ export default function getThemedLayout(
     plot_bgcolor: haTheme["card-background-color"],
     font: {
       color: haTheme["secondary-text-color"],
-      size: 11,
+      family: haTheme["font-family"] || undefined,
+      size: parseFloat(haTheme["font-size"]) || 12,
+      weight: parseInt(haTheme["font-weight"]) || undefined,
     },
     xaxis: { ...themeAxisStyle },
     yaxis: { ...themeAxisStyle },

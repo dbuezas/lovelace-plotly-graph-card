@@ -21,7 +21,9 @@ jobs:
       - run: npm ci
       - run: npm run tsc
       - run: npm run build
-      - name: Check Plotly compatibility defaults
-        run: npm test -- --runInBand src/parse-config/defaults.test.ts src/parse-config/themed-layout.test.ts
+      - name: Unit tests
+        run: npm test -- --ci
       - run: npx playwright install --with-deps chromium
       - run: npm run test:browser
+      - run: npm run test:resize
+      - run: npm run test:card-lifecycle
