@@ -471,6 +471,50 @@ try {
     return card.contentEl._fullLayout.width <= 320;
   });
   results.results.push("Lovelace card with mock HA state");
+  const themeColors = await page.evaluate(async () => {
+    const card = document.getElementById("card-under-test");
+    document.documentElement.style.setProperty("--accent-color", "#123456");
+    card.style.setProperty("--error-color", "#654321");
+    const config = {
+      type: "custom:plotly-graph",
+      refresh_interval: 0,
+      entities: [
+        {
+          entity: "",
+          x: [1, 2],
+          y: [1, 2],
+          line: { color: "$ex css_vars['accent-color']" },
+        },
+        {
+          entity: "",
+          x: [1, 2],
+          y: [2, 3],
+          line: { color: "$fn ({ css_vars }) => css_vars['error-color']" },
+        },
+      ],
+    };
+    await card.setConfig(config);
+    await card.plot({ should_fetch: false });
+    const initial = card.contentEl._fullData.map((trace) => trace.line.color);
+    document.documentElement.style.setProperty("--accent-color", "#abcdef");
+    card.style.setProperty("--error-color", "#fedcba");
+    await card.plot({ should_fetch: false });
+    const changed = card.contentEl._fullData.map((trace) => trace.line.color);
+    await card.setConfig({ ...config, ha_theme: false });
+    await card.plot({ should_fetch: false });
+    const noTheme = card.contentEl._fullData.map((trace) => trace.line.color);
+    document.documentElement.style.removeProperty("--accent-color");
+    card.style.removeProperty("--error-color");
+    return { initial, changed, noTheme, error: card.errorMsgEl.textContent };
+  });
+  assert.equal(themeColors.error, "");
+  assert.deepEqual(themeColors.initial, ["#123456", "#654321"]);
+  assert.deepEqual(themeColors.changed, ["#abcdef", "#fedcba"]);
+  assert.deepEqual(themeColors.noTheme, ["#abcdef", "#fedcba"]);
+  results.results.push(
+    "theme colors resolve through $ex/$fn and update on render",
+  );
+  results.results.push("theme colors remain available with ha_theme disabled");
   const retention = await page.evaluate(async () => {
     const card = document.getElementById("card-under-test");
     const entity = "sensor.retention";
@@ -486,22 +530,23 @@ try {
           last_changed: new Date(window.cacheNow).toISOString(),
         },
       },
-      callApi: async (_method, uri) => {
-        const [path, query] = uri.split("?");
-        const start = Date.parse(path.replace("history/period/", ""));
-        const end = Date.parse(new URLSearchParams(query).get("end_time"));
+      callWS: async (request) => {
+        if (request.type !== "history/history_during_period")
+          throw new Error("Unexpected request");
+        const start = Date.parse(request.start_time);
+        const end = Date.parse(request.end_time);
         const timestamps = [start];
         for (let t = Math.ceil(start / 1000) * 1000; t <= end; t += 1000)
           timestamps.push(t);
-        return [
-          timestamps.map((timestamp) => ({
+        return {
+          [entity]: timestamps.map((timestamp) => ({
             entity_id: entity,
             state: String(timestamp),
             attributes: {},
             last_updated: new Date(timestamp).toISOString(),
             last_changed: new Date(timestamp).toISOString(),
           })),
-        ];
+        };
       },
     };
     await card.setConfig({
@@ -624,6 +669,89 @@ try {
   ]);
   results.results.push(
     "four statistics traces render from one request and reuse the cache",
+  );
+  await page.evaluate(() => {
+    const card = document.getElementById("card-under-test");
+    const end = Date.now() - 60000;
+    const start = end - 3600000;
+    const entityIds = [
+      "sensor.one",
+      "sensor.two",
+      "sensor.three",
+      "sensor.four",
+    ];
+    window.historyRequests = [];
+    card.hass = {
+      ...card.hass,
+      states: Object.fromEntries(
+        entityIds.map((entity_id) => [
+          entity_id,
+          {
+            entity_id,
+            state: "2",
+            attributes: { unit_of_measurement: "W" },
+            last_changed: new Date(end).toISOString(),
+            last_updated: new Date(end).toISOString(),
+          },
+        ]),
+      ),
+      callApi: () => {
+        throw new Error("History must not use REST");
+      },
+      callWS: async (request) => {
+        if (request.type !== "history/history_during_period")
+          throw new Error("Unexpected request");
+        window.historyRequests.push(request);
+        return Object.fromEntries(
+          request.entity_ids.map((id, index) => [
+            id,
+            [
+              { s: String(index + 1), lu: start / 1000 },
+              { s: String(index + 2), lu: end / 1000 },
+            ],
+          ]),
+        );
+      },
+    };
+    card.setConfig({
+      type: "custom:plotly-graph",
+      refresh_interval: 0,
+      visible_range: [start, end],
+      entities: entityIds.map((entity) => ({
+        entity,
+        extend_to_present: false,
+      })),
+    });
+  });
+  await page.waitForFunction(() => {
+    const card = document.getElementById("card-under-test");
+    return card.contentEl?._fullData?.length === 4;
+  });
+  const historyState = await page.evaluate(async () => {
+    const card = document.getElementById("card-under-test");
+    await card.plot({ should_fetch: true });
+    return {
+      requests: window.historyRequests,
+      values: card.contentEl.data.map((trace) => trace.y),
+      error: card.errorMsgEl.textContent,
+    };
+  });
+  assert.equal(historyState.error, "");
+  assert.equal(historyState.requests.length, 1);
+  assert.deepEqual(historyState.requests[0].entity_ids, [
+    "sensor.one",
+    "sensor.two",
+    "sensor.three",
+    "sensor.four",
+  ]);
+  assert.deepEqual(historyState.values, [
+    ["1", "2"],
+    ["2", "3"],
+    ["3", "4"],
+    ["4", "5"],
+  ]);
+  results.results.push(
+    "four history traces render from one WebSocket request and reuse the cache",
   );
   assert.deepEqual(errors, []);
   console.log(

@@ -1,6 +1,5 @@
 import { HomeAssistant } from "custom-card-helpers";
 import EventEmitter from "events";
-import mapValues from "lodash/mapValues";
 import { version } from "../package.json";
 import insertStyleHack from "./style-hack";
 import Plotly from "./plotly";
@@ -23,6 +22,7 @@ import {
   finishInitialLoading,
   setInitialLoadingHeight,
 } from "./loading-state";
+import { readThemeColors } from "./parse-config/themed-layout";
 import { getFetchMask } from "./plot-state";
 
 const componentName = isProduction ? "plotly-graph" : "plotly-graph-dev";
@@ -223,19 +223,25 @@ export class PlotlyGraph extends HTMLElement {
   }
 
   connectedCallback() {
-    const updateCardSize = async () => {
+    const updateCardSize = () => {
       const width = this.cardEl.offsetWidth;
+      if (width <= 0) return;
       this.contentEl.style.position = "absolute";
       const height = this.cardEl.offsetHeight;
       this.contentEl.style.position = "";
-      this.size = { width };
+      const nextSize: { width: number; height?: number } = { width };
       if (height > 100) {
         // Panel view type has the cards covering 100% of the height of the window.
         // Masonry lets the cards grow by themselves.
         // if height > 100 ==> Panel ==> use available height
         // else ==> Mansonry ==> let the height be determined by defaults
-        this.size.height = height - this.titleEl.offsetHeight;
+        nextSize.height = height - this.titleEl.offsetHeight;
       }
+      if (
+        this.size.width === nextSize.width &&
+        this.size.height === nextSize.height
+      ) return;
+      this.size = nextSize;
       this.plot({ should_fetch: false });
     };
     this.handles.resizeObserver = new ResizeObserver(updateCardSize);
@@ -462,17 +468,10 @@ export class PlotlyGraph extends HTMLElement {
   }
   getCSSVars() {
     const styles = window.getComputedStyle(this.contentEl);
-    let haTheme = {
-      "card-background-color": "red",
-      "primary-background-color": "red",
-      "primary-color": "red",
-      "primary-text-color": "red",
-      "secondary-text-color": "red",
-    };
     const cssVar = (...names: string[]) =>
       names.map((name) => styles.getPropertyValue(name).trim()).find(Boolean);
     return {
-      ...mapValues(haTheme, (_, key) => styles.getPropertyValue("--" + key)),
+      ...readThemeColors(styles),
       // Home Assistant typography: current frontend tokens first, then the
       // legacy paper/mdc ones, then whatever the card inherits.
       "font-family":

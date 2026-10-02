@@ -2,7 +2,7 @@ import { HomeAssistant } from "custom-card-helpers";
 import { Statistics, StatisticValue } from "../recorder-types";
 import { EntityConfig, InputConfig } from "../types";
 import { ConfigParser } from "./parse-config";
-import { HATheme } from "./themed-layout";
+import { HATheme, readThemeColors } from "./themed-layout";
 import { getEntityKey } from "../cache/Cache";
 
 jest.mock("../filters/filters", () => ({
@@ -13,6 +13,7 @@ jest.mock("../filters/filters", () => ({
 const NOW = Date.parse("2025-01-02T12:00:00.000Z");
 const yValues = (trace: EntityConfig) => ("y" in trace ? trace.y : undefined);
 const cssVars: HATheme = {
+  ...readThemeColors({ getPropertyValue: () => "" }),
   "card-background-color": "#fff",
   "primary-background-color": "#fff",
   "primary-color": "#000",
@@ -416,7 +417,7 @@ describe("statistics request batching", () => {
   it.each([undefined, "temperature"])(
     "reuses history failures for attribute %s and retries on the next update",
     async (attribute) => {
-      const callApi = jest.fn().mockRejectedValue(new Error("offline"));
+      const callWS = jest.fn().mockRejectedValue(new Error("offline"));
       const parser = new ConfigParser();
       jest.spyOn(console, "error").mockImplementation();
       jest.spyOn(console, "warn").mockImplementation();
@@ -426,16 +427,16 @@ describe("statistics request batching", () => {
           hours_to_show: 24,
           entities: [{ entity: "sensor.east", attribute }],
         },
-        hass: { ...createHass(successfulCallWS()), callApi },
+        hass: createHass(callWS),
         css_vars: cssVars,
       };
 
       const failed = await parser.update(input);
       expect(failed.errors.length).toBeGreaterThan(0);
-      expect(callApi).toHaveBeenCalledTimes(1);
+      expect(callWS).toHaveBeenCalledTimes(1);
 
-      callApi.mockResolvedValue([
-        [
+      callWS.mockResolvedValue({
+        "sensor.east": [
           {
             entity_id: "sensor.east",
             state: "4",
@@ -443,10 +444,10 @@ describe("statistics request batching", () => {
             last_changed: "2025-01-02T11:00:00.000Z",
           },
         ],
-      ]);
+      });
       const recovered = await parser.update(input);
       expect(recovered.errors).toEqual([]);
-      expect(callApi).toHaveBeenCalledTimes(2);
+      expect(callWS).toHaveBeenCalledTimes(2);
       expect(yValues(recovered.parsed.entities[0])).toEqual(
         attribute ? [8, 8] : ["4", "4"],
       );
@@ -454,7 +455,6 @@ describe("statistics request batching", () => {
   );
 
   it("keeps failures separate for state, attribute, statistics and time ranges", async () => {
-    const callApi = jest.fn().mockRejectedValue(new Error("offline"));
     const callWS = jest.fn().mockRejectedValue(new Error("offline"));
     jest.spyOn(console, "error").mockImplementation();
     jest.spyOn(console, "warn").mockImplementation();
@@ -471,11 +471,18 @@ describe("statistics request batching", () => {
           { entity: "sensor.east", attribute: "humidity" },
         ],
       },
-      hass: { ...createHass(callWS), callApi },
+      hass: createHass(callWS),
       css_vars: cssVars,
     });
     // Attributes share one history response; states, statistics and offsets do not.
-    expect(callApi).toHaveBeenCalledTimes(3);
-    expect(callWS).toHaveBeenCalledTimes(1);
+    // One failed history batch, then one attempt per distinct fetch key/range.
+    expect(callWS).toHaveBeenCalledTimes(5);
+    expect(callWS.mock.calls.map(([request]) => request.type)).toEqual([
+      "history/history_during_period",
+      "history/history_during_period",
+      "history/history_during_period",
+      "recorder/statistics_during_period",
+      "history/history_during_period",
+    ]);
   });
 });

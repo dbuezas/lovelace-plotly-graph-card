@@ -1010,6 +1010,26 @@ entities:
 ha_theme: false #defaults to true
 ```
 
+You can also use Home Assistant's named theme colors in `$ex` and `$fn` through
+`css_vars`. Values are read from the active CSS theme on each render, without
+the leading `--`:
+
+```yaml
+entities:
+  - entity: sensor.temperature_in_celsius
+    line:
+      color: $ex css_vars['blue-color']
+```
+
+Available colors: `accent-color`, `error-color`, `warning-color`, `success-color`,
+`info-color`, `divider-color`, `disabled-color`, `red-color`, `pink-color`, `purple-color`,
+`deep-purple-color`, `indigo-color`, `blue-color`, `light-blue-color`, `cyan-color`,
+`teal-color`, `green-color`, `light-green-color`, `lime-color`, `yellow-color`,
+`amber-color`, `orange-color`, `deep-orange-color`, `brown-color`, `light-grey-color`,
+`grey-color`, `dark-grey-color`, `blue-grey-color`, `black-color`, and `white-color`.
+The five theme variables listed above remain available too. This does not change
+the default trace palette, and `css_vars` is also available with `ha_theme: false`.
+
 ### Raw plotly config:
 
 Toggle all in-built defaults for layout and entitites. Useful when using histograms, 3d plots, etc.
@@ -1366,12 +1386,16 @@ The browser test covers every registered trace type, tank shapes and labels,
 axis defaults, cloud-upload opt-in, and a card with a mock Home Assistant state.
 Run `npm run test:loading` to check the initial loading height, delayed data,
 rendering failures, recovery and reduced-motion support in Chromium.
+`npm test` includes history batching, compressed WebSocket responses, cache reuse,
+attributes, time offsets and request failure recovery.
 The five additional trace types are also validated and rendered through the card.
 Run `npm run test:card-lifecycle` to check initial rendering, recovery from
 render failures, event suppression, listener cleanup on reconnect, and mouse
 interactions with data points, legend toggles and the reset button.
 Run `npm run test:statistics` for statistics batching, cache reuse, period and
 time-offset separation, dynamic settings and fallback after failed requests.
+Run `npm run test:resize` for unchanged-size callbacks, hidden cards and normal
+width changes. These tests do not run Home Assistant's view components.
 Run `npm run test:cache` for rolling-window retention, boundary values,
 time offsets, browsing, refetching pruned history and in-flight live updates.
 

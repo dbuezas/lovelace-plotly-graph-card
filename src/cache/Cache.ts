@@ -1,7 +1,7 @@
 import { HomeAssistant } from "custom-card-helpers";
 import { compactRanges, subtractRanges } from "./date-ranges";
 import fetchStatistics from "./fetch-statistics";
-import fetchStates from "./fetch-states";
+import fetchStates, { fetchStatesBatch } from "./fetch-states";
 import {
   TimestampRange,
   isEntityIdAttrConfig,
@@ -14,7 +14,7 @@ import {
   EntityData,
   EntityIdStatisticsConfig,
 } from "../types";
-type FetchConfig =
+export type FetchConfig =
   | {
       statistic: "state" | "sum" | "min" | "max" | "mean";
       period: "5minute" | "hour" | "day" | "week" | "month";
@@ -27,6 +27,14 @@ type FetchConfig =
   | {
       entity: string;
     };
+export type HistoryFetchConfig = Exclude<
+  FetchConfig,
+  { statistic: string; period: string }
+>;
+export type HistoryFetchRequest = {
+  entity: HistoryFetchConfig;
+  range: TimestampRange;
+};
 export function mapValues<T, S>(
   o: Record<string, T>,
   fn: (value: T, key: string) => S
@@ -233,6 +241,79 @@ export default class Cache {
       y === "unavailable" || y === "none" || y === "unknown" ? null : y
     );
     return data;
+  }
+
+  async prefetchHistory(
+    requests: HistoryFetchRequest[],
+    hass: HomeAssistant,
+  ): Promise<void> {
+    await this.enqueue(async () => {
+      const jobs = new Map<
+        string,
+        {
+          entity: HistoryFetchConfig;
+          range: [number, number];
+        }
+      >();
+      for (const request of requests) {
+        const range = request.range.map((n) =>
+          Math.max(MIN_SAFE_TIMESTAMP, n),
+        ) as [number, number];
+        const entityKey = getEntityKey(request.entity);
+        this.ranges[entityKey] ??= [];
+        for (const missingRange of subtractRanges(
+          [range],
+          this.ranges[entityKey],
+        )) {
+          const jobKey = `${entityKey}:${missingRange[0]}:${missingRange[1]}`;
+          jobs.set(jobKey, {
+            entity: request.entity,
+            range: missingRange as [number, number],
+          });
+        }
+      }
+
+      const groups = new Map<
+        string,
+        {
+          dates: [Date, Date];
+          range: [number, number];
+          jobs: {
+            entity: HistoryFetchConfig;
+            range: [number, number];
+          }[];
+        }
+      >();
+      const now = Date.now();
+      for (const job of jobs.values()) {
+        const apiRange = getFetchRange(job.range, now);
+        const includeAttributes = isEntityIdAttrConfig(job.entity);
+        const groupKey = `${includeAttributes}:${+apiRange.dates[0]}:${+apiRange.dates[1]}`;
+        const group = groups.get(groupKey) ?? {
+          dates: apiRange.dates,
+          range: apiRange.range,
+          jobs: [],
+        };
+        group.jobs.push(job);
+        groups.set(groupKey, group);
+      }
+
+      for (const group of groups.values()) {
+        const statesByEntity = await fetchStatesBatch(
+          hass,
+          group.jobs.map(({ entity }) => entity),
+          group.dates,
+        );
+        for (const { entity, range } of group.jobs) {
+          const history = statesByEntity[entity.entity] ?? [];
+          if (history.length) history[0].fake_boundary_datapoint = true;
+          this.add(entity, history, [
+            range[0],
+            Math.min(range[1], group.range[1]),
+          ]);
+        }
+      }
+    });
   }
 
   retain(retainedRanges: Record<string, TimestampRange[]>) {
