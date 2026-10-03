@@ -205,6 +205,21 @@ class ConfigParser {
     if (path.match(/^entities\.\d+\.filters\.\d+$/)) {
       await this.evalFilter({ parent, path, key, value });
     }
+    if (
+      path.match(/^entities\.\d+\.filters$/) &&
+      this.fnParam.getFromConfig("autorange_after_scroll") &&
+      !this.fnParam.getFromConfig("raw_plotly_config") &&
+      this.fnParam.xs
+    ) {
+      // Filters may generate dates outside the range already trimmed at fetch time.
+      // Clip after the complete chain without mutating arrays stored in vars.
+      const [start, end] = this.getVisibleRange();
+      const mask = this.fnParam.xs.map((x) => +x >= start && +x <= end);
+      this.fnParam.xs = this.fnParam.xs.filter((_, i) => mask[i]);
+      this.fnParam.ys = this.fnParam.ys?.filter((_, i) => mask[i]);
+      this.fnParam.states = this.fnParam.states?.filter((_, i) => mask[i]);
+      this.fnParam.statistics = this.fnParam.statistics?.filter((_, i) => mask[i]);
+    }
     if (path.match(/^entities\.\d+$/)) {
       if (!this.fnParam.xs) {
         await this.fetchDataForEntity(path);
