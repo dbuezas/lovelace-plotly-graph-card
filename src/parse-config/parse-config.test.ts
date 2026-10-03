@@ -105,6 +105,24 @@ describe("statistics request batching", () => {
     jest.restoreAllMocks();
   });
 
+  it("draws dates in the configured timezone", async () => {
+    const callWS = successfulCallWS();
+    const result = await update(new ConfigParser(), callWS, compatibleEntities, {
+      time_zone: "Pacific/Chatham",
+      hours_to_show: "1h",
+    });
+
+    expect(result.errors).toEqual([]);
+    // NOW is 12:00Z, i.e. 01:45 next day in Chatham (UTC+13:45)
+    expect(result.parsed.layout.xaxis!.range).toEqual([
+      "2025-01-03 00:45:00.000",
+      "2025-01-03 01:45:00.000",
+    ]);
+    expect(result.parsed.visible_range).toEqual([NOW - 3600000, NOW]);
+    for (const trace of result.parsed.entities)
+      for (const x of (trace as any).x) expect(typeof x).toBe("string");
+  });
+
   it("fetches compatible statistics entities in one request", async () => {
     const callWS = successfulCallWS();
     const parser = new ConfigParser();

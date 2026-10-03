@@ -16,6 +16,7 @@ import {
   startOfWeek,
   startOfYear,
 } from "date-fns";
+import { inTimeZone } from "../timezone";
 
 export const timeUnits = {
   ms: 1,
@@ -82,10 +83,9 @@ export const setDateFnDefaultOptions = (hass: HomeAssistant) => {
     } as const
   )[first_weekday];
 
-  setDefaultOptions({
-    locale: { code: hass.locale.language },
-    weekStartsOn,
-  });
+  // No locale is set: nothing here formats dates, and since date-fns 3 a
+  // locale must be a full Locale object, not just its code.
+  setDefaultOptions({ weekStartsOn });
 };
 export type RelativeTimeStr =
   | "current_minute"
@@ -96,25 +96,29 @@ export type RelativeTimeStr =
   | "current_quarter"
   | "current_year";
 
-export const parseRelativeTime = (str: RelativeTimeStr): [number, number] => {
-  const now = new Date();
-  switch (str) {
-    case "current_minute":
-      return [+startOfMinute(now), +endOfMinute(now)];
-    case "current_hour":
-      return [+startOfHour(now), +endOfHour(now)];
-    case "current_day":
-      return [+startOfDay(now), +endOfDay(now)];
-    case "current_week":
-      return [+startOfWeek(now), +endOfWeek(now)];
-    case "current_month":
-      return [+startOfMonth(now), +endOfMonth(now)];
-    case "current_quarter":
-      return [+startOfQuarter(now), +endOfQuarter(now)];
-    case "current_year":
-      return [+startOfYear(now), +endOfYear(now)];
-  }
-  throw new Error(`${str} is not a dynamic relative time`);
+const relativeTimes = {
+  current_minute: [startOfMinute, endOfMinute],
+  current_hour: [startOfHour, endOfHour],
+  current_day: [startOfDay, endOfDay],
+  current_week: [startOfWeek, endOfWeek],
+  current_month: [startOfMonth, endOfMonth],
+  current_quarter: [startOfQuarter, endOfQuarter],
+  current_year: [startOfYear, endOfYear],
+} as const;
+
+/**
+ * @param timeZone IANA timezone the boundaries are computed in (browser's if undefined)
+ */
+export const parseRelativeTime = (
+  str: RelativeTimeStr,
+  timeZone?: string,
+): [number, number] => {
+  if (!Object.prototype.hasOwnProperty.call(relativeTimes, str))
+    throw new Error(`${str} is not a dynamic relative time`);
+  const [startOf, endOf] = relativeTimes[str];
+  const now = Date.now();
+  const options = inTimeZone(timeZone);
+  return [+startOf(now, options), +endOf(now, options)];
 };
 
 export const isRelativeTime = (str: any) => {
