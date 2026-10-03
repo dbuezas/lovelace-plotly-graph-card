@@ -9,7 +9,7 @@ function _getDeprecationError(path: string, value: any) {
   if (path.match(/^no_theme$/))
     return `renamed to <a href="https://github.com/dbuezas/lovelace-plotly-graph-card#home-assistant-theming">ha_theme</a> (inverted logic) in v3.0.0`;
   if (path.match(/^no_default_layout$/))
-    return `replaced with more general <a href="https://github.com/dbuezas/lovelace-plotly-graph-card#raw-plotly-config">raw-plotly-config</a> in v3.0.0. See <a href="https://github.com/dbuezas/lovelace-plotly-graph-card#no_default_layout">layout migration guide</a>.`;
+    return `replaced with more general <a href="https://github.com/dbuezas/lovelace-plotly-graph-card#raw-plotly-config">raw_plotly_config</a> in v3.0.0.`;
   if (path.match(/^offset$/)) return "renamed to time_offset in v3.0.0";
   if (path.match(/^entities\.\d+\.offset$/)) {
     try {
