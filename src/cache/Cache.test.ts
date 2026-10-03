@@ -15,6 +15,27 @@ function state(timestamp: number): CachedStateEntity {
   };
 }
 
+describe("Cache merging", () => {
+  it("merges large histories without exceeding argument limits", () => {
+    const cache = new Cache();
+    const first = state(0);
+    cache.add(entity, [first], [0, 0]);
+    const history = Array.from({ length: 200_000 }, (_, index) =>
+      state(index + 1)
+    );
+
+    cache.add(entity, history, [0, 200_000]);
+
+    const merged = cache.histories[key];
+    expect(merged).toHaveLength(history.length + 1);
+    expect(merged[0]).toBe(first);
+    expect(
+      merged.slice(1).every((sample, index) => sample === history[index])
+    ).toBe(true);
+    expect(cache.ranges[key]).toEqual([[0, 200_000]]);
+  });
+});
+
 describe("Cache retention", () => {
   it("reuses unchanged history while still trimming cached coverage", () => {
     const cache = new Cache();

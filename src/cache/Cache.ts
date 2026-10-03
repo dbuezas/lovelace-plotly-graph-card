@@ -190,7 +190,7 @@ export default class Cache {
   add(entity: FetchConfig, states: CachedEntity[], range: [number, number]) {
     const entityKey = getEntityKey(entity);
     let h = (this.histories[entityKey] ??= []);
-    h.push(...states);
+    for (const state of states) h.push(state);
     h.sort((a, b) => +a.x - +b.x);
     if (!isEntityIdStatisticsConfig(entity)) {
       h = h.filter((x, i) => i == 0 || !x.fake_boundary_datapoint);
