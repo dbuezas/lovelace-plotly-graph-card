@@ -24,6 +24,7 @@ import {
 } from "./loading-state";
 import { readThemeColors } from "./parse-config/themed-layout";
 import { getFetchMask } from "./plot-state";
+import { prepareHistoryLineGaps } from "./history-line-gaps";
 
 const componentName = isProduction ? "plotly-graph" : "plotly-graph-dev";
 
@@ -556,7 +557,11 @@ export class PlotlyGraph extends HTMLElement {
         this.titleEl.style.background = layout.paper_bgcolor as string;
       }
       await this.withoutRelayout(async () => {
-        await Plotly.react(this.contentEl, entities, layout, config);
+        const drawnEntities = prepareHistoryLineGaps(
+          entities,
+          this.parsed_config.raw_plotly_config,
+        );
+        await Plotly.react(this.contentEl, drawnEntities, layout, config);
         if (autorange_after_scroll) {
           const update = {
             "yaxis.autorange": true,
