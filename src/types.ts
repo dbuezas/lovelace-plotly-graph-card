@@ -62,6 +62,9 @@ export type InputConfig = {
   refresh_interval?: number | "auto"; // in seconds
   color_scheme?: ColorSchemeNames | ColorSchemeArray | number;
   title?: string;
+  /** Main y-axis bounds set by the visual editor. */
+  min_y_axis?: number;
+  max_y_axis?: number;
   offset?: TimeDurationStr;
   entities: (InputEntityOptions & Partial<Plotly.Data>)[];
   defaults?: {
@@ -99,6 +102,8 @@ export type EntityConfig = EntityIdConfig & {
 
 export type Config = {
   title?: string;
+  min_y_axis?: number;
+  max_y_axis?: number;
   hours_to_show: number;
   refresh_interval: number | "auto"; // in seconds
   offset: number;

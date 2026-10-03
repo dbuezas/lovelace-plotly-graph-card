@@ -393,6 +393,82 @@ try {
       );
       results.push(test.name);
     }
+    for (const test of [
+      {
+        name: "both editor bounds",
+        min_y_axis: 300,
+        max_y_axis: 1500,
+        expected: [300, 1500],
+        autorange: false,
+      },
+      {
+        name: "editor minimum only",
+        min_y_axis: 300,
+        expected: [300, null],
+        autorange: "max",
+      },
+      {
+        name: "editor maximum only",
+        max_y_axis: 1500,
+        expected: [null, 1500],
+        autorange: "min",
+      },
+      {
+        name: "zero editor minimum",
+        min_y_axis: 0,
+        expected: [0, null],
+        autorange: "max",
+      },
+      {
+        name: "zero editor maximum",
+        max_y_axis: 0,
+        expected: [null, 0],
+        autorange: "min",
+        values: [-600, -1000],
+      },
+      {
+        name: "explicit range overrides editor",
+        min_y_axis: 300,
+        max_y_axis: 1500,
+        axis: { range: [400, 1200] },
+        expected: [400, 1200],
+        autorange: false,
+      },
+      {
+        name: "explicit autorange overrides editor",
+        min_y_axis: 300,
+        max_y_axis: 1500,
+        axis: { autorange: true },
+        expected: [null, null],
+        autorange: true,
+      },
+    ]) {
+      const input = DefaultsTest.addPostParsingDefaults({
+        entities: [],
+        visible_range: [0, 4],
+        raw_plotly_config: false,
+        min_y_axis: test.min_y_axis,
+        max_y_axis: test.max_y_axis,
+        config: {},
+        layout: { width: 480, height: 285, yaxis: test.axis || {} },
+      });
+      await Plotly.react(
+        div,
+        [{ type: "scatter", x: [1, 2], y: test.values || [600, 1000] }],
+        input.layout,
+        input.config,
+      );
+      const axis = div._fullLayout.yaxis;
+      check(axis.autorange === test.autorange, `${test.name}: wrong autorange`);
+      test.expected.forEach((bound, index) => {
+        if (bound !== null)
+          check(
+            axis.range[index] === bound,
+            `${test.name}: wrong bound ${index}`,
+          );
+      });
+      results.push(test.name);
+    }
     Plotly.purge(div);
     div.remove();
     results.push("axes, privacy, tank shapes, annotations, relayout");

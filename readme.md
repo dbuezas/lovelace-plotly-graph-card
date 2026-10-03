@@ -80,6 +80,10 @@ refresh_interval: 10
 
 (\*) I'm reusing the editor of the standard History Card. Cheap, yes, but it works fine. Use yaml for advanced functionality
 
+The visual editor's `min_y_axis` and `max_y_axis` settings control the main
+Y-axis range. Either bound can be omitted to keep that side automatic.
+Explicit `layout.yaxis.range` or `layout.yaxis.autorange` settings take precedence.
+
 ## Advanced
 
 ### Filling, line width, color

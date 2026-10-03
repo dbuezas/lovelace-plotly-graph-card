@@ -267,6 +267,21 @@ export function addPostParsingDefaults(
     yaml.raw_plotly_config ? {} : yAxisTitles,
     yaml.layout
   );
+  const hasMinimum = Number.isFinite(yaml.min_y_axis);
+  const hasMaximum = Number.isFinite(yaml.max_y_axis);
+  if (
+    (hasMinimum || hasMaximum) &&
+    layout.yaxis?.range === undefined &&
+    layout.yaxis?.autorange === undefined
+  ) {
+    layout.yaxis = {
+      ...layout.yaxis,
+      range: [
+        hasMinimum ? yaml.min_y_axis : null,
+        hasMaximum ? yaml.max_y_axis : null,
+      ],
+    };
+  }
   return {
     ...yaml,
     layout,

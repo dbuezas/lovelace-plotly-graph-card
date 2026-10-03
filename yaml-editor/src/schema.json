@@ -197738,6 +197738,29 @@
         }
       ]
     },
+    "max_y_axis": {
+      "anyOf": [
+        {
+          "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
+          "type": "string"
+        },
+        {
+          "type": "number"
+        }
+      ]
+    },
+    "min_y_axis": {
+      "anyOf": [
+        {
+          "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
+          "type": "string"
+        },
+        {
+          "type": "number"
+        }
+      ],
+      "description": "Main y-axis bounds set by the visual editor."
+    },
     "minimal_response": {
       "anyOf": [
         {
