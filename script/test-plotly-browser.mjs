@@ -753,6 +753,49 @@ try {
   results.results.push(
     "four history traces render from one WebSocket request and reuse the cache",
   );
+  const generatedFilters = await page.evaluate(async () => {
+    const card = document.getElementById("card-under-test");
+    const end = Date.now() - 60000;
+    card.setConfig({
+      type: "custom:plotly-graph",
+      refresh_interval: 0,
+      visible_range: [end - 86400000, end],
+      reused_filters: ["force_numeric", { add: 1 }],
+      entities: [
+        {
+          entity: "sensor.one",
+          extend_to_present: false,
+          extra_filters: [{ multiply: 2 }],
+          filters: "$ex [...get('reused_filters'), ...get('.extra_filters')]",
+        },
+        {
+          entity: "sensor.two",
+          extend_to_present: false,
+          filters: '$fn () => [{ map_y: "0" }]',
+        },
+      ],
+    });
+    await card.plot({ should_fetch: true });
+    return {
+      values: card.contentEl.data.map((trace) => trace.y),
+      rendered: card.contentEl.calcdata.map((points) =>
+        points.map((point) => point.y),
+      ),
+      error: card.errorMsgEl.textContent,
+    };
+  });
+  assert.equal(generatedFilters.error, "");
+  assert.deepEqual(generatedFilters.values, [
+    [4, 6],
+    [0, 0],
+  ]);
+  assert.deepEqual(generatedFilters.rendered, [
+    [4, 6],
+    [0, 0],
+  ]);
+  results.results.push(
+    "generated and reused filter lists render through the card",
+  );
   assert.deepEqual(errors, []);
   console.log(
     `Plotly ${results.version}: ${results.results.length} browser checks passed`,
