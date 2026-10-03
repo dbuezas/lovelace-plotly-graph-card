@@ -753,6 +753,81 @@ try {
   results.results.push(
     "four history traces render from one WebSocket request and reuse the cache",
   );
+  const shiftedHistoryResults = await page.evaluate(async () => {
+    const card = document.getElementById("card-under-test");
+    const now = Date.now();
+    const originalNow = Date.now;
+    const rendered = [];
+    Date.now = () => now;
+    try {
+      const samples = Array.from({ length: 241 }, (_, i) => ({
+        s: String(i % 20),
+        lu: (now - 4 * 3600000 + i * 60000) / 1000,
+      }));
+      card.hass = {
+        ...card.hass,
+        states: {},
+        callWS: async ({ entity_ids, start_time, end_time }) => {
+          const start = Date.parse(start_time) / 1000;
+          const end = Date.parse(end_time) / 1000;
+          const preceding = samples.filter(({ lu }) => lu < start).slice(-1);
+          const within = samples.filter(({ lu }) => lu >= start && lu < end);
+          return Object.fromEntries(
+            entity_ids.map((id) => [id, [...preceding, ...within]]),
+          );
+        },
+      };
+      for (const resample of [false, true]) {
+        card.isBrowsing = false;
+        card.configParser.resetObservedRange();
+        await card.setConfig({
+          type: "custom:plotly-graph",
+          hours_to_show: 1,
+          refresh_interval: 0,
+          autorange_after_scroll: true,
+          entities: [
+            {
+              entity: `sensor.shifted_${resample}`,
+              time_offset: "-450s",
+              ...(resample ? { filters: [{ resample: "5s" }] } : {}),
+            },
+          ],
+        });
+        await card.plot({ should_fetch: true });
+        const end = now - 3600000;
+        card.enterBrowsingMode();
+        await card.withoutRelayout(() =>
+          PlotlyTest.default.relayout(card.contentEl, {
+            "xaxis.range": [end - 3600000, end],
+          }),
+        );
+        await card.plot({ should_fetch: true });
+        if (card.errorMsgEl.textContent)
+          throw new Error(card.errorMsgEl.textContent);
+        const xs = card.contentEl.data[0].x.map(Number);
+        if (xs.some((x, i) => i && x < xs[i - 1])) {
+          throw new Error("Shifted history runs backwards after panning");
+        }
+        const expectedEnd = resample ? Math.floor(end / 5000) * 5000 : end;
+        // Resampling excludes the endpoint when it is exactly on the grid.
+        const last =
+          resample && end % 5000 === 0 ? expectedEnd - 5000 : expectedEnd;
+        if (
+          xs.at(-1) !== last ||
+          !card.contentEl.querySelector(".scatterlayer .js-line")
+        ) {
+          throw new Error("Shifted history was clipped or not rendered");
+        }
+        rendered.push(
+          `shifted history stays ordered after panning${resample ? " with resampling" : ""}`,
+        );
+      }
+    } finally {
+      Date.now = originalNow;
+    }
+    return rendered;
+  });
+  results.results.push(...shiftedHistoryResults);
   assert.deepEqual(errors, []);
   console.log(
     `Plotly ${results.version}: ${results.results.length} browser checks passed`,
