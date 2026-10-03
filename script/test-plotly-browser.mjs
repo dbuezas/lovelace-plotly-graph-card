@@ -1071,7 +1071,7 @@ try {
   results.results.push(...modernCardResults);
   await page.evaluate(() => {
     const card = document.getElementById("card-under-test");
-    const end = Date.now() - 60000;
+    const end = Date.now() - 3600000;
     const start = end - 3600000;
     const ids = ["sensor.east", "sensor.west", "sensor.north", "sensor.south"];
     window.statisticsRequests = [];
@@ -1574,6 +1574,272 @@ try {
   );
   results.results.push(
     "clicks at gap endpoints and after multiple outages preserve Plotly indices and return aligned values and customdata",
+  );
+  await page.evaluate(() => {
+    const start = Date.parse("2026-10-03T00:00:00Z");
+    const hour = 3600000;
+    const realNow = Date.now;
+    const fixture = (window.statisticsFixture = {
+      now: start + 12 * hour + 60000,
+      start,
+      hour,
+      realNow,
+      requests: [],
+      handlers: new Map(),
+      subscriptions: [],
+      unsubscriptions: [],
+      hourlyRows: [
+        { start: start + 10 * hour, end: start + 11 * hour, mean: 1 },
+      ],
+      shortRows: [
+        {
+          start: start + 12 * hour + 55 * 60000,
+          end: start + 13 * hour,
+          mean: 1,
+        },
+      ],
+      dailyValue: 3,
+    });
+    Date.now = () => fixture.now;
+    const ids = [
+      "sensor.hour_a",
+      "sensor.hour_b",
+      "sensor.day",
+      "sensor.short",
+    ];
+    const states = Object.fromEntries(
+      ids.map((entity_id) => [
+        entity_id,
+        {
+          entity_id,
+          state: "1",
+          attributes: {},
+          last_changed: new Date(start + 10 * hour).toISOString(),
+          last_updated: new Date(start + 10 * hour).toISOString(),
+        },
+      ]),
+    );
+    fixture.states = states;
+    const card = (fixture.card = new CardTest.PlotlyGraph());
+    card.style.width = "480px";
+    card.hass = {
+      states,
+      locale: { language: "en", first_weekday: "monday" },
+      config: { time_zone: "Europe/Zurich" },
+      themes: { darkMode: false },
+      connection: {
+        subscribeEvents: async (callback, event) => {
+          fixture.subscriptions.push(event);
+          fixture.handlers.set(event, callback);
+          return () => {
+            fixture.unsubscriptions.push(event);
+            fixture.handlers.delete(event);
+          };
+        },
+      },
+      callWS: async (request) => {
+        fixture.requests.push(request);
+        return Object.fromEntries(
+          request.statistic_ids.map((id, index) => {
+            const rows =
+              request.period === "day"
+                ? [{ start, end: start + 24 * hour, mean: fixture.dailyValue }]
+                : (request.period === "hour"
+                    ? fixture.hourlyRows
+                    : fixture.shortRows
+                  )
+                    .filter(
+                      (row) =>
+                        row.start >= Date.parse(request.start_time) &&
+                        row.start < Date.parse(request.end_time),
+                    )
+                    .map((row) => ({ ...row, mean: row.mean + index }));
+            return [id, rows];
+          }),
+        );
+      },
+    };
+    card.setConfig({
+      type: "custom:plotly-graph",
+      hours_to_show: 24,
+      refresh_interval: "auto",
+      entities: ids
+        .slice(0, 2)
+        .map((entity) => ({
+          entity,
+          statistic: "mean",
+          period: "hour",
+          type: "bar",
+        })),
+    });
+    document.body.append(card);
+  });
+  await page.waitForFunction(() => {
+    const f = statisticsFixture;
+    return (
+      f.card.contentEl.data?.length === 2 &&
+      f.handlers.has("recorder_hourly_statistics_generated")
+    );
+  });
+  await page.evaluate(() => {
+    const f = statisticsFixture;
+    f.hourlyRows.push({
+      start: f.start + 11 * f.hour,
+      end: f.start + 12 * f.hour,
+      mean: 2,
+    });
+    f.now += 60000;
+    f.handlers.get("recorder_hourly_statistics_generated")();
+  });
+  await page.waitForFunction(
+    () => statisticsFixture.card.contentEl.data[0].y.length === 2,
+  );
+  const liveHourly = await page.evaluate(() => {
+    const f = statisticsFixture;
+    return {
+      requests: f.requests,
+      subscriptions: f.subscriptions,
+      ys: f.card.contentEl.data.map((trace) => trace.y),
+      bars: f.card.contentEl.querySelectorAll(".barlayer .point").length,
+      statesUnchanged: f.card.hass.states === f.states,
+      error: f.card.errorMsgEl.textContent,
+    };
+  });
+  assert.equal(liveHourly.error, "");
+  assert.equal(liveHourly.statesUnchanged, true);
+  assert.deepEqual(liveHourly.ys, [
+    [1, 2],
+    [2, 3],
+  ]);
+  assert.equal(liveHourly.bars, 4);
+  assert.equal(liveHourly.requests.length, 2);
+  assert.equal(
+    Date.parse(liveHourly.requests[1].start_time),
+    Date.parse("2026-10-03T11:00:00Z") - 1,
+  );
+  assert.deepEqual(liveHourly.subscriptions, [
+    "recorder_hourly_statistics_generated",
+  ]);
+  results.results.push(
+    "late hourly bars appear on recorder events without a sensor state change or full-window fetch",
+  );
+  await page.evaluate(() => {
+    statisticsFixture.card.setConfig({
+      type: "custom:plotly-graph",
+      hours_to_show: 24,
+      refresh_interval: "auto",
+      entities: [
+        { entity: "sensor.day", statistic: "mean", period: "day", type: "bar" },
+      ],
+    });
+  });
+  await page.waitForFunction(
+    () =>
+      statisticsFixture.card.contentEl.data?.length === 1 &&
+      statisticsFixture.card.contentEl.data[0].y[0] === 3,
+  );
+  await page.evaluate(() => {
+    const f = statisticsFixture;
+    f.dailyValue = 9;
+    f.now += f.hour;
+    f.handlers.get("recorder_hourly_statistics_generated")();
+  });
+  await page.waitForFunction(
+    () => statisticsFixture.card.contentEl.data[0].y[0] === 9,
+  );
+  assert.equal(
+    await page.evaluate(
+      () =>
+        statisticsFixture.card.contentEl.querySelectorAll(".barlayer .point")
+          .length,
+    ),
+    1,
+  );
+  assert.equal(
+    await page.evaluate(() => statisticsFixture.subscriptions.length),
+    1,
+  );
+  results.results.push(
+    "daily aggregate bars update in place at the same timestamp",
+  );
+  await page.evaluate(() => {
+    statisticsFixture.card.setConfig({
+      type: "custom:plotly-graph",
+      hours_to_show: 1,
+      refresh_interval: "auto",
+      entities: [
+        {
+          entity: "sensor.short",
+          statistic: "mean",
+          period: "5minute",
+          type: "bar",
+        },
+        { entity: "sensor.day", statistic: "mean", period: "day", type: "bar" },
+      ],
+    });
+  });
+  await page.waitForFunction(
+    () =>
+      statisticsFixture.card.contentEl.data?.length === 2 &&
+      statisticsFixture.handlers.size === 2,
+  );
+  const beforeMixed = await page.evaluate(() => {
+    const f = statisticsFixture;
+    const count = f.requests.length;
+    f.shortRows.push({
+      start: f.start + 13 * f.hour,
+      end: f.start + 13 * f.hour + 5 * 60000,
+      mean: 4,
+    });
+    f.dailyValue = 10;
+    f.now += 5 * 60000;
+    f.handlers.get("recorder_5min_statistics_generated")();
+    f.handlers.get("recorder_hourly_statistics_generated")();
+    return count;
+  });
+  await page.waitForFunction(
+    () =>
+      statisticsFixture.card.contentEl.data[0].y.length === 2 &&
+      statisticsFixture.card.contentEl.data[1].y[0] === 10,
+  );
+  assert.equal(
+    await page.evaluate(() => statisticsFixture.requests.length),
+    beforeMixed + 2,
+  );
+  results.results.push(
+    "simultaneous 5minute and hourly notifications are coalesced with separate request periods",
+  );
+  await page.evaluate(() => {
+    const f = statisticsFixture;
+    f.oldCallbacks = [...f.handlers.values()];
+    f.card.setConfig({ ...f.card.config, refresh_interval: 0 });
+  });
+  await page.waitForFunction(
+    () =>
+      statisticsFixture.card.parsed_config.refresh_interval === 0 &&
+      statisticsFixture.handlers.size === 0,
+  );
+  const beforeDisabled = await page.evaluate(() => {
+    statisticsFixture.oldCallbacks.forEach((callback) => callback());
+    return statisticsFixture.requests.length;
+  });
+  await page.waitForTimeout(650);
+  assert.equal(
+    await page.evaluate(() => statisticsFixture.requests.length),
+    beforeDisabled,
+  );
+  assert.equal(
+    await page.evaluate(() => statisticsFixture.unsubscriptions.length),
+    2,
+  );
+  await page.evaluate(() => {
+    const f = statisticsFixture;
+    f.card.remove();
+    PlotlyTest.default.purge(f.card.contentEl);
+    Date.now = f.realNow;
+  });
+  results.results.push(
+    "disabling refresh removes recorder subscriptions and ignores stale event callbacks",
   );
   assert.deepEqual(errors, []);
   console.log(

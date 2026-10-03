@@ -27,6 +27,7 @@ import { readThemeColors } from "./parse-config/themed-layout";
 import { getFetchMask } from "./plot-state";
 import { getEditorYAxisRelayout } from "./parse-config/defaults";
 import { prepareHistoryLineGaps } from "./history-line-gaps";
+import { StatisticsUpdates } from "./statistics-updates";
 
 const componentName = isProduction ? "plotly-graph" : "plotly-graph-dev";
 
@@ -55,6 +56,9 @@ export class PlotlyGraph extends HTMLElement {
   plotlyListenersConnected = false;
   touchController: TouchController;
   configParser = new ConfigParser();
+  statisticsUpdates = new StatisticsUpdates(() => {
+    this.plot({ should_fetch: true }, 500);
+  });
   pausedRendering = false;
   handles: {
     resizeObserver?: ResizeObserver;
@@ -253,6 +257,7 @@ export class PlotlyGraph extends HTMLElement {
     updateCardSize();
     this.resetButtonEl.addEventListener("click", this.exitBrowsingMode);
     this.touchController.connect();
+    this.updateStatisticsSubscriptions();
     this.plot({ should_fetch: true });
   }
 
@@ -262,6 +267,7 @@ export class PlotlyGraph extends HTMLElement {
     clearTimeout(this.handles.refreshTimeout!);
     this.resetButtonEl.removeEventListener("click", this.exitBrowsingMode);
     this.touchController.disconnect();
+    this.statisticsUpdates.disconnect();
   }
 
   connectPlotlyListeners() {
@@ -366,6 +372,16 @@ export class PlotlyGraph extends HTMLElement {
       }
     }
     this._hass = hass;
+    this.updateStatisticsSubscriptions();
+  }
+
+  updateStatisticsSubscriptions() {
+    this.statisticsUpdates.update(
+      this.hass?.connection,
+      this.isConnected && this.parsed_config?.refresh_interval === "auto"
+        ? this.configParser.statisticsPeriods
+        : new Set(),
+    );
   }
 
   async withoutRelayout(fn: Function) {
@@ -547,6 +563,7 @@ export class PlotlyGraph extends HTMLElement {
         double_tap_drag_to_zoom: enabled("double_tap_drag_to_zoom"),
         hold_to_scan: enabled("hold_to_scan"),
       };
+      this.updateStatisticsSubscriptions();
 
       const {
         entities,

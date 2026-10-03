@@ -2,6 +2,7 @@ import { HomeAssistant } from "custom-card-helpers";
 import { compactRanges, subtractRanges } from "./date-ranges";
 import fetchStatistics from "./fetch-statistics";
 import fetchStates, { fetchStatesBatch } from "./fetch-states";
+import { isLiveStatisticsRange } from "./statistics-refresh";
 import {
   TimestampRange,
   isEntityIdAttrConfig,
@@ -59,6 +60,7 @@ async function fetchSingleRange(
 ): Promise<{
   range: [number, number];
   history: CachedEntity[];
+  fetchedAt: number;
 }> {
   // We fetch slightly more than requested (i.e the range visible in the screen). The reason is the following:
   // When fetching data in a range `[startT,endT]`, Home Assistant adds a fictitious datapoint at
@@ -99,7 +101,8 @@ async function fetchSingleRange(
   //
   // The above does not apply to statistics data where there are no fake data points.
 
-  const { dates, range } = getFetchRange([startT, endT]);
+  const fetchedAt = Date.now();
+  const { dates, range } = getFetchRange([startT, endT], fetchedAt);
   let history: CachedEntity[];
   if (isEntityIdStatisticsConfig(entity)) {
     history = (await fetchStatistics(hass, [entity], dates))[entity.entity];
@@ -113,6 +116,7 @@ async function fetchSingleRange(
   return {
     range,
     history,
+    fetchedAt,
   };
 }
 
@@ -180,6 +184,48 @@ export default class Cache {
   ranges: Record<string, TimestampRange[]> = {};
   histories: Record<string, CachedEntity[]> = {};
   busy: Promise<unknown> = Promise.resolve(); // mutex
+  private mutableStatistics: Record<
+    string,
+    { from: number; fetchedAt: number }
+  > = {};
+
+  refreshStatistics(now: number) {
+    if (Object.keys(this.mutableStatistics).length === 0) return;
+    return this.enqueue(async () => {
+      for (const [key, mutable] of Object.entries(this.mutableStatistics)) {
+        if (mutable.fetchedAt >= now) continue;
+        this.ranges[key] = subtractRanges(
+          this.ranges[key] || [],
+          [[mutable.from, Number.POSITIVE_INFINITY]],
+        );
+        delete this.mutableStatistics[key];
+      }
+    });
+  }
+
+  private trackMutableStatistics(
+    entity: EntityIdStatisticsConfig,
+    history: CachedStatisticsEntity[],
+    range: TimestampRange,
+    fetchedAt: number,
+  ) {
+    if (!isLiveStatisticsRange(range, entity.period, fetchedAt)) return;
+    const latest = history.reduce<CachedStatisticsEntity | undefined>(
+      (last, row) => (!last || +row.x > +last.x ? row : last),
+      undefined
+    );
+    const end = latest ? +new Date(latest.statistics.end) : NaN;
+    // Completed buckets are stable, but their missing successors are not.
+    // Calendar aggregates may still be partial at rollover if the final
+    // hourly row has not been published yet.
+    const complete = entity.period === "5minute" || entity.period === "hour";
+    const from = latest
+      ? complete && Number.isFinite(end) && end > +latest.x && end <= fetchedAt
+        ? end
+        : +latest.x
+      : range[0];
+    this.mutableStatistics[getEntityKey(entity)] = { from, fetchedAt };
+  }
 
   private enqueue<T>(job: () => Promise<T>): Promise<T> {
     const result = this.busy.catch(() => {}).then(job);
@@ -195,7 +241,10 @@ export default class Cache {
     if (!isEntityIdStatisticsConfig(entity)) {
       h = h.filter((x, i) => i == 0 || !x.fake_boundary_datapoint);
     }
-    h = h.filter((_, i) => +h[i - 1]?.x !== +h[i].x);
+    // Refetched aggregates can change without changing their bucket timestamp.
+    h = isEntityIdStatisticsConfig(entity)
+      ? h.filter((_, i) => +h[i].x !== +h[i + 1]?.x)
+      : h.filter((_, i) => +h[i - 1]?.x !== +h[i].x);
     this.histories[entityKey] = h;
     this.ranges[entityKey] ??= [];
     this.ranges[entityKey].push(range);
@@ -205,6 +254,7 @@ export default class Cache {
   clearCache() {
     this.ranges = {};
     this.histories = {};
+    this.mutableStatistics = {};
   }
 
   getData(entity: FetchConfig, ranges?: TimestampRange[]): EntityData {
@@ -324,6 +374,7 @@ export default class Cache {
     for (const key of keys) {
       const ranges = compactRanges(retainedRanges[key] || []);
       if (ranges.length === 0) {
+        delete this.mutableStatistics[key];
         delete this.histories[key];
         delete this.ranges[key];
         continue;
@@ -385,6 +436,9 @@ export default class Cache {
         const histories = await fetchStatistics(hass, entities, group.dates);
         for (const entity of entities) {
           this.add(entity, histories[entity.entity], group.range);
+          this.trackMutableStatistics(
+            entity, histories[entity.entity], group.range, now
+          );
         }
       }
     });
@@ -405,6 +459,14 @@ export default class Cache {
         for (const aRange of rangesToFetch) {
           const fetchedHistory = await fetchSingleRange(hass, entity, aRange);
           this.add(entity, fetchedHistory.history, fetchedHistory.range);
+          if (isEntityIdStatisticsConfig(entity)) {
+            this.trackMutableStatistics(
+              entity,
+              fetchedHistory.history as CachedStatisticsEntity[],
+              fetchedHistory.range,
+              fetchedHistory.fetchedAt,
+            );
+          }
         }
       }
       return this.getData(entity, dataRanges);
