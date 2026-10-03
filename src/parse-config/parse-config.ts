@@ -4,6 +4,7 @@ import Cache, {
   HistoryFetchRequest,
 } from "../cache/Cache";
 import { updateObservedRange } from "../cache/observed-range";
+import { isLiveStatisticsRange } from "../cache/statistics-refresh";
 import { HATheme } from "./themed-layout";
 
 import propose from "propose";
@@ -22,7 +23,7 @@ import { HomeAssistant } from "custom-card-helpers";
 import filters from "../filters/filters";
 import bounds from "binary-search-bounds";
 import { has } from "lodash";
-import { StatisticValue } from "../recorder-types";
+import { StatisticPeriod, StatisticValue } from "../recorder-types";
 import {
   Config,
   EntityData,
@@ -40,6 +41,7 @@ class ConfigParser {
   private yaml_with_defaults?: InputConfig;
   private hass?: HomeAssistant;
   cache = new Cache();
+  statisticsPeriods = new Set<StatisticPeriod>();
   private busy = false;
   private fnParam!: FnParam;
   private observed_range: [number, number] = [Date.now(), Date.now()];
@@ -81,6 +83,9 @@ class ConfigParser {
     this.historyPrefetched = false;
     // All fetch paths in this update share one cutoff, even after slow requests.
     this.fetchTime = Date.now();
+    this.statisticsPeriods.clear();
+    const statisticsRefresh = this.cache.refreshStatistics(this.fetchTime);
+    if (statisticsRefresh) await statisticsRefresh;
     // Dynamic ranges advance on refresh; concrete ranges can come from browsing.
     const inputRange = "visible_range" in input_yaml
       ? input_yaml.visible_range
@@ -380,6 +385,14 @@ class ConfigParser {
       visible_range[0] - offset,
       Math.min(visible_range[1] - offset, this.fetchTime),
     ];
+    if (
+      statisticsParams &&
+      isLiveStatisticsRange(
+        range_to_fetch,
+        statisticsParams.period,
+        this.fetchTime
+      )
+    ) this.statisticsPeriods.add(statisticsParams.period);
     const range_to_retain = [
       this.observed_range[0] - offset,
       // A live state can arrive while a history request is in flight. Keeping
