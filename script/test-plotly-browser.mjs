@@ -515,6 +515,103 @@ try {
     "theme colors resolve through $ex/$fn and update on render",
   );
   results.results.push("theme colors remain available with ha_theme disabled");
+  const barColors = await page.evaluate(async () => {
+    const card = document.getElementById("card-under-test");
+    const bar = { entity: "", type: "bar", x: [1, 2], y: [1, 2] };
+    const rendered = [];
+    for (const fixture of [
+      {
+        label: "named palette",
+        color_scheme: "dark2",
+        entities: [bar],
+        expected: ["#1b9e77"],
+      },
+      {
+        label: "numeric palette",
+        color_scheme: 0,
+        entities: [bar],
+        expected: ["#7fc97f"],
+      },
+      {
+        label: "mixed traces and explicit per-bar colors",
+        color_scheme: ["#112233", "#445566", "#778899"],
+        entities: [
+          { ...bar, type: "scatter" },
+          bar,
+          { ...bar, marker: { color: ["red", "blue"] } },
+        ],
+        expected: ["#445566", ["red", "blue"]],
+      },
+      {
+        label: "explicit Plotly palette",
+        color_scheme: "dark2",
+        layout: { colorway: ["purple", "orange"] },
+        entities: [bar],
+        expected: ["purple"],
+      },
+      {
+        label: "Plotly template palette",
+        color_scheme: "dark2",
+        layout: { template: { layout: { colorway: ["purple", "orange"] } } },
+        entities: [bar],
+        expected: ["purple"],
+      },
+      {
+        label: "raw Plotly defaults",
+        color_scheme: "dark2",
+        raw_plotly_config: true,
+        entities: [bar],
+        expected: ["#1f77b4"],
+      },
+    ]) {
+      await card.setConfig({
+        type: "custom:plotly-graph",
+        refresh_interval: 0,
+        color_scheme: fixture.color_scheme,
+        raw_plotly_config: fixture.raw_plotly_config ?? false,
+        layout: { xaxis: { type: "linear", range: [0, 3] }, ...fixture.layout },
+        entities: fixture.entities,
+      });
+      await card.plot({ should_fetch: false });
+      if (card.errorMsgEl.textContent)
+        throw new Error(card.errorMsgEl.textContent);
+      const colors = card.contentEl._fullData
+        .filter((trace) => trace.type === "bar")
+        .map((trace) => trace.marker.color);
+      if (JSON.stringify(colors) !== JSON.stringify(fixture.expected)) {
+        throw new Error(
+          `Incorrect bar colors for ${fixture.label}: ${JSON.stringify(colors)}`,
+        );
+      }
+      const paths = [
+        ...card.contentEl.querySelectorAll(".barlayer .point path"),
+      ];
+      if (
+        paths.length !== fixture.expected.length * 2 ||
+        paths.some((path) => !path.getAttribute("d"))
+      ) {
+        throw new Error(`Bars did not render for ${fixture.label}`);
+      }
+      const fills = fixture.expected.flatMap((color) =>
+        Array.isArray(color) ? color : [color, color],
+      );
+      for (const [index, color] of fills.entries()) {
+        const colorProbe = document.createElement("span");
+        colorProbe.style.color = color;
+        document.body.append(colorProbe);
+        const expectedFill = getComputedStyle(colorProbe).color;
+        colorProbe.remove();
+        if (getComputedStyle(paths[index]).fill !== expectedFill) {
+          throw new Error(
+            `Rendered fill differs from palette for ${fixture.label}`,
+          );
+        }
+      }
+      rendered.push(`bar color scheme: ${fixture.label}`);
+    }
+    return rendered;
+  });
+  results.results.push(...barColors);
   const retention = await page.evaluate(async () => {
     const card = document.getElementById("card-under-test");
     const entity = "sensor.retention";
