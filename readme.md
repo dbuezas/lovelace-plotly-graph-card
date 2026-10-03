@@ -985,6 +985,25 @@ entities:
     filters: [] # no filters at all
 ```
 
+Filter lists can also be generated with `$ex` or `$fn`. To reuse filters and
+append entity-specific ones, define the shared list before `entities` and the
+extra list before `filters`:
+
+```yaml
+type: custom:plotly-graph
+reused_filters:
+  - force_numeric
+  - add: 1
+entities:
+  - entity: sensor.temperature
+    extra_filters:
+      - multiply: 2
+    filters: $ex [...get('reused_filters'), ...get('.extra_filters')]
+```
+
+Generated lists run in order, just like literal lists. This additional parsing
+is limited to `entities.*.filters`; other function results are not traversed.
+
 ## layout:
 
 To define layout aspects, like margins, title, axes names, ...
