@@ -1089,6 +1089,10 @@ autorange_after_scroll: true
 
 Update data every `refresh_interval` seconds.
 
+With `auto`, live statistics also refresh when Home Assistant publishes new
+5-minute or hourly statistics, even if the entity's state has not changed.
+Daily, weekly and monthly aggregates refresh with the hourly statistics.
+
 Examples:
 
 ```yaml
