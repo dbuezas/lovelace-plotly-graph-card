@@ -90,6 +90,58 @@ describe("Plotly 4 compatibility", () => {
   });
 });
 
+describe("visual editor y-axis bounds", () => {
+  test.each([
+    [{ min_y_axis: 300, max_y_axis: 1500 }, [300, 1500]],
+    [{ min_y_axis: 300 }, [300, null]],
+    [{ max_y_axis: 1500 }, [null, 1500]],
+    [{ min_y_axis: 0 }, [0, null]],
+    [{ max_y_axis: 0 }, [null, 0]],
+    [{ min_y_axis: 0, max_y_axis: 0 }, [0, 0]],
+  ])("maps bounds %j to a Plotly range", (bounds, range) => {
+    expect(apply(bounds).layout.yaxis?.range).toEqual(range);
+  });
+
+  test("leaves the axis automatic when no bounds are configured", () => {
+    expect(apply().layout.yaxis).toBeUndefined();
+  });
+
+  test.each<Plotly.LayoutAxis>([
+    { range: [500, 2000] },
+    { range: [null, 2000] },
+    { autorange: true },
+    { autorange: false },
+    { autorange: "reversed" as const },
+  ])("preserves explicit Plotly axis settings: %j", (yaxis) => {
+    const result = apply({
+      min_y_axis: 300,
+      max_y_axis: 1500,
+      layout: { yaxis },
+    });
+    expect(result.layout.yaxis).toEqual(yaxis);
+  });
+
+  test("preserves other axis settings without mutating input", () => {
+    const layout: Partial<Plotly.Layout> = {
+      yaxis: { title: { text: "CO2" }, showgrid: false },
+      yaxis2: { range: [0, 100] },
+    };
+    const result = apply({ min_y_axis: 300, max_y_axis: 1500, layout });
+    expect(result.layout.yaxis).toEqual({
+      ...layout.yaxis,
+      range: [300, 1500],
+    });
+    expect(result.layout.yaxis2).toEqual(layout.yaxis2);
+    expect(layout.yaxis).not.toHaveProperty("range");
+  });
+
+  test("ignores non-finite bounds", () => {
+    expect(
+      apply({ min_y_axis: NaN, max_y_axis: Infinity }).layout.yaxis
+    ).toBeUndefined();
+  });
+});
+
 describe("entity filters and defaults.entity.filters", () => {
   const cssVars = {} as HATheme;
 
