@@ -1336,6 +1336,115 @@ try {
     return rendered;
   });
   results.results.push(...shiftedHistoryResults);
+  const gapState = await page.evaluate(async () => {
+    const card = document.getElementById("card-under-test");
+    const end = Date.now() - 60000;
+    const start = end - 24 * 3600000;
+    const gap = start + 12 * 3600000;
+    const recovery = gap + 60000;
+    const entity = "sensor.history_gap";
+    card.hass = {
+      ...card.hass,
+      states: {
+        [entity]: {
+          entity_id: entity,
+          state: "10",
+          attributes: {},
+          last_changed: new Date(recovery).toISOString(),
+          last_updated: new Date(recovery).toISOString(),
+        },
+      },
+      callWS: async (request) => {
+        if (request.type !== "history/history_during_period")
+          throw new Error("Unexpected request");
+        return {
+          [entity]: [
+            { s: "10", lu: start / 1000 },
+            { s: "unavailable", lu: gap / 1000 },
+            { s: "10", lu: recovery / 1000 },
+            { s: "10", lu: end / 1000 },
+          ],
+        };
+      },
+    };
+    await card.setConfig({
+      type: "custom:plotly-graph",
+      refresh_interval: 0,
+      visible_range: [start, end],
+      layout: { yaxis: { range: [0, 30] } },
+      entities: [{ entity, extend_to_present: false }],
+    });
+    await card.plot({ should_fetch: true });
+    const original = card.parsed_config.entities[0];
+    const originalData = JSON.stringify({ x: original.x, y: original.y });
+    const paths = () =>
+      [...card.contentEl.querySelectorAll(".scatterlayer .js-line")].map(
+        (path) => {
+          const length = path.getTotalLength();
+          return {
+            start: path.getPointAtLength(0).x,
+            end: path.getPointAtLength(length).x,
+          };
+        },
+      );
+    const expected = [start, gap, recovery, end].map((time) =>
+      card.contentEl._fullLayout.xaxis.d2p(time),
+    );
+    const corrected = paths();
+    const drawnCount = card.contentEl.data[0].x.length;
+    PlotlyTest.default.Fx.hover(card.contentEl, [
+      { curveNumber: 0, pointNumber: 1 },
+    ]);
+    const heldStateHover = card.contentEl.querySelector(
+      ".hoverlayer .hovertext .nums",
+    )?.textContent;
+    PlotlyTest.default.Fx.unhover(card.contentEl);
+    await PlotlyTest.default.react(
+      card.contentEl,
+      card.parsed_config.entities,
+      card.parsed_config.layout,
+      card.parsed_config.config,
+    );
+    const uncorrected = paths();
+    await card.plot({ should_fetch: false });
+    await card.plot({ should_fetch: false });
+    return {
+      error: card.errorMsgEl.textContent,
+      originalY: original.y,
+      originalCount: original.x.length,
+      unchanged:
+        originalData === JSON.stringify({ x: original.x, y: original.y }),
+      drawnCount,
+      repeatedCount: card.contentEl.data[0].x.length,
+      corrected,
+      uncorrected,
+      expected,
+      heldStateHover,
+      shape: card.contentEl._fullData[0].line.shape,
+      connectgaps: card.contentEl._fullData[0].connectgaps,
+    };
+  });
+  assert.equal(gapState.error, "");
+  assert.equal(gapState.shape, "hv");
+  assert.equal(gapState.connectgaps, false);
+  assert.equal(gapState.corrected.length, 2);
+  assert.equal(gapState.uncorrected[0].start, gapState.uncorrected[0].end);
+  for (const [actual, expected] of [
+    [gapState.corrected[0].start, gapState.expected[0]],
+    [gapState.corrected[0].end, gapState.expected[1]],
+    [gapState.corrected[1].start, gapState.expected[2]],
+    [gapState.corrected[1].end, gapState.expected[3]],
+  ])
+    assert.ok(Math.abs(actual - expected) < 0.02, `${actual} != ${expected}`);
+  assert.equal(gapState.unchanged, true);
+  assert.deepEqual(gapState.originalY, ["10", null, "10", "10"]);
+  assert.equal(gapState.drawnCount, gapState.originalCount + 1);
+  assert.equal(gapState.repeatedCount, gapState.drawnCount);
+  assert.ok(gapState.heldStateHover.includes("10"));
+  results.results.push(
+    "history step lines preserve the known state until unavailable, without closing the actual gap",
+    "gap endpoints preserve hover templates without changing parsed measurements or accumulating on redraw",
+  );
   assert.deepEqual(errors, []);
   console.log(
     `Plotly ${results.version}: ${results.results.length} browser checks passed`,
