@@ -1067,13 +1067,32 @@ raw_plotly_config: true # defaults to false
 To define general configurations like enabling scroll to zoom, disabling the modebar, etc.
 Anything from https://plotly.com/javascript/configuration-options/.
 
-## disable_pinch_to_zoom
+## extended_touch_support
+
+Touch gestures on the plot area:
+
+- Drag with one finger: pan (Plotly).
+- Tap: click (Plotly). Double tap: reset (Plotly).
+- `pinch_to_zoom`: pinch with two fingers to zoom at the fingers and pan with them, like a map. Lifting one finger keeps panning with the other.
+- `double_tap_drag_to_zoom`: double tap, keep the finger down and drag up or down to zoom.
+- `hold_to_scan`: press and hold for 300 ms, then slide. The tooltip follows the finger through the data and stays after lifting the finger, until the next touch. With `hovermode: closest` (Plotly's default) it follows the x position of the finger, like `hovermode: x`. It is off with `hovermode: false`. While it is on, a tap doesn't show the tooltip.
+
+All are on by default. Turn them all off, so only Plotly's own touch handling is left:
 
 ```yaml
-disable_pinch_to_zoom: true # defaults to false
+extended_touch_support: false
 ```
 
-When true, the custom implementations of pinch-to-zoom and double-tap-drag-to-zooming will be disabled.
+Or turn off single ones:
+
+```yaml
+extended_touch_support:
+  pinch_to_zoom: false
+  double_tap_drag_to_zoom: false
+  hold_to_scan: false
+```
+
+The old `disable_pinch_to_zoom: true` still works and is the same as `extended_touch_support: false`.
 
 ## hours_to_show:
 

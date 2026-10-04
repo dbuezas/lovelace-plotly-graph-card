@@ -9,6 +9,7 @@ import {
   isEntityIdAttrConfig,
   isEntityIdStateConfig,
   isEntityIdStatisticsConfig,
+  TouchGestures,
 } from "./types";
 import isProduction from "./is-production";
 import "./hot-reload";
@@ -218,7 +219,7 @@ export class PlotlyGraph extends HTMLElement {
       },
       onZoomEnd: () => {
         this.pausedRendering = false;
-        this.plot({ should_fetch: true });
+        if (this.isConnected) this.plot({ should_fetch: true });
       },
     });
   }
@@ -463,8 +464,6 @@ export class PlotlyGraph extends HTMLElement {
     const was = this.config;
     this.config = config;
     setInitialLoadingHeight(this.cardEl, config.layout);
-    const is = this.config;
-    this.touchController.isEnabled = !is.disable_pinch_to_zoom;
     this.exitBrowsingMode();
   }
   getCSSVars() {
@@ -537,6 +536,16 @@ export class PlotlyGraph extends HTMLElement {
         .map((e) => "<span>" + (e || "See devtools console") + "</span>")
         .join("\n<br />\n");
       this.parsed_config = parsed;
+      const touch = parsed.disable_pinch_to_zoom
+        ? false
+        : parsed.extended_touch_support ?? true;
+      const enabled = (gesture: keyof TouchGestures) =>
+        typeof touch === "object" ? touch[gesture] !== false : touch;
+      this.touchController.enabled = {
+        pinch_to_zoom: enabled("pinch_to_zoom"),
+        double_tap_drag_to_zoom: enabled("double_tap_drag_to_zoom"),
+        hold_to_scan: enabled("hold_to_scan"),
+      };
 
       const {
         entities,
