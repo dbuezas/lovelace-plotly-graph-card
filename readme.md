@@ -88,6 +88,8 @@ the maximum, both editor bounds are ignored. If a single bound would reverse the
 automatically calculated range, that bound is ignored as well.
 
 `logarithmic_scale: true` selects a logarithmic main Y-axis.
+When false or omitted, Plotly chooses the axis type automatically unless
+explicitly configured.
 `fit_y_data: true` expands the automatic range to include both the data and the
 editor bounds, rather than using the bounds as fixed limits.
 Explicit Plotly axis types, ranges, autorange settings and `autorangeoptions`

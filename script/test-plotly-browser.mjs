@@ -595,6 +595,53 @@ try {
       }
       results.push(test.name);
     }
+    for (const test of [
+      {
+        name: "disabled log toggle keeps numeric auto-detection",
+        values: [10, 100],
+        type: "linear",
+      },
+      {
+        name: "disabled log toggle keeps category auto-detection",
+        values: ["off", "on"],
+        type: "category",
+      },
+      {
+        name: "disabled log toggle keeps date auto-detection",
+        values: ["2026-10-01", "2026-10-02"],
+        type: "date",
+      },
+    ]) {
+      const traces = [{ type: "scatter", x: [1, 2], y: test.values }];
+      const logarithmic = DefaultsTest.addPostParsingDefaults({
+        entities: [],
+        visible_range: [0, 4],
+        raw_plotly_config: false,
+        logarithmic_scale: true,
+        config: {},
+        layout: { width: 480, height: 285 },
+      });
+      await Plotly.react(
+        div,
+        [{ type: "scatter", x: [1, 2], y: [10, 100] }],
+        logarithmic.layout,
+        logarithmic.config,
+      );
+      const automatic = DefaultsTest.addPostParsingDefaults({
+        entities: [],
+        visible_range: [0, 4],
+        raw_plotly_config: false,
+        logarithmic_scale: false,
+        config: {},
+        layout: { width: 480, height: 285 },
+      });
+      await Plotly.react(div, traces, automatic.layout, automatic.config);
+      check(
+        div._fullLayout.yaxis.type === test.type,
+        `${test.name}: got ${div._fullLayout.yaxis.type}`,
+      );
+      results.push(test.name);
+    }
     Plotly.purge(div);
     div.remove();
     results.push("axes, privacy, tank shapes, annotations, relayout");
@@ -759,6 +806,39 @@ try {
     return cases.map(({ name }) => name);
   });
   results.results.push(...editorCardCases);
+  const automaticCardCases = await page.evaluate(async () => {
+    const card = document.getElementById("card-under-test");
+    const cases = [
+      { values: ["off", "on"], type: "category" },
+      { values: ["2026-10-01", "2026-10-02"], type: "date" },
+    ];
+    for (const test of cases) {
+      const now = Date.now();
+      const config = {
+        type: "custom:plotly-graph",
+        refresh_interval: 0,
+        entities: [{ entity: "", x: [now - 60000, now], y: [10, 100] }],
+      };
+      await card.setConfig({ ...config, logarithmic_scale: true });
+      await card.plot({ should_fetch: false });
+      await card.setConfig({
+        ...config,
+        logarithmic_scale: false,
+        entities: [{ entity: "", x: [now - 60000, now], y: test.values }],
+      });
+      await card.plot({ should_fetch: false });
+      if (card.errorMsgEl.textContent)
+        throw new Error(card.errorMsgEl.textContent);
+      if (card.contentEl._fullLayout.yaxis.type !== test.type)
+        throw new Error(
+          `card disabled log toggle: expected ${test.type}, got ${card.contentEl._fullLayout.yaxis.type}`,
+        );
+    }
+    return cases.map(
+      ({ type }) => `card disabled log toggle restores ${type} auto-detection`,
+    );
+  });
+  results.results.push(...automaticCardCases);
   const themeColors = await page.evaluate(async () => {
     const card = document.getElementById("card-under-test");
     document.documentElement.style.setProperty("--accent-color", "#123456");

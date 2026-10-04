@@ -272,13 +272,13 @@ export function addPostParsingDefaults(
       ? layout.template.layout?.yaxis
       : undefined;
   if (
-    yaml.logarithmic_scale !== undefined &&
+    yaml.logarithmic_scale === true &&
     layout.yaxis?.type === undefined &&
     templateAxis?.type === undefined
   ) {
     layout.yaxis = {
       ...layout.yaxis,
-      type: yaml.logarithmic_scale ? "log" : "linear",
+      type: "log",
     };
   }
   const axisType = layout.yaxis?.type ?? templateAxis?.type;

@@ -226,8 +226,25 @@ describe("visual editor y-axis bounds", () => {
     "maps the editor's logarithmic toggle: %s",
     (logarithmic_scale) => {
       expect(apply({ logarithmic_scale }).layout.yaxis?.type).toBe(
-        logarithmic_scale ? "log" : "linear",
+        logarithmic_scale ? "log" : undefined,
       );
+    },
+  );
+
+  test("disabling logarithmic scale leaves other axis settings unchanged", () => {
+    const yaxis = { showgrid: false, title: { text: "State" } };
+    expect(
+      apply({ logarithmic_scale: false, layout: { yaxis } }).layout.yaxis,
+    ).toEqual(yaxis);
+  });
+
+  test.each(["linear", "log", "date", "category"] as const)(
+    "disabling logarithmic scale preserves an explicit %s axis",
+    (type) => {
+      expect(
+        apply({ logarithmic_scale: false, layout: { yaxis: { type } } }).layout
+          .yaxis?.type,
+      ).toBe(type);
     },
   );
 
@@ -260,8 +277,9 @@ describe("visual editor y-axis bounds", () => {
 
   test("accepts an explicitly empty Plotly template", () => {
     const layout = JSON.parse('{"template":null}');
-    expect(apply({ min_y_axis: 300, max_y_axis: 1500, layout }).layout.yaxis?.range)
-      .toEqual([300, 1500]);
+    expect(
+      apply({ min_y_axis: 300, max_y_axis: 1500, layout }).layout.yaxis?.range,
+    ).toEqual([300, 1500]);
   });
 
   test.each<Plotly.LayoutAxis>([
