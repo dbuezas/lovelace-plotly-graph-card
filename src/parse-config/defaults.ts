@@ -3,6 +3,7 @@ import { Config, InputConfig } from "../types";
 import { parseColorScheme } from "./parse-color-scheme";
 import { getEntityIndex } from "./parse-config";
 import getThemedLayout, { HATheme } from "./themed-layout";
+import { DEFAULT_PLOT_HEIGHT } from "../loading-state";
 declare const window: Window & { PlotlyGraphCardPresets?: Record<string, InputConfig> };
 const noop$fn = () => () => {};
 const defaultEntityRequired = {
@@ -102,7 +103,7 @@ const defaultYamlOptional: {
     locale: ({ hass }) => hass.locale?.language,
   },
   layout: {
-    height: 285,
+    height: DEFAULT_PLOT_HEIGHT,
     dragmode: "pan",
     xaxis: {
       autorange: false,
@@ -266,9 +267,69 @@ export function addPostParsingDefaults(
     yaml.raw_plotly_config ? {} : yAxisTitles,
     yaml.layout
   );
+  const templateAxis =
+    typeof layout.template === "object" && layout.template !== null
+      ? layout.template.layout?.yaxis
+      : undefined;
+  if (
+    yaml.logarithmic_scale === true &&
+    layout.yaxis?.type === undefined &&
+    templateAxis?.type === undefined
+  ) {
+    layout.yaxis = {
+      ...layout.yaxis,
+      type: "log",
+    };
+  }
+  const axisType = layout.yaxis?.type ?? templateAxis?.type;
+  const validBound = (value: number | undefined): value is number =>
+    typeof value === "number" &&
+    Number.isFinite(value) &&
+    (axisType !== "log" || value > 0);
+  const minimum = validBound(yaml.min_y_axis) ? yaml.min_y_axis : null;
+  const maximum = validBound(yaml.max_y_axis) ? yaml.max_y_axis : null;
+  const orderedBounds =
+    minimum === null || maximum === null || minimum <= maximum;
+  let editor_y_axis: Config["editor_y_axis"];
+  if (
+    (minimum !== null || maximum !== null) &&
+    orderedBounds &&
+    (!yaml.autorange_after_scroll || yaml.fit_y_data) &&
+    (axisType === undefined || axisType === "linear" || axisType === "log") &&
+    layout.yaxis?.range === undefined &&
+    layout.yaxis?.autorange === undefined &&
+    layout.yaxis?.autorangeoptions === undefined &&
+    templateAxis?.range === undefined &&
+    templateAxis?.autorange === undefined &&
+    templateAxis?.autorangeoptions === undefined
+  ) {
+    const bounds = [minimum, maximum];
+    const include = bounds.filter((value): value is number => value !== null);
+    const rangeBound = (value: number | null) =>
+      value !== null && axisType === "log" ? Math.log10(value) : value;
+    const range: [number | null, number | null] = [
+      rangeBound(minimum),
+      rangeBound(maximum),
+    ];
+    if (yaml.fit_y_data && axisType === "log") {
+      editor_y_axis = { log_fit_bounds: [minimum, maximum] };
+    } else if (!yaml.fit_y_data && (minimum === null || maximum === null)) {
+      editor_y_axis = { partial_bound: true };
+    }
+    layout.yaxis = {
+      ...layout.yaxis,
+      ...(yaml.fit_y_data
+        ? {
+            autorange: true,
+            ...(axisType !== "log" ? { autorangeoptions: { include } } : {}),
+          }
+        : { range }),
+    };
+  }
   return {
     ...yaml,
     layout,
+    editor_y_axis,
     config: {
       // Keep dashboard data local unless the user explicitly enables upload.
       showSendToCloud: false,
@@ -276,4 +337,41 @@ export function addPostParsingDefaults(
       ...yaml.config,
     },
   };
+}
+
+export function getEditorYAxisRelayout(
+  yaml: Config,
+  range: readonly unknown[] | undefined,
+): (Partial<Plotly.Layout> & {
+  "yaxis.range": [number | null, number | null];
+  "yaxis.autorange": boolean;
+}) | undefined {
+  if (!range || range.length !== 2) return;
+  const [minimum, maximum] = range;
+  if (
+    typeof minimum !== "number" ||
+    typeof maximum !== "number" ||
+    !Number.isFinite(minimum) ||
+    !Number.isFinite(maximum)
+  ) {
+    return;
+  }
+
+  if (yaml.editor_y_axis?.partial_bound && minimum >= maximum) {
+    // A partial editor bound outside the data must not reverse the axis.
+    return { "yaxis.range": [null, null], "yaxis.autorange": true };
+  }
+  const bounds = yaml.editor_y_axis?.log_fit_bounds;
+  if (bounds) {
+    // Plotly's include option does not reliably extend logarithmic ranges.
+    // Expand its calculated range instead of duplicating its data/visibility logic.
+    const lower =
+      bounds[0] === null ? minimum : Math.min(minimum, Math.log10(bounds[0]));
+    const upper =
+      bounds[1] === null ? maximum : Math.max(maximum, Math.log10(bounds[1]));
+    if (lower < minimum || upper > maximum) {
+      return { "yaxis.range": [lower, upper], "yaxis.autorange": false };
+    }
+  }
+  return undefined;
 }

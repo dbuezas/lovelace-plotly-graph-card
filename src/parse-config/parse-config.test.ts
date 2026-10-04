@@ -2,7 +2,7 @@ import { HomeAssistant } from "custom-card-helpers";
 import { Statistics, StatisticValue } from "../recorder-types";
 import { EntityConfig, InputConfig } from "../types";
 import { ConfigParser } from "./parse-config";
-import { HATheme } from "./themed-layout";
+import { HATheme, readThemeColors } from "./themed-layout";
 import { getEntityKey } from "../cache/Cache";
 
 jest.mock("../filters/filters", () => ({
@@ -13,6 +13,7 @@ jest.mock("../filters/filters", () => ({
 const NOW = Date.parse("2025-01-02T12:00:00.000Z");
 const yValues = (trace: EntityConfig) => ("y" in trace ? trace.y : undefined);
 const cssVars: HATheme = {
+  ...readThemeColors({ getPropertyValue: () => "" }),
   "card-background-color": "#fff",
   "primary-background-color": "#fff",
   "primary-color": "#000",

@@ -80,6 +80,24 @@ refresh_interval: 10
 
 (\*) I'm reusing the editor of the standard History Card. Cheap, yes, but it works fine. Use yaml for advanced functionality
 
+The visual editor's `min_y_axis` and `max_y_axis` settings control the main
+Y-axis range. Either bound can be omitted to keep that side automatic.
+Bounds are entered in data units, including on logarithmic axes. Non-finite
+bounds and non-positive logarithmic bounds are ignored. If the minimum exceeds
+the maximum, both editor bounds are ignored. If a single bound would reverse the
+automatically calculated range, that bound is ignored as well.
+
+`logarithmic_scale: true` selects a logarithmic main Y-axis.
+When false or omitted, Plotly chooses the axis type automatically unless
+explicitly configured.
+`fit_y_data: true` expands the automatic range to include both the data and the
+editor bounds, rather than using the bounds as fixed limits.
+Explicit Plotly axis types, ranges, autorange settings and `autorangeoptions`
+(including those in an inline template) take precedence over the corresponding
+editor settings.
+`autorange_after_scroll: true` recalculates the main Y-axis after every render,
+overriding fixed editor bounds. Bounds included by `fit_y_data` remain included.
+
 ## Advanced
 
 ### Filling, line width, color
@@ -1010,6 +1028,26 @@ entities:
 ha_theme: false #defaults to true
 ```
 
+You can also use Home Assistant's named theme colors in `$ex` and `$fn` through
+`css_vars`. Values are read from the active CSS theme on each render, without
+the leading `--`:
+
+```yaml
+entities:
+  - entity: sensor.temperature_in_celsius
+    line:
+      color: $ex css_vars['blue-color']
+```
+
+Available colors: `accent-color`, `error-color`, `warning-color`, `success-color`,
+`info-color`, `divider-color`, `disabled-color`, `red-color`, `pink-color`, `purple-color`,
+`deep-purple-color`, `indigo-color`, `blue-color`, `light-blue-color`, `cyan-color`,
+`teal-color`, `green-color`, `light-green-color`, `lime-color`, `yellow-color`,
+`amber-color`, `orange-color`, `deep-orange-color`, `brown-color`, `light-grey-color`,
+`grey-color`, `dark-grey-color`, `blue-grey-color`, `black-color`, and `white-color`.
+The five theme variables listed above remain available too. This does not change
+the default trace palette, and `css_vars` is also available with `ha_theme: false`.
+
 ### Raw plotly config:
 
 Toggle all in-built defaults for layout and entitites. Useful when using histograms, 3d plots, etc.
@@ -1378,6 +1416,8 @@ the compatibility checks. For rendering checks, install Chromium with
 `npx playwright install chromium` and run `npm run test:browser`.
 The browser test covers every registered trace type, tank shapes and labels,
 axis defaults, cloud-upload opt-in, and a card with a mock Home Assistant state.
+Run `npm run test:loading` to check the initial loading height, delayed data,
+rendering failures, recovery and reduced-motion support in Chromium.
 `npm test` includes history batching, compressed WebSocket responses, cache reuse,
 attributes, time offsets and request failure recovery.
 The five additional trace types are also validated and rendered through the card.
