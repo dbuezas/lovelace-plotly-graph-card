@@ -1092,7 +1092,7 @@ extended_touch_support:
   hold_to_scan: false
 ```
 
-The old `disable_pinch_to_zoom: true` still works and is the same as `extended_touch_support: false`.
+See also: [disable_pinch_to_zoom](#disable_pinch_to_zoom) (deprecated)
 
 ## hours_to_show:
 
@@ -1324,6 +1324,10 @@ Removed in v3.0.0, non significant changes are also fetched now. The bandwidth s
 ### `minimal_response`
 
 Removed in v3.0.0, if you need access to the attributes use the 'attribute' parameter instead. It doesn't matter which attribute you pick, all of them are still accessible inside filters and universal functions
+
+### `disable_pinch_to_zoom`
+
+Replaced with [extended_touch_support](#extended_touch_support) in v4.0.0. `disable_pinch_to_zoom: true` still works and is the same as `extended_touch_support: false`.
 
 ## Plotly.js 4 compatibility
 
