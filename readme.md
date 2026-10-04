@@ -80,6 +80,24 @@ refresh_interval: 10
 
 (\*) I'm reusing the editor of the standard History Card. Cheap, yes, but it works fine. Use yaml for advanced functionality
 
+The visual editor's `min_y_axis` and `max_y_axis` settings control the main
+Y-axis range. Either bound can be omitted to keep that side automatic.
+Bounds are entered in data units, including on logarithmic axes. Non-finite
+bounds and non-positive logarithmic bounds are ignored. If the minimum exceeds
+the maximum, both editor bounds are ignored. If a single bound would reverse the
+automatically calculated range, that bound is ignored as well.
+
+`logarithmic_scale: true` selects a logarithmic main Y-axis.
+When false or omitted, Plotly chooses the axis type automatically unless
+explicitly configured.
+`fit_y_data: true` expands the automatic range to include both the data and the
+editor bounds, rather than using the bounds as fixed limits.
+Explicit Plotly axis types, ranges, autorange settings and `autorangeoptions`
+(including those in an inline template) take precedence over the corresponding
+editor settings.
+`autorange_after_scroll: true` recalculates the main Y-axis after every render,
+overriding fixed editor bounds. Bounds included by `fit_y_data` remain included.
+
 ## Advanced
 
 ### Filling, line width, color

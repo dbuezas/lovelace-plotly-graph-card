@@ -197660,6 +197660,18 @@
         }
       ]
     },
+    "fit_y_data": {
+      "anyOf": [
+        {
+          "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
+          "type": "string"
+        },
+        {
+          "type": "boolean"
+        }
+      ],
+      "description": "Expand the main y-axis to include both data and editor bounds."
+    },
     "ha_theme": {
       "anyOf": [
         {
@@ -197737,6 +197749,42 @@
           "$ref": "#/definitions/PlotlyLayout"
         }
       ]
+    },
+    "logarithmic_scale": {
+      "anyOf": [
+        {
+          "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
+          "type": "string"
+        },
+        {
+          "type": "boolean"
+        }
+      ],
+      "description": "Use a logarithmic main y-axis unless a Plotly axis type is specified."
+    },
+    "max_y_axis": {
+      "anyOf": [
+        {
+          "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
+          "type": "string"
+        },
+        {
+          "type": "number"
+        }
+      ],
+      "description": "Main y-axis maximum in data units, set by the visual editor."
+    },
+    "min_y_axis": {
+      "anyOf": [
+        {
+          "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
+          "type": "string"
+        },
+        {
+          "type": "number"
+        }
+      ],
+      "description": "Main y-axis minimum in data units, set by the visual editor."
     },
     "minimal_response": {
       "anyOf": [
