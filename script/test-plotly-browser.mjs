@@ -442,6 +442,116 @@ try {
         expected: [null, null],
         autorange: true,
       },
+      {
+        name: "logarithmic editor bounds use data units",
+        min_y_axis: 300,
+        max_y_axis: 1500,
+        axis: { type: "log" },
+        expected: [Math.log10(300), Math.log10(1500)],
+        autorange: false,
+      },
+      {
+        name: "editor logarithmic scale toggle",
+        min_y_axis: 300,
+        max_y_axis: 1500,
+        logarithmic_scale: true,
+        expected: [Math.log10(300), Math.log10(1500)],
+        autorange: false,
+      },
+      {
+        name: "invalid logarithmic minimum is ignored",
+        min_y_axis: 0,
+        max_y_axis: 1500,
+        logarithmic_scale: true,
+        expected: [null, Math.log10(1500)],
+        autorange: "min",
+      },
+      {
+        name: "inverted editor bounds are ignored",
+        min_y_axis: 1500,
+        max_y_axis: 300,
+        expected: [null, null],
+        autorange: true,
+      },
+      {
+        name: "editor minimum above all data stays ascending",
+        min_y_axis: 2000,
+        expected: [null, null],
+        autorange: true,
+      },
+      {
+        name: "editor maximum below all data stays ascending",
+        max_y_axis: 300,
+        expected: [null, null],
+        autorange: true,
+      },
+      {
+        name: "logarithmic minimum above all data stays ascending",
+        min_y_axis: 2000,
+        logarithmic_scale: true,
+        expected: [null, null],
+        autorange: true,
+      },
+      {
+        name: "fit data includes editor bounds and data outside them",
+        min_y_axis: 300,
+        max_y_axis: 1500,
+        fit_y_data: true,
+        values: [100, 2000],
+        includes: [100, 300, 1500, 2000],
+        expected: [null, null],
+        autorange: true,
+      },
+      {
+        name: "logarithmic fit includes bounds in data units",
+        min_y_axis: 300,
+        max_y_axis: 1500,
+        fit_y_data: true,
+        logarithmic_scale: true,
+        includes: [300, 1500],
+        expected: [null, null],
+        autorange: false,
+      },
+      {
+        name: "logarithmic fit supports bounds below one",
+        min_y_axis: 0.01,
+        max_y_axis: 2,
+        fit_y_data: true,
+        logarithmic_scale: true,
+        values: [0.2, 0.7],
+        includes: [0.01, 0.2, 0.7, 2],
+        expected: [null, null],
+        autorange: false,
+      },
+      {
+        name: "logarithmic fit never clips data outside the bounds",
+        min_y_axis: 300,
+        max_y_axis: 1500,
+        fit_y_data: true,
+        logarithmic_scale: true,
+        values: [100, 2000],
+        includes: [100, 300, 1500, 2000],
+        expected: [null, null],
+        autorange: true,
+      },
+      {
+        name: "explicit Plotly type overrides editor logarithmic toggle",
+        min_y_axis: 300,
+        max_y_axis: 1500,
+        logarithmic_scale: true,
+        axis: { type: "linear" },
+        expected: [300, 1500],
+        autorange: false,
+      },
+      {
+        name: "explicit range overrides fit data",
+        min_y_axis: 300,
+        max_y_axis: 1500,
+        fit_y_data: true,
+        axis: { range: [400, 1200] },
+        expected: [400, 1200],
+        autorange: false,
+      },
     ]) {
       const input = DefaultsTest.addPostParsingDefaults({
         entities: [],
@@ -449,6 +559,8 @@ try {
         raw_plotly_config: false,
         min_y_axis: test.min_y_axis,
         max_y_axis: test.max_y_axis,
+        fit_y_data: test.fit_y_data,
+        logarithmic_scale: test.logarithmic_scale,
         config: {},
         layout: { width: 480, height: 285, yaxis: test.axis || {} },
       });
@@ -458,8 +570,14 @@ try {
         input.layout,
         input.config,
       );
+      const editorUpdate = DefaultsTest.getEditorYAxisRelayout(
+        input,
+        div.layout.yaxis.range,
+      );
+      if (editorUpdate) await Plotly.relayout(div, editorUpdate);
       const axis = div._fullLayout.yaxis;
       check(axis.autorange === test.autorange, `${test.name}: wrong autorange`);
+      check(axis.range[0] < axis.range[1], `${test.name}: reversed range`);
       test.expected.forEach((bound, index) => {
         if (bound !== null)
           check(
@@ -467,6 +585,14 @@ try {
             `${test.name}: wrong bound ${index}`,
           );
       });
+      for (const value of test.includes || []) {
+        const coordinate = axis.type === "log" ? Math.log10(value) : value;
+        check(
+          axis.range[0] <= coordinate + 1e-10 &&
+            axis.range[1] >= coordinate - 1e-10,
+          `${test.name}: ${value} is outside ${JSON.stringify(axis.range)} (update ${JSON.stringify(editorUpdate)})`,
+        );
+      }
       results.push(test.name);
     }
     Plotly.purge(div);
@@ -547,6 +673,92 @@ try {
     return card.contentEl._fullLayout.width <= 320;
   });
   results.results.push("Lovelace card with mock HA state");
+  const editorCardCases = await page.evaluate(async () => {
+    const card = document.getElementById("card-under-test");
+    const cases = [
+      {
+        name: "card logarithmic editor toggle",
+        logarithmic_scale: true,
+        expected: [Math.log10(300), Math.log10(1500)],
+      },
+      {
+        name: "card logarithmic fit",
+        logarithmic_scale: true,
+        fit_y_data: true,
+        includes: [300, 600, 1000, 1500],
+      },
+      {
+        name: "card scroll autorange overrides fixed editor bounds",
+        autorange_after_scroll: true,
+        automatic: true,
+      },
+      {
+        name: "card scroll autorange ignores invalid partial bounds",
+        min_y_axis: 2000,
+        max_y_axis: undefined,
+        autorange_after_scroll: true,
+        automatic: true,
+      },
+      {
+        name: "card scroll autorange retains linear fit bounds",
+        fit_y_data: true,
+        autorange_after_scroll: true,
+        includes: [300, 600, 1000, 1500],
+      },
+      {
+        name: "card scroll autorange retains logarithmic fit bounds",
+        logarithmic_scale: true,
+        fit_y_data: true,
+        autorange_after_scroll: true,
+        includes: [300, 600, 1000, 1500],
+      },
+      {
+        name: "card invalid partial bound falls back to autorange",
+        min_y_axis: 2000,
+        max_y_axis: undefined,
+        automatic: true,
+      },
+    ];
+    for (const test of cases) {
+      const { name, expected, includes, automatic, ...options } = test;
+      const now = Date.now();
+      await card.setConfig({
+        type: "custom:plotly-graph",
+        refresh_interval: 0,
+        min_y_axis: 300,
+        max_y_axis: 1500,
+        ...options,
+        entities: [{ entity: "", x: [now - 60000, now], y: [600, 1000] }],
+      });
+      await card.plot({ should_fetch: false });
+      if (card.errorMsgEl.textContent)
+        throw new Error(`${name}: ${card.errorMsgEl.textContent}`);
+      const axis = card.contentEl._fullLayout.yaxis;
+      if (!(axis.range[0] < axis.range[1]))
+        throw new Error(`${name}: reversed range`);
+      if (
+        expected &&
+        expected.some(
+          (value, index) => Math.abs(value - axis.range[index]) > 1e-10,
+        )
+      )
+        throw new Error(`${name}: wrong range`);
+      if (automatic && axis.autorange !== true)
+        throw new Error(`${name}: not automatic`);
+      if (automatic && (axis.range[0] === 300 || axis.range[1] === 1500))
+        throw new Error(`${name}: fixed editor bounds still applied`);
+      for (const value of includes || []) {
+        const coordinate = axis.type === "log" ? Math.log10(value) : value;
+        if (
+          coordinate < axis.range[0] - 1e-10 ||
+          coordinate > axis.range[1] + 1e-10
+        )
+          throw new Error(`${name}: ${value} is outside the fitted range`);
+      }
+    }
+    return cases.map(({ name }) => name);
+  });
+  results.results.push(...editorCardCases);
   const themeColors = await page.evaluate(async () => {
     const card = document.getElementById("card-under-test");
     document.documentElement.style.setProperty("--accent-color", "#123456");

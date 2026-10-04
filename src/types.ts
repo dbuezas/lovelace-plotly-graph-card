@@ -62,9 +62,14 @@ export type InputConfig = {
   refresh_interval?: number | "auto"; // in seconds
   color_scheme?: ColorSchemeNames | ColorSchemeArray | number;
   title?: string;
-  /** Main y-axis bounds set by the visual editor. */
+  /** Main y-axis minimum in data units, set by the visual editor. */
   min_y_axis?: number;
+  /** Main y-axis maximum in data units, set by the visual editor. */
   max_y_axis?: number;
+  /** Expand the main y-axis to include both data and editor bounds. */
+  fit_y_data?: boolean;
+  /** Use a logarithmic main y-axis unless a Plotly axis type is specified. */
+  logarithmic_scale?: boolean;
   offset?: TimeDurationStr;
   entities: (InputEntityOptions & Partial<Plotly.Data>)[];
   defaults?: {
@@ -104,7 +109,13 @@ export type Config = {
   title?: string;
   min_y_axis?: number;
   max_y_axis?: number;
+  fit_y_data?: boolean;
+  logarithmic_scale?: boolean;
   hours_to_show: number;
+  editor_y_axis?: {
+    partial_bound?: boolean;
+    log_fit_bounds?: [number | null, number | null];
+  };
   refresh_interval: number | "auto"; // in seconds
   offset: number;
   entities: EntityConfig[];

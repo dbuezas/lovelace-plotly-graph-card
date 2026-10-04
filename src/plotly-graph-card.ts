@@ -24,6 +24,7 @@ import {
 } from "./loading-state";
 import { readThemeColors } from "./parse-config/themed-layout";
 import { getFetchMask } from "./plot-state";
+import { getEditorYAxisRelayout } from "./parse-config/defaults";
 
 const componentName = isProduction ? "plotly-graph" : "plotly-graph-dev";
 
@@ -557,13 +558,21 @@ export class PlotlyGraph extends HTMLElement {
       }
       await this.withoutRelayout(async () => {
         await Plotly.react(this.contentEl, entities, layout, config);
-        if (autorange_after_scroll) {
+        if (
+          autorange_after_scroll &&
+          !this.parsed_config.editor_y_axis?.log_fit_bounds
+        ) {
           const update = {
             "yaxis.autorange": true,
           };
           // Plotly accepts attribute paths, but its public types only list nested keys.
           await Plotly.relayout(this.contentEl, update as Partial<Plotly.Layout>);
         }
+        const editorUpdate = getEditorYAxisRelayout(
+          this.parsed_config,
+          this.contentEl.layout.yaxis?.range,
+        );
+        if (editorUpdate) await Plotly.relayout(this.contentEl, editorUpdate);
         this.contentEl.style.visibility = "";
       });
       if (this.isConnected) this.connectPlotlyListeners();
