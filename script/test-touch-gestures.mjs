@@ -1,12 +1,9 @@
 // Touch gestures with real (CDP) touch events in Chrome.
-// Usage: node script/test-touch-gestures.mjs [chrome path]
+// Usage: npm run test:touch
+// Uses Playwright's Chromium, or another Chrome with CHROME=/path/to/chrome
 import { createServer } from "node:http";
 import { build } from "esbuild";
 import { chromium } from "playwright";
-
-const CHROME =
-  process.argv[2] ||
-  "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 
 const { outputFiles } = await build({
   entryPoints: ["src/plotly-graph-card.ts"],
@@ -27,8 +24,7 @@ const server = createServer((req, res) => {
 await new Promise((r) => server.listen(0, "127.0.0.1", r));
 
 const browser = await chromium.launch({
-  executablePath: CHROME,
-  headless: true,
+  executablePath: process.env.CHROME || undefined,
 });
 const results = [];
 const check = (ok, msg, extra = "") =>
