@@ -180,10 +180,14 @@ const filters = {
     return ({ xs, ys, meta, hass, getFromConfig }) => {
       const timeZone = resolveTimeZone(getFromConfig?.("time_zone"), hass);
       const t0 = +startOfDay(Date.now(), inTimeZone(timeZone)) + offset;
+      const resetAt = (x: number) =>
+        param.reset_every === "1d"
+          ? +startOfDay(x - offset, inTimeZone(timeZone)) + offset
+          : t0 + Math.floor((x - t0) / reset_every) * reset_every;
       let yAcc = 0;
       let last = {
         x: NaN,
-        laps: 0,
+        reset: NaN,
         y: 0,
       };
       return {
@@ -196,12 +200,12 @@ const filters = {
           const x = +xs[i];
           let intervalStart = last.x;
           if (reset_every > 0) {
-            const laps = Math.floor((x - t0) / reset_every);
-            if (laps !== last.laps) {
+            const reset = resetAt(x);
+            if (reset !== last.reset) {
               yAcc = 0;
-              last.laps = laps;
+              last.reset = reset;
               // only the part after the reset belongs to the new period
-              intervalStart = Math.max(intervalStart, t0 + laps * reset_every);
+              intervalStart = Math.max(intervalStart, reset);
             }
           }
           const dateDelta = (x - intervalStart) / timeUnits[unit];

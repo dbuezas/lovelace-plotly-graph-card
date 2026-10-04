@@ -1102,6 +1102,8 @@ time_zone: Europe/Rome # any IANA timezone
 
 This also applies to the boundaries of `hours_to_show: current_day` and friends, and to `integrate`'s `reset_every`.
 
+For `integrate`, `reset_every: 1d` resets at calendar midnight in the selected time zone, including 23- and 25-hour days. `reset_every: 24h` and other intervals remain fixed durations. `offset` shifts the reset by the specified elapsed duration after midnight, not by wall-clock hours.
+
 ## Presets
 
 If you find yourself reusing the same card configuration frequently, you can save it as a preset.

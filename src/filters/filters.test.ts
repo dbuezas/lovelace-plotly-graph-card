@@ -185,6 +185,140 @@ describe("filters", () => {
         // the current period, where no reset is detected on the first sample
         expect(integrate(daily, [at(21, 8), at(21, 10)])).toEqual([NaN, 2]);
       });
+
+      describe("calendar days in the configured time zone", () => {
+        const run = (
+          timestamps: string[],
+          timeZone = "Europe/Zurich",
+          param: Parameters<typeof filters.integrate>[0] = daily,
+        ) =>
+          filters.integrate(param)(
+            input({
+              xs: timestamps.map((timestamp) => new Date(timestamp)),
+              ys: timestamps.map(() => 1),
+              hass: { config: { time_zone: timeZone } },
+              getFromConfig: () => "server",
+            }),
+          ).ys;
+
+        it.each([
+          [
+            "spring",
+            "2026-03-28T23:00Z",
+            "2026-03-29T21:00Z",
+            "2026-03-29T22:00Z",
+            "2026-03-29T23:00Z",
+            22,
+          ],
+          [
+            "autumn",
+            "2026-10-24T22:00Z",
+            "2026-10-25T22:00Z",
+            "2026-10-25T23:00Z",
+            "2026-10-26T00:00Z",
+            24,
+          ],
+        ])(
+          "resets at midnight across the %s clock change",
+          (_, start, before, midnight, after, hours) => {
+            expect(run([start, before, midnight, after] as string[])).toEqual([
+              NaN,
+              hours,
+              0,
+              1,
+            ]);
+          },
+        );
+
+        it.each([
+          [
+            "2026-10-04T12:00Z",
+            "2026-01-14T21:30Z",
+            "2026-01-14T22:30Z",
+            "2026-01-14T23:30Z",
+          ],
+          [
+            "2026-01-15T12:00Z",
+            "2026-07-14T20:30Z",
+            "2026-07-14T21:30Z",
+            "2026-07-14T22:30Z",
+          ],
+        ])(
+          "uses each sample's day, not today's UTC offset (%s)",
+          (now, ...timestamps) => {
+            jest.setSystemTime(new Date(now));
+            expect(run(timestamps)).toEqual([NaN, 1, 0.5]);
+          },
+        );
+
+        it.each([
+          [
+            "2026-10-03T13:30Z",
+            "2026-10-04T12:00Z",
+            "2026-10-04T13:00Z",
+            "2026-10-04T14:00Z",
+            22.5,
+          ],
+          [
+            "2026-04-04T13:00Z",
+            "2026-04-05T12:30Z",
+            "2026-04-05T13:30Z",
+            "2026-04-05T14:30Z",
+            23.5,
+          ],
+        ])(
+          "handles a half-hour clock change (%s)",
+          (start, before, midnight, after, hours) => {
+            expect(
+              run(
+                [start, before, midnight, after] as string[],
+                "Australia/Lord_Howe",
+              ),
+            ).toEqual([NaN, hours, 0, 1]);
+          },
+        );
+
+        it("preserves fixed 24-hour intervals", () => {
+          jest.setSystemTime(new Date("2026-03-29T12:00Z"));
+          expect(
+            run(
+              [
+                "2026-03-28T23:00Z",
+                "2026-03-29T21:00Z",
+                "2026-03-29T22:00Z",
+                "2026-03-29T23:00Z",
+              ],
+              "Europe/Zurich",
+              { unit: "h", reset_every: "24h" },
+            ),
+          ).toEqual([NaN, 22, 23, 0]);
+        });
+
+        it("keeps offset as elapsed time after calendar midnight", () => {
+          expect(
+            run(
+              ["2026-03-29T03:30Z", "2026-03-29T05:30Z", "2026-03-29T06:30Z"],
+              "Europe/Zurich",
+              { ...daily, offset: "6h" },
+            ),
+          ).toEqual([NaN, 0.5, 1.5]);
+        });
+
+        it("supports negative offsets across a clock change", () => {
+          expect(
+            run(
+              [
+                "2026-03-28T21:00Z",
+                "2026-03-29T19:00Z",
+                "2026-03-29T20:00Z",
+                "2026-03-29T21:00Z",
+              ],
+              "Europe/Zurich",
+              { ...daily, offset: "-2h" },
+            ),
+          ).toEqual([NaN, 22, 0, 1]);
+        });
+      });
     });
   });
 
