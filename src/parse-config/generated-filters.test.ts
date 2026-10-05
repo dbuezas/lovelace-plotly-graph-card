@@ -197,7 +197,11 @@ describe("generated filter lists", () => {
       const { errors } = await new ConfigParser().update(input);
       expect(errors).toEqual([]);
       expect(checks.includes("entities.0.filters")).toBe(generated);
-      expect(checks.some((path) => path.startsWith("entities.0.y"))).toBe(false);
+      expect(
+        checks.some(
+          (path) => path === "entities.0.y" || path.startsWith("entities.0.y."),
+        ),
+      ).toBe(false);
     },
   );
 });
