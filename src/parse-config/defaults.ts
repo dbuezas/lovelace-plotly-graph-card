@@ -1,4 +1,6 @@
 import { merge } from "lodash";
+import { HomeAssistant } from "custom-card-helpers";
+import { computeEntityName } from "../entity-name";
 import { Config, InputConfig } from "../types";
 import { parseColorScheme } from "./parse-color-scheme";
 import { getEntityIndex } from "./parse-config";
@@ -27,8 +29,22 @@ const defaultEntityOptional = {
   },
   // extend_to_present: true unless using statistics. Defined inside parse-config.ts to avoid forward depndency
   unit_of_measurement: ({ meta }) => meta.unit_of_measurement || "",
-  name: ({ meta, getFromConfig }) => {
-    let name = meta.friendly_name || getFromConfig(`.entity`);
+  name: ({ hass, meta, getFromConfig }) => {
+    const entityId = getFromConfig(`.entity`);
+    const stateObj = hass?.states[entityId];
+    // A filter (trendline, or any fn) renames its trace by rewriting
+    // meta.friendly_name. Comparing it with the entity's own attribute is the
+    // only way to tell such a rename apart, and it has to win over the registry.
+    const renamedByFilter =
+      meta.friendly_name &&
+      meta.friendly_name !== stateObj?.attributes?.friendly_name
+        ? meta.friendly_name
+        : undefined;
+    let name =
+      renamedByFilter ??
+      computeEntityName(hass, stateObj, undefined) ??
+      meta.friendly_name ??
+      entityId;
     const attribute = getFromConfig(`.attribute`);
     if (attribute) name += ` (${attribute}) `;
     return name;
@@ -183,7 +199,8 @@ function getPresetYaml(presets: string | string[] | undefined, skips?: Set<strin
 
 export function addPreParsingDefaults(
   yaml_in: InputConfig,
-  css_vars: HATheme
+  css_vars: HATheme,
+  hass?: HomeAssistant
 ): InputConfig {
   // merging in two steps to ensure ha_theme and raw_plotly_config took its default value
   let yaml = merge({}, yaml_in, defaultYamlRequired, yaml_in);
@@ -218,6 +235,17 @@ export function addPreParsingDefaults(
     if (oldAPI_attribute) {
       entity.entity = oldAPI_entity;
       entity.attribute = oldAPI_attribute;
+    }
+    // A structured name has to become a string here: the parser walks anything
+    // object-shaped as config, which would leave the parts in the trace name.
+    // An empty name has always meant "use Home Assistant's name", so drop it and
+    // let the default below compose one.
+    if (entity.name === "") {
+      delete entity.name;
+    } else if (entity.name && typeof entity.name !== "string") {
+      entity.name =
+        computeEntityName(hass, hass?.states[entity.entity], entity.name) ??
+        entity.entity;
     }
     const entityFilters = entity.filters;
     entity = merge(

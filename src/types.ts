@@ -4,6 +4,7 @@ import {
 } from "./parse-config/parse-color-scheme";
 
 import { RelativeTimeStr, TimeDurationStr } from "./duration/duration";
+import { EntityName } from "./entity-name";
 import {
   AutoPeriodConfig,
   StatisticPeriod,
@@ -22,7 +23,8 @@ export type YValue = number | string | null;
 
 export type InputEntityOptions = {
   entity?: string;
-  name?: string;
+  /** A plain string, or name parts resolved from the entity's registry context. */
+  name?: EntityName;
   attribute?: string;
   statistic?: StatisticType;
   period?: StatisticPeriod | "auto" | AutoPeriodConfig;
