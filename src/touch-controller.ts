@@ -23,7 +23,12 @@ type Handler = (e: TouchEvent) => void;
 type Gesture = (
   el: PlotlyEl,
   controller: TouchController
-) => { start: Handler; move: Handler; end: Handler };
+) => {
+  start: Handler;
+  move: Handler;
+  end: Handler;
+  cleanup?: () => void; // on disconnect, e.g. to cancel timers
+};
 
 const stop = (e: TouchEvent) => {
   if (e.cancelable) e.preventDefault();
@@ -117,6 +122,7 @@ const pinch: Gesture = (el, controller) => {
 // (reset), so zooming only starts once the finger moves.
 const doubleTapDrag: Gesture = (el, controller) => {
   let lastTapTime = -Infinity;
+  let firstTap: { x: number; y: number } | undefined; // until it moves
   let tap:
     | { dragger: Element; x: number; y: number; lastY: number }
     | undefined;
@@ -133,13 +139,14 @@ const doubleTapDrag: Gesture = (el, controller) => {
       const t = e.touches[0];
       const dragger = draggerOf(el, t);
       if (e.timeStamp - lastTapTime >= DOUBLE_TAP_MS)
-        return void (lastTapTime = e.timeStamp);
+        return void (firstTap = { x: t.clientX, y: t.clientY });
       if (controller.enabled.double_tap_drag_to_zoom && dragger)
         tap = { dragger, x: t.clientX, y: t.clientY, lastY: t.clientY };
     },
     move: (e) => {
-      if (!tap) return;
       const t = e.touches[0];
+      if (firstTap && moved(t, firstTap)) firstTap = undefined; // a swipe
+      if (!tap) return;
       if (!zooming) {
         if (!moved(t, tap)) return stop(e); // still a double tap for Plotly
         if (!el._dragging) return void (tap = undefined); // scan has it
@@ -156,7 +163,12 @@ const doubleTapDrag: Gesture = (el, controller) => {
       );
       tap.lastY = t.clientY;
     },
-    end,
+    end: (e) => {
+      // Only a tap that didn't move can start a double tap
+      lastTapTime = firstTap && !e.touches.length ? e.timeStamp : -Infinity;
+      firstTap = undefined;
+      end();
+    },
   };
 };
 
@@ -213,6 +225,7 @@ const scan: Gesture = (el, controller) => {
       if (hold.scanning) hover(hold.dragger, t.clientX, t.clientY);
     },
     end,
+    cleanup: end,
   };
 };
 
@@ -241,6 +254,7 @@ export class TouchController {
   onZoomEnd: () => any;
   zooms = 0;
   listeners: [TouchEventName, Handler][] = [];
+  cleanups: (() => void)[] = [];
   constructor(param: {
     el: PlotlyEl;
     onZoomStart: () => any;
@@ -253,7 +267,8 @@ export class TouchController {
   connect() {
     this.disconnect();
     for (const gesture of [pinch, doubleTapDrag, scan, tapWithoutTooltip]) {
-      const { start, move, end } = gesture(this.el, this);
+      const { start, move, end, cleanup } = gesture(this.el, this);
+      if (cleanup) this.cleanups.push(cleanup);
       this.listeners.push(
         ["touchstart", start],
         ["touchmove", move],
@@ -268,6 +283,8 @@ export class TouchController {
     for (const [type, fn] of this.listeners)
       this.el.removeEventListener(type, fn, { capture: true });
     this.listeners = [];
+    for (const cleanup of this.cleanups) cleanup();
+    this.cleanups = [];
     if (this.zooms) this.onZoomEnd();
     this.zooms = 0;
   }

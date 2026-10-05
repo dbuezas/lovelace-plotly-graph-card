@@ -568,7 +568,42 @@ try {
     "hold_to_scan: false: a tap shows the tooltip again"
   );
 
+  // --- Two quick swipes are pans, not a double-tap-drag
+  await mount({});
+  s0 = await state();
+  await drag(steps([[cx + 60, cy]], [[cx - 60, cy]], 4), 10);
+  await touch("touchEnd");
+  await drag(steps([[cx, cy - 60]], [[cx, cy + 60]], 4), 10);
+  await touch("touchEnd");
+  await wait(300);
+  s1 = await state();
+  check(
+    Math.abs(s1.span - s0.span) < tol(s0.span) && s1.range !== s0.range,
+    "two quick swipes pan without zooming",
+    `${(s0.span / hour).toFixed(1)}h -> ${(s1.span / hour).toFixed(1)}h`
+  );
+
   // --- Lifecycle
+  await mount({});
+  await page.evaluate(() => {
+    window.old = document.getElementById("c");
+    window.oldHovers = 0;
+    window.old.contentEl.on("plotly_hover", () => window.oldHovers++);
+  });
+  await touch("touchStart", [[cx, cy]]);
+  await wait(60);
+  await page.evaluate(() => window.old.remove());
+  await wait(500);
+  await touch("touchEnd");
+  check(
+    await page.evaluate(
+      () =>
+        window.oldHovers === 0 &&
+        !window.old.contentEl.querySelector(".hoverlayer .hovertext")
+    ),
+    "card removed while holding: no tooltip afterwards"
+  );
+
   await mount({});
   await drag(
     steps(
