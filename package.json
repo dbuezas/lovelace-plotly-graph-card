@@ -17,6 +17,7 @@
     "test:loading": "node script/test-loading-state.mjs",
     "test:resize": "node script/test-resize.mjs",
     "test:card-lifecycle": "node script/test-card-lifecycle.mjs",
+    "test:touch": "node script/test-touch-gestures.mjs",
     "test:watch": "jest --watchAll",
     "version": "npm run build && git add .",
     "npm-upgrade": "npx npm-upgrade"

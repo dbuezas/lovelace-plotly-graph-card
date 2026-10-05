@@ -293,6 +293,44 @@
       },
       "type": "object"
     },
+    "With$fn<Partial<TouchGestures>>": {
+      "properties": {
+        "double_tap_drag_to_zoom": {
+          "anyOf": [
+            {
+              "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
+              "type": "string"
+            },
+            {
+              "type": "boolean"
+            }
+          ]
+        },
+        "hold_to_scan": {
+          "anyOf": [
+            {
+              "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
+              "type": "string"
+            },
+            {
+              "type": "boolean"
+            }
+          ]
+        },
+        "pinch_to_zoom": {
+          "anyOf": [
+            {
+              "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
+              "type": "string"
+            },
+            {
+              "type": "boolean"
+            }
+          ]
+        }
+      },
+      "type": "object"
+    },
     "With$fn<Partial<TrendlineParam>>": {
       "properties": {
         "degree": {
@@ -197657,6 +197695,20 @@
               }
             ]
           }
+        }
+      ]
+    },
+    "extended_touch_support": {
+      "anyOf": [
+        {
+          "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
+          "type": "string"
+        },
+        {
+          "$ref": "#/definitions/With$fn<Partial<TouchGestures>>"
+        },
+        {
+          "type": "boolean"
         }
       ]
     },
