@@ -438,11 +438,14 @@ class ConfigParser {
       // this would make it also work if filters change the data.
       // Would also need to be combined with yet another removeOutOfRange call.
       const last_i = data.xs.length - 1;
-      const now = Math.min(this.observed_range[1], Date.now());
-      data.xs.push(new Date(Math.min(this.observed_range[1], now + offset)));
-      data.ys.push(data.ys[last_i]);
-      if (data.states.length) data.states.push(data.states[last_i]);
-      if (data.statistics.length) data.statistics.push(data.statistics[last_i]);
+      // Shift the source cutoff before limiting it to the displayed range.
+      const end = Math.min(this.observed_range[1], this.fetchTime + offset);
+      if (end > +data.xs[last_i]) {
+        data.xs.push(new Date(end));
+        data.ys.push(data.ys[last_i]);
+        if (data.states.length) data.states.push(data.states[last_i]);
+        if (data.statistics.length) data.statistics.push(data.statistics[last_i]);
+      }
     }
     this.fnParam.xs = data.xs;
     this.fnParam.ys = data.ys;
