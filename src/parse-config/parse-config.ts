@@ -211,6 +211,16 @@ class ConfigParser {
       }
       const me = parent[key];
       if (!this.fnParam.getFromConfig("raw_plotly_config")) {
+        // Bar fills use marker.color, not the line color assigned by the palette.
+        if (me.type === "bar" && me.marker?.color === undefined) {
+          const layout = this.yaml_with_defaults?.layout;
+          if (
+            layout?.colorway === undefined &&
+            layout?.template?.layout?.colorway === undefined
+          ) {
+            me.marker = { ...me.marker, color: me.line?.color };
+          }
+        }
         if (!me.x) me.x = this.fnParam.xs;
         if (!me.y) me.y = this.fnParam.ys;
         if (me.x.length === 0 && me.y.length === 0) {

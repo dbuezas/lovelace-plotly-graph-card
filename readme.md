@@ -199,7 +199,9 @@ entities:
 
 ## Color schemes
 
-Changes default line colors.
+Changes default line and bar colors. Explicit `line.color` and `marker.color`
+settings take precedence. Bar fills use `marker.color`.
+Explicit Plotly `layout.colorway` or template palettes are also preserved.
 See more here: https://github.com/dbuezas/lovelace-plotly-graph-card/blob/master/src/parse-config/parse-color-scheme.ts
 
 ```yaml
