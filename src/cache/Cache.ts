@@ -247,16 +247,26 @@ export default class Cache {
   add(entity: FetchConfig, states: CachedEntity[], range: [number, number]) {
     const entityKey = getEntityKey(entity);
     let h = (this.histories[entityKey] ??= []);
-    for (const state of states) h.push(state);
-    h.sort((a, b) => +a.x - +b.x);
-    if (!isEntityIdStatisticsConfig(entity)) {
-      h = h.filter((x, i) => i == 0 || !x.fake_boundary_datapoint);
+    // A newer single sample cannot disturb the sorted, deduplicated history.
+    const canAppend =
+      states.length === 1 &&
+      h.length > 0 &&
+      +states[0].x > +h[h.length - 1].x &&
+      (!states[0].fake_boundary_datapoint || isEntityIdStatisticsConfig(entity));
+    if (canAppend) {
+      h.push(states[0]);
+    } else {
+      for (const state of states) h.push(state);
+      h.sort((a, b) => +a.x - +b.x);
+      if (!isEntityIdStatisticsConfig(entity)) {
+        h = h.filter((x, i) => i == 0 || !x.fake_boundary_datapoint);
+      }
+      // Refetched aggregates can change without changing their bucket timestamp.
+      h = isEntityIdStatisticsConfig(entity)
+        ? h.filter((_, i) => +h[i].x !== +h[i + 1]?.x)
+        : h.filter((_, i) => +h[i - 1]?.x !== +h[i].x);
+      this.histories[entityKey] = h;
     }
-    // Refetched aggregates can change without changing their bucket timestamp.
-    h = isEntityIdStatisticsConfig(entity)
-      ? h.filter((_, i) => +h[i].x !== +h[i + 1]?.x)
-      : h.filter((_, i) => +h[i - 1]?.x !== +h[i].x);
-    this.histories[entityKey] = h;
     this.ranges[entityKey] ??= [];
     this.ranges[entityKey].push(range);
     this.ranges[entityKey] = compactRanges(this.ranges[entityKey]);
