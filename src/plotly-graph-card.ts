@@ -230,7 +230,7 @@ export class PlotlyGraph extends HTMLElement {
       },
       onZoomEnd: () => {
         this.pausedRendering = false;
-        if (this.isConnected) this.plot({ should_fetch: true });
+        if (this.isConnected) void this.plot({ should_fetch: true });
       },
     });
   }
@@ -255,7 +255,7 @@ export class PlotlyGraph extends HTMLElement {
         this.size.height === nextSize.height
       ) return;
       this.size = nextSize;
-      this.plot({ should_fetch: false });
+      void this.plot({ should_fetch: false });
     };
     this.handles.intersectionObserver = new IntersectionObserver(([entry]) => {
       this.onScreen = entry.isIntersecting;
@@ -271,7 +271,7 @@ export class PlotlyGraph extends HTMLElement {
     this.updateStatisticsSubscriptions();
     // Start downloading Plotly while the data is fetched (errors show on render)
     import("./plotly").catch(() => {});
-    this.plot({ should_fetch: true, refresh_statistics: true });
+    void this.plot({ should_fetch: true, refresh_statistics: true });
   }
 
   disconnectedCallback() {
@@ -373,7 +373,7 @@ export class PlotlyGraph extends HTMLElement {
         }
       }
       if (shouldPlot) {
-        this.plot({ should_fetch: false }, this.liveThrottle.change());
+        void this.plot({ should_fetch: false }, this.liveThrottle.change());
       }
     }
     this._hass = hass;
@@ -434,7 +434,7 @@ export class PlotlyGraph extends HTMLElement {
   exitBrowsingMode = async () => {
     this.isBrowsing = false;
     this.resetButtonEl.classList.add("hidden");
-    this.withoutRelayout(async () => {
+    void this.withoutRelayout(async () => {
       this.configParser.resetObservedRange();
       await this.plot({ should_fetch: true, refresh_statistics: true });
     });
@@ -488,10 +488,9 @@ export class PlotlyGraph extends HTMLElement {
   // The user supplied configuration. Throw an exception and Lovelace will
   // render an error card.
   async setConfig(config: InputConfig) {
-    const was = this.config;
     this.config = config;
     setInitialLoadingHeight(this.cardEl, config.layout);
-    this.exitBrowsingMode();
+    void this.exitBrowsingMode();
   }
   getCSSVars() {
     const styles = window.getComputedStyle(this.contentEl);
@@ -589,7 +588,7 @@ export class PlotlyGraph extends HTMLElement {
         {
           layout: {
             ...this.size,
-            ...{ uirevision },
+            uirevision,
           },
           fetch_mask,
         },

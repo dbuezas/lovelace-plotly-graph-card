@@ -1,5 +1,7 @@
 import filters, { FilterInput } from "./filters";
 
+// Type checks only: these lines must (or must not) compile
+/* oxlint-disable no-unused-vars */
 const RIGHT_1 = { integrate: { offset: "2d" } } satisfies FilterInput;
 const RIGHT_11 = { integrate: "d" } satisfies FilterInput;
 const RIGHT_2 = "integrate" satisfies FilterInput;
@@ -13,6 +15,7 @@ const RIGHT_7 = { resample: "5m" } satisfies FilterInput;
 const WRONG_1 = "add" satisfies FilterInput;
 //@ts-expect-error
 const WRONG_2 = { integrate: 3 } satisfies FilterInput;
+/* oxlint-enable no-unused-vars */
 
 const date = (s: string) => new Date(`2022-12-20T18:07:${s}Z`);
 

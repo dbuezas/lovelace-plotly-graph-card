@@ -53,6 +53,7 @@ try {
     );
     const card = new PlotlyGraph();
     const noop = () => {};
+    /** @type {[string, string, object | undefined][]} */
     const handlerEvents = [
       ["plotly_relayout", "onRelayout", {}],
       ["plotly_restyle", "onRestyle", {}],

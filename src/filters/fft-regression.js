@@ -44,11 +44,11 @@ export default class FFTRegression extends BaseRegression {
     ];
   }
 
-  computeX(y) {
+  computeX(_y) {
     return "not implemented";
   }
 
-  toString(precision) {
+  toString(_precision) {
     return "not implemented";
   }
 
@@ -56,7 +56,7 @@ export default class FFTRegression extends BaseRegression {
     return this.toString(precision);
   }
 
-  static load(json) {
+  static load(_json) {
     throw new Error("not implemented");
   }
 }

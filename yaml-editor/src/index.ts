@@ -36,7 +36,7 @@ const defaultSchema: SchemasSettings = {
   fileMatch: ["plotly-graph.yaml"],
 };
 
-const monacoYaml = configureMonacoYaml(monaco, {
+configureMonacoYaml(monaco, {
   schemas: [defaultSchema],
   completion: true,
   format: true,

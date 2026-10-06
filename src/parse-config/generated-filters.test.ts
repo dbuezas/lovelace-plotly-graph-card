@@ -180,6 +180,7 @@ describe("generated filter lists", () => {
     "only checks filter-list paths for functions (generated: %s)",
     async (generated) => {
       const checks: string[] = [];
+      // oxlint-disable-next-line typescript/unbound-method -- called with .call(this)
       const test = RegExp.prototype.test;
       vi.spyOn(RegExp.prototype, "test").mockImplementation(function (
         this: RegExp,

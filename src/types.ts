@@ -14,8 +14,6 @@ import {
 
 import { HassEntity } from "home-assistant-js-websocket";
 import { FilterFn, FilterInput } from "./filters/filters";
-import type filters from "./filters/filters";
-import internal from "stream";
 
 export type { HassEntity } from "home-assistant-js-websocket";
 
