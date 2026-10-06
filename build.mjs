@@ -24,12 +24,31 @@ const raw = {
   },
 };
 
+// Modules that Plotly's core (src/plotly.ts) always needs, found once the
+// module graph is known. They go into one chunk with it: fewer files to
+// download, and fewer requests that can fail on a flaky connection.
+const plotlyCore = new Set();
+const findPlotlyCore = {
+  name: "find-plotly-core",
+  buildEnd() {
+    const visit = (id) => {
+      if (plotlyCore.has(id)) return;
+      plotlyCore.add(id);
+      this.getModuleInfo(id)?.importedIds.forEach(visit);
+    };
+    const entry = [...this.getModuleIds()].find((id) =>
+      id.endsWith("/src/plotly.ts")
+    );
+    if (entry) visit(entry);
+  },
+};
+
 export const cardInputOptions = ({ production = true, input } = {}) => ({
   input: input ?? { "plotly-graph-card": "src/plotly-graph-card.ts" },
   platform: "browser",
   // Plotly imports MapLibre's CSS; the map group loads it as text instead
   moduleTypes: { ".css": "empty" },
-  plugins: [raw],
+  plugins: [raw, findPlotlyCore],
   onLog(level, log, handler) {
     // bit-twiddle has a harmless typo: "use restrict"
     if (log.code !== "MODULE_LEVEL_DIRECTIVE") handler(level, log);
@@ -55,7 +74,12 @@ export const cardOutputOptions = ({ production = true } = {}) => ({
   // HA loads the card file with a query (?hacstag=...). If other chunks
   // imported it without that query, the browser would run it twice, so the
   // card file only loads a chunk with everything it needs.
-  codeSplitting: { groups: [{ name: "card", tags: ["$initial"] }] },
+  codeSplitting: {
+    groups: [
+      { name: "card", tags: ["$initial"], priority: 2 },
+      { name: "plotly", test: (id) => plotlyCore.has(id), priority: 1 },
+    ],
+  },
   sourcemap: production ? false : "inline",
 });
 

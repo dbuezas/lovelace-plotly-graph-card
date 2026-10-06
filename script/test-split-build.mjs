@@ -282,7 +282,17 @@ try {
     { id: "geo", traces: [{ type: "scattergeo", lat: [47], lon: [8] }] },
   ]);
   check(
-    out[0].error.includes("didn't load"),
+    out[0].error.includes("didn't load") &&
+      (await page.evaluate(() => {
+        const msg = document
+          .getElementById("geo")
+          .shadowRoot.querySelector("#error-msg");
+        // fully visible (not clipped by the card) and offers a reload
+        return (
+          msg.querySelector("button")?.textContent === "Reload" &&
+          msg.closest("ha-card").offsetHeight >= msg.offsetHeight
+        );
+      })),
     "a missing file shows a clear error",
     out[0].error.slice(0, 60)
   );

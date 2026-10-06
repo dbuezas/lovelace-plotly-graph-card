@@ -609,6 +609,7 @@ export class PlotlyGraph extends HTMLElement {
       if (visible_range && `${this.getVisibleRange()}` !== `${visible_range}`)
         return;
       this.errorMsgEl.style.display = errors.length ? "block" : "none";
+      this.errorMsgEl.style.position = "";
       this.errorMsgEl.innerHTML = errors
         .map((e) => "<span>" + (e || "See devtools console") + "</span>")
         .join("\n<br />\n");
@@ -655,8 +656,15 @@ export class PlotlyGraph extends HTMLElement {
         if (locale) config.locale = locale;
         Plotly = plotly.default;
       } catch (e: any) {
+        // No chart to show: let the message take space so it isn't clipped
         this.errorMsgEl.style.display = "block";
-        this.errorMsgEl.innerText = `Some files of the card didn't load (${e?.message}). Reload the page. If it keeps happening, reinstall the card (for a manual install, copy all files of the release).`;
+        this.errorMsgEl.style.position = "static";
+        this.errorMsgEl.innerText = `Some files of the card didn't load (${e?.message}). If reloading doesn't help, reinstall the card (for a manual install, copy all files of the release). `;
+        const reload = this.errorMsgEl.appendChild(
+          document.createElement("button")
+        );
+        reload.textContent = "Reload";
+        reload.onclick = () => location.reload();
         return;
       }
       copyPlotlyStyles(this.plotlyStyleEl);
