@@ -640,11 +640,12 @@ export class PlotlyGraph extends HTMLElement {
       let Plotly: typeof import("./plotly").default;
       try {
         const plotly = await import("./plotly");
-        config.locale = await plotly.loadPlotlyModules(
+        const locale = await plotly.loadPlotlyModules(
           entities,
           layout,
           config.locale
         );
+        if (locale) config.locale = locale;
         Plotly = plotly.default;
       } catch (e: any) {
         this.errorMsgEl.style.display = "block";
