@@ -123,12 +123,25 @@ try {
     `${startup.length} files`
   );
 
+  // Plotly starts downloading as soon as a card is on the page, while the
+  // card still waits for its data (here: no hass yet)
+  await page.evaluate(() =>
+    document.body.append(document.createElement("plotly-graph"))
+  );
+  await page.waitForTimeout(500);
+  check(
+    take().includes(fileOf("plotly")),
+    "Plotly downloads while the card still waits for data"
+  );
+  await removeAll();
+
   let out = await mount([
     { id: "mixed", traces: [{}, { type: "bar" }, { type: "box" }] },
     {
       id: "pie",
       traces: [{ type: "pie", labels: ["a", "b"], values: [1, 2] }],
     },
+    { id: "box", traces: [{ type: "box" }] },
   ]);
   let got = take();
   check(
@@ -147,7 +160,8 @@ try {
     "Plotly's styles reach the card (modebar is positioned)"
   );
   check(
-    got.filter((n) => n === fileOf("charts2d")).length === 1,
+    got.filter((n) => n === fileOf("charts2d")).length === 1 &&
+      got.includes(fileOf("pie")),
     "two cards that need the same group download it once"
   );
   check(

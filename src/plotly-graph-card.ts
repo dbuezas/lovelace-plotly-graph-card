@@ -268,6 +268,8 @@ export class PlotlyGraph extends HTMLElement {
     this.resetButtonEl.addEventListener("click", this.exitBrowsingMode);
     this.touchController.connect();
     this.updateStatisticsSubscriptions();
+    // Start downloading Plotly while the data is fetched (errors show on render)
+    import("./plotly").catch(() => {});
     this.plot({ should_fetch: true, refresh_statistics: true });
   }
 

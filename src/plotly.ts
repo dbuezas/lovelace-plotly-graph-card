@@ -8,6 +8,7 @@ Plotly.register([require("plotly.js/lib/bar")]);
 
 type Loader = () => Promise<{ default: unknown }>;
 const groups: Record<string, Loader> = {
+  pie: () => import("./plotly-traces/pie"),
   charts2d: () => import("./plotly-traces/charts2d"),
   hierarchy: () => import("./plotly-traces/hierarchy"),
   gl2d: () => import("./plotly-traces/gl2d"),
@@ -33,8 +34,8 @@ const groupOf: Record<string, string> = {
   contourcarpet: "charts2d",
   indicator: "charts2d",
   table: "charts2d",
-  pie: "charts2d",
-  funnelarea: "charts2d",
+  pie: "pie",
+  funnelarea: "pie",
   parcats: "charts2d",
   scatterpolar: "charts2d",
   barpolar: "charts2d",
