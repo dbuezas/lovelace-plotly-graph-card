@@ -175,6 +175,30 @@ try {
     "a German user downloads only the German locale",
     got.join(" ")
   );
+  // Home Assistant language codes that Plotly names differently
+  for (const [language, file, pan] of [
+    ["de", "de", "Verschieben"],
+    ["zh-Hans", "zh-cn", "平移"],
+    ["nb", "no", "Panne"],
+  ]) {
+    await removeAll();
+    out = await mount([{ id: "l", language, traces: [{}] }]);
+    got = take();
+    const title = await page.evaluate(
+      (pan) =>
+        !!document
+          .getElementById("l")
+          .contentEl.querySelector(`[data-title="${pan}"]`),
+      pan
+    );
+    check(
+      title &&
+        !out[0].error &&
+        (language === "de" || got.join() === fileOf(file)),
+      `${language}: the modebar is translated`,
+      got.join(" ")
+    );
+  }
 
   const square = [
     [

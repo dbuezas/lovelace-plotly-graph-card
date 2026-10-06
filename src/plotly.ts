@@ -143,6 +143,24 @@ const locales: Record<string, Loader> = {
 };
 const calendars: Loader = () => import("plotly.js/lib/calendars");
 
+// Home Assistant language codes that Plotly names differently
+const localeAliases: Record<string, string> = {
+  "zh-hans": "zh-cn",
+  "zh-hant": "zh-tw",
+  "sr-latn": "sr-sr",
+  nb: "no",
+  nn: "no",
+  pt: "pt-pt",
+  hi: "hi-in",
+  gsw: "de-ch",
+};
+const plotlyLocale = (language: string) => {
+  const code = language.toLowerCase();
+  const base = code.split("-")[0];
+  if (localeAliases[code]) return localeAliases[code];
+  return locales[code] ? code : locales[base] ? base : language;
+};
+
 const loaded: Record<string, Promise<void>> = {};
 const load = (key: string, loader?: Loader) =>
   loader &&
@@ -156,22 +174,23 @@ const usesCalendar = (obj: object, deep: boolean): boolean =>
       (deep && value?.constructor === Object && usesCalendar(value, deep))
   );
 
-export const loadPlotlyModules = (
+// Loads what the plot needs and returns the locale name to give Plotly
+export const loadPlotlyModules = async (
   data: { type?: string }[],
   layout: object,
-  locale = ""
-) =>
-  Promise.all([
+  language = ""
+) => {
+  const locale = language ? plotlyLocale(language) : undefined;
+  await Promise.all([
     ...data.map(({ type = "scatter" }) => {
       const group = groupOf[type];
       return group && load(group, groups[group]);
     }),
-    load(
-      locale,
-      locales[locale.toLowerCase()] ?? locales[locale.split("-")[0]]
-    ),
+    locale && load(locale, locales[locale]),
     (usesCalendar(layout, true) || data.some((t) => usesCalendar(t, false))) &&
       load("calendars", calendars),
   ]);
+  return locale;
+};
 
 export default Plotly;
