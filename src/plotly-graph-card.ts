@@ -64,6 +64,7 @@ export class PlotlyGraph extends HTMLElement {
     this.plot({ should_fetch: false }, 500);
   });
   pausedRendering = false;
+  filesFailed = false; // the browser remembers failed imports until a reload
   handles: {
     resizeObserver?: ResizeObserver;
     intersectionObserver?: IntersectionObserver;
@@ -204,6 +205,10 @@ export class PlotlyGraph extends HTMLElement {
               background: rgba(203,0,0,0.8);
               overflow-wrap: break-word;
               display: none;
+            }
+            /* No chart (e.g. files didn't load): don't overlay, take space */
+            ha-card:not(:has(.plot-container)) > #error-msg {
+              position: static;
             }
             #error-msg a{
               color: mediumturquoise;
@@ -540,7 +545,7 @@ export class PlotlyGraph extends HTMLElement {
   };
   _plot = debounce(async () => {
     this.liveThrottle.renderStarted();
-    if (this.pausedRendering) return;
+    if (this.pausedRendering || this.filesFailed) return;
     // Off-screen cards update every 30 s, and catch up once scrolled into
     // view. They still update, for full-page screenshots.
     const wait = this.lastRender + 30_000 - performance.now();
@@ -609,7 +614,6 @@ export class PlotlyGraph extends HTMLElement {
       if (visible_range && `${this.getVisibleRange()}` !== `${visible_range}`)
         return;
       this.errorMsgEl.style.display = errors.length ? "block" : "none";
-      this.errorMsgEl.style.position = "";
       this.errorMsgEl.innerHTML = errors
         .map((e) => "<span>" + (e || "See devtools console") + "</span>")
         .join("\n<br />\n");
@@ -656,9 +660,8 @@ export class PlotlyGraph extends HTMLElement {
         if (locale) config.locale = locale;
         Plotly = plotly.default;
       } catch (e: any) {
-        // No chart to show: let the message take space so it isn't clipped
+        this.filesFailed = true;
         this.errorMsgEl.style.display = "block";
-        this.errorMsgEl.style.position = "static";
         this.errorMsgEl.innerText = `Some files of the card didn't load (${e?.message}). If reloading doesn't help, reinstall the card (for a manual install, copy all files of the release). `;
         const reload = this.errorMsgEl.appendChild(
           document.createElement("button")
