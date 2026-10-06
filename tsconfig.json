@@ -2,7 +2,7 @@
   "compilerOptions": {
     "target": "ES2018",
     "module": "esnext",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "lib": ["es2022", "dom", "dom.iterable"],
     "noEmit": true,
     "noUnusedParameters": true,
