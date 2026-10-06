@@ -7,7 +7,7 @@
     "node": ">=22.0.0"
   },
   "scripts": {
-    "start": "(node ./script/hot-reload.mjs & esbuild src/plotly-graph-card.ts --servedir=dist --outdir=dist --bundle --splitting --format=esm --loader:.css=empty --inject:src/process-shim.ts --sourcemap=inline)",
+    "start": "(node ./script/hot-reload.mjs & esbuild src/plotly-graph-card.ts --servedir=dist --cors-origin='*' --outdir=dist --bundle --splitting --format=esm --loader:.css=empty --inject:src/process-shim.ts --sourcemap=inline)",
     "build": "rm -rf dist && esbuild src/plotly-graph-card.ts --outdir=dist --bundle --minify --splitting --format=esm --chunk-names=[name]-[hash] --loader:.css=empty --inject:src/process-shim.ts",
     "tsc": "tsc",
     "test": "jest",

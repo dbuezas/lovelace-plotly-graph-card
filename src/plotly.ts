@@ -155,11 +155,12 @@ const localeAliases: Record<string, string> = {
   hi: "hi-in",
   gsw: "de-ch",
 };
-const plotlyLocale = (language: string) => {
+// Key of the Plotly locale file for a language, if there is one
+const localeKey = (language: string) => {
   const code = language.toLowerCase();
-  const base = code.split("-")[0];
-  if (localeAliases[code]) return localeAliases[code];
-  return locales[code] ? code : locales[base] ? base : language;
+  const key =
+    localeAliases[code] ?? (locales[code] ? code : code.split("-")[0]);
+  return locales[key] ? key : undefined;
 };
 
 const loaded: Record<string, Promise<void>> = {};
@@ -176,22 +177,29 @@ const usesCalendar = (obj: object, deep: boolean): boolean =>
   );
 
 // Loads what the plot needs and returns the locale name to give Plotly
+// Loads what the plot needs and returns the locale name to give Plotly
 export const loadPlotlyModules = async (
   data: { type?: string }[],
   layout: object,
   language = ""
 ) => {
-  const locale = language ? plotlyLocale(language) : undefined;
+  const key = language ? localeKey(language) : undefined;
+  const base = key?.split("-")[0];
   await Promise.all([
     ...data.map(({ type = "scatter" }) => {
       const group = groupOf[type];
       return group && load(group, groups[group]);
     }),
-    locale && load(locale, locales[locale]),
+    // Regional locales (e.g. de-ch) only have formats, the texts are in the base
+    base && base !== key && load(base, locales[base]),
+    key && load(key, locales[key]),
     (usesCalendar(layout, true) || data.some((t) => usesCalendar(t, false))) &&
       load("calendars", calendars),
   ]);
-  return locale;
+  // Plotly finds locales by their registered name, e.g. "pt-BR"
+  return key
+    ? key.replace(/-\w+$/, (region) => region.toUpperCase())
+    : language || undefined;
 };
 
 export default Plotly;

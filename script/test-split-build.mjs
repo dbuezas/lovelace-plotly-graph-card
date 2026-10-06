@@ -189,13 +189,17 @@ try {
     "a German user downloads only the German locale",
     got.join(" ")
   );
-  // Home Assistant language codes that Plotly names differently
-  for (const [language, file, pan] of [
-    ["de", "de", "Verschieben"],
-    ["zh-Hans", "zh-cn", "平移"],
-    ["nb", "no", "Panne"],
+  // Each language on a fresh page, so no other locale is loaded already.
+  // HA codes that Plotly names differently, and a regional locale whose
+  // texts come from its base locale
+  for (const [language, files, pan] of [
+    ["zh-Hans", ["zh-cn"], "平移"],
+    ["nb", ["no"], "Panne"],
+    ["de-CH", ["de", "de-ch"], "Verschieben"],
   ]) {
-    await removeAll();
+    await page.reload();
+    await page.waitForFunction(() => customElements.get("plotly-graph"));
+    take();
     out = await mount([{ id: "l", language, traces: [{}] }]);
     got = take();
     const title = await page.evaluate(
@@ -206,11 +210,9 @@ try {
       pan
     );
     check(
-      title &&
-        !out[0].error &&
-        (language === "de" || got.join() === fileOf(file)),
+      title && !out[0].error && files.every((f) => got.includes(fileOf(f))),
       `${language}: the modebar is translated`,
-      got.join(" ")
+      files.map(fileOf).join(" ")
     );
   }
 
