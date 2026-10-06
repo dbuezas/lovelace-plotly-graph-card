@@ -7,8 +7,8 @@
     "node": ">=22.0.0"
   },
   "scripts": {
-    "start": "(node ./script/hot-reload.mjs & esbuild src/plotly-graph-card.ts --servedir=dist --cors-origin='*' --outdir=dist --bundle --splitting --format=esm --loader:.css=empty --inject:src/process-shim.ts --sourcemap=inline)",
-    "build": "rm -rf dist && esbuild src/plotly-graph-card.ts --outdir=dist --bundle --minify --splitting --format=esm --chunk-names=[name]-[hash] --loader:.css=empty --inject:src/process-shim.ts",
+    "start": "(node ./script/hot-reload.mjs & node build.mjs --watch)",
+    "build": "node build.mjs",
     "tsc": "tsc",
     "test": "jest",
     "test:cache": "jest --runInBand src/cache/Cache.test.ts src/cache/date-ranges.test.ts src/cache/observed-range.test.ts src/parse-config/cache-retention.test.ts",
@@ -32,10 +32,10 @@
     "@types/node": "^24.19.1",
     "@types/ws": "^8.5.4",
     "chokidar": "^4.0.3",
-    "esbuild": "^0.28.2",
     "jest": "^30.5.2",
     "playwright": "1.63.0",
     "prettier": "^3.9.9",
+    "rolldown": "^1.2.12",
     "ts-jest": "^29.4.14",
     "typescript": "^5.9.3",
     "ws": "^8.12.0"

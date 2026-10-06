@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
-import { build } from "esbuild";
+import { bundleInMemory } from "../build.mjs";
 import { chromium } from "playwright";
 
 const assets = new Map();
@@ -10,29 +10,14 @@ for (const [name, entry] of [
   ["DefaultsTest", "src/parse-config/defaults.ts"],
   ["CardTest", "src/plotly-graph-card.ts"],
 ]) {
-  const result = await build({
-    entryPoints: [entry],
-    bundle: true,
-    write: false,
-    format: "iife",
-    globalName: name,
-    outdir: "dist",
-    minify: true,
-  });
-  assets.set(
-    `/${name}.js`,
-    result.outputFiles.find((file) => file.path.endsWith(".js")).text,
-  );
-  const stylesheet = result.outputFiles.find((file) =>
-    file.path.endsWith(".css"),
-  );
-  if (stylesheet) assets.set(`/${name}.css`, stylesheet.text);
+  const [{ code }] = await bundleInMemory({ input: entry, name });
+  assets.set(`/${name}.js`, code);
 }
 const server = createServer((request, response) => {
   response.setHeader(
     "Content-Type",
     request.url.endsWith(".js")
-      ? "text/javascript"
+      ? "text/javascript; charset=utf-8"
       : request.url.endsWith(".css")
         ? "text/css"
         : "text/html",
