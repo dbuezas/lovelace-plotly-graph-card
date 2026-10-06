@@ -171,14 +171,17 @@ class ConfigParser {
     const error = getDeprecationError(path, value);
     if (error) this.errors?.push(error);
 
-    if (typeof value === "function") {
-      /**
-       * Allowing functions that return functions makes it very slow when large arrays are returned.
-       * This is because awaits are expensive.
-       */
-
+    const isFunction = typeof value === "function";
+    const isFilterList = isFunction && /^entities\.\d+\.filters$/.test(path);
+    if (isFunction) {
       parent[key] = value = value(this.fnParam);
-    } else if (isObjectOrArray(value)) {
+      if (isFilterList && !Array.isArray(value)) {
+        throw new Error("filters must evaluate to an array");
+      }
+    }
+    // Generated filters need the regular filter traversal, but other function
+    // results (including large data arrays) must stay opaque.
+    if (isObjectOrArray(value) && (!isFunction || isFilterList)) {
       const me = Array.isArray(value) ? [] : {};
       parent[key] = me;
       for (const [childKey, childValue] of Object.entries(value)) {
