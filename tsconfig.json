@@ -14,7 +14,8 @@
     "resolveJsonModule": true,
     "experimentalDecorators": true,
     "allowSyntheticDefaultImports": true,
-    "esModuleInterop": true
+    "esModuleInterop": true,
+    "types": ["node", "vitest/globals"]
   },
   "exclude": ["./yaml-editor/**"]
 }

@@ -99,7 +99,7 @@ describe("filters", () => {
   });
 
   describe("integrate", () => {
-    afterEach(() => jest.useRealTimers());
+    afterEach(() => vi.useRealTimers());
 
     it("skips non numeric values", () => {
       const data = input();
@@ -137,7 +137,7 @@ describe("filters", () => {
       // Resets are aligned to local midnight of the current day. The clock has
       // nonzero milliseconds, which must not shift the reset boundaries.
       beforeEach(() => {
-        jest.useFakeTimers({ now: new Date(2022, 11, 21, 12, 34, 56, 789) });
+        vi.useFakeTimers({ now: new Date(2022, 11, 21, 12, 34, 56, 789) });
       });
       // local time on December <day> 2022
       const at = (day: number, hours: number, minutes = 0) =>

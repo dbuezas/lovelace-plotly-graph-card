@@ -4,28 +4,28 @@ async function advance(ms: number) {
   await new Promise(setImmediate);
   const end = Date.now() + ms;
   while (Date.now() < end) {
-    jest.advanceTimersByTime(1);
+    vi.advanceTimersByTime(1);
     await new Promise(setImmediate);
   }
 }
 
 describe("debounce", () => {
   beforeEach(() => {
-    jest.useFakeTimers({ doNotFake: ["setImmediate"] });
-    global.requestAnimationFrame = jest.fn(
+    vi.useFakeTimers({ toNotFake: ["setImmediate"] });
+    global.requestAnimationFrame = vi.fn(
       (callback) =>
         setTimeout(() => callback(Date.now()), 16) as unknown as number,
     );
-    global.cancelAnimationFrame = jest.fn((frame) => clearTimeout(frame));
+    global.cancelAnimationFrame = vi.fn((frame) => clearTimeout(frame));
   });
   afterEach(() => {
-    jest.useRealTimers();
+    vi.useRealTimers();
     delete (global as Partial<typeof globalThis>).requestAnimationFrame;
     delete (global as Partial<typeof globalThis>).cancelAnimationFrame;
   });
 
   it("waits once for a burst and settles every caller", async () => {
-    const render = jest.fn(async () => {});
+    const render = vi.fn(async () => {});
     const update = debounce(render);
     const calls = Array.from({ length: 20 }, () => update(500));
     await advance(515);
@@ -33,11 +33,11 @@ describe("debounce", () => {
     await advance(1);
     await Promise.all(calls);
     expect(render).toHaveBeenCalledTimes(1);
-    expect(jest.getTimerCount()).toBe(0);
+    expect(vi.getTimerCount()).toBe(0);
   });
 
   it("cancels an active delay when an immediate update arrives", async () => {
-    const render = jest.fn(async () => {});
+    const render = vi.fn(async () => {});
     const update = debounce(render);
     const first = update(500);
     await advance(100);
@@ -45,11 +45,11 @@ describe("debounce", () => {
     await advance(16);
     await Promise.all([first, second]);
     expect(render).toHaveBeenCalledTimes(1);
-    expect(jest.getTimerCount()).toBe(0);
+    expect(vi.getTimerCount()).toBe(0);
   });
 
   it("uses the latest request's delay", async () => {
-    const render = jest.fn(async () => {});
+    const render = vi.fn(async () => {});
     const update = debounce(render);
     const first = update(500);
     await advance(100);
@@ -62,7 +62,7 @@ describe("debounce", () => {
   });
 
   it("cancels a pending animation frame", async () => {
-    const render = jest.fn(async () => {});
+    const render = vi.fn(async () => {});
     const update = debounce(render);
     const first = update();
     await advance(0);
@@ -78,7 +78,7 @@ describe("debounce", () => {
     const gate = new Promise<void>((resolve) => {
       finish = resolve;
     });
-    const render = jest
+    const render = vi
       .fn()
       .mockImplementationOnce(() => gate)
       .mockResolvedValue(undefined);
@@ -164,7 +164,7 @@ describe("debounce", () => {
     "propagates failure and allows recovery (async: %s)",
     async (asyncFailure) => {
       const failure = new Error("render failed");
-      const render = jest
+      const render = vi
         .fn()
         .mockImplementationOnce(() => {
           if (asyncFailure) return Promise.reject(failure);
@@ -183,8 +183,8 @@ describe("debounce", () => {
   );
 
   it("keeps separate queues independent", async () => {
-    const first = jest.fn(async () => {});
-    const second = jest.fn(async () => {});
+    const first = vi.fn(async () => {});
+    const second = vi.fn(async () => {});
     const calls = [debounce(first)(500), debounce(second)(100)];
     await advance(116);
     expect(first).not.toHaveBeenCalled();
