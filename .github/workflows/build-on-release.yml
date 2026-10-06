@@ -26,7 +26,18 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Upload release asset
+      # The card loads the other files on demand. Upload them first, so a
+      # release is never visible with the card but without its files.
+      - name: Hide the card file during the first upload
+        run: mkdir main && mv dist/plotly-graph-card.js main/
+
+      - name: Upload the on-demand files
         uses: svenstaro/upload-release-action@v2
         with:
-          file: dist/plotly-graph-card.js
+          file: dist/*.js
+          file_glob: true
+
+      - name: Upload the card file
+        uses: svenstaro/upload-release-action@v2
+        with:
+          file: main/plotly-graph-card.js

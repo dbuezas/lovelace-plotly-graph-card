@@ -1,8 +1,8 @@
+import "./global-shim";
 import { HomeAssistant } from "custom-card-helpers";
 import EventEmitter from "events";
 import { version } from "../package.json";
 import insertStyleHack from "./style-hack";
-import Plotly from "./plotly";
 import {
   Config,
   InputConfig,
@@ -635,6 +635,18 @@ export class PlotlyGraph extends HTMLElement {
       if (layout.paper_bgcolor) {
         this.titleEl.style.background = layout.paper_bgcolor as string;
       }
+      // Plotly is only downloaded once a card is drawn
+      let Plotly: typeof import("./plotly").default;
+      try {
+        const plotly = await import("./plotly");
+        await plotly.loadPlotlyModules(entities, layout, config.locale);
+        Plotly = plotly.default;
+      } catch (e: any) {
+        this.errorMsgEl.style.display = "block";
+        this.errorMsgEl.innerText = `Some files of the card didn't load (${e?.message}). Reload the page. If it keeps happening, reinstall the card (for a manual install, copy all files of the release).`;
+        return;
+      }
+      this.touchController.Fx = (Plotly as any).Fx;
       await this.withoutRelayout(async () => {
         const drawnEntities = prepareHistoryLineGaps(
           entities,

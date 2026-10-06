@@ -53,13 +53,17 @@ Web app to assist you with syntax validation and autocomplete: [Plotly graph car
 ### Manually
 
 1. Go to [Releases](https://github.com/dbuezas/lovelace-plotly-graph-card/releases)
-2. Download `plotly-graph-card.js` and copy it to your Home Assistant config dir as `<config>/www/plotly-graph-card.js`
+2. Download **all** `.js` files of the release into `<config>/www/plotly-graph-card/`. The card loads the other files only when a chart needs them. From a terminal on Home Assistant:
+   ```sh
+   mkdir -p /config/www/plotly-graph-card && cd /config/www/plotly-graph-card
+   curl -s https://api.github.com/repos/dbuezas/lovelace-plotly-graph-card/releases/latest | grep -o '"browser_download_url": *"[^"]*"' | cut -d'"' -f4 | xargs -n1 curl -sLO
+   ```
 3. Add a resource to your dashboard configuration. There are two ways:
-   1. **Using UI**: `Settings` → `Dashboards` → `More Options icon` → `Resources` → `Add Resource` → Set Url as `/local/plotly-graph-card.js` → Set Resource type as `JavaScript Module`.
+   1. **Using UI**: `Settings` → `Dashboards` → `More Options icon` → `Resources` → `Add Resource` → Set Url as `/local/plotly-graph-card/plotly-graph-card.js` → Set Resource type as `JavaScript Module`.
       _Note: If you do not see the Resources menu, you will need to enable Advanced Mode in your User Profile_
    2. **Using YAML**: Add following code to lovelace section.
       ```resources:
-        - url: /local/plotly-graph-card.js
+        - url: /local/plotly-graph-card/plotly-graph-card.js
           type: module
       ```
 
