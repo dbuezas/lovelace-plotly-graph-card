@@ -13,6 +13,8 @@ const { outputFiles } = await build({
   splitting: true,
   format: "esm",
   chunkNames: "[name]-[hash]",
+  loader: { ".css": "empty" },
+  inject: ["src/process-shim.ts"],
   outdir: "dist",
   write: false,
 });
@@ -136,6 +138,15 @@ try {
   );
   check(out[1].types.join() === "pie" && !out[1].error, "a pie chart renders");
   check(
+    await page.evaluate(() => {
+      const modebar = document
+        .getElementById("mixed")
+        .contentEl.querySelector(".modebar");
+      return getComputedStyle(modebar).position === "absolute";
+    }),
+    "Plotly's styles reach the card (modebar is positioned)"
+  );
+  check(
     got.filter((n) => n === fileOf("charts2d")).length === 1,
     "two cards that need the same group download it once"
   );
@@ -163,6 +174,82 @@ try {
     got.join() === fileOf("de") && !out[0].error,
     "a German user downloads only the German locale",
     got.join(" ")
+  );
+
+  const square = [
+    [
+      [8, 47],
+      [9, 47],
+      [9, 48],
+      [8, 48],
+      [8, 47],
+    ],
+  ];
+  out = await mount([
+    {
+      id: "image",
+      traces: [
+        {
+          type: "image",
+          z: [
+            [
+              [255, 0, 0],
+              [0, 255, 0],
+            ],
+          ],
+        },
+      ],
+    },
+    {
+      id: "quiver",
+      traces: [{ type: "quiver", u: [1, 1, 1, 1, 1], v: [1, 0, 1, 0, 1] }],
+    },
+    { id: "scattermap", traces: [{ type: "scattermap", lat: [47], lon: [8] }] },
+    {
+      id: "densitymap",
+      traces: [{ type: "densitymap", lat: [47], lon: [8], z: [1] }],
+    },
+    {
+      id: "choroplethmap",
+      traces: [
+        {
+          type: "choroplethmap",
+          locations: ["a"],
+          z: [1],
+          geojson: {
+            type: "FeatureCollection",
+            features: [
+              {
+                type: "Feature",
+                id: "a",
+                geometry: { type: "Polygon", coordinates: square },
+              },
+            ],
+          },
+        },
+      ],
+    },
+  ]);
+  for (const [i, type] of [
+    "image",
+    "quiver",
+    "scattermap",
+    "densitymap",
+    "choroplethmap",
+  ].entries())
+    check(
+      out[i].types.join() === type && !out[i].error,
+      `${type} renders`,
+      out[i].error
+    );
+  check(
+    await page.evaluate(() => {
+      const canvas = document
+        .getElementById("scattermap")
+        .contentEl.querySelector(".maplibregl-canvas");
+      return !!canvas && getComputedStyle(canvas).position === "absolute";
+    }),
+    "MapLibre's styles reach the card"
   );
 
   blocked.add(fileOf("geo"));

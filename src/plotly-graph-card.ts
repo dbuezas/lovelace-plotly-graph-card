@@ -2,7 +2,7 @@ import "./global-shim";
 import { HomeAssistant } from "custom-card-helpers";
 import EventEmitter from "events";
 import { version } from "../package.json";
-import insertStyleHack from "./style-hack";
+import copyPlotlyStyles from "./style-hack";
 import {
   Config,
   InputConfig,
@@ -43,6 +43,7 @@ export class PlotlyGraph extends HTMLElement {
     layout: Plotly.Layout;
   };
   errorMsgEl: HTMLElement;
+  plotlyStyleEl: HTMLStyleElement;
   cardEl: HTMLElement;
   resetButtonEl: HTMLButtonElement;
   titleEl: HTMLElement;
@@ -219,7 +220,7 @@ export class PlotlyGraph extends HTMLElement {
     this.resetButtonEl = shadow.querySelector("button#reset")!;
     this.titleEl = shadow.querySelector("ha-card > #title")!;
     this.loadingEl = shadow.querySelector("#loading")!;
-    insertStyleHack(shadow.querySelector("style")!);
+    this.plotlyStyleEl = shadow.appendChild(document.createElement("style"));
     this.contentEl.style.visibility = "hidden";
     this.touchController = new TouchController({
       el: this.contentEl,
@@ -646,6 +647,7 @@ export class PlotlyGraph extends HTMLElement {
         this.errorMsgEl.innerText = `Some files of the card didn't load (${e?.message}). Reload the page. If it keeps happening, reinstall the card (for a manual install, copy all files of the release).`;
         return;
       }
+      copyPlotlyStyles(this.plotlyStyleEl);
       this.touchController.Fx = (Plotly as any).Fx;
       await this.withoutRelayout(async () => {
         const drawnEntities = prepareHistoryLineGaps(

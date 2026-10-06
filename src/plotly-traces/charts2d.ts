@@ -22,4 +22,5 @@ export default [
   require("plotly.js/lib/barpolar"),
   require("plotly.js/lib/scatterternary"),
   require("plotly.js/lib/scattersmith"),
+  require("plotly.js/lib/quiver"),
 ];

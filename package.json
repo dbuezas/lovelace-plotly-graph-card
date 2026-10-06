@@ -7,8 +7,8 @@
     "node": ">=22.0.0"
   },
   "scripts": {
-    "start": "(node ./script/hot-reload.mjs & esbuild src/plotly-graph-card.ts --servedir=dist --outdir=dist --bundle --splitting --format=esm --sourcemap=inline)",
-    "build": "rm -rf dist && esbuild src/plotly-graph-card.ts --outdir=dist --bundle --minify --splitting --format=esm --chunk-names=[name]-[hash]",
+    "start": "(node ./script/hot-reload.mjs & esbuild src/plotly-graph-card.ts --servedir=dist --outdir=dist --bundle --splitting --format=esm --loader:.css=empty --inject:src/process-shim.ts --sourcemap=inline)",
+    "build": "rm -rf dist && esbuild src/plotly-graph-card.ts --outdir=dist --bundle --minify --splitting --format=esm --chunk-names=[name]-[hash] --loader:.css=empty --inject:src/process-shim.ts",
     "tsc": "tsc",
     "test": "jest",
     "test:cache": "jest --runInBand src/cache/Cache.test.ts src/cache/date-ranges.test.ts src/cache/observed-range.test.ts src/parse-config/cache-retention.test.ts",
@@ -41,6 +41,7 @@
     "ws": "^8.12.0"
   },
   "dependencies": {
+    "assert": "^2.1.0",
     "binary-search-bounds": "^2.0.5",
     "buffer": "^6.0.3",
     "custom-card-helpers": "^1.9.0",
@@ -59,7 +60,9 @@
     "ndarray": "^1.0.19",
     "ndarray-fft": "^1.0.3",
     "plotly.js": "4.1.2",
-    "propose": "^0.0.5"
+    "process": "^0.11.10",
+    "propose": "^0.0.5",
+    "stream": "npm:stream-browserify@^3.0.0"
   },
   "overrides": {
     "static-eval": "^2.1.1",

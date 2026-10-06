@@ -13,6 +13,8 @@ const groups: Record<string, Loader> = {
   gl2d: () => import("./plotly-traces/gl2d"),
   gl3d: () => import("./plotly-traces/gl3d"),
   geo: () => import("./plotly-traces/geo"),
+  map: () => import("./plotly-traces/map"),
+  image: () => import("./plotly-traces/image"),
 };
 const groupOf: Record<string, string> = {
   box: "charts2d",
@@ -38,6 +40,8 @@ const groupOf: Record<string, string> = {
   barpolar: "charts2d",
   scatterternary: "charts2d",
   scattersmith: "charts2d",
+  image: "image",
+  quiver: "charts2d",
   sunburst: "hierarchy",
   treemap: "hierarchy",
   icicle: "hierarchy",
@@ -55,6 +59,9 @@ const groupOf: Record<string, string> = {
   streamtube: "gl3d",
   scattergeo: "geo",
   choropleth: "geo",
+  scattermap: "map",
+  choroplethmap: "map",
+  densitymap: "map",
 };
 const locales: Record<string, Loader> = {
   af: () => import("plotly.js/lib/locales/af.js"),

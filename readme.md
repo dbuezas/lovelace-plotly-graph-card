@@ -1443,8 +1443,8 @@ as well as the `transforms` API. Configurations using these features must be
 migrated before upgrading.
 
 - Plotly.js 4 removes Mapbox traces and `layout.mapbox`, MathJax 2 support,
-  Chart Studio options and `*src` attributes. Mapbox traces were not registered
-  in this card's bundle; this update does not add map trace support.
+  Chart Studio options and `*src` attributes. Use the MapLibre types
+  `scattermap`, `choroplethmap` and `densitymap` instead.
 - Colors must use valid CSS syntax. `hsv(...)` is no longer supported, and RGB
   channels between 0 and 1 are no longer interpreted as fractions of 255.
   Standard hex colors and `rgba(52, 152, 219, 0.82)` continue to work.
@@ -1503,10 +1503,11 @@ properties are not interchangeable with Cartesian axis titles, which use
 
 The card's own top-level `title:` option is unchanged.
 
-The bundled Plotly build also supports `scattergl`, `splom`, `parcoords`,
-`scatterpolargl`, and `scattersmith`. WebGL traces require browser WebGL support.
-The MapLibre types `scattermap`, `choroplethmap`, and `densitymap` are not included
-to keep the bundle size down.
+Every Plotly trace type is supported, including `image`, `quiver` and the
+MapLibre maps `scattermap`, `choroplethmap` and `densitymap`. WebGL traces
+require browser WebGL support. The card only downloads the code of the trace
+types it draws: lines and bars come with Plotly's core, other types are loaded
+the first time a card needs them.
 
 # Development
 
