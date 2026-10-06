@@ -28,13 +28,15 @@
   "devDependencies": {
     "@types/jest": "^30.0.0",
     "@types/lodash": "^4.14.191",
-    "@types/node": "^18.11.17",
+    "@types/node": "^24.19.1",
     "@types/ws": "^8.5.4",
     "chokidar": "^4.0.3",
     "esbuild": "^0.28.2",
     "jest": "^30.5.2",
     "playwright": "1.63.0",
+    "prettier": "^3.9.9",
     "ts-jest": "^29.4.14",
+    "typescript": "^5.9.3",
     "ws": "^8.12.0"
   },
   "dependencies": {
@@ -55,10 +57,8 @@
     "ml-regression-theil-sen": "^2.0.0",
     "ndarray": "^1.0.19",
     "ndarray-fft": "^1.0.3",
-    "plotly.js": "4.1.1",
-    "prettier": "^3.3.3",
-    "propose": "^0.0.5",
-    "typescript": "^5.6.3"
+    "plotly.js": "4.1.2",
+    "propose": "^0.0.5"
   },
   "overrides": {
     "static-eval": "^2.1.1",

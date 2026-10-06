@@ -26,7 +26,7 @@ import { parseStatistics } from "./parse-statistics";
 import { HomeAssistant } from "custom-card-helpers";
 import filters from "../filters/filters";
 import bounds from "binary-search-bounds";
-import { has } from "lodash";
+import has from "lodash/has";
 import { StatisticPeriod, StatisticValue } from "../recorder-types";
 import {
   Config,
