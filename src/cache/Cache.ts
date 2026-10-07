@@ -247,18 +247,27 @@ export default class Cache {
   add(entity: FetchConfig, states: CachedEntity[], range: [number, number]) {
     const entityKey = getEntityKey(entity);
     let h = (this.histories[entityKey] ??= []);
+    const isStatistics = isEntityIdStatisticsConfig(entity);
     // A newer single sample cannot disturb the sorted, deduplicated history.
     const canAppend =
       states.length === 1 &&
       h.length > 0 &&
       +states[0].x > +h[h.length - 1].x &&
-      (!states[0].fake_boundary_datapoint || isEntityIdStatisticsConfig(entity));
+      (!states[0].fake_boundary_datapoint || isStatistics);
+    // Shared attribute traces can add the same state twice. The merge keeps
+    // the existing history sample, but the fetched range still needs recording.
+    const canSkip =
+      states.length === 1 &&
+      h.length > 0 &&
+      !isStatistics &&
+      !states[0].fake_boundary_datapoint &&
+      +states[0].x === +h[h.length - 1].x;
     if (canAppend) {
       h.push(states[0]);
-    } else {
+    } else if (!canSkip) {
       for (const state of states) h.push(state);
       h.sort((a, b) => +a.x - +b.x);
-      if (!isEntityIdStatisticsConfig(entity)) {
+      if (!isStatistics) {
         h = h.filter((x, i) => i == 0 || !x.fake_boundary_datapoint);
       }
       // Refetched aggregates can change without changing their bucket timestamp.

@@ -97,20 +97,142 @@ describe("Cache merging", () => {
     },
   );
 
-  it("keeps the existing sample at a duplicate timestamp", () => {
+  it("skips a duplicate last timestamp without sorting, filtering or pushing", () => {
     const cache = new Cache();
     const original = state(10);
     cache.add(entity, [state(0), original], [0, 10]);
-    const sort = jest.spyOn(cache.histories[key], "sort");
+    const history = cache.histories[key];
+    const sort = jest.spyOn(history, "sort");
+    const filter = jest.spyOn(history, "filter");
+    const push = jest.spyOn(history, "push");
     const duplicate = state(10);
     duplicate.state.state = "replacement";
 
     cache.add(entity, [duplicate], [10, 20]);
 
-    expect(sort).toHaveBeenCalledTimes(1);
-    expect(cache.histories[key]).toEqual([state(0), original]);
+    expect(sort).not.toHaveBeenCalled();
+    expect(filter).not.toHaveBeenCalled();
+    expect(push).not.toHaveBeenCalled();
+    expect(cache.histories[key]).toBe(history);
+    expect([...cache.histories[key]]).toEqual([state(0), original]);
     expect(cache.histories[key][1]).toBe(original);
     expect(cache.ranges[key]).toEqual([[0, 20]]);
+  });
+
+  it("shares a new state between attribute traces without a second merge", () => {
+    const cache = new Cache();
+    const temperature = { entity: "climate.test", attribute: "temperature" };
+    const humidity = { ...temperature, attribute: "humidity" };
+    const sample = (timestamp: number): CachedStateEntity => ({
+      ...state(timestamp),
+      state: {
+        ...state(timestamp).state,
+        attributes: { temperature: timestamp + 20, humidity: timestamp + 40 },
+      },
+    });
+    const attributeKey = getEntityKey(temperature);
+    expect(getEntityKey(humidity)).toBe(attributeKey);
+    cache.add(temperature, [sample(0)], [0, 0]);
+    const history = cache.histories[attributeKey];
+    const sort = jest.spyOn(history, "sort");
+    const filter = jest.spyOn(history, "filter");
+    const push = jest.spyOn(history, "push");
+    const next = sample(10);
+
+    cache.add(temperature, [next], [1, 10]);
+    cache.add(humidity, [next], [10, 20]);
+
+    expect(sort).not.toHaveBeenCalled();
+    expect(filter).not.toHaveBeenCalled();
+    expect(push).toHaveBeenCalledTimes(1);
+    expect(cache.histories[attributeKey]).toBe(history);
+    expect(history).toHaveLength(2);
+    expect(history[1]).toBe(next);
+    expect(cache.getData(temperature).ys).toEqual([20, 30]);
+    expect(cache.getData(humidity).ys).toEqual([40, 50]);
+    expect(cache.ranges[attributeKey]).toEqual([[0, 20]]);
+  });
+
+  it("still merges a duplicate timestamp earlier than the last sample", () => {
+    const cache = new Cache();
+    const original = state(10);
+    cache.add(entity, [state(0), original, state(20)], [0, 20]);
+    const sort = jest.spyOn(cache.histories[key], "sort");
+
+    cache.add(entity, [state(10)], [10, 30]);
+
+    expect(sort).toHaveBeenCalledTimes(1);
+    expect(cache.getData(entity).xs.map(Number)).toEqual([0, 10, 20]);
+    expect(cache.histories[key][1]).toBe(original);
+    expect(cache.ranges[key]).toEqual([[0, 30]]);
+  });
+
+  it("uses the normal merge for statistics at the last cached timestamp", () => {
+    const cache = new Cache();
+    const statistics = {
+      ...entity,
+      statistic: "mean" as const,
+      period: "day" as const,
+    };
+    const sample = (mean: number): CachedStatisticsEntity => ({
+      x: new Date(10),
+      y: null,
+      statistics: {
+        statistic_id: entity.entity,
+        start: new Date(10).toISOString(),
+        end: new Date(20).toISOString(),
+        last_reset: null,
+        mean,
+        min: mean,
+        max: mean,
+        sum: null,
+        state: null,
+      },
+    });
+    cache.add(statistics, [sample(1)], [0, 10]);
+    const sort = jest.spyOn(cache.histories[getEntityKey(statistics)], "sort");
+    const push = jest.spyOn(cache.histories[getEntityKey(statistics)], "push");
+    const updated = sample(2);
+
+    cache.add(statistics, [updated], [10, 20]);
+
+    expect(sort).toHaveBeenCalledTimes(1);
+    expect(push).toHaveBeenCalledWith(updated);
+    expect(cache.ranges[getEntityKey(statistics)]).toEqual([[0, 20]]);
+  });
+
+  it("uses the normal merge for an artificial boundary at the last timestamp", () => {
+    const cache = new Cache();
+    const original = state(10);
+    cache.add(entity, [state(0), original], [0, 10]);
+    const sort = jest.spyOn(cache.histories[key], "sort");
+
+    cache.add(
+      entity,
+      [{ ...state(10), fake_boundary_datapoint: true }],
+      [10, 20],
+    );
+
+    expect(sort).toHaveBeenCalledTimes(1);
+    expect(cache.histories[key]).toEqual([state(0), original]);
+    expect(cache.ranges[key]).toEqual([[0, 20]]);
+  });
+
+  it("preserves the leading boundary when a real sample has the same timestamp", () => {
+    const cache = new Cache();
+    const original: CachedStateEntity = {
+      ...state(10),
+      fake_boundary_datapoint: true,
+    };
+    cache.add(entity, [original], [10, 20]);
+    const history = cache.histories[key];
+
+    cache.add(entity, [state(10)], [20, 30]);
+
+    expect(cache.histories[key]).toBe(history);
+    expect(history).toHaveLength(1);
+    expect(history[0]).toBe(original);
+    expect(cache.ranges[key]).toEqual([[10, 30]]);
   });
 
   it("sorts an older single sample into the existing history", () => {
