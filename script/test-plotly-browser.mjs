@@ -1445,6 +1445,136 @@ try {
     "history step lines preserve the known state until unavailable, without closing the actual gap",
     "gap endpoints preserve hover templates without changing parsed measurements or accumulating on redraw",
   );
+  await page.evaluate(async () => {
+    document.getElementById("card-under-test").remove();
+    const card = new CardTest.PlotlyGraph();
+    card.id = "card-under-test";
+    card.style.cssText = "display: block; width: 480px;";
+    const end = Date.now() - 60000;
+    const start = end - 24 * 3600000;
+    const entity = "sensor.history_gap_clicks";
+    const history = [
+      [start, "10"],
+      [start + 8 * 3600000, "unavailable"],
+      [start + 9 * 3600000, "20"],
+      [start + 16 * 3600000, "unknown"],
+      [start + 17 * 3600000, "30"],
+      [end, "40"],
+    ];
+    window.historyGapClicks = [];
+    card.hass = {
+      locale: { language: "en", first_weekday: "monday", time_zone: "server" },
+      config: { time_zone: "UTC" },
+      themes: { darkMode: false },
+      states: {
+        [entity]: {
+          entity_id: entity,
+          state: "40",
+          attributes: {},
+          last_changed: new Date(end).toISOString(),
+          last_updated: new Date(end).toISOString(),
+        },
+      },
+      callWS: async (request) => {
+        if (request.type !== "history/history_during_period")
+          throw new Error("Unexpected request");
+        return {
+          [entity]: history.map(([time, state]) => ({
+            s: state,
+            lu: time / 1000,
+          })),
+        };
+      },
+    };
+    await card.setConfig({
+      type: "custom:plotly-graph",
+      refresh_interval: 0,
+      visible_range: [start, end],
+      layout: {
+        width: 480,
+        height: 320,
+        yaxis: { range: [0, 50] },
+        hovermode: "closest",
+      },
+      config: { doubleClick: false },
+      entities: [
+        {
+          entity,
+          extend_to_present: false,
+          customdata:
+            "$fn ({ ys }) => ys.map((value, sourceIndex) => ({ sourceIndex, value: Number(value) }))",
+          on_click: `$fn () => ({ points }) => {
+            const point = points[0];
+            window.historyGapClicks.push({
+              pointIndex: point.pointIndex,
+              pointNumber: point.pointNumber,
+              y: Number(point.y),
+              customdata: point.customdata,
+              traceY: Number(point.data.y[point.pointIndex]),
+            });
+          }`,
+        },
+      ],
+    });
+    document.body.append(card);
+    await card.plot({ should_fetch: true });
+  });
+  await page.locator("#card-under-test").scrollIntoViewIfNeeded();
+  for (const [pointIndex, sourceIndex, y] of [
+    [1, 0, 10], // The drawing-only endpoint before the first outage.
+    [3, 2, 20], // One extra endpoint precedes this measurement.
+    [6, 4, 30], // Two extra endpoints precede this measurement.
+  ]) {
+    const target = await page.evaluate((index) => {
+      const card = document.getElementById("card-under-test");
+      const div = card.contentEl;
+      const rect = div.getBoundingClientRect();
+      const layout = div._fullLayout;
+      const point = div.calcdata[0][index];
+      return {
+        x: rect.left + layout.xaxis._offset + layout.xaxis.c2p(point.x),
+        y: rect.top + layout.yaxis._offset + layout.yaxis.c2p(point.y),
+        count: window.historyGapClicks.length,
+      };
+    }, pointIndex);
+    await page.mouse.move(target.x, target.y);
+    // Plotly throttles hover detection; click only once it finds this point.
+    await page.waitForFunction(
+      (index) =>
+        document
+          .getElementById("card-under-test")
+          .contentEl._hoverdata?.some((point) => point.pointNumber === index),
+      pointIndex,
+    );
+    await page.mouse.click(target.x, target.y);
+    await page.waitForFunction(
+      (count) => window.historyGapClicks.length > count,
+      target.count,
+    );
+    assert.deepEqual(
+      await page.evaluate(() => window.historyGapClicks.at(-1)),
+      {
+        pointIndex,
+        pointNumber: pointIndex,
+        y,
+        customdata: { sourceIndex, value: y },
+        traceY: y,
+      },
+    );
+    // Separate clicks: even with autoscaling disabled, Plotly emits a
+    // double-click relayout that would race the next pointer movement.
+    await page.waitForTimeout(350);
+  }
+  assert.deepEqual(
+    await page.evaluate(
+      () =>
+        document.getElementById("card-under-test").parsed_config.entities[0].y,
+    ),
+    ["10", null, "20", null, "30", "40"],
+  );
+  results.results.push(
+    "clicks at gap endpoints and after multiple outages preserve Plotly indices and return aligned values and customdata",
+  );
   assert.deepEqual(errors, []);
   console.log(
     `Plotly ${results.version}: ${results.results.length} browser checks passed`,

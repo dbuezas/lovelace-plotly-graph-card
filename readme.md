@@ -836,11 +836,18 @@ type: custom:plotly-graph
 entities:
   - entity: sensor.temperature1
     on_click: |-
-      $fn () => (event_data) => {
-        ...
-        // WARNING: this doesn't work and I don't understand why. Help welcome
+      $fn () => ({ points }) => {
+        const point = points[0];
+        console.log(point.x, point.y, point.customdata);
       }
 ```
+
+`on_click` receives Plotly's event data. Use the point's `x`, `y` or
+`customdata` to read the clicked value. `pointIndex` and `pointNumber` refer
+to the rendered trace, not necessarily the original arrays used by filters
+or `$fn` functions. Default history step lines can contain drawing-only
+endpoints before unavailable states. These repeat the last known value and
+its per-point `customdata`; the parsed history remains unchanged.
 
 There is also a double click plot handler, it works on the whole plotting area (not points of an entity). Beware that double click also autoscales the plot.
 
