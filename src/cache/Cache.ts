@@ -143,7 +143,7 @@ function upperBound(history: CachedEntity[], timestamp: number) {
   let high = history.length;
   while (low < high) {
     const middle = Math.floor((low + high) / 2);
-    if (+history[middle].x <= timestamp) low = middle + 1;
+    if (history[middle].x.getTime() <= timestamp) low = middle + 1;
     else high = middle;
   }
   return low;
@@ -154,6 +154,7 @@ function selectHistory(
   ranges: TimestampRange[]
 ): CachedEntity[] {
   const selected: CachedEntity[] = [];
+  let next = 0; // cached timestamps are unique, so skip by index
   for (const [start, end] of compactRanges(ranges)) {
     // Keep the latest point at or before the range so the trace reaches the
     // left edge even when no state changed there.
@@ -161,11 +162,9 @@ function selectHistory(
     const first = Math.max(0, firstAfterStart - 1);
     const last = upperBound(history, end);
     if (first === 0 && last === history.length) return history;
-    for (let index = first; index < last; index++) {
-      const state = history[index];
-      const previous = selected[selected.length - 1];
-      if (!previous || +previous.x !== +state.x) selected.push(state);
-    }
+    for (let index = Math.max(first, next); index < last; index++)
+      selected.push(history[index]);
+    next = Math.max(next, last);
   }
   return selected;
 }
@@ -293,33 +292,30 @@ export default class Cache {
     const history = ranges
       ? selectHistory(cachedHistory, ranges)
       : cachedHistory;
-    const data: EntityData = {
-      xs: [],
-      ys: [],
-      states: [],
-      statistics: [],
-    };
-    data.xs = history.map(({ x }) => x);
+    const data: EntityData = { xs: [], ys: [], states: [], statistics: [] };
+    // see https://github.com/dbuezas/lovelace-plotly-graph-card/issues/146
+    // and https://github.com/dbuezas/lovelace-plotly-graph-card/commit/3d915481002d03011bcc8409c2dcc6e6fb7c8674#r94899109
+    const clean = (y) =>
+      y === "unavailable" || y === "none" || y === "unknown" ? null : y;
     if (isEntityIdStatisticsConfig(entity)) {
-      data.statistics = (history as CachedStatisticsEntity[]).map(
-        ({ statistics }) => statistics
-      );
-      data.ys = data.statistics.map((s) => s[entity.statistic]);
-    } else if (isEntityIdAttrConfig(entity)) {
-      data.states = (history as CachedStateEntity[]).map(({ state }) => state);
-      data.ys = data.states.map((s) => s.attributes[entity.attribute]);
-    } else if (isEntityIdStateConfig(entity)) {
-      data.states = (history as CachedStateEntity[]).map(({ state }) => state);
-      data.ys = data.states.map((s) => s.state);
+      for (const { x, statistics } of history as CachedStatisticsEntity[]) {
+        data.xs.push(x);
+        data.statistics.push(statistics);
+        data.ys.push(clean(statistics[entity.statistic]));
+      }
+    } else if (isEntityIdAttrConfig(entity) || isEntityIdStateConfig(entity)) {
+      const attribute = isEntityIdAttrConfig(entity) ? entity.attribute : null;
+      for (const { x, state } of history as CachedStateEntity[]) {
+        data.xs.push(x);
+        data.states.push(state);
+        data.ys.push(
+          clean(attribute === null ? state.state : state.attributes[attribute])
+        );
+      }
     } else
       throw new Error(
         `Unrecognised fetch type for ${(entity as EntityConfig).entity}`
       );
-    data.ys = data.ys.map((y) =>
-      // see https://github.com/dbuezas/lovelace-plotly-graph-card/issues/146
-      // and https://github.com/dbuezas/lovelace-plotly-graph-card/commit/3d915481002d03011bcc8409c2dcc6e6fb7c8674#r94899109
-      y === "unavailable" || y === "none" || y === "unknown" ? null : y
-    );
     return data;
   }
 

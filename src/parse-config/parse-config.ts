@@ -494,7 +494,7 @@ class ConfigParser {
       this.fnParam.getFromConfig(path + ".extend_to_present") ??
       !statisticsParams;
 
-    data.xs = data.xs.map((x) => new Date(+x + offset));
+    if (offset) data.xs = data.xs.map((x) => new Date(+x + offset));
 
     removeOutOfRange(data, this.observed_range);
     if (extend_to_present && data.xs.length > 0) {
