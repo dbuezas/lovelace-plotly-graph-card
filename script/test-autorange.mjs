@@ -47,11 +47,17 @@ try {
       refresh_interval: 0,
       hours_to_show: "3h",
       autorange_after_scroll: true,
-      entities: [{
-        entity: "",
-        type: "bar",
-        filters: [{ fn: '({ hass }) => hass.states["sensor.generated"].attributes.data' }],
-      }],
+      entities: [
+        {
+          entity: "",
+          type: "bar",
+          filters: [
+            {
+              fn: '({ hass }) => hass.states["sensor.generated"].attributes.data',
+            },
+          ],
+        },
+      ],
     };
     await card.setConfig(config);
     document.body.append(card);
@@ -81,10 +87,66 @@ try {
     });
     await card._plot({ should_fetch: false });
     const raw = snapshot();
+    const otherCoordinates = [];
+    for (const test of [
+      {
+        name: "ISO date strings",
+        axis: "date",
+        fn: "({ xs }) => ({ xs: xs.map((x) => x.toISOString()) })",
+        xs: source.xs.map((x) => x.toISOString()),
+      },
+      {
+        name: "numeric X/Y coordinates",
+        axis: "linear",
+        fn: "({ ys }) => ({ xs: ys })",
+        xs: source.ys,
+      },
+      {
+        name: "mixed date objects and strings",
+        axis: "date",
+        fn: "({ xs }) => ({ xs: xs.map((x, i) => i === 0 ? x : x.toISOString()) })",
+        xs: source.xs.map((x, i) => (i === 0 ? x : x.toISOString())),
+      },
+    ]) {
+      await card.setConfig({
+        ...config,
+        layout: {
+          xaxis: {
+            type: test.axis,
+            ...(test.axis === "linear" ? { range: [0, 2100] } : {}),
+          },
+        },
+        entities: [
+          {
+            ...config.entities[0],
+            type: "scatter",
+            mode: "markers",
+            filters: [...config.entities[0].filters, { fn: test.fn }],
+          },
+        ],
+      });
+      await card._plot({ should_fetch: false });
+      otherCoordinates.push({
+        name: test.name,
+        ...snapshot(),
+        xs: [...card.contentEl.data[0].x],
+        expectedXs: test.xs,
+        axis: card.contentEl._fullLayout.xaxis.type,
+        expectedAxis: test.axis,
+        finitePoints: card.contentEl.calcdata[0].filter(
+          (point) => Number.isFinite(point.x) && Number.isFinite(point.y),
+        ).length,
+        rendered: !!card.contentEl.querySelector(".scatterlayer .point"),
+      });
+    }
     card.remove();
     Plotly.purge(card.contentEl);
     return {
-      initial, browsed, disabled, raw,
+      initial,
+      browsed,
+      disabled,
+      raw,
+      otherCoordinates,
       sourceXs: source.xs.map(Number),
       sourceYs: source.ys,
       expectedXs: [-4, -2, -1, -0.5, 1].map((offset) => now + offset * hour),
@@ -100,10 +162,20 @@ try {
   assert.deepEqual(results.disabled.ys, [1000, 10, 20, 30, 2000]);
   assert.equal(results.raw.error, "");
   assert.deepEqual(results.raw.ys, [1000, 10, 20, 30, 2000]);
+  for (const test of results.otherCoordinates) {
+    assert.equal(test.error, "", test.name);
+    assert.deepEqual(test.xs, test.expectedXs, test.name);
+    assert.deepEqual(test.ys, [1000, 10, 20, 30, 2000], test.name);
+    assert.equal(test.axis, test.expectedAxis, test.name);
+    assert.equal(test.finitePoints, 5, test.name);
+    assert.equal(test.rendered, true, test.name);
+  }
   assert.deepEqual(results.sourceYs, [1000, 10, 20, 30, 2000]);
   assert.deepEqual(results.sourceXs, results.expectedXs);
   assert.deepEqual(errors, []);
-  console.log("PASS: filtered bar autorange, panning, disabled/raw mode, source preservation");
+  console.log(
+    "PASS: filtered bar autorange, panning, disabled/raw mode, source preservation, ISO/numeric/mixed coordinates",
+  );
 } finally {
   await browser.close();
 }

@@ -212,9 +212,11 @@ class ConfigParser {
       path.match(/^entities\.\d+\.filters$/) &&
       this.fnParam.getFromConfig("autorange_after_scroll") &&
       !this.fnParam.getFromConfig("raw_plotly_config") &&
-      this.fnParam.xs
+      this.fnParam.xs &&
+      this.fnParam.xs.every((x) => x instanceof Date)
     ) {
       // Filters may generate dates outside the range already trimmed at fetch time.
+      // Other x formats may represent non-time axes; leave those unchanged.
       // Clip after the complete chain without mutating arrays stored in vars.
       const [start, end] = this.getVisibleRange();
       const mask = this.fnParam.xs.map((x) => +x >= start && +x <= end);

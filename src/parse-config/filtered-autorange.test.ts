@@ -10,7 +10,11 @@ const coordinates = (entity: EntityConfig) => {
   return { xs: Array.from(entity.x || [], Number), ys: entity.y };
 };
 
-function setup(options: Partial<Omit<InputConfig, "entities">> & { entities?: object[] } = {}) {
+function setup(
+  options: Partial<Omit<InputConfig, "entities">> & {
+    entities?: object[];
+  } = {},
+) {
   const source = { xs: timestamps.map((x) => new Date(x)), ys: values };
   const hass = {
     states: { "sensor.generated": { attributes: { data: source } } },
@@ -25,12 +29,18 @@ function setup(options: Partial<Omit<InputConfig, "entities">> & { entities?: ob
         visible_range: range,
         autorange_after_scroll: true,
         ...options,
-        entities: [{
-          entity: "",
-          type: "bar",
-          filters: [{ fn: '({ hass }) => hass.states["sensor.generated"].attributes.data' }],
-          ...options.entities?.[0],
-        }],
+        entities: [
+          {
+            entity: "",
+            type: "bar",
+            filters: [
+              {
+                fn: '({ hass }) => hass.states["sensor.generated"].attributes.data',
+              },
+            ],
+            ...options.entities?.[0],
+          },
+        ],
       } as unknown as InputConfig,
       hass: hass as any,
       css_vars: {} as any,
@@ -72,6 +82,56 @@ describe("autorange after custom filters", () => {
     });
   });
 
+  it.each([
+    {
+      name: "ISO date strings",
+      fn: "({ xs }) => ({ xs: xs.map((x) => x.toISOString()) })",
+      xs: timestamps.map((x) => new Date(x).toISOString()),
+    },
+    {
+      name: "numeric X/Y coordinates",
+      fn: "({ ys }) => ({ xs: ys })",
+      xs: values,
+    },
+    {
+      name: "numeric timestamps",
+      fn: "({ xs }) => ({ xs: xs.map(Number) })",
+      xs: timestamps,
+    },
+    {
+      name: "categorical coordinates",
+      fn: '() => ({ xs: ["A", "B", "C", "D", "E"] })',
+      xs: ["A", "B", "C", "D", "E"],
+    },
+    {
+      name: "mixed date objects and strings",
+      fn: "({ xs }) => ({ xs: xs.map((x, i) => i === 0 ? x : x.toISOString()) })",
+      xs: timestamps.map((x, i) =>
+        i === 0 ? new Date(x) : new Date(x).toISOString(),
+      ),
+    },
+  ])("leaves $name unchanged", async ({ fn, xs }) => {
+    const { source, update } = setup({
+      entities: [
+        {
+          entity: "",
+          filters: [
+            {
+              fn: '({ hass }) => hass.states["sensor.generated"].attributes.data',
+            },
+            { fn },
+          ],
+        },
+      ],
+    });
+    const result = await update();
+
+    expect(result.errors).toEqual([]);
+    expect(result.parsed.entities[0]).toMatchObject({ x: xs, y: values });
+    expect(source.xs.map(Number)).toEqual(timestamps);
+    expect(source.ys).toEqual(values);
+  });
+
   it("keeps all generated data when autorange_after_scroll is disabled", async () => {
     const result = await setup({ autorange_after_scroll: false }).update();
     expect(result.errors).toEqual([]);
@@ -95,15 +155,19 @@ describe("autorange after custom filters", () => {
 
   it("clips only after the entire filter chain", async () => {
     const result = await setup({
-      entities: [{
-        entity: "",
-        filters: [
-          { fn: '({ hass }) => hass.states["sensor.generated"].attributes.data' },
-          { fn: '({ xs, ys }) => ({ xs, ys: ys.map(() => ys.length) })' },
-        ],
-        x: "$ex xs",
-        y: "$ex ys",
-      }],
+      entities: [
+        {
+          entity: "",
+          filters: [
+            {
+              fn: '({ hass }) => hass.states["sensor.generated"].attributes.data',
+            },
+            { fn: "({ xs, ys }) => ({ xs, ys: ys.map(() => ys.length) })" },
+          ],
+          x: "$ex xs",
+          y: "$ex ys",
+        },
+      ],
     }).update();
     expect(result.errors).toEqual([]);
     expect(coordinates(result.parsed.entities[0])).toEqual({
@@ -114,22 +178,31 @@ describe("autorange after custom filters", () => {
 
   it("keeps state and statistics metadata aligned with the remaining points", async () => {
     const result = await setup({
-      entities: [{
-        entity: "",
-        filters: [{ fn: `({ hass }) => {
+      entities: [
+        {
+          entity: "",
+          filters: [
+            {
+              fn: `({ hass }) => {
           const data = hass.states["sensor.generated"].attributes.data;
           return {
             ...data,
             states: data.ys.map((value) => ({ state: String(value) })),
             statistics: data.ys.map((value) => ({ mean: value })),
           };
-        }` }],
-        customdata: "$ex states.map((state, i) => [state.state, statistics[i].mean])",
-      }],
+        }`,
+            },
+          ],
+          customdata:
+            "$ex states.map((state, i) => [state.state, statistics[i].mean])",
+        },
+      ],
     }).update();
     expect(result.errors).toEqual([]);
     expect(result.parsed.entities[0]).toHaveProperty("customdata", [
-      ["10", 10], ["20", 20], ["30", 30],
+      ["10", 10],
+      ["20", 20],
+      ["30", 30],
     ]);
   });
 
