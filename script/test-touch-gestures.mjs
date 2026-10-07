@@ -583,6 +583,30 @@ try {
     `${(s0.span / hour).toFixed(1)}h -> ${(s1.span / hour).toFixed(1)}h`
   );
 
+  // --- A pan while the data loads is not undone when the data arrives
+  await mount({});
+  await page.evaluate(() => {
+    const parser = document.getElementById("c").configParser;
+    const update = parser.update.bind(parser);
+    parser.update = async (input) => {
+      await new Promise((r) => setTimeout(r, 300)); // slow network
+      return update(input);
+    };
+  });
+  await drag(steps([[cx, cy]], [[cx - 60, cy]], 4));
+  await touch("touchEnd");
+  await wait(100); // the render of that pan is waiting for its data
+  await drag(steps([[cx, cy]], [[cx - 60, cy]], 4));
+  await touch("touchEnd");
+  a = await xAt(cx);
+  await wait(1000);
+  s1 = await state();
+  check(
+    Math.abs((await xAt(cx)) - a) < tol(s1.span),
+    "a pan while the data loads stays",
+    `${(((await xAt(cx)) - a) / hour).toFixed(1)}h off`
+  );
+
   // --- Lifecycle
   await mount({});
   await page.evaluate(() => {

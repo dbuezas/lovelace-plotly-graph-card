@@ -538,6 +538,9 @@ export class PlotlyGraph extends HTMLElement {
         this.contentEl.data,
         should_fetch || statisticsUpdates.size > 0,
       );
+      const visible_range = this.isBrowsing
+        ? this.getVisibleRange()
+        : undefined;
       const uirevision = this.isBrowsing
         ? this.contentEl.layout?.uirevision || 0
         : Math.random();
@@ -551,7 +554,7 @@ export class PlotlyGraph extends HTMLElement {
           },
           fetch_mask,
         },
-        this.isBrowsing ? { visible_range: this.getVisibleRange() } : {},
+        visible_range ? { visible_range } : {},
 
         this.config
       );
@@ -563,6 +566,10 @@ export class PlotlyGraph extends HTMLElement {
           ? statisticsUpdates
           : undefined,
       });
+      // The user moved the plot while the data loaded. That move started a
+      // new render, so don't draw the old range over it.
+      if (visible_range && `${this.getVisibleRange()}` !== `${visible_range}`)
+        return;
       this.errorMsgEl.style.display = errors.length ? "block" : "none";
       this.errorMsgEl.innerHTML = errors
         .map((e) => "<span>" + (e || "See devtools console") + "</span>")
