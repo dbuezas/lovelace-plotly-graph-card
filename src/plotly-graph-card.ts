@@ -68,6 +68,7 @@ export class PlotlyGraph extends HTMLElement {
     relayoutListener?: EventEmitter;
     restyleListener?: EventEmitter;
     refreshTimeout?: number;
+    offScreenTimeout?: number;
     legendItemClick?: EventEmitter;
     legendItemDoubleclick?: EventEmitter;
     dataClick?: EventEmitter;
@@ -256,10 +257,7 @@ export class PlotlyGraph extends HTMLElement {
     };
     this.handles.intersectionObserver = new IntersectionObserver(([entry]) => {
       this.onScreen = entry.isIntersecting;
-      if (this.onScreen && this.renderDeferred) {
-        this.renderDeferred = false;
-        this.plot({ should_fetch: false });
-      }
+      if (this.onScreen) this.catchUp();
     });
     this.handles.intersectionObserver.observe(this.cardEl);
     this.handles.resizeObserver = new ResizeObserver(updateCardSize);
@@ -277,6 +275,7 @@ export class PlotlyGraph extends HTMLElement {
     this.handles.intersectionObserver?.disconnect();
     this.disconnectPlotlyListeners();
     clearTimeout(this.handles.refreshTimeout!);
+    clearTimeout(this.handles.offScreenTimeout);
     this.resetButtonEl.removeEventListener("click", this.exitBrowsingMode);
     this.touchController.disconnect();
     this.statisticsUpdates.disconnect();
@@ -524,14 +523,26 @@ export class PlotlyGraph extends HTMLElement {
   liveThrottle = liveThrottle();
   onScreen = true;
   renderDeferred = false;
+  lastRender = -Infinity;
+  catchUp = () => {
+    clearTimeout(this.handles.offScreenTimeout);
+    if (!this.renderDeferred) return;
+    this.renderDeferred = false;
+    this.plot({ should_fetch: false });
+  };
   _plot = debounce(async () => {
     this.liveThrottle.renderStarted();
     if (this.pausedRendering) return;
-    // Off-screen cards catch up once they are scrolled into view
-    if (!this.onScreen && this.parsed_config) {
+    // Off-screen cards update every 30 s, and catch up once scrolled into
+    // view. They still update, for full-page screenshots.
+    const wait = this.lastRender + 30_000 - performance.now();
+    if (!this.onScreen && this.parsed_config && wait > 0) {
       this.renderDeferred = true;
+      clearTimeout(this.handles.offScreenTimeout);
+      this.handles.offScreenTimeout = window.setTimeout(this.catchUp, wait);
       return;
     }
+    this.lastRender = performance.now();
     try {
       const should_fetch = this.fetchScheduled;
       this.fetchScheduled = false;

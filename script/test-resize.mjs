@@ -20,6 +20,7 @@ try {
   const page = await browser.newPage();
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
+  await page.clock.install(); // time runs normally until fastForward
   await page.setContent("<!doctype html><body></body>");
   await page.addScriptTag({
     content: bundle.outputFiles.find((file) => file.path.endsWith(".js")).text,
@@ -103,6 +104,65 @@ try {
       window.ResizeObserver = NativeObserver;
     }
   });
+
+  // Off-screen cards update every 30 s, and catch up once visible
+  const offScreen = (step) =>
+    page.evaluate(async (step) => {
+      const { Plotly, PlotlyGraph } = ResizeTest;
+      const frames = async (n) => {
+        for (let i = 0; i < n; i++) await new Promise(requestAnimationFrame);
+      };
+      const ys = () => window.card.contentEl.data[0].y.join();
+      const config = (y) => ({
+        type: "custom:plotly-graph",
+        refresh_interval: 0,
+        entities: [{ entity: "", x: [1, 2], y }],
+      });
+      if (step === "mount") {
+        const card = (window.card = new PlotlyGraph());
+        card.style.cssText = "display:block;width:480px";
+        card.hass = { states: {}, locale: { language: "en" } };
+        await card.setConfig(config([1, 2]));
+        document.body.append(card);
+        while (!card.contentEl.data) await frames(1);
+        window.spacer = document.createElement("div");
+        window.spacer.style.height = "3000px";
+        card.before(window.spacer); // below the fold
+        await frames(5);
+        return card.onScreen;
+      }
+      if (step === "update") {
+        await window.card.setConfig(config([window.nextY++]));
+        await frames(10);
+        return ys();
+      }
+      if (step === "rendered") {
+        await frames(10);
+        return ys();
+      }
+      if (step === "scroll") {
+        window.spacer.remove();
+        await frames(10);
+        const result = ys();
+        window.card.remove();
+        Plotly.purge(window.card.contentEl);
+        return result;
+      }
+    }, step);
+  await page.evaluate(() => (window.nextY = 3));
+  assert.equal(await offScreen("mount"), false);
+  // Rendered right before going off-screen: the update waits
+  assert.equal(await offScreen("update"), "1,2");
+  await page.clock.fastForward(30_000);
+  assert.equal(await offScreen("rendered"), "3");
+  results.push("off-screen cards update every 30 s");
+  assert.equal(await offScreen("update"), "3");
+  assert.equal(await offScreen("scroll"), "4");
+  results.push("off-screen cards catch up once visible");
+
+  console.log(
+    `${results.length} resize browser checks passed:\n${results.join("\n")}`,
+  );
   assert.deepEqual(errors, []);
   console.log(`${results.length} resize browser checks passed:\n${results.join("\n")}`);
 } finally {
