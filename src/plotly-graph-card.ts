@@ -8,7 +8,6 @@ import {
   InputConfig,
   isEntityIdAttrConfig,
   isEntityIdStateConfig,
-  isEntityIdStatisticsConfig,
   TouchGestures,
 } from "./types";
 import isProduction from "./is-production";
@@ -27,6 +26,8 @@ import { readThemeColors } from "./parse-config/themed-layout";
 import { getFetchMask } from "./plot-state";
 import { getEditorYAxisRelayout } from "./parse-config/defaults";
 import { prepareHistoryLineGaps } from "./history-line-gaps";
+import { StatisticsUpdates } from "./statistics-updates";
+import type { StatisticsUpdatePeriod } from "./cache/statistics-refresh";
 
 const componentName = isProduction ? "plotly-graph" : "plotly-graph-dev";
 
@@ -55,6 +56,11 @@ export class PlotlyGraph extends HTMLElement {
   plotlyListenersConnected = false;
   touchController: TouchController;
   configParser = new ConfigParser();
+  private statisticsFetchPeriods = new Set<StatisticsUpdatePeriod>();
+  statisticsUpdates = new StatisticsUpdates((period) => {
+    this.statisticsFetchPeriods.add(period);
+    this.plot({ should_fetch: false }, 500);
+  });
   pausedRendering = false;
   handles: {
     resizeObserver?: ResizeObserver;
@@ -253,7 +259,8 @@ export class PlotlyGraph extends HTMLElement {
     updateCardSize();
     this.resetButtonEl.addEventListener("click", this.exitBrowsingMode);
     this.touchController.connect();
-    this.plot({ should_fetch: true });
+    this.updateStatisticsSubscriptions();
+    this.plot({ should_fetch: true, refresh_statistics: true });
   }
 
   disconnectedCallback() {
@@ -262,6 +269,7 @@ export class PlotlyGraph extends HTMLElement {
     clearTimeout(this.handles.refreshTimeout!);
     this.resetButtonEl.removeEventListener("click", this.exitBrowsingMode);
     this.touchController.disconnect();
+    this.statisticsUpdates.disconnect();
   }
 
   connectPlotlyListeners() {
@@ -334,7 +342,6 @@ export class PlotlyGraph extends HTMLElement {
     }
     if (this.parsed_config?.refresh_interval === "auto") {
       let shouldPlot = false;
-      let should_fetch = false;
       for (const entity of this.parsed_config.entities) {
         const state = hass.states[entity.entity];
         const oldState = this._hass?.states[entity.entity];
@@ -343,16 +350,7 @@ export class PlotlyGraph extends HTMLElement {
           const start = new Date(oldState?.last_updated || state.last_updated);
           const end = new Date(state.last_updated);
           const range: [number, number] = [+start, +end];
-          let shouldAddToCache = false;
-          if (isEntityIdAttrConfig(entity)) {
-            shouldAddToCache = true;
-          } else if (isEntityIdStateConfig(entity)) {
-            shouldAddToCache = true;
-          } else if (isEntityIdStatisticsConfig(entity)) {
-            should_fetch = true;
-          }
-
-          if (shouldAddToCache) {
+          if (isEntityIdAttrConfig(entity) || isEntityIdStateConfig(entity)) {
             this.configParser.cache.add(
               entity,
               [{ state, x: new Date(end), y: null }],
@@ -362,10 +360,20 @@ export class PlotlyGraph extends HTMLElement {
         }
       }
       if (shouldPlot) {
-        this.plot({ should_fetch }, 500);
+        this.plot({ should_fetch: false }, 500);
       }
     }
     this._hass = hass;
+    this.updateStatisticsSubscriptions();
+  }
+
+  updateStatisticsSubscriptions() {
+    this.statisticsUpdates.update(
+      this.hass?.connection,
+      this.isConnected && this.parsed_config?.refresh_interval === "auto"
+        ? this.configParser.statisticsPeriods
+        : new Set(),
+    );
   }
 
   async withoutRelayout(fn: Function) {
@@ -410,7 +418,7 @@ export class PlotlyGraph extends HTMLElement {
     this.resetButtonEl.classList.add("hidden");
     this.withoutRelayout(async () => {
       this.configParser.resetObservedRange();
-      await this.plot({ should_fetch: true });
+      await this.plot({ should_fetch: true, refresh_statistics: true });
     });
   };
   onLegendItemClick = ({ curveNumber, ...rest }) => {
@@ -491,11 +499,16 @@ export class PlotlyGraph extends HTMLElement {
     };
   }
   fetchScheduled = false;
+  private statisticsRefreshScheduled = false;
   plot = async (
-    { should_fetch }: { should_fetch: boolean },
+    { should_fetch, refresh_statistics = false }: {
+      should_fetch: boolean;
+      refresh_statistics?: boolean;
+    },
     delay?: number
   ) => {
-    if (should_fetch) this.fetchScheduled = true;
+    if (should_fetch || refresh_statistics) this.fetchScheduled = true;
+    if (refresh_statistics) this.statisticsRefreshScheduled = true;
     await this._plot(delay);
   };
   _plot = debounce(async () => {
@@ -503,13 +516,28 @@ export class PlotlyGraph extends HTMLElement {
     try {
       const should_fetch = this.fetchScheduled;
       this.fetchScheduled = false;
+      const refresh_statistics = this.statisticsRefreshScheduled;
+      this.statisticsRefreshScheduled = false;
+      const statisticsUpdates = this.statisticsFetchPeriods;
+      this.statisticsFetchPeriods = new Set();
       let i = 0;
       while (!(this.config && this.hass && this.isConnected)) {
         if (i++ > 50) throw new Error("Card didn't load");
         console.log("waiting for loading");
         await sleep(100);
       }
-      const fetch_mask = getFetchMask(this.contentEl.data, should_fetch);
+      // Invalidate between parses, not while an older fetch is still running.
+      const now = Date.now();
+      if (refresh_statistics) {
+        await this.configParser.cache.refreshStatistics(now);
+      } else {
+        for (const period of statisticsUpdates)
+          await this.configParser.cache.refreshStatistics(now, period);
+      }
+      const fetch_mask = getFetchMask(
+        this.contentEl.data,
+        should_fetch || statisticsUpdates.size > 0,
+      );
       const uirevision = this.isBrowsing
         ? this.contentEl.layout?.uirevision || 0
         : Math.random();
@@ -531,6 +559,9 @@ export class PlotlyGraph extends HTMLElement {
         yaml,
         hass: this.hass,
         css_vars: this.getCSSVars(),
+        statisticsUpdates: !should_fetch && statisticsUpdates.size > 0
+          ? statisticsUpdates
+          : undefined,
       });
       this.errorMsgEl.style.display = errors.length ? "block" : "none";
       this.errorMsgEl.innerHTML = errors
@@ -547,6 +578,7 @@ export class PlotlyGraph extends HTMLElement {
         double_tap_drag_to_zoom: enabled("double_tap_drag_to_zoom"),
         hold_to_scan: enabled("hold_to_scan"),
       };
+      this.updateStatisticsSubscriptions();
 
       const {
         entities,
@@ -558,7 +590,7 @@ export class PlotlyGraph extends HTMLElement {
       clearTimeout(this.handles.refreshTimeout!);
       if (refresh_interval !== "auto" && refresh_interval > 0) {
         this.handles.refreshTimeout = window.setTimeout(
-          () => this.plot({ should_fetch: true }),
+          () => this.plot({ should_fetch: true, refresh_statistics: true }),
           refresh_interval * 1000
         );
       }

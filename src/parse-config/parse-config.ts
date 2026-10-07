@@ -4,6 +4,11 @@ import Cache, {
   HistoryFetchRequest,
 } from "../cache/Cache";
 import { updateObservedRange } from "../cache/observed-range";
+import {
+  getStatisticsUpdatePeriod,
+  isLiveStatisticsRange,
+  StatisticsUpdatePeriod,
+} from "../cache/statistics-refresh";
 import { HATheme } from "./themed-layout";
 
 import propose from "propose";
@@ -22,7 +27,7 @@ import { HomeAssistant } from "custom-card-helpers";
 import filters from "../filters/filters";
 import bounds from "binary-search-bounds";
 import { has } from "lodash";
-import { StatisticValue } from "../recorder-types";
+import { StatisticPeriod, StatisticValue } from "../recorder-types";
 import {
   Config,
   EntityData,
@@ -40,6 +45,9 @@ class ConfigParser {
   private yaml_with_defaults?: InputConfig;
   private hass?: HomeAssistant;
   cache = new Cache();
+  statisticsPeriods: ReadonlySet<StatisticPeriod> = new Set();
+  private nextStatisticsPeriods = new Set<StatisticPeriod>();
+  private statisticsUpdates?: ReadonlySet<StatisticsUpdatePeriod>;
   private busy = false;
   private fnParam!: FnParam;
   private observed_range: [number, number] = [Date.now(), Date.now()];
@@ -56,6 +64,7 @@ class ConfigParser {
     yaml: InputConfig;
     hass: HomeAssistant;
     css_vars: HATheme;
+    statisticsUpdates?: ReadonlySet<StatisticsUpdatePeriod>;
   }) {
     if (this.busy) throw new Error("ParseConfig was updated while busy");
     this.busy = true;
@@ -69,10 +78,12 @@ class ConfigParser {
     yaml: input_yaml,
     hass,
     css_vars,
+    statisticsUpdates,
   }: {
     yaml: InputConfig;
     hass: HomeAssistant;
     css_vars: HATheme;
+    statisticsUpdates?: ReadonlySet<StatisticsUpdatePeriod>;
   }): Promise<{ errors: Error[]; parsed: Config }> {
     this.yaml = {};
     this.errors = [];
@@ -81,6 +92,8 @@ class ConfigParser {
     this.historyPrefetched = false;
     // All fetch paths in this update share one cutoff, even after slow requests.
     this.fetchTime = Date.now();
+    this.nextStatisticsPeriods = new Set();
+    this.statisticsUpdates = statisticsUpdates;
     // Dynamic ranges advance on refresh; concrete ranges can come from browsing.
     const inputRange = "visible_range" in input_yaml
       ? input_yaml.visible_range
@@ -114,6 +127,8 @@ class ConfigParser {
     }
     this.cache.retain(this.retainedCacheRanges);
     this.yaml = addPostParsingDefaults(this.yaml as Config);
+    // Publish one complete snapshot; HA updates can arrive while fetching.
+    this.statisticsPeriods = this.nextStatisticsPeriods;
 
     return { errors: this.errors, parsed: this.yaml as Config };
   }
@@ -328,6 +343,16 @@ class ConfigParser {
     return visible_range;
   }
 
+  private shouldFetch(index: number, period?: StatisticPeriod) {
+    const fetchMask: boolean[] = this.fnParam.getFromConfig("fetch_mask") || [];
+    if (fetchMask[index] === false) return false;
+    return (
+      !this.statisticsUpdates ||
+      (period !== undefined &&
+        this.statisticsUpdates.has(getStatisticsUpdatePeriod(period)))
+    );
+  }
+
   private async prefetchStatistics() {
     const entities = this.yaml_with_defaults?.entities;
     if (!entities) return;
@@ -366,6 +391,7 @@ class ConfigParser {
           period
         );
         if (!statisticsParams) return;
+        if (!this.shouldFetch(i, statisticsParams.period)) return;
         const offset = parseTimeDuration(timeOffset);
         requests.push({
           entity: { entity: entityId, ...statisticsParams },
@@ -410,6 +436,14 @@ class ConfigParser {
       visible_range[0] - offset,
       Math.min(visible_range[1] - offset, this.fetchTime),
     ];
+    if (
+      statisticsParams &&
+      isLiveStatisticsRange(
+        range_to_fetch,
+        statisticsParams.period,
+        this.fetchTime
+      )
+    ) this.nextStatisticsPeriods.add(statisticsParams.period);
     const range_to_retain = [
       this.observed_range[0] - offset,
       // A live state can arrive while a history request is in flight. Keeping
@@ -433,7 +467,7 @@ class ConfigParser {
       }
     }
     let data: EntityData;
-    if (fetch_mask[i] === false) {
+    if (!this.shouldFetch(i, statisticsParams?.period)) {
       data = this.cache.getData(fetchConfig, [range_to_retain]);
     } else {
       const requestKey = JSON.stringify([
@@ -488,7 +522,7 @@ class ConfigParser {
     visibleRange: [number, number],
     fetchMask: boolean[],
   ) {
-    if (this.historyPrefetched) return;
+    if (this.historyPrefetched || this.statisticsUpdates) return;
     this.historyPrefetched = true;
 
     const requests: HistoryFetchRequest[] = [];
