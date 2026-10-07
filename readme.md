@@ -1222,6 +1222,8 @@ With `auto`, live statistics also refresh when Home Assistant publishes new
 Each event refreshes only its matching resolution: daily, weekly and monthly
 aggregates refresh with the hourly statistics, not the 5-minute statistics.
 Entity state changes can still update the display without refetching statistics.
+Zooming, panning and toggling traces only fetch missing ranges; they do not
+invalidate cached statistics. Resetting the view also refreshes recent values.
 An explicit refresh interval continues to poll at the configured interval.
 
 Examples:

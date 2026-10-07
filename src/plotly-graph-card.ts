@@ -260,7 +260,7 @@ export class PlotlyGraph extends HTMLElement {
     this.resetButtonEl.addEventListener("click", this.exitBrowsingMode);
     this.touchController.connect();
     this.updateStatisticsSubscriptions();
-    this.plot({ should_fetch: true });
+    this.plot({ should_fetch: true, refresh_statistics: true });
   }
 
   disconnectedCallback() {
@@ -418,7 +418,7 @@ export class PlotlyGraph extends HTMLElement {
     this.resetButtonEl.classList.add("hidden");
     this.withoutRelayout(async () => {
       this.configParser.resetObservedRange();
-      await this.plot({ should_fetch: true });
+      await this.plot({ should_fetch: true, refresh_statistics: true });
     });
   };
   onLegendItemClick = ({ curveNumber, ...rest }) => {
@@ -499,11 +499,16 @@ export class PlotlyGraph extends HTMLElement {
     };
   }
   fetchScheduled = false;
+  private statisticsRefreshScheduled = false;
   plot = async (
-    { should_fetch }: { should_fetch: boolean },
+    { should_fetch, refresh_statistics = false }: {
+      should_fetch: boolean;
+      refresh_statistics?: boolean;
+    },
     delay?: number
   ) => {
-    if (should_fetch) this.fetchScheduled = true;
+    if (should_fetch || refresh_statistics) this.fetchScheduled = true;
+    if (refresh_statistics) this.statisticsRefreshScheduled = true;
     await this._plot(delay);
   };
   _plot = debounce(async () => {
@@ -511,6 +516,8 @@ export class PlotlyGraph extends HTMLElement {
     try {
       const should_fetch = this.fetchScheduled;
       this.fetchScheduled = false;
+      const refresh_statistics = this.statisticsRefreshScheduled;
+      this.statisticsRefreshScheduled = false;
       const statisticsUpdates = this.statisticsFetchPeriods;
       this.statisticsFetchPeriods = new Set();
       let i = 0;
@@ -521,7 +528,7 @@ export class PlotlyGraph extends HTMLElement {
       }
       // Invalidate between parses, not while an older fetch is still running.
       const now = Date.now();
-      if (should_fetch) {
+      if (refresh_statistics) {
         await this.configParser.cache.refreshStatistics(now);
       } else {
         for (const period of statisticsUpdates)
@@ -583,7 +590,7 @@ export class PlotlyGraph extends HTMLElement {
       clearTimeout(this.handles.refreshTimeout!);
       if (refresh_interval !== "auto" && refresh_interval > 0) {
         this.handles.refreshTimeout = window.setTimeout(
-          () => this.plot({ should_fetch: true }),
+          () => this.plot({ should_fetch: true, refresh_statistics: true }),
           refresh_interval * 1000
         );
       }

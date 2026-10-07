@@ -1644,7 +1644,13 @@ try {
           request.statistic_ids.map((id, index) => {
             const rows =
               request.period === "day"
-                ? [{ start, end: start + 24 * hour, mean: fixture.dailyValue }]
+                ? [
+                    { start, end: start + 24 * hour, mean: fixture.dailyValue },
+                  ].filter(
+                    (row) =>
+                      row.start < Date.parse(request.end_time) &&
+                      row.end > Date.parse(request.start_time),
+                  )
                 : (request.period === "hour"
                     ? fixture.hourlyRows
                     : fixture.shortRows
@@ -1965,6 +1971,36 @@ try {
   results.results.push(
     "simultaneous 5minute and hourly notifications are coalesced with separate request periods",
   );
+  const navigationWithShortEvent = await page.evaluate(async () => {
+    const f = statisticsFixture;
+    await f.card.plot({ should_fetch: false });
+    const before = f.requests.length;
+    f.now += 1000;
+    f.dailyValue = 99;
+    const start = f.shortRows.at(-1).end;
+    f.shortRows.push({ start, end: start + 300000, mean: 7 });
+    f.handlers.get("recorder_5min_statistics_generated")();
+    await PlotlyTest.default.relayout(f.card.contentEl, {
+      "xaxis.range": [f.now - f.hour, f.now - 1000],
+    });
+    await f.card.plot({ should_fetch: true });
+    return {
+      periods: f.requests.slice(before).map((request) => request.period),
+      daily: f.card.contentEl.data[1].y,
+      short: f.card.contentEl.data[0].y.at(-1),
+    };
+  });
+  assert.deepEqual(navigationWithShortEvent, {
+    periods: ["5minute"],
+    daily: [11],
+    short: 7,
+  });
+  results.results.push(
+    "navigation coalesced with a recorder event still refreshes only the published resolution",
+  );
+  await page.evaluate(() => {
+    statisticsFixture.dailyValue = 11;
+  });
   await page.evaluate(() => {
     const f = statisticsFixture;
     f.oldCallbacks = [...f.handlers.values()];
@@ -2052,6 +2088,122 @@ try {
   );
   results.results.push(
     "reconnected cards refetch statistics published while disconnected",
+  );
+  const cachedNavigation = await page.evaluate(async () => {
+    const f = statisticsFixture;
+    await f.card.plot({ should_fetch: false });
+    const before = f.requests.length;
+    f.now += 1000;
+    f.dailyValue = 14;
+    for (const minutesBack of [90, 100]) {
+      await PlotlyTest.default.relayout(f.card.contentEl, {
+        "xaxis.range": [f.now - minutesBack * 60000, f.now - 1000],
+      });
+      await f.card.plot({ should_fetch: true });
+    }
+    await PlotlyTest.default.restyle(f.card.contentEl, {
+      visible: "legendonly",
+    });
+    await f.card.plot({ should_fetch: true });
+    await PlotlyTest.default.restyle(f.card.contentEl, { visible: true });
+    await f.card.plot({ should_fetch: true });
+    return {
+      requests: f.requests.length - before,
+      values: f.card.contentEl.data[0].y,
+    };
+  });
+  assert.deepEqual(cachedNavigation, { requests: 0, values: [13] });
+  results.results.push(
+    "cached zoom, pan and legend toggles do not refetch mutable statistics",
+  );
+  const missingNavigation = await page.evaluate(async () => {
+    const f = statisticsFixture;
+    const before = f.requests.length;
+    await PlotlyTest.default.relayout(f.card.contentEl, {
+      "xaxis.range": [f.start - 36 * f.hour, f.start - f.hour],
+    });
+    await f.card.plot({ should_fetch: true });
+    const requests = f.requests.slice(before);
+    await PlotlyTest.default.relayout(f.card.contentEl, {
+      "xaxis.range": [f.now - 100 * 60000, f.now - 1000],
+    });
+    await f.card.plot({ should_fetch: true });
+    return {
+      requests,
+      total: f.requests.length - before,
+      values: f.card.contentEl.data[0].y,
+    };
+  });
+  assert.equal(missingNavigation.total, 1);
+  assert.equal(
+    Date.parse(missingNavigation.requests[0].start_time),
+    Date.parse("2026-10-03T00:00:00Z") - 36 * 3600000 - 1,
+  );
+  assert.ok(
+    Date.parse(missingNavigation.requests[0].end_time) <
+      Date.parse("2026-10-03T00:00:00Z"),
+  );
+  assert.deepEqual(missingNavigation.values, [13]);
+  results.results.push(
+    "panning into uncached history fetches only the missing range, not the cached recent aggregate",
+  );
+  const explicitRefresh = await page.evaluate(async () => {
+    const f = statisticsFixture;
+    const before = f.requests.length;
+    f.now += 1000;
+    await f.card.plot({ should_fetch: true, refresh_statistics: true });
+    return {
+      requests: f.requests.length - before,
+      values: f.card.contentEl.data[0].y,
+    };
+  });
+  assert.deepEqual(explicitRefresh, { requests: 1, values: [14] });
+  results.results.push(
+    "explicit refreshes replace mutable statistics even inside a fully cached viewport",
+  );
+  const resetRefresh = await page.evaluate(async () => {
+    const f = statisticsFixture;
+    const before = f.requests.length;
+    f.now += 1000;
+    f.dailyValue = 15;
+    await f.card.exitBrowsingMode();
+    await f.card.plot({ should_fetch: false });
+    return {
+      requests: f.requests.length - before,
+      values: f.card.contentEl.data[0].y,
+      browsing: f.card.isBrowsing,
+    };
+  });
+  assert.deepEqual(resetRefresh, {
+    requests: 1,
+    values: [15],
+    browsing: false,
+  });
+  results.results.push("resetting the view still refreshes recent statistics");
+  const pausedRefresh = await page.evaluate(async () => {
+    const f = statisticsFixture;
+    const before = f.requests.length;
+    f.now += 1000;
+    f.dailyValue = 16;
+    f.card.pausedRendering = true;
+    f.handlers.get("recorder_hourly_statistics_generated")();
+    await f.card.plot({ should_fetch: true });
+    const whilePaused = f.requests.length - before;
+    f.card.pausedRendering = false;
+    await f.card.plot({ should_fetch: true });
+    return {
+      whilePaused,
+      requests: f.requests.length - before,
+      values: f.card.contentEl.data[0].y,
+    };
+  });
+  assert.deepEqual(pausedRefresh, {
+    whilePaused: 0,
+    requests: 1,
+    values: [16],
+  });
+  results.results.push(
+    "a recorder update queued during a touch gesture survives the navigation-only render",
   );
   await page.evaluate(() => {
     const f = statisticsFixture;
