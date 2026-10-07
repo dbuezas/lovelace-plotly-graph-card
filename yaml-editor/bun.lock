@@ -3,7 +3,7 @@
   "configVersion": 0,
   "workspaces": {
     "": {
-      "name": "demo",
+      "name": "plotly-graph-card-yaml-editor",
       "dependencies": {
         "@fortawesome/fontawesome-free": "^6.0.0",
         "@schemastore/schema-catalog": "^0.0.6",

@@ -32,7 +32,10 @@ const server = createServer((request, response) => {
 await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
 let browser;
 try {
-  browser = await chromium.launch({ args: ["--enable-unsafe-swiftshader"] });
+  browser = await chromium.launch({
+    executablePath: process.env.CHROME || undefined,
+    args: ["--enable-unsafe-swiftshader"],
+  });
   const page = await browser.newPage({
     viewport: { width: 1000, height: 800 },
   });

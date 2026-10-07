@@ -1585,7 +1585,8 @@ the first time a card needs them.
 
 Run `bun run tsc` and `bun run test src/parse-config/defaults.test.ts` for
 the compatibility checks. For rendering checks, install Chromium with
-`bunx playwright install chromium` and run `bun run test:browser`.
+`bunx playwright install chromium` (or set `CHROME=/path/to/chrome`)
+and run `bun run test:browser`.
 The browser test covers every registered trace type, tank shapes and labels,
 axis defaults, cloud-upload opt-in, and a card with a mock Home Assistant state.
 Run `bun run test:loading` to check the initial loading height, delayed data,

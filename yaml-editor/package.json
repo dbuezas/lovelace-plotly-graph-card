@@ -1,6 +1,5 @@
 {
-  "name": "demo",
-  "version": "1.0.0",
+  "name": "plotly-graph-card-yaml-editor",
   "private": true,
   "type": "module",
   "scripts": {
