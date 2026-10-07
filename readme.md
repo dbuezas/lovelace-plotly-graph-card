@@ -243,6 +243,65 @@ entities:
     period: 5minute # `5minute`, `hour`, `day`, `week`, `month`, `auto` # `auto` varies the period depending on the zoom level
 ```
 
+#### Mean line with a min/max band
+
+Use three traces to show the mean inside the range of recorded measurements.
+The sensor must have `min`, `max` and `mean` statistics, for example a temperature
+measurement sensor. Replace `sensor.temperature` in all three entries below.
+
+```yaml
+type: custom:plotly-graph
+hours_to_show: 7d
+refresh_interval: 300
+defaults:
+  entity:
+    period: hour
+    type: scatter
+    mode: lines
+    legendgroup: temperature
+    line:
+      shape: linear
+      color: rgb(52,152,219)
+layout:
+  legend:
+    groupclick: togglegroup
+entities:
+  - entity: sensor.temperature
+    statistic: min
+    name: Minimum
+    showlegend: false
+    hoverinfo: skip
+    hovertemplate: null
+    line:
+      width: 0.5
+  - entity: sensor.temperature
+    statistic: max
+    name: Maximum
+    showlegend: false
+    hoverinfo: skip
+    hovertemplate: null
+    line:
+      width: 0.5
+    fill: tonexty
+    fillcolor: rgba(52,152,219,0.2)
+  - entity: sensor.temperature
+    statistic: mean
+    name: Temperature
+    show_value: true
+    line:
+      width: 2
+```
+
+Keep the minimum and maximum adjacent: `fill: tonexty` fills the area between
+the maximum and the preceding minimum trace. The mean is drawn last, above the
+band. Their shared `legendgroup` lets the single legend entry toggle all three
+traces and the mean's value label together. Hover labels are shown only for the
+mean.
+
+All three traces reuse the same statistics response when their sensor, period
+and time range match. Common line settings belong in `defaults.entity.line`;
+change the line color and `fillcolor` together to recolor the band.
+
 #### for entities with state_class=total (such as utility meters)
 
 ```yaml
