@@ -78,7 +78,8 @@ try {
     const result = await page.evaluate(async (fixture) => {
       const { Plotly, PlotlyGraph } = ResampleTest;
       const card = new PlotlyGraph();
-      // Test the actual render path without unrelated resize/refresh races.
+      // Suppress setup renders, then use the card's real fetch/render path.
+      const plot = card.plot;
       card.plot = async () => {};
       card.style.cssText = "display:block;width:480px";
       const requests = [];
@@ -109,7 +110,8 @@ try {
         }],
       });
       document.body.append(card);
-      await card._plot({ should_fetch: true });
+      card.plot = plot;
+      await card.plot({ should_fetch: true });
       const result = {
         error: card.errorMsgEl.textContent,
         ys: card.contentEl.data[0].y,
