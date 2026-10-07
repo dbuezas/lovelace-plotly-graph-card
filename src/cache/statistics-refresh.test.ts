@@ -89,7 +89,9 @@ describe("mutable statistics cache ranges", () => {
       expect(cache.getData(config).statistics[0].end).toBe(
         new Date(last).toISOString(),
       );
-      expect(Date.parse(callWS.mock.calls[1][0].start_time)).toBe(firstTime - 1);
+      expect(Date.parse(callWS.mock.calls[1][0].start_time)).toBe(
+        firstTime - 1,
+      );
     },
   );
 
@@ -195,4 +197,48 @@ describe("mutable statistics cache ranges", () => {
       isLiveStatisticsRange([now + hour, now + 2 * hour], "day", now),
     ).toBe(false);
   });
+
+  it.each(["5minute", "hour"] as const)(
+    "invalidates only the %s publication group",
+    async (publishedPeriod) => {
+      const cache = new Cache();
+      const periods: StatisticPeriod[] = [
+        "5minute",
+        "hour",
+        "day",
+        "week",
+        "month",
+      ];
+      const range: TimestampRange = [start, Date.now()];
+      const rows = [row(start + 11 * hour, start + 12 * hour, 1)];
+      const { hass, callWS } = mockHass(rows);
+      for (const period of periods)
+        await cache.fetch(range, entity(period), hass);
+      callWS.mockClear();
+      now.mockReturnValue(Date.now() + 1000);
+      rows[0] = row(start + 11 * hour, start + 12 * hour, 2);
+      await cache.refreshStatistics(Date.now(), publishedPeriod);
+
+      for (const period of periods) {
+        const refreshed =
+          publishedPeriod === "5minute"
+            ? period === "5minute"
+            : period !== "5minute";
+        await cache.fetch(range, entity(period), hass);
+        expect(cache.getData(entity(period)).ys).toEqual([refreshed ? 2 : 1]);
+      }
+      expect(callWS.mock.calls.map(([request]) => request.period)).toEqual(
+        publishedPeriod === "5minute" ? ["5minute"] : periods.slice(1),
+      );
+
+      callWS.mockClear();
+      now.mockReturnValue(Date.now() + 1000);
+      await cache.refreshStatistics(Date.now());
+      for (const period of periods)
+        await cache.fetch(range, entity(period), hass);
+      expect(callWS.mock.calls.map(([request]) => request.period)).toEqual(
+        periods,
+      );
+    },
+  );
 });

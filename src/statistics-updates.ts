@@ -1,5 +1,6 @@
 import type { HomeAssistant } from "custom-card-helpers";
 import type { StatisticPeriod } from "./recorder-types";
+import type { StatisticsUpdatePeriod } from "./cache/statistics-refresh";
 
 type Connection = Pick<HomeAssistant["connection"], "subscribeEvents">;
 type Subscription = { active: boolean; unsubscribe?: () => void };
@@ -8,7 +9,7 @@ export class StatisticsUpdates {
   private connection?: Connection;
   private subscriptions = new Map<string, Subscription>();
 
-  constructor(private onUpdate: () => void) {}
+  constructor(private onUpdate: (period: StatisticsUpdatePeriod) => void) {}
 
   update(
     connection: Connection | undefined,
@@ -37,7 +38,12 @@ export class StatisticsUpdates {
       this.subscriptions.set(event, subscription);
       connection!
         .subscribeEvents(() => {
-          if (subscription.active) this.onUpdate();
+          if (subscription.active)
+            this.onUpdate(
+              event === "recorder_5min_statistics_generated"
+                ? "5minute"
+                : "hour",
+            );
         }, event)
         .then((unsubscribe) => {
           if (subscription.active) subscription.unsubscribe = unsubscribe;

@@ -1219,7 +1219,10 @@ Update data every `refresh_interval` seconds.
 
 With `auto`, live statistics also refresh when Home Assistant publishes new
 5-minute or hourly statistics, even if the entity's state has not changed.
-Daily, weekly and monthly aggregates refresh with the hourly statistics.
+Each event refreshes only its matching resolution: daily, weekly and monthly
+aggregates refresh with the hourly statistics, not the 5-minute statistics.
+Entity state changes can still update the display without refetching statistics.
+An explicit refresh interval continues to poll at the configured interval.
 
 Examples:
 

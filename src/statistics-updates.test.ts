@@ -37,6 +37,7 @@ describe("statistics update subscriptions", () => {
     ]);
     mock.callbacks.get("recorder_5min_statistics_generated")!();
     expect(update).toHaveBeenCalledTimes(1);
+    expect(update).toHaveBeenCalledWith("5minute");
     subscriptions.disconnect();
   });
 
@@ -84,6 +85,7 @@ describe("statistics update subscriptions", () => {
     expect(update).not.toHaveBeenCalled();
     mock.callbacks.get("recorder_hourly_statistics_generated")!();
     expect(update).toHaveBeenCalledTimes(1);
+    expect(update).toHaveBeenCalledWith("hour");
     subscriptions.update(mock.connection, periods());
     expect(
       mock.unsubscribes.get("recorder_hourly_statistics_generated"),

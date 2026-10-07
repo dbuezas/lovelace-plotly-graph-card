@@ -1,8 +1,13 @@
 import { HomeAssistant } from "custom-card-helpers";
+import type { StatisticPeriod } from "../recorder-types";
 import { compactRanges, subtractRanges } from "./date-ranges";
 import fetchStatistics from "./fetch-statistics";
 import fetchStates, { fetchStatesBatch } from "./fetch-states";
-import { isLiveStatisticsRange } from "./statistics-refresh";
+import {
+  getStatisticsUpdatePeriod,
+  isLiveStatisticsRange,
+  StatisticsUpdatePeriod,
+} from "./statistics-refresh";
 import {
   TimestampRange,
   isEntityIdAttrConfig,
@@ -186,13 +191,15 @@ export default class Cache {
   busy: Promise<unknown> = Promise.resolve(); // mutex
   private mutableStatistics: Record<
     string,
-    { from: number; fetchedAt: number }
+    { from: number; fetchedAt: number; period: StatisticPeriod }
   > = {};
 
-  refreshStatistics(now: number) {
+  refreshStatistics(now: number, period?: StatisticsUpdatePeriod) {
     if (Object.keys(this.mutableStatistics).length === 0) return;
     return this.enqueue(async () => {
       for (const [key, mutable] of Object.entries(this.mutableStatistics)) {
+        if (period && getStatisticsUpdatePeriod(mutable.period) !== period)
+          continue;
         if (mutable.fetchedAt >= now) continue;
         this.ranges[key] = subtractRanges(
           this.ranges[key] || [],
@@ -224,7 +231,11 @@ export default class Cache {
         ? end
         : +latest.x
       : range[0];
-    this.mutableStatistics[getEntityKey(entity)] = { from, fetchedAt };
+    this.mutableStatistics[getEntityKey(entity)] = {
+      from,
+      fetchedAt,
+      period: entity.period,
+    };
   }
 
   private enqueue<T>(job: () => Promise<T>): Promise<T> {
