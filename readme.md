@@ -1202,6 +1202,10 @@ It can be combined with the global `time_offset`.
 Removes all data out of the visible range, and autoscales after each replot.
 Particularly useful when combined with [Range Selector Buttons](#Range-Selector-buttons)
 
+Filter output is clipped after the complete filter chain when all X values are
+`Date` objects. Other X formats and raw Plotly configurations are left unchanged.
+No synthetic edge points are added to generated data.
+
 ```yaml
 type: custom:plotly-graph
 entities:
