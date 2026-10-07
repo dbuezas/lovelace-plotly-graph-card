@@ -198,6 +198,8 @@ describe("Cache merging", () => {
 
     expect(sort).toHaveBeenCalledTimes(1);
     expect(push).toHaveBeenCalledWith(updated);
+    expect(cache.getData(statistics).ys).toEqual([2]);
+    expect(cache.histories[getEntityKey(statistics)][0]).toBe(updated);
     expect(cache.ranges[getEntityKey(statistics)]).toEqual([[0, 20]]);
   });
 

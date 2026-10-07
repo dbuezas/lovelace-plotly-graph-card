@@ -271,7 +271,7 @@ export default class Cache {
         h = h.filter((x, i) => i == 0 || !x.fake_boundary_datapoint);
       }
       // Refetched aggregates can change without changing their bucket timestamp.
-      h = isEntityIdStatisticsConfig(entity)
+      h = isStatistics
         ? h.filter((_, i) => +h[i].x !== +h[i + 1]?.x)
         : h.filter((_, i) => +h[i - 1]?.x !== +h[i].x);
       this.histories[entityKey] = h;
