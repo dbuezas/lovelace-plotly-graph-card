@@ -22,9 +22,7 @@
     "test:card-lifecycle": "node script/test-card-lifecycle.mjs",
     "test:touch": "node script/test-touch-gestures.mjs",
     "test:split": "node script/test-split-build.mjs",
-    "test:watch": "vitest",
-    "version": "npm run build && git add .",
-    "npm-upgrade": "npx npm-upgrade"
+    "test:watch": "vitest"
   },
   "author": "",
   "license": "MIT",
