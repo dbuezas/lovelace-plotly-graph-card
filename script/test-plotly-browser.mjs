@@ -655,7 +655,7 @@ try {
     .filter((name) => name !== "calendars");
   for (const type of ["scatter", ...expected])
     assert(results.results.includes(type), `Missing browser fixture: ${type}`);
-  assert.equal(results.version, "4.1.1");
+  assert.equal(results.version, "4.1.2");
   await page.evaluate(() => {
     customElements.define(
       "ha-card",
