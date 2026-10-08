@@ -106,8 +106,10 @@ function convertDates(value: any, timeZone: string): any {
 
 /**
  * Converts what is handed to Plotly so it is drawn in `timeZone`: all Dates
- * in traces and layout, and numbers on date x axes (ranges, trace x values,
- * and the x of shapes and annotations).
+ * in traces and layout, and the numeric ranges of date x axes (the card's own
+ * visible range). Other numbers are left alone: whether a number is a
+ * timestamp depends on where it is (3D scenes, pixel-sized shapes...), so
+ * times must be given as Dates.
  */
 export function toPlotlyTimeZone<
   T extends { entities: any[]; layout: Record<string, any> },
@@ -125,29 +127,9 @@ export function toPlotlyTimeZone<
       );
     }
   }
-  // Numbers on date axes are timestamps Plotly would draw in the browser's timezone
-  const isDateAxis = (ref: any = "x") =>
-    typeof ref === "string" &&
-    /^x\d*$/.test(ref) &&
-    layout["xaxis" + ref.slice(1)]?.type === "date";
-  const convertNumber = (v: any) =>
-    typeof v === "number" && isFinite(v) ? toPlotlyDateString(v, timeZone) : v;
-  for (const shape of asArray(layout.shapes)) {
-    if (!isDateAxis(shape?.xref)) continue;
-    shape.x0 = convertNumber(shape.x0);
-    shape.x1 = convertNumber(shape.x1);
-  }
-  for (const annotation of asArray(layout.annotations)) {
-    if (isDateAxis(annotation?.xref))
-      annotation.x = convertNumber(annotation.x);
-  }
-  const entities = parsed.entities.map((entity) => {
-    const converted = convertDates(entity, timeZone);
-    if (Array.isArray(converted?.x) && isDateAxis(converted.xaxis))
-      converted.x = converted.x.map(convertNumber);
-    return converted;
-  });
-  return { ...parsed, entities, layout };
+  return {
+    ...parsed,
+    entities: parsed.entities.map((entity) => convertDates(entity, timeZone)),
+    layout,
+  };
 }
-
-const asArray = (value: any): any[] => (Array.isArray(value) ? value : []);

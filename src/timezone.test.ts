@@ -163,35 +163,21 @@ describe("toPlotlyTimeZone", () => {
     expect(parsed.entities[0].x[0]).toBeInstanceOf(Date);
     expect(parsed.layout.xaxis.range[0]).toBe(t);
   });
-  it("converts numbers on date axes only", () => {
-    const result = toPlotlyTimeZone(
-      {
-        entities: [
-          { x: [t, t], y: [0, 1] }, // e.g. the readme's "now line"
-          { x: [t], y: [0], xaxis: "x2" },
-        ],
-        layout: {
-          xaxis: { type: "date" },
-          xaxis2: { type: "linear" },
-          shapes: [
-            { x0: t, x1: t },
-            { x0: 0, x1: 1, xref: "paper" },
-          ],
-          annotations: [{ x: t }, { x: t, xref: "x2" }],
-        },
+  it("leaves numbers outside date axis ranges alone", () => {
+    const parsed = {
+      entities: [
+        { x: [t, t], y: [0, 1] },
+        { type: "scatter3d", x: [1, 2], y: [1, 2], z: [1, 2] },
+      ],
+      layout: {
+        xaxis: { type: "date" },
+        shapes: [{ xsizemode: "pixel", xanchor: t, x0: -2, x1: 2 }],
+        annotations: [{ x: t }],
       },
-      "Asia/Tokyo",
-    );
-    const tokyo = "2024-06-01 21:00:00.000";
-    expect(result.entities[0].x).toEqual([tokyo, tokyo]);
-    expect(result.entities[1].x).toEqual([t]);
-    expect(result.layout.shapes).toEqual([
-      { x0: tokyo, x1: tokyo },
-      { x0: 0, x1: 1, xref: "paper" },
-    ]);
-    expect(result.layout.annotations).toEqual([
-      { x: tokyo },
-      { x: t, xref: "x2" },
-    ]);
+    };
+    const result = toPlotlyTimeZone(parsed, "Asia/Tokyo");
+    expect(result.entities).toEqual(parsed.entities);
+    expect(result.layout.shapes).toEqual(parsed.layout.shapes);
+    expect(result.layout.annotations).toEqual(parsed.layout.annotations);
   });
 });
