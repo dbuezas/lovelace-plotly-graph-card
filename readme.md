@@ -596,7 +596,7 @@ entities:
       - integrate: h # computes area under the curve in a specific unit of time using Right hand riemann integration. Same units as the derivative
       - integrate:
           unit: h # defaults to h
-          reset_every: 1h # Defaults to 0 (never reset). Any duration unit (ms, s, m, h, d, w, M, y).
+          reset_every: 1h # Defaults to 0 (never reset). Any duration unit; see time_zone below for calendar resets.
           offset: 30m # defaults to 0. Resets happen 30m later
 
       - map_y_numbers: Math.sqrt(y + 10*100) # map the y coordinate of each datapoint. Same available variables as for `map_y`
@@ -641,6 +641,8 @@ entities:
       - filter: y !== null && +y > 0 && x > new Date(Date.now()-1000*60*60) # filter out datapoints for which this returns false. Also filters from xs, states and statistics. Same variables as map_y are in scope
       - force_numeric # converts number-lookinig-strings to actual js numbers and removes the rest. Any filters used after this one will receive numbers, not strings or nulls. Also removes respective elements from xs, states and statistics parameters
 ```
+
+See [time_zone](#time_zone) for the calendar rules used by `integrate.reset_every`.
 
 `resample: 1d` uses midnight in the card's [time_zone](#time_zone), following
 the Home Assistant profile setting by default. Whole-day intervals such as

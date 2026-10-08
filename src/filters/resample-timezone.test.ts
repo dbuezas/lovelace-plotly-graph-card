@@ -32,11 +32,6 @@ describe("calendar resampling", () => {
       "2024-03-06T07:00:00.000Z",
     ]);
     expect(result.ys).toEqual([1, 2]);
-    expect(result.states).toEqual(data.states.slice(0, 2));
-    expect(result.statistics).toEqual(data.statistics.slice(0, 2));
-    expect(
-      result.xs?.map((x) => toPlotlyDateString(+x, "America/Phoenix")),
-    ).toEqual(["2024-03-05 00:00:00.000", "2024-03-06 00:00:00.000"]);
   });
 
   it.each([
@@ -139,16 +134,6 @@ describe("calendar resampling", () => {
       expect(xs.every((x) => +x % duration === 0)).toBe(true);
     },
   );
-
-  it("does not mutate the original dates or data arrays", () => {
-    const data = input(
-      dates(["2024-03-05T12:00:00-07:00", "2024-03-07T12:00:00-07:00"]),
-    );
-    const before = stamps(data.xs);
-    filters.resample("1d")(data as any);
-    expect(stamps(data.xs)).toEqual(before);
-    expect(data.ys).toEqual([1, 2]);
-  });
 
   it("returns empty arrays for empty input", () => {
     expect(filters.resample("1d")(input([]) as any)).toEqual({

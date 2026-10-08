@@ -184,10 +184,17 @@ const filters = {
     return ({ xs, ys, meta, timeZone }) => {
       const calendar = calendarInterval(param.reset_every ?? "0s", timeZone);
       const t0 = +startOfDay(Date.now(), inTimeZone(timeZone)) + offset;
-      const resetAt = (x: number) =>
-        calendar
-          ? calendar.floor(x - offset) + offset
-          : t0 + Math.floor((x - t0) / reset_every) * reset_every;
+      let start = NaN,
+        end = NaN;
+      const resetAt = (x: number) => {
+        if (!calendar)
+          return t0 + Math.floor((x - t0) / reset_every) * reset_every;
+        if (!(x >= start && x < end)) {
+          start = calendar.floor(x - offset) + offset;
+          end = calendar.next(start - offset) + offset;
+        }
+        return start;
+      };
       let yAcc = 0;
       let last = {
         x: NaN,
