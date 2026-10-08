@@ -27,6 +27,37 @@
       ],
       "type": "object"
     },
+    "With$fn<EntityName|undefined>": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/With$fn<{type:\"entity\"|\"device\"|\"area\"|\"floor\";}>"
+        },
+        {
+          "$ref": "#/definitions/With$fn<{type:\"text\";text:string;}>"
+        },
+        {
+          "items": {
+            "anyOf": [
+              {
+                "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
+                "type": "string"
+              },
+              {
+                "$ref": "#/definitions/With$fn<{type:\"entity\"|\"device\"|\"area\"|\"floor\";}>_1"
+              },
+              {
+                "$ref": "#/definitions/With$fn<{type:\"text\";text:string;}>_1"
+              }
+            ]
+          },
+          "type": "array"
+        },
+        {
+          "type": "string"
+        }
+      ],
+      "description": "A `name` option: a plain string, or name parts resolved from the registry."
+    },
     "With$fn<InputEntityOptions>": {
       "properties": {
         "attribute": {
@@ -152,7 +183,8 @@
           ]
         },
         "name": {
-          "$ref": "#/definitions/With$fn<string|undefined>"
+          "$ref": "#/definitions/With$fn<EntityName|undefined>",
+          "description": "A plain string, or name parts resolved from the entity's registry context."
         },
         "offset": {
           "anyOf": [
@@ -919,6 +951,104 @@
       },
       "required": [
         "trendline"
+      ],
+      "type": "object"
+    },
+    "With$fn<{type:\"entity\"|\"device\"|\"area\"|\"floor\";}>": {
+      "properties": {
+        "type": {
+          "anyOf": [
+            {
+              "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
+              "type": "string"
+            },
+            {
+              "enum": [
+                "area",
+                "device",
+                "entity",
+                "floor"
+              ],
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "type": "object"
+    },
+    "With$fn<{type:\"entity\"|\"device\"|\"area\"|\"floor\";}>_1": {
+      "properties": {
+        "type": {
+          "anyOf": [
+            {
+              "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
+              "type": "string"
+            },
+            {
+              "enum": [
+                "area",
+                "device",
+                "entity",
+                "floor"
+              ],
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "type": "object"
+    },
+    "With$fn<{type:\"text\";text:string;}>": {
+      "properties": {
+        "text": {
+          "type": "string"
+        },
+        "type": {
+          "anyOf": [
+            {
+              "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
+              "type": "string"
+            },
+            {
+              "const": "text",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "required": [
+        "text",
+        "type"
+      ],
+      "type": "object"
+    },
+    "With$fn<{type:\"text\";text:string;}>_1": {
+      "properties": {
+        "text": {
+          "type": "string"
+        },
+        "type": {
+          "anyOf": [
+            {
+              "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
+              "type": "string"
+            },
+            {
+              "const": "text",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "required": [
+        "text",
+        "type"
       ],
       "type": "object"
     },
