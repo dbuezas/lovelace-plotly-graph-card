@@ -7,6 +7,7 @@ type PlotlyEl = Plotly.PlotlyHTMLElement & {
   // and modify them" (plotly.js dragelement)
   _dragging?: boolean;
   _dragged?: boolean;
+  _context?: { _scrollZoom?: { cartesian?: boolean } };
 };
 
 // Public, but missing in the plotly.js types
@@ -52,15 +53,28 @@ const takeOver = (el: PlotlyEl) => {
 
 // Zoom and pan go through Plotly's scroll zoom, so Plotly handles axis types,
 // fixedrange and redraws. Each wheel event scales the ranges by
-// exp(deltaY / 200), with deltaY capped at ±20.
+// exp(deltaY / 200), with deltaY capped at ±20. Plotly ignores wheel events
+// with `scrollZoom: false`, which is meant for the mouse, so it is turned on
+// just for these.
 const WHEEL_STEP = 20;
 const wheel = (
   dragger: Element,
   clientX: number,
   clientY: number,
   deltaY: number
-) =>
-  dragger.dispatchEvent(new WheelEvent("wheel", { clientX, clientY, deltaY }));
+) => {
+  const scrollZoom =
+    dragger.closest<PlotlyEl>(".js-plotly-plot")?._context?._scrollZoom;
+  const enabled = scrollZoom?.cartesian;
+  if (scrollZoom) scrollZoom.cartesian = true;
+  try {
+    dragger.dispatchEvent(
+      new WheelEvent("wheel", { clientX, clientY, deltaY })
+    );
+  } finally {
+    if (scrollZoom) scrollZoom.cartesian = enabled;
+  }
+};
 const zoomAt = (dragger: Element, x: number, y: number, factor: number) => {
   const deltaY = 200 * Math.log(factor);
   const steps = Math.ceil(Math.abs(deltaY) / WHEEL_STEP);
