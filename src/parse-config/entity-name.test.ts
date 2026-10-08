@@ -148,9 +148,24 @@ describe("entity names", () => {
     expect(nameOf(result)).toBe("Trend");
   });
 
-  it("falls back to friendly_name when the formatter is missing", async () => {
-    const hass = createHass({ formatEntityName: undefined } as any);
-    const result = await parse([{ entity: STATE.entity_id }], hass);
-    expect(nameOf(result)).toBe("Living room Thermostat Temperature");
+  it.each([
+    ["the formatter is missing", { formatEntityName: undefined }],
+    ["HA is older than 2026.4", { config: { version: "2026.3.0" } }],
+  ])("falls back to friendly_name when %s", async (_, overrides) => {
+    const hass = createHass({
+      formatEntityName: () => "formatted",
+      ...overrides,
+    } as any);
+    const result = await parse(
+      [
+        STATE.entity_id,
+        { entity: STATE.entity_id, name: [{ type: "area" }] },
+      ] as any,
+      hass,
+    );
+    expect(result.parsed.entities.map((e: any) => e.name)).toEqual([
+      "Living room Thermostat Temperature",
+      "Living room Thermostat Temperature",
+    ]);
   });
 });
