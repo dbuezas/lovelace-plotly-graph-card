@@ -274,7 +274,7 @@ export default class Cache {
     return result;
   }
 
-  add(entity: FetchConfig, states: CachedEntity[], range: [number, number]) {
+  add(entity: FetchConfig, states: CachedEntity[], range?: [number, number]) {
     const entityKey = getEntityKey(entity);
     let h = (this.histories[entityKey] ??= []);
     const isStatistics = isEntityIdStatisticsConfig(entity);
@@ -306,9 +306,12 @@ export default class Cache {
         : h.filter((_, i) => +h[i - 1]?.x !== +h[i].x);
       this.histories[entityKey] = h;
     }
-    this.ranges[entityKey] ??= [];
-    this.ranges[entityKey].push(range);
-    this.ranges[entityKey] = compactRanges(this.ranges[entityKey]);
+    // Frontend snapshots add a point, not evidence of complete history coverage.
+    if (range) {
+      this.ranges[entityKey] ??= [];
+      this.ranges[entityKey].push(range);
+      this.ranges[entityKey] = compactRanges(this.ranges[entityKey]);
+    }
   }
 
   clearCache() {

@@ -67,11 +67,10 @@ describe("history update streams", () => {
       ],
     };
     f.callbacks[0]({ states });
-    expect(f.update).toHaveBeenCalledWith(states);
+    expect(f.update).toHaveBeenCalledWith(states, 10000);
     f.stream.disconnect();
     f.callbacks[0]({ states });
     expect(f.update).toHaveBeenCalledTimes(1);
-    expect(f.unsubscribes[0]).toHaveBeenCalledTimes(1);
     expect(f.ready.size).toBe(0);
   });
 
@@ -89,9 +88,58 @@ describe("history update streams", () => {
       no_attributes: false,
     });
     expect(f.subscribeMessage.mock.calls[1][2]).toEqual({ resubscribe: false });
+    expect(f.unsubscribes[0]).not.toHaveBeenCalled();
     f.callbacks[0]({ states: {} });
     f.callbacks[1]({ states: {} });
     expect(f.update).toHaveBeenCalledTimes(1);
+    f.stream.disconnect();
+  });
+
+  it("does not replay a busy entity's whole window because another entity is quiet", async () => {
+    const f = fixture();
+    const now = 100000000;
+    const clock = jest.spyOn(Date, "now").mockReturnValue(now);
+    try {
+      f.stream.update(
+        f.connection,
+        ["sensor.busy", "binary_sensor.quiet"],
+        false,
+        (id) => (id === "sensor.busy" ? now - 1000 : now - 24 * 3600000),
+      );
+      expect(
+        f.subscribeMessage.mock.calls.map(([, request]) => request),
+      ).toEqual([
+        expect.objectContaining({
+          entity_ids: ["binary_sensor.quiet"],
+          start_time: new Date(now - 24 * 3600000 - 1).toISOString(),
+        }),
+        expect.objectContaining({
+          entity_ids: ["sensor.busy"],
+          start_time: new Date(now - 1001).toISOString(),
+        }),
+      ]);
+    } finally {
+      f.stream.disconnect();
+      clock.mockRestore();
+    }
+  });
+
+  it("does not unsubscribe a pending old-socket stream after reconnect", async () => {
+    const f = fixture();
+    const unsubscribe = jest.fn();
+    let resolve!: (value: jest.Mock) => void;
+    f.subscribeMessage.mockImplementationOnce(
+      () =>
+        new Promise((done) => {
+          resolve = done;
+        }),
+    );
+    f.stream.update(f.connection, ["sensor.a"], false, () => 10000);
+    for (const ready of f.ready) ready();
+    resolve(unsubscribe);
+    await Promise.resolve();
+    expect(unsubscribe).not.toHaveBeenCalled();
+    expect(f.stream.has("sensor.a")).toBe(true);
     f.stream.disconnect();
   });
 
@@ -114,7 +162,7 @@ describe("history update streams", () => {
     f.stream.disconnect();
   });
 
-  it("falls back without throwing if a stream cannot be established", async () => {
+  it("falls back after a failed stream and retries only when the connection is ready", async () => {
     const f = fixture();
     const warning = jest.spyOn(console, "warn").mockImplementation(() => {});
     try {
@@ -123,8 +171,14 @@ describe("history update streams", () => {
       await Promise.resolve();
       await Promise.resolve();
       expect(f.stream.has("sensor.a")).toBe(false);
-      f.stream.update(f.connection, ["sensor.a"], false, () => 10000);
+      for (let index = 0; index < 50; index++)
+        f.stream.update(f.connection, ["sensor.a"], false, () => 10000);
       await Promise.resolve();
+      expect(f.subscribeMessage).toHaveBeenCalledTimes(1);
+      expect(f.stream.has("sensor.a")).toBe(false);
+      for (const ready of f.ready) ready();
+      await Promise.resolve();
+      expect(f.subscribeMessage).toHaveBeenCalledTimes(2);
       expect(f.stream.has("sensor.a")).toBe(true);
       f.stream.update(f.connection, [], false, () => 10000);
       expect(f.stream.has("sensor.a")).toBe(false);

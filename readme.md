@@ -1261,9 +1261,10 @@ Update data every `refresh_interval` seconds.
 
 With `auto`, live state history uses Home Assistant's history stream. Unlike
 frontend state snapshots, the stream includes intermediate changes in a burst
-and catches up with states that Recorder has not committed yet. A card uses one
-stream for its live history entities and closes it when removed or when automatic
-refresh is disabled.
+and catches up with states that Recorder has not committed yet. Entities with
+the same history start time share a stream, so a quiet entity does not make a
+busy entity replay older history. Streams close when the card is removed or
+automatic refresh is disabled.
 
 With `auto`, live statistics also refresh when Home Assistant publishes new
 5-minute or hourly statistics, even if the entity's state has not changed.

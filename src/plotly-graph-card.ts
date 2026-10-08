@@ -66,13 +66,14 @@ export class PlotlyGraph extends HTMLElement {
     this.statisticsFetchPeriods.add(period);
     this.plot({ should_fetch: false }, 500);
   });
-  historyUpdates = new HistoryUpdates((states) => {
+  historyUpdates = new HistoryUpdates((states, start) => {
     let changed = false;
     for (const entity of this.configParser.historyEntities) {
       const history = mapStates(entity.entity, states[entity.entity]);
       if (!history.length) continue;
+      // The stream is complete from its start, including intervals with no changes.
       this.configParser.cache.add(entity, history, [
-        +history[0].x,
+        Math.min(start, +history[0].x),
         +history.at(-1)!.x,
       ]);
       changed = true;
@@ -384,8 +385,7 @@ export class PlotlyGraph extends HTMLElement {
           ) {
             this.configParser.cache.add(
               entity,
-              [{ state, x: new Date(end), y: null }],
-              [+end, +end],
+              [{ state, x: new Date(end), y: null, unconfirmed: true }],
             );
           }
         }
@@ -413,14 +413,21 @@ export class PlotlyGraph extends HTMLElement {
       this.hass?.connection,
       entities.map((entity) => entity.entity),
       entities.some(isEntityIdAttrConfig),
-      () =>
+      (entityId) =>
         Math.min(
-          ...entities.map((entity) => {
-            const key = getEntityKey(entity);
-            const cache = this.configParser.cache;
-            return cache.histories[key]?.at(-1)?.x.getTime() ??
-              cache.ranges[key]?.[0]?.[0] ?? Date.now();
-          }),
+          ...entities
+            .filter((entity) => entity.entity === entityId)
+            .map((entity) => {
+              const key = getEntityKey(entity);
+              const cache = this.configParser.cache;
+              const history = cache.histories[key] ?? [];
+              for (let index = history.length - 1; index >= 0; index--) {
+                const row = history[index];
+                if (!("unconfirmed" in row && row.unconfirmed))
+                  return row.x.getTime();
+              }
+              return cache.ranges[key]?.[0]?.[0] ?? Date.now();
+            }),
         ),
     );
   }

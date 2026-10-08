@@ -192,6 +192,7 @@ export type CachedBaseEntity = {
 };
 export type CachedStateEntity = CachedBaseEntity & {
   state: HassEntity;
+  unconfirmed?: true;
 };
 export type CachedStatisticsEntity = CachedBaseEntity & {
   statistics: StatisticValue;

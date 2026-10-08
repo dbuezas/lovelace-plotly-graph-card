@@ -1,5 +1,6 @@
 import type { HomeAssistant } from "custom-card-helpers";
 import Cache from "./Cache";
+import { mapStates } from "./fetch-states";
 
 const start = Date.parse("2026-10-08T12:00:00Z");
 const second = 1000;
@@ -25,6 +26,27 @@ function recorder() {
 
 describe("late recorder history", () => {
   afterEach(() => jest.restoreAllMocks());
+
+  it("does not mark frontend fallback samples as complete history", async () => {
+    const clock = jest.spyOn(Date, "now").mockReturnValue(start + 10 * second);
+    const cache = new Cache();
+    const { rows, hass } = recorder();
+    await cache.fetch([start, Date.now()], entity, hass);
+    rows.push({ s: "3", lu: (start + 6 * second) / 1000 });
+    cache.add(
+      entity,
+      mapStates(entity.entity, [
+        {
+          s: "4",
+          lu: (start + 8 * second) / 1000,
+        },
+      ]),
+    );
+    expect(cache.ranges[entity.entity]).toEqual([[start, start + 10 * second]]);
+    clock.mockReturnValue(start + 20 * second);
+    await cache.fetch([start, Date.now()], entity, hass);
+    expect(cache.getData(entity).ys).toEqual(["1", "2", "3", "4"]);
+  });
 
   it.each(["single", "batched"])(
     "recovers a late state through the %s path",
