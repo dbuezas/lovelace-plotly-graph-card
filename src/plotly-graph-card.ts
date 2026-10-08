@@ -1,8 +1,8 @@
+import "./global-shim";
 import { HomeAssistant } from "custom-card-helpers";
 import EventEmitter from "events";
 import { version } from "../package.json";
-import insertStyleHack from "./style-hack";
-import Plotly from "./plotly";
+import copyPlotlyStyles from "./style-hack";
 import {
   Config,
   InputConfig,
@@ -24,6 +24,7 @@ import {
 } from "./loading-state";
 import { readThemeColors } from "./parse-config/themed-layout";
 import { getFetchMask } from "./plot-state";
+import { inTimeZone } from "./timezone";
 import { getEditorYAxisRelayout } from "./parse-config/defaults";
 import { prepareHistoryLineGaps } from "./history-line-gaps";
 import { StatisticsUpdates } from "./statistics-updates";
@@ -43,6 +44,7 @@ export class PlotlyGraph extends HTMLElement {
     layout: Plotly.Layout;
   };
   errorMsgEl: HTMLElement;
+  plotlyStyleEl: HTMLStyleElement;
   cardEl: HTMLElement;
   resetButtonEl: HTMLButtonElement;
   titleEl: HTMLElement;
@@ -219,7 +221,7 @@ export class PlotlyGraph extends HTMLElement {
     this.resetButtonEl = shadow.querySelector("button#reset")!;
     this.titleEl = shadow.querySelector("ha-card > #title")!;
     this.loadingEl = shadow.querySelector("#loading")!;
-    insertStyleHack(shadow.querySelector("style")!);
+    this.plotlyStyleEl = shadow.appendChild(document.createElement("style"));
     this.contentEl.style.visibility = "hidden";
     this.touchController = new TouchController({
       el: this.contentEl,
@@ -267,6 +269,8 @@ export class PlotlyGraph extends HTMLElement {
     this.resetButtonEl.addEventListener("click", this.exitBrowsingMode);
     this.touchController.connect();
     this.updateStatisticsSubscriptions();
+    // Start downloading Plotly while the data is fetched (errors show on render)
+    import("./plotly").catch(() => {});
     this.plot({ should_fetch: true, refresh_statistics: true });
   }
 
@@ -395,6 +399,10 @@ export class PlotlyGraph extends HTMLElement {
   }
 
   getVisibleRange() {
+    // Plotly hands back the wall clock times it was given, in the card's time
+    // zone. Known issue: with @date-fns/tz 1.5, a time inside a DST gap of the
+    // browser's own zone comes back shifted (https://github.com/date-fns/tz/pull/79)
+    const options = inTimeZone(this.configParser.timeZone);
     // TODO: if the x axis is not there, or is not time, don't fetch & replot
     return this.contentEl.layout.xaxis?.range?.map((date) => {
       // if autoscale is used after scrolling, plotly returns the dates as timestamps (numbers) instead of iso strings
@@ -412,10 +420,11 @@ export class PlotlyGraph extends HTMLElement {
          timestamp = 2 * (year 0) - (-date)
         */
         return (
-          2 * +parseISO("0000-01-01 00:00:00.000") - +parseISO(date.slice(1))
+          2 * +parseISO("0000-01-01 00:00:00.000", options) -
+          +parseISO(date.slice(1), options)
         );
       }
-      return +parseISO(date);
+      return +parseISO(date, options);
     });
   }
   enterBrowsingMode = () => {
@@ -635,6 +644,24 @@ export class PlotlyGraph extends HTMLElement {
       if (layout.paper_bgcolor) {
         this.titleEl.style.background = layout.paper_bgcolor as string;
       }
+      // Plotly is only downloaded once a card is drawn
+      let Plotly: typeof import("./plotly").default;
+      try {
+        const plotly = await import("./plotly");
+        const locale = await plotly.loadPlotlyModules(
+          entities,
+          layout,
+          config.locale
+        );
+        if (locale) config.locale = locale;
+        Plotly = plotly.default;
+      } catch (e: any) {
+        this.errorMsgEl.style.display = "block";
+        this.errorMsgEl.innerText = `Some files of the card didn't load (${e?.message}). Reload the page. If it keeps happening, reinstall the card (for a manual install, copy all files of the release).`;
+        return;
+      }
+      copyPlotlyStyles(this.plotlyStyleEl);
+      this.touchController.Fx = (Plotly as any).Fx;
       await this.withoutRelayout(async () => {
         const drawnEntities = prepareHistoryLineGaps(
           entities,

@@ -344,15 +344,19 @@ function pruneDefinitions(schema) {
   );
 }
 
+// Trace types of src/plotly.ts: scatter (in Plotly's core), the ones it
+// registers directly, and the ones it loads on demand (keys of `groupOf`).
 export function registeredTraceTypes(source, plotlySchema) {
-  const traceSection = source
-    .split("// traces", 2)[1]
-    ?.split("// components", 1)[0];
-  if (!traceSection) throw new Error("Could not find the Plotly trace section");
+  const groupOf = source.split("const groupOf", 2)[1]?.split("};", 1)[0];
+  if (!groupOf) throw new Error("Could not find the Plotly trace groups");
 
   const traces = ["scatter"];
-  const pattern = /^\s*require\("plotly\.js\/lib\/([a-z0-9]+)"\),/gm;
-  for (const match of traceSection.matchAll(pattern)) traces.push(match[1]);
+  const register = /Plotly\.register\(\[([^\]]*)\]\)/g;
+  for (const [, modules] of source.matchAll(register))
+    for (const [, trace] of modules.matchAll(/plotly\.js\/lib\/([a-z0-9]+)/g))
+      traces.push(trace);
+  for (const [, trace] of groupOf.matchAll(/^\s*([a-z0-9]+):/gm))
+    traces.push(trace);
 
   const unique = [...new Set(traces)];
   const missing = unique.filter((trace) => !plotlySchema.traces[trace]);

@@ -4,6 +4,7 @@ import {
 } from "./parse-config/parse-color-scheme";
 
 import { RelativeTimeStr, TimeDurationStr } from "./duration/duration";
+import { EntityName } from "./entity-name";
 import {
   AutoPeriodConfig,
   StatisticPeriod,
@@ -22,7 +23,8 @@ export type YValue = number | string | null;
 
 export type InputEntityOptions = {
   entity?: string;
-  name?: string;
+  /** A plain string, or name parts resolved from the entity's registry context. */
+  name?: EntityName;
   attribute?: string;
   statistic?: StatisticType;
   period?: StatisticPeriod | "auto" | AutoPeriodConfig;
@@ -94,6 +96,12 @@ export type InputConfig = {
   disable_pinch_to_zoom?: boolean; // old, same as extended_touch_support: false
   autorange_after_scroll?: boolean; // defaults to false
   preset?: string | string[];
+  /**
+   * Timezone the x axis is drawn in: "local" (the browser's), "server"
+   * (Home Assistant's), or an IANA name like "Europe/Rome".
+   * Defaults to the Home Assistant user profile setting.
+   */
+  time_zone?: "local" | "server" | string;
 };
 
 export type EntityConfig = EntityIdConfig & {
@@ -137,6 +145,7 @@ export type Config = {
   visible_range: [number, number];
   on_dblclick: Function;
   autorange_after_scroll: boolean;
+  time_zone?: "local" | "server" | string;
 };
 export type EntityIdStateConfig = {
   entity: string;
