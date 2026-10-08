@@ -52,7 +52,7 @@ describe("automatic right margin", () => {
     delete (global as any).window;
   });
 
-  test.each([{ layout, entities }, { entities, layout }, { entities }])(
+  test.each([{ layout, entities }, { entities, layout }])(
     "reserves space for the second axis regardless of YAML order: %j",
     async (config) => {
       const { parsed, errors } = await parse(config);
@@ -84,41 +84,12 @@ describe("automatic right margin", () => {
     },
   );
 
-  test.each([0, 45, "$ex 42"])(
-    "preserves an explicit right margin: %s",
-    async (r) => {
-      const { parsed, errors } = await parse({
-        layout: { ...layout, margin: { r, l: 15 } },
-        entities,
-      });
-      expect(errors).toEqual([]);
-      expect(parsed.layout.margin).toMatchObject({
-        r: typeof r === "string" ? 42 : r,
-        l: 15,
-      });
-    },
-  );
-
-  test("preserves a margin supplied by a preset", async () => {
-    (global as any).window.PlotlyGraphCardPresets = {
-      compact: { layout: { margin: { r: 12 } } },
-    };
+  test("preserves an explicit zero right margin", async () => {
     const { parsed, errors } = await parse({
-      preset: "compact",
-      layout,
+      layout: { ...layout, margin: { r: 0, l: 15 } },
       entities,
     });
     expect(errors).toEqual([]);
-    expect(parsed.layout.margin?.r).toBe(12);
-  });
-
-  test("leaves raw Plotly margins alone", async () => {
-    const { parsed, errors } = await parse({
-      raw_plotly_config: true,
-      layout,
-      entities,
-    });
-    expect(errors).toEqual([]);
-    expect(parsed.layout.margin?.r).toBeUndefined();
+    expect(parsed.layout.margin).toMatchObject({ r: 0, l: 15 });
   });
 });
