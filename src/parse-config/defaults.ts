@@ -236,17 +236,9 @@ export function addPreParsingDefaults(
       entity.entity = oldAPI_entity;
       entity.attribute = oldAPI_attribute;
     }
-    // A structured name has to become a string here: the parser walks anything
-    // object-shaped as config, which would leave the parts in the trace name.
-    // An empty name has always meant "use Home Assistant's name", so drop it and
-    // let the default below compose one.
-    if (entity.name === "") {
-      delete entity.name;
-    } else if (entity.name && typeof entity.name !== "string") {
-      entity.name =
-        computeEntityName(hass, hass?.states[entity.entity], entity.name) ??
-        entity.entity;
-    }
+    // An empty name has always meant "use Home Assistant's name"
+    if (entity.name === "") delete entity.name;
+    const entityName = entity.name;
     const entityFilters = entity.filters;
     entity = merge(
       {},
@@ -256,6 +248,15 @@ export function addPreParsingDefaults(
       yaml.defaults?.entity,
       entity
     );
+    // An entity's name list replaces the default one instead of being merged by index
+    if (entityName !== undefined) entity.name = entityName;
+    // A structured name has to become a string: the parser walks anything
+    // object-shaped as config. After merging, so defaults.entity and presets
+    // count too.
+    if (entity.name && typeof entity.name === "object") {
+      const id = entity.entity ?? "";
+      entity.name = computeEntityName(hass, hass?.states[id], entity.name) ?? id;
+    }
     // Entity filters replace defaults.entity.filters instead of being merged by index
     if (entityFilters !== undefined)
       entity.filters = Array.isArray(entityFilters)

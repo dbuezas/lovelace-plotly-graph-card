@@ -51,12 +51,14 @@ function createHass(overrides: Partial<HomeAssistant> = {}): HomeAssistant {
 function parse(
   entities: InputConfig["entities"],
   hass: HomeAssistant = createHass(),
+  extra: Partial<InputConfig> = {},
 ) {
   return new ConfigParser().update({
     yaml: {
       type: "custom:plotly-graph",
       hours_to_show: 24,
       entities,
+      ...extra,
     } as InputConfig,
     hass,
     css_vars: cssVars,
@@ -109,6 +111,24 @@ describe("entity names", () => {
       } as any,
     ]);
     expect(nameOf(result)).toBe("<entity>");
+  });
+
+  it("resolves a structured name from defaults, unless the entity sets its own", async () => {
+    const defaults = {
+      defaults: { entity: { name: [{ type: "area" }, { type: "entity" }] } },
+    } as any;
+    const result = await parse(
+      [
+        STATE.entity_id,
+        { entity: STATE.entity_id, name: [{ type: "device" }] },
+      ] as any,
+      createHass(),
+      defaults,
+    );
+    expect(result.parsed.entities.map((e: any) => e.name)).toEqual([
+      "<area> <entity>",
+      "<device>",
+    ]);
   });
 
   it("treats an empty name as no name configured", async () => {
