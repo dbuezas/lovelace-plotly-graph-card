@@ -1,7 +1,13 @@
 import { HomeAssistant } from "custom-card-helpers";
+import type { StatisticPeriod } from "../recorder-types";
 import { compactRanges, subtractRanges } from "./date-ranges";
 import fetchStatistics from "./fetch-statistics";
 import fetchStates, { fetchStatesBatch } from "./fetch-states";
+import {
+  getStatisticsUpdatePeriod,
+  isLiveStatisticsRange,
+  StatisticsUpdatePeriod,
+} from "./statistics-refresh";
 import {
   TimestampRange,
   isEntityIdAttrConfig,
@@ -59,6 +65,7 @@ async function fetchSingleRange(
 ): Promise<{
   range: [number, number];
   history: CachedEntity[];
+  fetchedAt: number;
 }> {
   // We fetch slightly more than requested (i.e the range visible in the screen). The reason is the following:
   // When fetching data in a range `[startT,endT]`, Home Assistant adds a fictitious datapoint at
@@ -99,7 +106,8 @@ async function fetchSingleRange(
   //
   // The above does not apply to statistics data where there are no fake data points.
 
-  const { dates, range } = getFetchRange([startT, endT]);
+  const fetchedAt = Date.now();
+  const { dates, range } = getFetchRange([startT, endT], fetchedAt);
   let history: CachedEntity[];
   if (isEntityIdStatisticsConfig(entity)) {
     history = (await fetchStatistics(hass, [entity], dates))[entity.entity];
@@ -113,6 +121,7 @@ async function fetchSingleRange(
   return {
     range,
     history,
+    fetchedAt,
   };
 }
 
@@ -134,7 +143,7 @@ function upperBound(history: CachedEntity[], timestamp: number) {
   let high = history.length;
   while (low < high) {
     const middle = Math.floor((low + high) / 2);
-    if (+history[middle].x <= timestamp) low = middle + 1;
+    if (history[middle].x.getTime() <= timestamp) low = middle + 1;
     else high = middle;
   }
   return low;
@@ -145,6 +154,7 @@ function selectHistory(
   ranges: TimestampRange[]
 ): CachedEntity[] {
   const selected: CachedEntity[] = [];
+  let next = 0; // cached timestamps are unique, so skip by index
   for (const [start, end] of compactRanges(ranges)) {
     // Keep the latest point at or before the range so the trace reaches the
     // left edge even when no state changed there.
@@ -152,11 +162,9 @@ function selectHistory(
     const first = Math.max(0, firstAfterStart - 1);
     const last = upperBound(history, end);
     if (first === 0 && last === history.length) return history;
-    for (let index = first; index < last; index++) {
-      const state = history[index];
-      const previous = selected[selected.length - 1];
-      if (!previous || +previous.x !== +state.x) selected.push(state);
-    }
+    for (let index = Math.max(first, next); index < last; index++)
+      selected.push(history[index]);
+    next = Math.max(next, last);
   }
   return selected;
 }
@@ -180,6 +188,54 @@ export default class Cache {
   ranges: Record<string, TimestampRange[]> = {};
   histories: Record<string, CachedEntity[]> = {};
   busy: Promise<unknown> = Promise.resolve(); // mutex
+  private mutableStatistics: Record<
+    string,
+    { from: number; fetchedAt: number; period: StatisticPeriod }
+  > = {};
+
+  refreshStatistics(now: number, period?: StatisticsUpdatePeriod) {
+    if (Object.keys(this.mutableStatistics).length === 0) return;
+    return this.enqueue(async () => {
+      for (const [key, mutable] of Object.entries(this.mutableStatistics)) {
+        if (period && getStatisticsUpdatePeriod(mutable.period) !== period)
+          continue;
+        if (mutable.fetchedAt >= now) continue;
+        this.ranges[key] = subtractRanges(
+          this.ranges[key] || [],
+          [[mutable.from, Number.POSITIVE_INFINITY]],
+        );
+        delete this.mutableStatistics[key];
+      }
+    });
+  }
+
+  private trackMutableStatistics(
+    entity: EntityIdStatisticsConfig,
+    history: CachedStatisticsEntity[],
+    range: TimestampRange,
+    fetchedAt: number,
+  ) {
+    if (!isLiveStatisticsRange(range, entity.period, fetchedAt)) return;
+    const latest = history.reduce<CachedStatisticsEntity | undefined>(
+      (last, row) => (!last || +row.x > +last.x ? row : last),
+      undefined
+    );
+    const end = latest ? +new Date(latest.statistics.end) : NaN;
+    // Completed buckets are stable, but their missing successors are not.
+    // Calendar aggregates may still be partial at rollover if the final
+    // hourly row has not been published yet.
+    const complete = entity.period === "5minute" || entity.period === "hour";
+    const from = latest
+      ? complete && Number.isFinite(end) && end > +latest.x && end <= fetchedAt
+        ? end
+        : +latest.x
+      : range[0];
+    this.mutableStatistics[getEntityKey(entity)] = {
+      from,
+      fetchedAt,
+      period: entity.period,
+    };
+  }
 
   private enqueue<T>(job: () => Promise<T>): Promise<T> {
     const result = this.busy.catch(() => {}).then(job);
@@ -190,13 +246,35 @@ export default class Cache {
   add(entity: FetchConfig, states: CachedEntity[], range: [number, number]) {
     const entityKey = getEntityKey(entity);
     let h = (this.histories[entityKey] ??= []);
-    for (const state of states) h.push(state);
-    h.sort((a, b) => +a.x - +b.x);
-    if (!isEntityIdStatisticsConfig(entity)) {
-      h = h.filter((x, i) => i == 0 || !x.fake_boundary_datapoint);
+    const isStatistics = isEntityIdStatisticsConfig(entity);
+    // A newer single sample cannot disturb the sorted, deduplicated history.
+    const canAppend =
+      states.length === 1 &&
+      h.length > 0 &&
+      +states[0].x > +h[h.length - 1].x &&
+      (!states[0].fake_boundary_datapoint || isStatistics);
+    // Shared attribute traces can add the same state twice. The merge keeps
+    // the existing history sample, but the fetched range still needs recording.
+    const canSkip =
+      states.length === 1 &&
+      h.length > 0 &&
+      !isStatistics &&
+      !states[0].fake_boundary_datapoint &&
+      +states[0].x === +h[h.length - 1].x;
+    if (canAppend) {
+      h.push(states[0]);
+    } else if (!canSkip) {
+      for (const state of states) h.push(state);
+      h.sort((a, b) => +a.x - +b.x);
+      if (!isStatistics) {
+        h = h.filter((x, i) => i == 0 || !x.fake_boundary_datapoint);
+      }
+      // Refetched aggregates can change without changing their bucket timestamp.
+      h = isStatistics
+        ? h.filter((_, i) => +h[i].x !== +h[i + 1]?.x)
+        : h.filter((_, i) => +h[i - 1]?.x !== +h[i].x);
+      this.histories[entityKey] = h;
     }
-    h = h.filter((_, i) => +h[i - 1]?.x !== +h[i].x);
-    this.histories[entityKey] = h;
     this.ranges[entityKey] ??= [];
     this.ranges[entityKey].push(range);
     this.ranges[entityKey] = compactRanges(this.ranges[entityKey]);
@@ -205,6 +283,7 @@ export default class Cache {
   clearCache() {
     this.ranges = {};
     this.histories = {};
+    this.mutableStatistics = {};
   }
 
   getData(entity: FetchConfig, ranges?: TimestampRange[]): EntityData {
@@ -213,33 +292,30 @@ export default class Cache {
     const history = ranges
       ? selectHistory(cachedHistory, ranges)
       : cachedHistory;
-    const data: EntityData = {
-      xs: [],
-      ys: [],
-      states: [],
-      statistics: [],
-    };
-    data.xs = history.map(({ x }) => x);
+    const data: EntityData = { xs: [], ys: [], states: [], statistics: [] };
+    // see https://github.com/dbuezas/lovelace-plotly-graph-card/issues/146
+    // and https://github.com/dbuezas/lovelace-plotly-graph-card/commit/3d915481002d03011bcc8409c2dcc6e6fb7c8674#r94899109
+    const clean = (y) =>
+      y === "unavailable" || y === "none" || y === "unknown" ? null : y;
     if (isEntityIdStatisticsConfig(entity)) {
-      data.statistics = (history as CachedStatisticsEntity[]).map(
-        ({ statistics }) => statistics
-      );
-      data.ys = data.statistics.map((s) => s[entity.statistic]);
-    } else if (isEntityIdAttrConfig(entity)) {
-      data.states = (history as CachedStateEntity[]).map(({ state }) => state);
-      data.ys = data.states.map((s) => s.attributes[entity.attribute]);
-    } else if (isEntityIdStateConfig(entity)) {
-      data.states = (history as CachedStateEntity[]).map(({ state }) => state);
-      data.ys = data.states.map((s) => s.state);
+      for (const { x, statistics } of history as CachedStatisticsEntity[]) {
+        data.xs.push(x);
+        data.statistics.push(statistics);
+        data.ys.push(clean(statistics[entity.statistic]));
+      }
+    } else if (isEntityIdAttrConfig(entity) || isEntityIdStateConfig(entity)) {
+      const attribute = isEntityIdAttrConfig(entity) ? entity.attribute : null;
+      for (const { x, state } of history as CachedStateEntity[]) {
+        data.xs.push(x);
+        data.states.push(state);
+        data.ys.push(
+          clean(attribute === null ? state.state : state.attributes[attribute])
+        );
+      }
     } else
       throw new Error(
         `Unrecognised fetch type for ${(entity as EntityConfig).entity}`
       );
-    data.ys = data.ys.map((y) =>
-      // see https://github.com/dbuezas/lovelace-plotly-graph-card/issues/146
-      // and https://github.com/dbuezas/lovelace-plotly-graph-card/commit/3d915481002d03011bcc8409c2dcc6e6fb7c8674#r94899109
-      y === "unavailable" || y === "none" || y === "unknown" ? null : y
-    );
     return data;
   }
 
@@ -324,6 +400,7 @@ export default class Cache {
     for (const key of keys) {
       const ranges = compactRanges(retainedRanges[key] || []);
       if (ranges.length === 0) {
+        delete this.mutableStatistics[key];
         delete this.histories[key];
         delete this.ranges[key];
         continue;
@@ -385,6 +462,9 @@ export default class Cache {
         const histories = await fetchStatistics(hass, entities, group.dates);
         for (const entity of entities) {
           this.add(entity, histories[entity.entity], group.range);
+          this.trackMutableStatistics(
+            entity, histories[entity.entity], group.range, now
+          );
         }
       }
     });
@@ -405,6 +485,14 @@ export default class Cache {
         for (const aRange of rangesToFetch) {
           const fetchedHistory = await fetchSingleRange(hass, entity, aRange);
           this.add(entity, fetchedHistory.history, fetchedHistory.range);
+          if (isEntityIdStatisticsConfig(entity)) {
+            this.trackMutableStatistics(
+              entity,
+              fetchedHistory.history as CachedStatisticsEntity[],
+              fetchedHistory.range,
+              fetchedHistory.fetchedAt,
+            );
+          }
         }
       }
       return this.getData(entity, dataRanges);

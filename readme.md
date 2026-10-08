@@ -199,7 +199,9 @@ entities:
 
 ## Color schemes
 
-Changes default line colors.
+Changes default line and bar colors. Explicit `line.color` and `marker.color`
+settings take precedence. Bar fills use `marker.color`.
+Explicit Plotly `layout.colorway` or template palettes are also preserved.
 See more here: https://github.com/dbuezas/lovelace-plotly-graph-card/blob/master/src/parse-config/parse-color-scheme.ts
 
 ```yaml
@@ -240,6 +242,65 @@ entities:
     statistic: max # `min`, `mean` of `max`
     period: 5minute # `5minute`, `hour`, `day`, `week`, `month`, `auto` # `auto` varies the period depending on the zoom level
 ```
+
+#### Mean line with a min/max band
+
+Use three traces to show the mean inside the range of recorded measurements.
+The sensor must have `min`, `max` and `mean` statistics, for example a temperature
+measurement sensor. Replace `sensor.temperature` in all three entries below.
+
+```yaml
+type: custom:plotly-graph
+hours_to_show: 7d
+refresh_interval: 300
+defaults:
+  entity:
+    period: hour
+    type: scatter
+    mode: lines
+    legendgroup: temperature
+    line:
+      shape: linear
+      color: rgb(52,152,219)
+layout:
+  legend:
+    groupclick: togglegroup
+entities:
+  - entity: sensor.temperature
+    statistic: min
+    name: Minimum
+    showlegend: false
+    hoverinfo: skip
+    hovertemplate: null
+    line:
+      width: 0.5
+  - entity: sensor.temperature
+    statistic: max
+    name: Maximum
+    showlegend: false
+    hoverinfo: skip
+    hovertemplate: null
+    line:
+      width: 0.5
+    fill: tonexty
+    fillcolor: rgba(52,152,219,0.2)
+  - entity: sensor.temperature
+    statistic: mean
+    name: Temperature
+    show_value: true
+    line:
+      width: 2
+```
+
+Keep the minimum and maximum adjacent: `fill: tonexty` fills the area between
+the maximum and the preceding minimum trace. The mean is drawn last, above the
+band. Their shared `legendgroup` lets the single legend entry toggle all three
+traces and the mean's value label together. Hover labels are shown only for the
+mean.
+
+All three traces reuse the same statistics response when their sensor, period
+and time range match. Common line settings belong in `defaults.entity.line`;
+change the line color and `fillcolor` together to recolor the band.
 
 #### for entities with state_class=total (such as utility meters)
 
@@ -775,11 +836,18 @@ type: custom:plotly-graph
 entities:
   - entity: sensor.temperature1
     on_click: |-
-      $fn () => (event_data) => {
-        ...
-        // WARNING: this doesn't work and I don't understand why. Help welcome
+      $fn () => ({ points }) => {
+        const point = points[0];
+        console.log(point.x, point.y, point.customdata);
       }
 ```
+
+`on_click` receives Plotly's event data. Use the point's `x`, `y` or
+`customdata` to read the clicked value. `pointIndex` and `pointNumber` refer
+to the rendered trace, not necessarily the original arrays used by filters
+or `$fn` functions. Default history step lines can contain drawing-only
+endpoints before unavailable states. These repeat the last known value and
+its per-point `customdata`; the parsed history remains unchanged.
 
 There is also a double click plot handler, it works on the whole plotting area (not points of an entity). Beware that double click also autoscales the plot.
 
@@ -1003,6 +1071,25 @@ entities:
     filters: [] # no filters at all
 ```
 
+Filter lists can also be generated with `$ex` or `$fn`. To reuse filters and
+append entity-specific ones, define the shared list before `entities` and the
+extra list before `filters`:
+
+```yaml
+type: custom:plotly-graph
+reused_filters:
+  - force_numeric
+  - add: 1
+entities:
+  - entity: sensor.temperature
+    extra_filters:
+      - multiply: 2
+    filters: $ex [...get('reused_filters'), ...get('.extra_filters')]
+```
+
+Generated lists run in order, just like literal lists. This additional parsing
+is limited to `entities.*.filters`; other function results are not traversed.
+
 ## layout:
 
 To define layout aspects, like margins, title, axes names, ...
@@ -1067,13 +1154,32 @@ raw_plotly_config: true # defaults to false
 To define general configurations like enabling scroll to zoom, disabling the modebar, etc.
 Anything from https://plotly.com/javascript/configuration-options/.
 
-## disable_pinch_to_zoom
+## extended_touch_support
+
+Touch gestures on the plot area:
+
+- Drag with one finger: pan (Plotly).
+- Tap: click (Plotly). Double tap: reset (Plotly).
+- `pinch_to_zoom`: pinch with two fingers to zoom at the fingers and pan with them, like a map. Lifting one finger keeps panning with the other.
+- `double_tap_drag_to_zoom`: double tap, keep the finger down and drag up or down to zoom, left or right to pan.
+- `hold_to_scan`: press and hold for 300 ms, then slide. The tooltip follows the finger through the data and stays after lifting the finger, until the next touch. With `hovermode: closest` (Plotly's default) it follows the x position of the finger, like `hovermode: x`. It is off with `hovermode: false`. While it is on, a tap doesn't show the tooltip.
+
+All are on by default. Turn them all off, so only Plotly's own touch handling is left:
 
 ```yaml
-disable_pinch_to_zoom: true # defaults to false
+extended_touch_support: false
 ```
 
-When true, the custom implementations of pinch-to-zoom and double-tap-drag-to-zooming will be disabled.
+Or turn off single ones:
+
+```yaml
+extended_touch_support:
+  pinch_to_zoom: false
+  double_tap_drag_to_zoom: false
+  hold_to_scan: false
+```
+
+See also: [disable_pinch_to_zoom](#disable_pinch_to_zoom) (deprecated)
 
 ## hours_to_show:
 
@@ -1096,6 +1202,10 @@ It can be combined with the global `time_offset`.
 Removes all data out of the visible range, and autoscales after each replot.
 Particularly useful when combined with [Range Selector Buttons](#Range-Selector-buttons)
 
+Filter output is clipped after the complete filter chain when all X values are
+`Date` objects. Other X formats and raw Plotly configurations are left unchanged.
+No synthetic edge points are added to generated data.
+
 ```yaml
 type: custom:plotly-graph
 entities:
@@ -1106,6 +1216,15 @@ autorange_after_scroll: true
 ## refresh_interval:
 
 Update data every `refresh_interval` seconds.
+
+With `auto`, live statistics also refresh when Home Assistant publishes new
+5-minute or hourly statistics, even if the entity's state has not changed.
+Each event refreshes only its matching resolution: daily, weekly and monthly
+aggregates refresh with the hourly statistics, not the 5-minute statistics.
+Entity state changes can still update the display without refetching statistics.
+Zooming, panning and toggling traces only fetch missing ranges; they do not
+invalidate cached statistics. Resetting the view also refreshes recent values.
+An explicit refresh interval continues to poll at the configured interval.
 
 Examples:
 
@@ -1325,6 +1444,10 @@ Removed in v3.0.0, non significant changes are also fetched now. The bandwidth s
 ### `minimal_response`
 
 Removed in v3.0.0, if you need access to the attributes use the 'attribute' parameter instead. It doesn't matter which attribute you pick, all of them are still accessible inside filters and universal functions
+
+### `disable_pinch_to_zoom`
+
+Replaced with [extended_touch_support](#extended_touch_support) in v4.0.0. `disable_pinch_to_zoom: true` still works and is the same as `extended_touch_support: false`.
 
 ## Plotly.js 4 compatibility
 

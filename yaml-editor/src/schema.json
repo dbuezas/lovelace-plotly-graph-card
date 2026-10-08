@@ -81,10 +81,10 @@
                     "$ref": "#/definitions/With$fn<{delta:never;}>"
                   },
                   {
-                    "$ref": "#/definitions/With$fn<{derivate:\"ms\"|\"s\"|\"m\"|\"h\"|\"d\"|\"w\"|\"M\"|\"y\";}>"
+                    "$ref": "#/definitions/With$fn<{derivate:\"y\"|\"d\"|\"ms\"|\"s\"|\"m\"|\"h\"|\"w\"|\"M\";}>"
                   },
                   {
-                    "$ref": "#/definitions/With$fn<{integrate:\"ms\"|\"s\"|\"m\"|\"h\"|\"d\"|\"w\"|\"M\"|\"y\"|{unit?:\"ms\"|\"s\"|\"m\"|\"h\"|\"d\"|\"w\"|\"M\"|\"y\"|undefined;reset_every?:TimeDurationStr|undefined;offset?:TimeDurationStr|undefined;};}>"
+                    "$ref": "#/definitions/With$fn<{integrate:\"y\"|\"d\"|\"ms\"|\"s\"|\"m\"|\"h\"|\"w\"|\"M\"|{unit?:\"y\"|\"d\"|\"ms\"|\"s\"|\"m\"|\"h\"|\"w\"|\"M\"|undefined;reset_every?:TimeDurationStr|undefined;offset?:TimeDurationStr|undefined;};}>"
                   },
                   {
                     "$ref": "#/definitions/With$fn<{sliding_window_moving_average:{window_size?:number|undefined;extended?:boolean|undefined;centered?:boolean|undefined;};}>"
@@ -246,6 +246,14 @@
         "time_offset": {
           "anyOf": [
             {
+              "pattern": "^[0-9]*y$",
+              "type": "string"
+            },
+            {
+              "pattern": "^[0-9]*d$",
+              "type": "string"
+            },
+            {
               "pattern": "^[0-9]*ms$",
               "type": "string"
             },
@@ -262,19 +270,11 @@
               "type": "string"
             },
             {
-              "pattern": "^[0-9]*d$",
-              "type": "string"
-            },
-            {
               "pattern": "^[0-9]*w$",
               "type": "string"
             },
             {
               "pattern": "^[0-9]*M$",
-              "type": "string"
-            },
-            {
-              "pattern": "^[0-9]*y$",
               "type": "string"
             },
             {
@@ -289,6 +289,44 @@
         },
         "unit_of_measurement": {
           "$ref": "#/definitions/With$fn<string|undefined>"
+        }
+      },
+      "type": "object"
+    },
+    "With$fn<Partial<TouchGestures>>": {
+      "properties": {
+        "double_tap_drag_to_zoom": {
+          "anyOf": [
+            {
+              "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
+              "type": "string"
+            },
+            {
+              "type": "boolean"
+            }
+          ]
+        },
+        "hold_to_scan": {
+          "anyOf": [
+            {
+              "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
+              "type": "string"
+            },
+            {
+              "type": "boolean"
+            }
+          ]
+        },
+        "pinch_to_zoom": {
+          "anyOf": [
+            {
+              "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
+              "type": "string"
+            },
+            {
+              "type": "boolean"
+            }
+          ]
         }
       },
       "type": "object"
@@ -309,6 +347,14 @@
         "forecast": {
           "anyOf": [
             {
+              "pattern": "^[0-9]*y$",
+              "type": "string"
+            },
+            {
+              "pattern": "^[0-9]*d$",
+              "type": "string"
+            },
+            {
               "pattern": "^[0-9]*ms$",
               "type": "string"
             },
@@ -325,19 +371,11 @@
               "type": "string"
             },
             {
-              "pattern": "^[0-9]*d$",
-              "type": "string"
-            },
-            {
               "pattern": "^[0-9]*w$",
               "type": "string"
             },
             {
               "pattern": "^[0-9]*M$",
-              "type": "string"
-            },
-            {
-              "pattern": "^[0-9]*y$",
               "type": "string"
             },
             {
@@ -493,7 +531,7 @@
       ],
       "type": "object"
     },
-    "With$fn<{derivate:\"ms\"|\"s\"|\"m\"|\"h\"|\"d\"|\"w\"|\"M\"|\"y\";}>": {
+    "With$fn<{derivate:\"y\"|\"d\"|\"ms\"|\"s\"|\"m\"|\"h\"|\"w\"|\"M\";}>": {
       "properties": {
         "derivate": {
           "anyOf": [
@@ -575,7 +613,7 @@
       ],
       "type": "object"
     },
-    "With$fn<{integrate:\"ms\"|\"s\"|\"m\"|\"h\"|\"d\"|\"w\"|\"M\"|\"y\"|{unit?:\"ms\"|\"s\"|\"m\"|\"h\"|\"d\"|\"w\"|\"M\"|\"y\"|undefined;reset_every?:TimeDurationStr|undefined;offset?:TimeDurationStr|undefined;};}>": {
+    "With$fn<{integrate:\"y\"|\"d\"|\"ms\"|\"s\"|\"m\"|\"h\"|\"w\"|\"M\"|{unit?:\"y\"|\"d\"|\"ms\"|\"s\"|\"m\"|\"h\"|\"w\"|\"M\"|undefined;reset_every?:TimeDurationStr|undefined;offset?:TimeDurationStr|undefined;};}>": {
       "properties": {
         "integrate": {
           "anyOf": [
@@ -584,7 +622,7 @@
               "type": "string"
             },
             {
-              "$ref": "#/definitions/With$fn<{unit?:\"ms\"|\"s\"|\"m\"|\"h\"|\"d\"|\"w\"|\"M\"|\"y\"|undefined;reset_every?:TimeDurationStr|undefined;offset?:TimeDurationStr|undefined;}>"
+              "$ref": "#/definitions/With$fn<{unit?:\"y\"|\"d\"|\"ms\"|\"s\"|\"m\"|\"h\"|\"w\"|\"M\"|undefined;reset_every?:TimeDurationStr|undefined;offset?:TimeDurationStr|undefined;}>"
             },
             {
               "enum": [
@@ -623,6 +661,14 @@
         "interval": {
           "anyOf": [
             {
+              "pattern": "^[0-9]*y$",
+              "type": "string"
+            },
+            {
+              "pattern": "^[0-9]*d$",
+              "type": "string"
+            },
+            {
               "pattern": "^[0-9]*ms$",
               "type": "string"
             },
@@ -639,19 +685,11 @@
               "type": "string"
             },
             {
-              "pattern": "^[0-9]*d$",
-              "type": "string"
-            },
-            {
               "pattern": "^[0-9]*w$",
               "type": "string"
             },
             {
               "pattern": "^[0-9]*M$",
-              "type": "string"
-            },
-            {
-              "pattern": "^[0-9]*y$",
               "type": "string"
             },
             {
@@ -754,6 +792,14 @@
         "resample": {
           "anyOf": [
             {
+              "pattern": "^[0-9]*y$",
+              "type": "string"
+            },
+            {
+              "pattern": "^[0-9]*d$",
+              "type": "string"
+            },
+            {
               "pattern": "^[0-9]*ms$",
               "type": "string"
             },
@@ -770,19 +816,11 @@
               "type": "string"
             },
             {
-              "pattern": "^[0-9]*d$",
-              "type": "string"
-            },
-            {
               "pattern": "^[0-9]*w$",
               "type": "string"
             },
             {
               "pattern": "^[0-9]*M$",
-              "type": "string"
-            },
-            {
-              "pattern": "^[0-9]*y$",
               "type": "string"
             },
             {
@@ -884,10 +922,18 @@
       ],
       "type": "object"
     },
-    "With$fn<{unit?:\"ms\"|\"s\"|\"m\"|\"h\"|\"d\"|\"w\"|\"M\"|\"y\"|undefined;reset_every?:TimeDurationStr|undefined;offset?:TimeDurationStr|undefined;}>": {
+    "With$fn<{unit?:\"y\"|\"d\"|\"ms\"|\"s\"|\"m\"|\"h\"|\"w\"|\"M\"|undefined;reset_every?:TimeDurationStr|undefined;offset?:TimeDurationStr|undefined;}>": {
       "properties": {
         "offset": {
           "anyOf": [
+            {
+              "pattern": "^[0-9]*y$",
+              "type": "string"
+            },
+            {
+              "pattern": "^[0-9]*d$",
+              "type": "string"
+            },
             {
               "pattern": "^[0-9]*ms$",
               "type": "string"
@@ -905,19 +951,11 @@
               "type": "string"
             },
             {
-              "pattern": "^[0-9]*d$",
-              "type": "string"
-            },
-            {
               "pattern": "^[0-9]*w$",
               "type": "string"
             },
             {
               "pattern": "^[0-9]*M$",
-              "type": "string"
-            },
-            {
-              "pattern": "^[0-9]*y$",
               "type": "string"
             },
             {
@@ -933,6 +971,14 @@
         "reset_every": {
           "anyOf": [
             {
+              "pattern": "^[0-9]*y$",
+              "type": "string"
+            },
+            {
+              "pattern": "^[0-9]*d$",
+              "type": "string"
+            },
+            {
               "pattern": "^[0-9]*ms$",
               "type": "string"
             },
@@ -949,19 +995,11 @@
               "type": "string"
             },
             {
-              "pattern": "^[0-9]*d$",
-              "type": "string"
-            },
-            {
               "pattern": "^[0-9]*w$",
               "type": "string"
             },
             {
               "pattern": "^[0-9]*M$",
-              "type": "string"
-            },
-            {
-              "pattern": "^[0-9]*y$",
               "type": "string"
             },
             {
@@ -197660,6 +197698,20 @@
         }
       ]
     },
+    "extended_touch_support": {
+      "anyOf": [
+        {
+          "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
+          "type": "string"
+        },
+        {
+          "$ref": "#/definitions/With$fn<Partial<TouchGestures>>"
+        },
+        {
+          "type": "boolean"
+        }
+      ]
+    },
     "fit_y_data": {
       "anyOf": [
         {
@@ -197686,6 +197738,14 @@
     "hours_to_show": {
       "anyOf": [
         {
+          "pattern": "^[0-9]*y$",
+          "type": "string"
+        },
+        {
+          "pattern": "^[0-9]*d$",
+          "type": "string"
+        },
+        {
           "pattern": "^[0-9]*ms$",
           "type": "string"
         },
@@ -197702,19 +197762,11 @@
           "type": "string"
         },
         {
-          "pattern": "^[0-9]*d$",
-          "type": "string"
-        },
-        {
           "pattern": "^[0-9]*w$",
           "type": "string"
         },
         {
           "pattern": "^[0-9]*M$",
-          "type": "string"
-        },
-        {
-          "pattern": "^[0-9]*y$",
           "type": "string"
         },
         {
@@ -197800,6 +197852,14 @@
     "offset": {
       "anyOf": [
         {
+          "pattern": "^[0-9]*y$",
+          "type": "string"
+        },
+        {
+          "pattern": "^[0-9]*d$",
+          "type": "string"
+        },
+        {
           "pattern": "^[0-9]*ms$",
           "type": "string"
         },
@@ -197816,19 +197876,11 @@
           "type": "string"
         },
         {
-          "pattern": "^[0-9]*d$",
-          "type": "string"
-        },
-        {
           "pattern": "^[0-9]*w$",
           "type": "string"
         },
         {
           "pattern": "^[0-9]*M$",
-          "type": "string"
-        },
-        {
-          "pattern": "^[0-9]*y$",
           "type": "string"
         },
         {
