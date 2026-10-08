@@ -61,7 +61,7 @@ export class PlotlyGraph extends HTMLElement {
   private statisticsFetchPeriods = new Set<StatisticsUpdatePeriod>();
   statisticsUpdates = new StatisticsUpdates((period) => {
     this.statisticsFetchPeriods.add(period);
-    this.plot({ should_fetch: false }, 500);
+    void this.plot({ should_fetch: false }, 500);
   });
   pausedRendering = false;
   filesFailed = false; // the browser remembers failed imports until a reload
@@ -541,7 +541,7 @@ export class PlotlyGraph extends HTMLElement {
     clearTimeout(this.handles.offScreenTimeout);
     if (!this.renderDeferred) return;
     this.renderDeferred = false;
-    this.plot({ should_fetch: false });
+    void this.plot({ should_fetch: false });
   };
   _plot = debounce(async () => {
     this.liveThrottle.renderStarted();

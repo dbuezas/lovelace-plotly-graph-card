@@ -248,7 +248,7 @@ describe("filters", () => {
         ])(
           "uses each sample's day, not today's UTC offset (%s)",
           (now, ...timestamps) => {
-            jest.setSystemTime(new Date(now));
+            vi.setSystemTime(new Date(now));
             expect(run(timestamps)).toEqual([NaN, 1, 0.5]);
           },
         );
@@ -281,7 +281,7 @@ describe("filters", () => {
         );
 
         it("preserves fixed 24-hour intervals", () => {
-          jest.setSystemTime(new Date("2026-03-29T12:00Z"));
+          vi.setSystemTime(new Date("2026-03-29T12:00Z"));
           expect(
             run(
               [

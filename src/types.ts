@@ -99,7 +99,7 @@ export type InputConfig = {
    * (Home Assistant's), or an IANA name like "Europe/Rome".
    * Defaults to the Home Assistant user profile setting.
    */
-  time_zone?: "local" | "server" | string;
+  time_zone?: string;
 };
 
 export type EntityConfig = EntityIdConfig & {
@@ -143,7 +143,7 @@ export type Config = {
   visible_range: [number, number];
   on_dblclick: Function;
   autorange_after_scroll: boolean;
-  time_zone?: "local" | "server" | string;
+  time_zone?: string; // "local", "server" or an IANA name
 };
 export type EntityIdStateConfig = {
   entity: string;

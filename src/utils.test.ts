@@ -99,14 +99,14 @@ describe("debounce", () => {
     const gate = new Promise<void>((resolve) => {
       finish = resolve;
     });
-    const render = jest
+    const render = vi
       .fn()
       .mockImplementationOnce(() => gate)
       .mockResolvedValue(undefined);
     const update = debounce(render);
     const first = update();
     await advance(16);
-    const delay = jest.fn(() => 300);
+    const delay = vi.fn(() => 300);
     const queued = update(delay);
     await advance(1000);
     expect(delay).not.toHaveBeenCalled();

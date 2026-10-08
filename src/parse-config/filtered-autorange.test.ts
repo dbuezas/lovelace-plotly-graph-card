@@ -53,9 +53,9 @@ describe("autorange after custom filters", () => {
     (global as any).window = {};
   });
   beforeEach(() => {
-    jest.spyOn(Date, "now").mockReturnValue(START + 4 * HOUR);
+    vi.spyOn(Date, "now").mockReturnValue(START + 4 * HOUR);
   });
-  afterEach(() => jest.restoreAllMocks());
+  afterEach(() => vi.restoreAllMocks());
 
   it("excludes out-of-range values returned by a custom filter", async () => {
     const { source, update } = setup();
