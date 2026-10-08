@@ -371,6 +371,36 @@ try {
 
   await mount({});
   s0 = await state();
+  a = await xAt(cx);
+  await tap(cx, cy);
+  await wait(80);
+  await drag(steps([[cx, cy]], [[cx - 100, cy]]));
+  await touch("touchEnd");
+  await wait(300);
+  s1 = await state();
+  check(
+    Math.abs((await xAt(cx - 100)) - a) < tol(s1.span) &&
+      Math.abs(s1.span - s0.span) < tol(s0.span),
+    "double tap + drag sideways pans with the finger, without zooming"
+  );
+
+  await mount({});
+  s0 = await state();
+  a = await xAt(cx);
+  await tap(cx, cy);
+  await wait(80);
+  await drag(steps([[cx, cy]], [[cx - 60, cy + 80]]));
+  await touch("touchEnd");
+  await wait(300);
+  s1 = await state();
+  check(
+    Math.abs((await xAt(cx - 60)) - a) < tol(s1.span) &&
+      s1.span < s0.span * 0.8,
+    "double tap + diagonal drag zooms and keeps the data under the finger"
+  );
+
+  await mount({});
+  s0 = await state();
   await tap(cx, cy);
   await wait(80);
   await drag(steps([[cx, cy]], [[cx + 3, cy + 3]], 3));

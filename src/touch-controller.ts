@@ -118,13 +118,13 @@ const pinch: Gesture = (el, controller) => {
   };
 };
 
-// Double tap, then drag up or down to zoom. A plain double tap stays Plotly's
-// (reset), so zooming only starts once the finger moves.
+// Double tap, then drag: up/down zooms, left/right pans. A plain double tap
+// stays Plotly's (reset), so the gesture only starts once the finger moves.
 const doubleTapDrag: Gesture = (el, controller) => {
   let lastTapTime = -Infinity;
   let firstTap: { x: number; y: number } | undefined; // until it moves
   let tap:
-    | { dragger: Element; x: number; y: number; lastY: number }
+    | { dragger: Element; x: number; y: number; lastX: number; lastY: number }
     | undefined;
   let zooming = false;
   const end = () => {
@@ -141,7 +141,13 @@ const doubleTapDrag: Gesture = (el, controller) => {
       if (e.timeStamp - lastTapTime >= DOUBLE_TAP_MS)
         return void (firstTap = { x: t.clientX, y: t.clientY });
       if (controller.enabled.double_tap_drag_to_zoom && dragger)
-        tap = { dragger, x: t.clientX, y: t.clientY, lastY: t.clientY };
+        tap = {
+          dragger,
+          x: t.clientX,
+          y: t.clientY,
+          lastX: t.clientX,
+          lastY: t.clientY,
+        };
     },
     move: (e) => {
       const t = e.touches[0];
@@ -155,12 +161,15 @@ const doubleTapDrag: Gesture = (el, controller) => {
         controller.zoomStart();
       }
       stop(e);
+      // Left/right pans with the finger, up/down zooms around it
+      panBy(tap.dragger, t.clientX - tap.lastX, 0);
       zoomAt(
         tap.dragger,
-        tap.x,
+        t.clientX,
         tap.y,
         Math.exp((tap.lastY - t.clientY) / 200)
       );
+      tap.lastX = t.clientX;
       tap.lastY = t.clientY;
     },
     end: (e) => {
