@@ -69,7 +69,10 @@ describe("ConfigParser cache retention", () => {
     (global as any).window = {};
   });
   beforeEach(() => {
-    jest.useFakeTimers({ now: BASE + 24 * HOUR });
+    jest.useFakeTimers({
+      now: BASE + 24 * HOUR,
+      doNotFake: ["setTimeout", "clearTimeout"],
+    });
   });
   afterEach(() => {
     jest.useRealTimers();

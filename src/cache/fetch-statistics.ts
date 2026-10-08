@@ -1,6 +1,7 @@
 import { HomeAssistant } from "custom-card-helpers";
 import { Statistics } from "../recorder-types";
 import { CachedStatisticsEntity, EntityIdStatisticsConfig } from "../types";
+import { requestCardData } from "./shared-requests";
 
 async function fetchStatistics(
   hass: HomeAssistant,
@@ -15,7 +16,7 @@ async function fetchStatistics(
   const entityIds = [...new Set(entities.map(({ entity }) => entity))];
   let statistics: Statistics = {};
   try {
-    const statsP = hass.callWS<Statistics>({
+    const statsP = requestCardData(hass, {
       type: "recorder/statistics_during_period",
       start_time: start.toISOString(),
       end_time: end.toISOString(),

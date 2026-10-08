@@ -38,7 +38,9 @@ describe("ConfigParser history prefetch", () => {
     "uses one batch for %s even when time advances during the request",
     async (window) => {
       const now = new Date("2025-01-08T12:00:00.000Z");
-      jest.useFakeTimers().setSystemTime(now);
+      jest
+        .useFakeTimers({ doNotFake: ["setTimeout", "clearTimeout"] })
+        .setSystemTime(now);
       const entityIds = ["sensor.one", "sensor.two", "sensor.three"];
       const callWS = jest.fn().mockImplementation(({ entity_ids, end_time }) => {
         jest.setSystemTime(Date.now() + 4);

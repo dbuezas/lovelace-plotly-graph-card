@@ -1218,6 +1218,106 @@ try {
   results.results.push(
     "four history traces render from one WebSocket request and reuse the cache",
   );
+  const sharedCards = await page.evaluate(async () => {
+    const template = document.getElementById("card-under-test");
+    const start = Date.now() - 7200000;
+    const end = start + 3600000;
+    const requests = [];
+    const hass = {
+      ...template.hass,
+      connection: {},
+      callWS: async (request) => {
+        requests.push(request);
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        const ids = request.entity_ids || request.statistic_ids;
+        return Object.fromEntries(
+          ids.map((id) => [
+            id,
+            request.entity_ids
+              ? [
+                  { s: "1", lu: Date.parse(request.start_time) / 1000 },
+                  { s: "2", lu: (start + 600000) / 1000 },
+                ]
+              : [{ start, end: start + 300000, mean: 3 }],
+          ]),
+        );
+      },
+    };
+    const cards = [0, 1].map((index) => {
+      const card = new CardTest.PlotlyGraph();
+      card.style.cssText = `display:block;position:fixed;top:0;left:${index * 480}px;width:440px`;
+      card.setConfig({
+        type: "custom:plotly-graph",
+        refresh_interval: 0,
+        visible_range: [start + index * 4, end + index * 4],
+        entities: [{ entity: "sensor.one", extend_to_present: false }],
+      });
+      card.hass = hass;
+      document.body.append(card);
+      return card;
+    });
+    try {
+      await Promise.all(cards.map((card) => card.plot({ should_fetch: true })));
+      const history = {
+        requests: requests.splice(0),
+        values: cards.map((card) => card.contentEl.data[0].y),
+        starts: cards.map((card) => +new Date(card.contentEl.data[0].x[0])),
+        errors: cards.map((card) => card.errorMsgEl.textContent),
+      };
+      const statistics = [];
+      for (const periods of [
+        ["5minute", "5minute"],
+        ["5minute", "hour"],
+      ]) {
+        cards.forEach((card) => card.configParser.cache.clearCache());
+        cards.forEach((card, index) =>
+          card.setConfig({
+            type: "custom:plotly-graph",
+            refresh_interval: 0,
+            visible_range: [start, end],
+            entities: [
+              {
+                entity: "sensor.one",
+                statistic: "mean",
+                period: periods[index],
+              },
+            ],
+          }),
+        );
+        await Promise.all(
+          cards.map((card) => card.plot({ should_fetch: true })),
+        );
+        statistics.push({
+          requests: requests.splice(0),
+          values: cards.map((card) => card.contentEl.data[0].y),
+          errors: cards.map((card) => card.errorMsgEl.textContent),
+        });
+      }
+      return { start, history, statistics };
+    } finally {
+      cards.forEach((card) => card.remove());
+    }
+  });
+  assert.equal(sharedCards.history.requests.length, 1);
+  assert.deepEqual(sharedCards.history.values, [
+    ["1", "2"],
+    ["1", "2"],
+  ]);
+  assert.deepEqual(sharedCards.history.starts, [
+    sharedCards.start,
+    sharedCards.start + 4,
+  ]);
+  assert.deepEqual(sharedCards.history.errors, ["", ""]);
+  assert.equal(sharedCards.statistics[0].requests.length, 1);
+  assert.equal(sharedCards.statistics[1].requests.length, 2);
+  for (const state of sharedCards.statistics) {
+    assert.deepEqual(state.values, [[3], [3]]);
+    assert.deepEqual(state.errors, ["", ""]);
+  }
+  results.results.push(
+    "two cards share history with 4 ms boundary drift and keep their exact ranges",
+    "two cards share matching statistics but keep different periods separate",
+  );
   const generatedFilters = await page.evaluate(async () => {
     const card = document.getElementById("card-under-test");
     const end = Date.now() - 60000;
