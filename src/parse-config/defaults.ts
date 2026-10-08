@@ -1,4 +1,4 @@
-import { merge } from "lodash";
+import merge from "lodash/merge";
 import { Config, InputConfig } from "../types";
 import { parseColorScheme } from "./parse-color-scheme";
 import { getEntityIndex } from "./parse-config";
