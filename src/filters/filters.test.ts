@@ -196,8 +196,7 @@ describe("filters", () => {
             input({
               xs: timestamps.map((timestamp) => new Date(timestamp)),
               ys: timestamps.map(() => 1),
-              hass: { config: { time_zone: timeZone } },
-              getFromConfig: () => "server",
+              timeZone,
             }),
           ).ys;
 

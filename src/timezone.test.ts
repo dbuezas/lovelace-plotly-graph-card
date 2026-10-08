@@ -5,6 +5,7 @@ import {
   toPlotlyTimeZone,
 } from "./timezone";
 import { parseRelativeTime } from "./duration/duration";
+import { tzOffset } from "@date-fns/tz";
 import { endOfWeek, setDefaultOptions, startOfWeek } from "date-fns";
 
 const hass = (time_zone: string, server = "Pacific/Chatham") =>
@@ -53,6 +54,25 @@ describe("wall clock conversion", () => {
       "2024-06-01 17:30:00.000",
     );
   });
+  it("matches tzOffset exactly around transitions", () => {
+    // Offsets are cached per hour; transitions must stay exact,
+    // including Lord Howe's 30 minute DST.
+    for (const [tz, from] of [
+      ["Europe/Rome", Date.UTC(2024, 2, 31, 0)],
+      ["Australia/Lord_Howe", Date.UTC(2024, 9, 5, 15)],
+      ["Australia/Lord_Howe", Date.UTC(2024, 3, 6, 14)],
+    ] as const)
+      for (let t = from; t < from + 2 * 3600e3; t += 7e3) {
+        const offset = tzOffset(tz, new Date(t)) * 60e3;
+        const expected = new Date(t + offset)
+          .toISOString()
+          .replace("T", " ")
+          .slice(0, -1);
+        expect(toPlotlyDateString(t, tz)).toBe(expected);
+      }
+  });
+  // Can fail when the machine's own timezone has DST gaps (e.g. TZ=Australia/Lord_Howe):
+  // https://github.com/date-fns/tz/pull/79
   it("round trips timestamps", () => {
     for (const tz of ["Europe/Rome", "America/New_York", "Australia/Lord_Howe"])
       for (let t = Date.UTC(2024, 0, 1); t < Date.UTC(2025, 0, 1); t += 3.7e6) {
@@ -142,5 +162,36 @@ describe("toPlotlyTimeZone", () => {
     // the input is not mutated
     expect(parsed.entities[0].x[0]).toBeInstanceOf(Date);
     expect(parsed.layout.xaxis.range[0]).toBe(t);
+  });
+  it("converts numbers on date axes only", () => {
+    const result = toPlotlyTimeZone(
+      {
+        entities: [
+          { x: [t, t], y: [0, 1] }, // e.g. the readme's "now line"
+          { x: [t], y: [0], xaxis: "x2" },
+        ],
+        layout: {
+          xaxis: { type: "date" },
+          xaxis2: { type: "linear" },
+          shapes: [
+            { x0: t, x1: t },
+            { x0: 0, x1: 1, xref: "paper" },
+          ],
+          annotations: [{ x: t }, { x: t, xref: "x2" }],
+        },
+      },
+      "Asia/Tokyo",
+    );
+    const tokyo = "2024-06-01 21:00:00.000";
+    expect(result.entities[0].x).toEqual([tokyo, tokyo]);
+    expect(result.entities[1].x).toEqual([t]);
+    expect(result.layout.shapes).toEqual([
+      { x0: tokyo, x1: tokyo },
+      { x0: 0, x1: 1, xref: "paper" },
+    ]);
+    expect(result.layout.annotations).toEqual([
+      { x: tokyo },
+      { x: t, xref: "x2" },
+    ]);
   });
 });

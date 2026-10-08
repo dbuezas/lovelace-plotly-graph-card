@@ -1142,6 +1142,10 @@ This also applies to the boundaries of `hours_to_show: current_day` and friends,
 
 For `integrate`, `reset_every: 1d` resets at calendar midnight in the selected time zone, including 23- and 25-hour days. `reset_every: 24h` and other intervals remain fixed durations. `offset` shifts the reset by the specified elapsed duration after midnight, not by wall-clock hours.
 
+An invalid `time_zone` is reported as an error and the browser's timezone is used instead.
+
+When a timezone other than the browser's is used, the x values Plotly hands back (e.g. `points[0].x` in `on_click`, and hover values) are date strings in that timezone, like `"2024-03-31 02:30:00.000"`, not `Date` objects. Don't pass them to `new Date(...)`, which would read them in the browser's timezone. The `xs` passed to `$fn` and filters are still real `Date`s.
+
 ## Presets
 
 If you find yourself reusing the same card configuration frequently, you can save it as a preset.
