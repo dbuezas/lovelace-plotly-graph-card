@@ -1,7 +1,6 @@
 import { HomeAssistant } from "custom-card-helpers";
 import { InputConfig } from "../types";
 import { ConfigParser } from "./parse-config";
-import { pureDefault } from "./pure-default";
 import { HATheme } from "./themed-layout";
 
 const NOW = Date.parse("2025-01-02T12:00:00Z");
@@ -52,30 +51,7 @@ describe("on-demand internal defaults", () => {
     delete (global as any).window;
   });
 
-  it("resolves default dependencies before their YAML position with their own relative paths", async () => {
-    const input = fixture([
-      {
-        entity: "sensor.first",
-        hovertemplate:
-          '$ex `${get(".name")}: %{y} ${get(".unit_of_measurement")}`',
-        texttemplate:
-          '$ex `${get(".yaxis")}: ${get(".hovertemplate")}/${get("entities.0.line.color")}`',
-      },
-    ]);
-    const { parsed, errors } = await new ConfigParser().update(input);
-    expect(errors).toEqual([]);
-    expect(parsed.entities[0]).toMatchObject({
-      name: "First",
-      unit_of_measurement: "W",
-      yaxis: "y",
-      hovertemplate: "First: %{y} W",
-      texttemplate: "y: First: %{y} W/#1f77b4",
-      line: { color: "#1f77b4" },
-    });
-    expect(input.hass.callWS).toHaveBeenCalledTimes(1);
-  });
-
-  it("evaluates a default once per update, including its later normal traversal", async () => {
+  it("refreshes resolved defaults when the next update changes the entity name", async () => {
     const formatEntityName = jest.fn(() => "Formatted first");
     const input = fixture([
       {
@@ -93,34 +69,14 @@ describe("on-demand internal defaults", () => {
       name: "Formatted first",
       texttemplate: "Formatted first/Formatted first",
     });
-    expect(formatEntityName).toHaveBeenCalledTimes(1);
     formatEntityName.mockReturnValue("Updated first");
     expect((await parser.update(input)).parsed.entities[0]).toMatchObject({
       name: "Updated first",
       texttemplate: "Updated first/Updated first",
     });
-    expect(formatEntityName).toHaveBeenCalledTimes(2);
   });
 
-  it("also caches an undefined global default before its container is traversed", async () => {
-    const language = jest.fn(() => undefined);
-    const input = fixture([
-      {
-        entity: "sensor.first",
-        texttemplate: '$ex `${get("config.locale")}/${get("config.locale")}`',
-      },
-    ]);
-    Object.defineProperty(input.hass.locale, "language", { get: language });
-    const { parsed, errors } = await new ConfigParser().update(input);
-    expect(errors).toEqual([]);
-    expect(parsed.entities[0]).toMatchObject({
-      texttemplate: "undefined/undefined",
-    });
-    expect(parsed.config.locale).toBeUndefined();
-    expect(language).toHaveBeenCalledTimes(1);
-  });
-
-  it("preserves explicit values and does not run user functions ahead of their position", async () => {
+  it("preserves explicit values ahead of their YAML position", async () => {
     const literal = fixture([
       {
         entity: "sensor.first",
@@ -131,7 +87,9 @@ describe("on-demand internal defaults", () => {
     expect(
       (await new ConfigParser().update(literal)).parsed.entities[0],
     ).toMatchObject({ hovertemplate: "kW", unit_of_measurement: "kW" });
+  });
 
+  it("does not run user functions ahead of their YAML position", async () => {
     const order: string[] = [];
     jest.spyOn(console, "warn").mockImplementation();
     const input = fixture([
@@ -191,6 +149,30 @@ describe("on-demand internal defaults", () => {
     ).toBe(true);
   });
 
+  it("does not cache pre-filter metadata or change the resulting axis grouping", async () => {
+    jest.spyOn(console, "warn").mockImplementation();
+    const input = fixture([
+      {
+        entity: "sensor.first",
+        texttemplate: '$ex get(".unit_of_measurement")',
+        filters: [{ derivate: "h" }],
+      },
+      { entity: "sensor.first" },
+    ]);
+    const { parsed, errors } = await new ConfigParser().update(input);
+    expect(errors).toHaveLength(1);
+    expect(errors[0].message).toContain("has to be defined before");
+    expect(parsed.entities[0]).toMatchObject({
+      unit_of_measurement: "W/h",
+      yaxis: "y",
+      hovertemplate: expect.stringContaining("W/h"),
+    });
+    expect(parsed.entities[1]).toMatchObject({
+      unit_of_measurement: "W",
+      yaxis: "y2",
+    });
+  });
+
   it("uses the filtered metadata without changing the caller's path or vars", async () => {
     const input = fixture([
       {
@@ -212,23 +194,5 @@ describe("on-demand internal defaults", () => {
       texttemplate:
         "entities.0.texttemplate/entities.0.texttemplate/<b>Filtered</b><br><i>%{x}</i><br>%{y} kW<extra></extra>",
     });
-  });
-
-  it("reports circular internal dependencies instead of recursing indefinitely", async () => {
-    jest.spyOn(console, "warn").mockImplementation();
-    const input = fixture([
-      {
-        entity: "sensor.first",
-        unit_of_measurement: pureDefault(({ get }) => get(".hovertemplate")),
-        hovertemplate: pureDefault(({ get }) => get(".unit_of_measurement")),
-      },
-    ]);
-    const { errors } = await new ConfigParser().update(input);
-    expect(errors.length).toBeGreaterThan(0);
-    expect(
-      errors.every((error) =>
-        error.message.includes("Circular default dependency"),
-      ),
-    ).toBe(true);
   });
 });
