@@ -1266,6 +1266,48 @@ try {
   results.results.push(
     "generated and reused filter lists render through the card",
   );
+  const resampleTimezone = await page.evaluate(async () => {
+    const card = new CardTest.PlotlyGraph();
+    card.style.cssText = "display:block;position:fixed;top:0;left:0;width:480px";
+    card.hass = {
+      locale: { language: "en", time_zone: "local" },
+      config: { time_zone: "Europe/Zurich" },
+      states: {},
+    };
+    card.setConfig({
+      type: "custom:plotly-graph",
+      time_zone: "America/Phoenix",
+      refresh_interval: 0,
+      visible_range: [Date.parse("2024-03-05T07:00Z"), Date.parse("2024-03-07T07:00Z")],
+      entities: [{
+        entity: "",
+        type: "bar",
+        extend_to_present: false,
+        filters: [
+          { fn: `() => ({
+            xs: [5, 6, 7].map(day => new Date(\`2024-03-0\${day}T07:00:00Z\`)),
+            ys: [10, 20, 30], states: [], statistics: []
+          })` },
+          { resample: "1d" },
+        ],
+      }],
+    });
+    document.body.append(card);
+    try {
+      await card.plot({ should_fetch: true });
+      return {
+        error: card.errorMsgEl.textContent,
+        ys: card.contentEl.data[0].y,
+        positions: card.contentEl.calcdata[0].map(point => point.p),
+      };
+    } finally {
+      card.remove();
+    }
+  });
+  assert.equal(resampleTimezone.error, "");
+  assert.deepEqual(resampleTimezone.ys, [10, 20]);
+  assert.deepEqual(resampleTimezone.positions, [Date.UTC(2024, 2, 5), Date.UTC(2024, 2, 6)]);
+  results.results.push("the card passes its configured timezone to resample");
   const shiftedHistoryResults = await page.evaluate(async () => {
     const card = document.getElementById("card-under-test");
     const now = Date.now();

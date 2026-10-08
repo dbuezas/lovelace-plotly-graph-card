@@ -8,7 +8,8 @@ import {
 import { StatisticValue } from "../recorder-types";
 import { HassEntity, YValue } from "../types";
 import { inTimeZone } from "../timezone";
-import { addDays, differenceInCalendarDays, parseISO, startOfDay } from "date-fns";
+import { startOfDay } from "date-fns";
+import { calendarInterval } from "../duration/calendar";
 
 import BaseRegression from "ml-regression-base";
 import LinearRegression from "ml-regression-simple-linear";
@@ -181,10 +182,11 @@ const filters = {
     const offset = parseTimeDuration(param.offset ?? "0s");
     checkTimeUnits(unit);
     return ({ xs, ys, meta, timeZone }) => {
+      const calendar = calendarInterval(param.reset_every ?? "0s", timeZone);
       const t0 = +startOfDay(Date.now(), inTimeZone(timeZone)) + offset;
       const resetAt = (x: number) =>
-        param.reset_every === "1d"
-          ? +startOfDay(x - offset, inTimeZone(timeZone)) + offset
+        calendar
+          ? calendar.floor(x - offset) + offset
           : t0 + Math.floor((x - t0) / reset_every) * reset_every;
       let yAcc = 0;
       let last = {
@@ -353,10 +355,6 @@ const filters = {
     const interval = parseTimeDuration(intervalStr);
     if (!Number.isFinite(interval) || interval <= 0)
       throw new Error("resample: interval must be greater than zero");
-    const days = interval / timeUnits.d;
-    const calendarDays = intervalStr.endsWith("d") && Number.isInteger(days)
-      ? days
-      : 0;
     return ({ xs, ys, states, statistics, timeZone }) => {
       const data = {
         xs: [] as Date[],
@@ -377,28 +375,13 @@ const filters = {
           return ys[i];
         return ya + ((yb - ya) * (x - xa)) / (xb - xa);
       };
-      const options = calendarDays
-        ? inTimeZone(timeZone)
-        : {};
-      let x0 = Math.floor(ms(xs[0]) / interval) * interval;
-      let next = (x: number) => x + interval;
-      if (calendarDays) {
-        // A stable local date aligns separate series, even across DST changes.
-        const anchor = parseISO("1970-01-01", options);
-        const elapsedDays = differenceInCalendarDays(xs[0], anchor, options);
-        let day = Math.floor(elapsedDays / calendarDays) * calendarDays;
-        const boundary = () => +startOfDay(addDays(anchor, day, options), options);
-        x0 = boundary();
-        next = (x) => {
-          let timestamp: number;
-          // Some timezone changes skip an entire date; do not emit duplicates.
-          do {
-            day += calendarDays;
-            timestamp = boundary();
-          } while (timestamp <= x);
-          return timestamp;
-        };
-      }
+      const calendar = intervalStr.endsWith("d")
+        ? calendarInterval(intervalStr, timeZone)
+        : undefined;
+      const x0 =
+        calendar?.floor(ms(xs[0])) ??
+        Math.floor(ms(xs[0]) / interval) * interval;
+      const next = calendar?.next ?? ((x: number) => x + interval);
       const x1 = ms(xs[xs.length - 1]);
       let i = 0;
       for (let x = x0; x < x1; x = next(x)) {
