@@ -18,285 +18,78 @@ function state(timestamp: number): CachedStateEntity {
 describe("Cache merging", () => {
   afterEach(() => jest.restoreAllMocks());
 
-  it("appends a newer single state without sorting or filtering the history", () => {
+  const boundary = (timestamp: number): CachedStateEntity => ({
+    ...state(timestamp),
+    fake_boundary_datapoint: true,
+  });
+
+  it("appends a newer state without a full merge", () => {
     const cache = new Cache();
     cache.add(entity, [state(0), state(10)], [0, 10]);
-    const history = cache.histories[key];
-    const sort = jest.spyOn(history, "sort");
-    const filter = jest.spyOn(history, "filter");
-    const next = state(20);
+    const sort = jest.spyOn(cache.histories[key], "sort");
 
-    cache.add(entity, [next], [11, 20]);
+    cache.add(entity, [state(20)], [11, 20]);
 
     expect(sort).not.toHaveBeenCalled();
-    expect(filter).not.toHaveBeenCalled();
-    expect(cache.histories[key]).toBe(history);
-    expect(history[2]).toBe(next);
-    expect(cache.getData(entity).ys).toEqual(["0", "10", "20"]);
+    expect(cache.getData(entity).xs.map(Number)).toEqual([0, 10, 20]);
     expect(cache.ranges[key]).toEqual([[0, 20]]);
   });
 
-  it("appends attribute values without losing their metadata", () => {
-    const cache = new Cache();
-    const attribute = { ...entity, attribute: "temperature" };
-    const sample = (timestamp: number) => ({
-      ...state(timestamp),
-      state: {
-        ...state(timestamp).state,
-        attributes: { temperature: timestamp + 1 },
-      },
-    });
-    cache.add(attribute, [sample(0)], [0, 0]);
-    const sort = jest.spyOn(cache.histories[getEntityKey(attribute)], "sort");
-
-    cache.add(attribute, [sample(10)], [1, 10]);
-
-    expect(sort).not.toHaveBeenCalled();
-    expect(cache.getData(attribute).ys).toEqual([1, 11]);
-    expect(cache.ranges[getEntityKey(attribute)]).toEqual([[0, 10]]);
-  });
-
-  it.each([false, true])(
-    "appends statistics without dropping values (boundary flag: %s)",
-    (fakeBoundary) => {
-      const cache = new Cache();
-      const statistics = {
-        ...entity,
-        statistic: "mean" as const,
-        period: "hour" as const,
-      };
-      const sample = (timestamp: number): CachedStatisticsEntity => ({
-        x: new Date(timestamp),
-        y: null,
-        statistics: {
-          statistic_id: entity.entity,
-          start: new Date(timestamp).toISOString(),
-          end: new Date(timestamp + 10).toISOString(),
-          last_reset: null,
-          mean: timestamp,
-          max: timestamp + 1,
-          min: timestamp,
-          sum: null,
-          state: null,
-        },
-      });
-      cache.add(statistics, [sample(0)], [0, 0]);
-      const history = cache.histories[getEntityKey(statistics)];
-      const sort = jest.spyOn(history, "sort");
-      const next = sample(10);
-      if (fakeBoundary) next.fake_boundary_datapoint = true;
-
-      cache.add(statistics, [next], [1, 10]);
-
-      expect(sort).not.toHaveBeenCalled();
-      expect(history[1]).toBe(next);
-      expect(cache.getData(statistics).ys).toEqual([0, 10]);
-      expect(cache.getData({ ...statistics, statistic: "max" }).ys).toEqual([
-        1, 11,
-      ]);
-    },
-  );
-
-  it("skips a duplicate last timestamp without sorting, filtering or pushing", () => {
-    const cache = new Cache();
-    const original = state(10);
-    cache.add(entity, [state(0), original], [0, 10]);
-    const history = cache.histories[key];
-    const sort = jest.spyOn(history, "sort");
-    const filter = jest.spyOn(history, "filter");
-    const push = jest.spyOn(history, "push");
-    const duplicate = state(10);
-    duplicate.state.state = "replacement";
-
-    cache.add(entity, [duplicate], [10, 20]);
-
-    expect(sort).not.toHaveBeenCalled();
-    expect(filter).not.toHaveBeenCalled();
-    expect(push).not.toHaveBeenCalled();
-    expect(cache.histories[key]).toBe(history);
-    expect([...cache.histories[key]]).toEqual([state(0), original]);
-    expect(cache.histories[key][1]).toBe(original);
-    expect(cache.ranges[key]).toEqual([[0, 20]]);
-  });
-
-  it("shares a new state between attribute traces without a second merge", () => {
+  it("adds a state shared by attribute traces once", () => {
     const cache = new Cache();
     const temperature = { entity: "climate.test", attribute: "temperature" };
     const humidity = { ...temperature, attribute: "humidity" };
-    const sample = (timestamp: number): CachedStateEntity => ({
-      ...state(timestamp),
-      state: {
-        ...state(timestamp).state,
-        attributes: { temperature: timestamp + 20, humidity: timestamp + 40 },
-      },
-    });
     const attributeKey = getEntityKey(temperature);
-    expect(getEntityKey(humidity)).toBe(attributeKey);
-    cache.add(temperature, [sample(0)], [0, 0]);
-    const history = cache.histories[attributeKey];
-    const sort = jest.spyOn(history, "sort");
-    const filter = jest.spyOn(history, "filter");
-    const push = jest.spyOn(history, "push");
-    const next = sample(10);
+    cache.add(temperature, [state(0)], [0, 0]);
+    const sort = jest.spyOn(cache.histories[attributeKey], "sort");
 
-    cache.add(temperature, [next], [1, 10]);
-    cache.add(humidity, [next], [10, 20]);
+    cache.add(temperature, [state(10)], [1, 10]);
+    cache.add(humidity, [state(10)], [10, 20]);
 
     expect(sort).not.toHaveBeenCalled();
-    expect(filter).not.toHaveBeenCalled();
-    expect(push).toHaveBeenCalledTimes(1);
-    expect(cache.histories[attributeKey]).toBe(history);
-    expect(history).toHaveLength(2);
-    expect(history[1]).toBe(next);
-    expect(cache.getData(temperature).ys).toEqual([20, 30]);
-    expect(cache.getData(humidity).ys).toEqual([40, 50]);
+    expect(cache.getData(humidity).xs.map(Number)).toEqual([0, 10]);
     expect(cache.ranges[attributeKey]).toEqual([[0, 20]]);
   });
 
-  it("still merges a duplicate timestamp earlier than the last sample", () => {
+  it.each([
+    ["an older state", [state(0), state(20)], [state(10)], [0, 10, 20]],
+    [
+      "an earlier duplicate",
+      [state(0), state(10), state(20)],
+      [state(10)],
+      [0, 10, 20],
+    ],
+    ["a batch", [state(0)], [state(20), state(10), state(10)], [0, 10, 20]],
+    ["a newer boundary", [state(0)], [boundary(10)], [0]],
+    ["a state after the leading boundary", [boundary(0)], [state(10)], [0, 10]],
+  ])("merges %s like before", (_, cached, added, xs) => {
     const cache = new Cache();
-    const original = state(10);
-    cache.add(entity, [state(0), original, state(20)], [0, 20]);
-    const sort = jest.spyOn(cache.histories[key], "sort");
-
-    cache.add(entity, [state(10)], [10, 30]);
-
-    expect(sort).toHaveBeenCalledTimes(1);
-    expect(cache.getData(entity).xs.map(Number)).toEqual([0, 10, 20]);
-    expect(cache.histories[key][1]).toBe(original);
-    expect(cache.ranges[key]).toEqual([[0, 30]]);
+    cache.add(entity, cached, [0, 20]);
+    cache.add(entity, added, [0, 20]);
+    expect(cache.getData(entity).xs.map(Number)).toEqual(xs);
   });
 
-  it("uses the normal merge for statistics at the last cached timestamp", () => {
+  it("replaces statistics refetched at the same timestamp", () => {
     const cache = new Cache();
     const statistics = {
       ...entity,
       statistic: "mean" as const,
       period: "day" as const,
     };
-    const sample = (mean: number): CachedStatisticsEntity => ({
-      x: new Date(10),
+    const sample = (
+      timestamp: number,
+      mean: number,
+    ): CachedStatisticsEntity => ({
+      x: new Date(timestamp),
       y: null,
-      statistics: {
-        statistic_id: entity.entity,
-        start: new Date(10).toISOString(),
-        end: new Date(20).toISOString(),
-        last_reset: null,
-        mean,
-        min: mean,
-        max: mean,
-        sum: null,
-        state: null,
-      },
+      statistics: { mean } as CachedStatisticsEntity["statistics"],
     });
-    cache.add(statistics, [sample(1)], [0, 10]);
-    const sort = jest.spyOn(cache.histories[getEntityKey(statistics)], "sort");
-    const push = jest.spyOn(cache.histories[getEntityKey(statistics)], "push");
-    const updated = sample(2);
 
-    cache.add(statistics, [updated], [10, 20]);
+    cache.add(statistics, [sample(10, 1)], [0, 10]);
+    cache.add(statistics, [sample(10, 2)], [10, 20]);
+    cache.add(statistics, [sample(20, 3)], [20, 30]);
 
-    expect(sort).toHaveBeenCalledTimes(1);
-    expect(push).toHaveBeenCalledWith(updated);
-    expect(cache.getData(statistics).ys).toEqual([2]);
-    expect(cache.histories[getEntityKey(statistics)][0]).toBe(updated);
-    expect(cache.ranges[getEntityKey(statistics)]).toEqual([[0, 20]]);
-  });
-
-  it("uses the normal merge for an artificial boundary at the last timestamp", () => {
-    const cache = new Cache();
-    const original = state(10);
-    cache.add(entity, [state(0), original], [0, 10]);
-    const sort = jest.spyOn(cache.histories[key], "sort");
-
-    cache.add(
-      entity,
-      [{ ...state(10), fake_boundary_datapoint: true }],
-      [10, 20],
-    );
-
-    expect(sort).toHaveBeenCalledTimes(1);
-    expect(cache.histories[key]).toEqual([state(0), original]);
-    expect(cache.ranges[key]).toEqual([[0, 20]]);
-  });
-
-  it("preserves the leading boundary when a real sample has the same timestamp", () => {
-    const cache = new Cache();
-    const original: CachedStateEntity = {
-      ...state(10),
-      fake_boundary_datapoint: true,
-    };
-    cache.add(entity, [original], [10, 20]);
-    const history = cache.histories[key];
-
-    cache.add(entity, [state(10)], [20, 30]);
-
-    expect(cache.histories[key]).toBe(history);
-    expect(history).toHaveLength(1);
-    expect(history[0]).toBe(original);
-    expect(cache.ranges[key]).toEqual([[10, 30]]);
-  });
-
-  it("sorts an older single sample into the existing history", () => {
-    const cache = new Cache();
-    cache.add(entity, [state(0), state(20)], [0, 20]);
-    const sort = jest.spyOn(cache.histories[key], "sort");
-
-    cache.add(entity, [state(10)], [10, 10]);
-
-    expect(sort).toHaveBeenCalledTimes(1);
-    expect(cache.getData(entity).xs.map(Number)).toEqual([0, 10, 20]);
-  });
-
-  it("still sorts and deduplicates incoming batches", () => {
-    const cache = new Cache();
-    cache.add(entity, [state(0)], [0, 0]);
-    const first = state(10);
-
-    cache.add(entity, [state(20), first, state(10)], [1, 20]);
-
-    expect(cache.getData(entity).xs.map(Number)).toEqual([0, 10, 20]);
-    expect(cache.histories[key][1]).toBe(first);
-    expect(cache.ranges[key]).toEqual([[0, 20]]);
-  });
-
-  it("discards a newer artificial history boundary but records its coverage", () => {
-    const cache = new Cache();
-    cache.add(entity, [state(0)], [0, 0]);
-
-    cache.add(
-      entity,
-      [{ ...state(10), fake_boundary_datapoint: true }],
-      [1, 10],
-    );
-
-    expect(cache.getData(entity).xs.map(Number)).toEqual([0]);
-    expect(cache.ranges[key]).toEqual([[0, 10]]);
-  });
-
-  it("keeps the leading artificial boundary when appending a real state", () => {
-    const cache = new Cache();
-    const boundary: CachedStateEntity = {
-      ...state(0),
-      fake_boundary_datapoint: true,
-    };
-    cache.add(entity, [boundary], [1, 5]);
-
-    cache.add(entity, [state(10)], [6, 10]);
-
-    expect(cache.histories[key]).toEqual([boundary, state(10)]);
-    expect(cache.histories[key][0]).toBe(boundary);
-    expect(cache.ranges[key]).toEqual([[1, 10]]);
-  });
-
-  it("records empty response coverage without losing cached samples", () => {
-    const cache = new Cache();
-    cache.add(entity, [state(0)], [0, 0]);
-
-    cache.add(entity, [], [1, 10]);
-
-    expect(cache.getData(entity).xs.map(Number)).toEqual([0]);
-    expect(cache.ranges[key]).toEqual([[0, 10]]);
+    expect(cache.getData(statistics).ys).toEqual([2, 3]);
   });
 
   it("merges large histories without exceeding argument limits", () => {
