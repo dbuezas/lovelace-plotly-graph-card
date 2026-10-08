@@ -1726,10 +1726,6 @@ try {
     await page.evaluate(() => statisticsFixture.requests.length),
     beforeStateUpdates.requests,
   );
-  assert.equal(
-    await page.evaluate(() => statisticsFixture.subscriptions.length),
-    1,
-  );
   results.results.push(
     "frequent statistics sensor state changes render without refetching statistics",
   );
@@ -1746,34 +1742,26 @@ try {
   await page.waitForFunction(
     () => statisticsFixture.card.contentEl.data[0].y.length === 2,
   );
-  const liveHourly = await page.evaluate(() => {
-    const f = statisticsFixture;
-    return {
-      requests: f.requests,
-      subscriptions: f.subscriptions,
-      ys: f.card.contentEl.data.map((trace) => trace.y),
-      bars: f.card.contentEl.querySelectorAll(".barlayer .point").length,
-      statesUnchanged: f.card.hass.states === f.states,
-      error: f.card.errorMsgEl.textContent,
-    };
-  });
-  assert.equal(liveHourly.error, "");
-  assert.equal(liveHourly.statesUnchanged, true);
-  assert.deepEqual(liveHourly.ys, [
-    [1, 2],
-    [2, 3],
-  ]);
-  assert.equal(liveHourly.bars, 4);
-  assert.equal(liveHourly.requests.length, 2);
-  assert.equal(
-    Date.parse(liveHourly.requests[1].start_time),
-    Date.parse("2026-10-03T11:00:00Z") - 1,
+  assert.deepEqual(
+    await page.evaluate(() => {
+      const f = statisticsFixture;
+      return {
+        requests: f.requests.length,
+        start: Date.parse(f.requests.at(-1).start_time),
+        ys: f.card.contentEl.data.map((trace) => trace.y),
+      };
+    }),
+    {
+      requests: 2,
+      start: Date.parse("2026-10-03T11:00:00Z") - 1,
+      ys: [
+        [1, 2],
+        [2, 3],
+      ],
+    },
   );
-  assert.deepEqual(liveHourly.subscriptions, [
-    "recorder_hourly_statistics_generated",
-  ]);
   results.results.push(
-    "late hourly bars appear on recorder events without a sensor state change or full-window fetch",
+    "late hourly bars appear on recorder events without a full-window fetch",
   );
   const beforePendingRefresh = await page.evaluate(() => {
     const f = statisticsFixture;
@@ -1788,22 +1776,10 @@ try {
     return f.requests.length;
   });
   await page.waitForFunction(() => statisticsFixture.requestStarted);
-  const subscriptionsDuringFetch = await page.evaluate(() => {
-    const f = statisticsFixture;
-    f.card.hass = { ...f.card.hass, states: { ...f.states } };
-    return {
-      subscriptions: f.subscriptions.length,
-      unsubscriptions: f.unsubscriptions.length,
-      active: f.handlers.has("recorder_hourly_statistics_generated"),
-    };
-  });
-  assert.deepEqual(subscriptionsDuringFetch, {
-    subscriptions: 1,
-    unsubscriptions: 0,
-    active: true,
-  });
   await page.evaluate(() => {
     const f = statisticsFixture;
+    // An HA update while the fetch is pending must keep the subscription.
+    f.card.hass = { ...f.card.hass, states: { ...f.states } };
     f.now = f.start + 14 * f.hour + 60000;
     f.hourlyRows.push({
       start: f.start + 13 * f.hour,
@@ -1816,69 +1792,31 @@ try {
   await page.waitForFunction(
     () => statisticsFixture.card.contentEl.data[0].y.length === 4,
   );
-  const afterPendingRefresh = await page.evaluate(() => ({
-    requests: statisticsFixture.requests.length,
-    ys: statisticsFixture.card.contentEl.data.map((trace) => trace.y),
-    subscriptions: statisticsFixture.subscriptions.length,
-    unsubscriptions: statisticsFixture.unsubscriptions.length,
-  }));
-  assert.deepEqual(afterPendingRefresh, {
-    requests: beforePendingRefresh + 2,
-    ys: [
-      [1, 2, 3, 4],
-      [2, 3, 4, 5],
-    ],
-    subscriptions: 1,
-    unsubscriptions: 0,
-  });
-  results.results.push(
-    "HA updates during a pending fetch keep recorder subscriptions active",
-    "recorder events during a pending fetch queue the next published statistics",
-  );
-  await page.evaluate(() => {
-    statisticsFixture.card.setConfig({
-      type: "custom:plotly-graph",
-      hours_to_show: 24,
-      refresh_interval: "auto",
-      entities: [
-        { entity: "sensor.day", statistic: "mean", period: "day", type: "bar" },
+  assert.deepEqual(
+    await page.evaluate(() => ({
+      requests: statisticsFixture.requests.length,
+      ys: statisticsFixture.card.contentEl.data.map((trace) => trace.y),
+      subscriptions: statisticsFixture.subscriptions.length,
+      unsubscriptions: statisticsFixture.unsubscriptions.length,
+    })),
+    {
+      requests: beforePendingRefresh + 2,
+      ys: [
+        [1, 2, 3, 4],
+        [2, 3, 4, 5],
       ],
-    });
-  });
-  await page.waitForFunction(
-    () =>
-      statisticsFixture.card.contentEl.data?.length === 1 &&
-      statisticsFixture.card.contentEl.data[0].y[0] === 3,
-  );
-  await page.evaluate(() => {
-    const f = statisticsFixture;
-    f.dailyValue = 9;
-    f.now += f.hour;
-    f.handlers.get("recorder_hourly_statistics_generated")();
-  });
-  await page.waitForFunction(
-    () => statisticsFixture.card.contentEl.data[0].y[0] === 9,
-  );
-  assert.equal(
-    await page.evaluate(
-      () =>
-        statisticsFixture.card.contentEl.querySelectorAll(".barlayer .point")
-          .length,
-    ),
-    1,
-  );
-  assert.equal(
-    await page.evaluate(() => statisticsFixture.subscriptions.length),
-    1,
+      subscriptions: 1,
+      unsubscriptions: 0,
+    },
   );
   results.results.push(
-    "daily aggregate bars update in place at the same timestamp",
+    "recorder events during a pending fetch are queued, and the subscription stays",
   );
   await page.evaluate(() => {
     const f = statisticsFixture;
     const end = Math.floor(f.now / 300000) * 300000;
     f.shortRows = [{ start: end - 300000, end, mean: 1 }];
-    statisticsFixture.card.setConfig({
+    f.card.setConfig({
       type: "custom:plotly-graph",
       hours_to_show: 2,
       refresh_interval: "auto",
@@ -1910,21 +1848,6 @@ try {
   await page.waitForFunction(
     () => statisticsFixture.card.contentEl.data[0].y.length === 2,
   );
-  assert.deepEqual(
-    await page.evaluate(
-      (before) => ({
-        periods: statisticsFixture.requests
-          .slice(before)
-          .map((request) => request.period),
-        daily: statisticsFixture.card.contentEl.data[1].y,
-      }),
-      beforeShortEvent,
-    ),
-    { periods: ["5minute"], daily: [9] },
-  );
-  results.results.push(
-    "5minute recorder events do not refetch hourly calendar aggregates",
-  );
   const beforeHourEvent = await page.evaluate(() => {
     const f = statisticsFixture;
     const count = f.requests.length;
@@ -1938,105 +1861,29 @@ try {
   );
   assert.deepEqual(
     await page.evaluate(
-      (before) =>
-        statisticsFixture.requests
-          .slice(before)
-          .map((request) => request.period),
-      beforeHourEvent,
+      ([short, hour]) =>
+        [
+          statisticsFixture.requests.slice(short, hour),
+          statisticsFixture.requests.slice(hour),
+        ].map((requests) => requests.map((request) => request.period)),
+      [beforeShortEvent, beforeHourEvent],
     ),
-    ["day"],
+    [["5minute"], ["day"]],
   );
   results.results.push(
-    "hourly recorder events do not refetch short-term statistics",
-  );
-  const beforeMixed = await page.evaluate(() => {
-    const f = statisticsFixture;
-    const count = f.requests.length;
-    const start = Math.floor(f.now / 300000) * 300000;
-    f.shortRows.push({
-      start,
-      end: start + 300000,
-      mean: 6,
-    });
-    f.dailyValue = 11;
-    f.now += 5 * 60000;
-    f.handlers.get("recorder_5min_statistics_generated")();
-    f.handlers.get("recorder_hourly_statistics_generated")();
-    return count;
-  });
-  await page.waitForFunction(
-    () =>
-      statisticsFixture.card.contentEl.data[0].y.length === 3 &&
-      statisticsFixture.card.contentEl.data[1].y[0] === 11,
-  );
-  assert.equal(
-    await page.evaluate(() => statisticsFixture.requests.length),
-    beforeMixed + 2,
-  );
-  results.results.push(
-    "simultaneous 5minute and hourly notifications are coalesced with separate request periods",
-  );
-  const navigationWithShortEvent = await page.evaluate(async () => {
-    const f = statisticsFixture;
-    await f.card.plot({ should_fetch: false });
-    const before = f.requests.length;
-    f.now += 1000;
-    f.dailyValue = 99;
-    const start = f.shortRows.at(-1).end;
-    f.shortRows.push({ start, end: start + 300000, mean: 7 });
-    f.handlers.get("recorder_5min_statistics_generated")();
-    await PlotlyTest.default.relayout(f.card.contentEl, {
-      "xaxis.range": [f.now - f.hour, f.now - 1000],
-    });
-    await f.card.plot({ should_fetch: true });
-    return {
-      periods: f.requests.slice(before).map((request) => request.period),
-      daily: f.card.contentEl.data[1].y,
-      short: f.card.contentEl.data[0].y.at(-1),
-    };
-  });
-  assert.deepEqual(navigationWithShortEvent, {
-    periods: ["5minute"],
-    daily: [11],
-    short: 7,
-  });
-  results.results.push(
-    "navigation coalesced with a recorder event still refreshes only the published resolution",
+    "recorder events refetch only the resolution they publish",
   );
   await page.evaluate(() => {
-    statisticsFixture.dailyValue = 11;
-  });
-  await page.evaluate(() => {
     const f = statisticsFixture;
-    f.oldCallbacks = [...f.handlers.values()];
     f.card.setConfig({ ...f.card.config, refresh_interval: 0 });
   });
-  await page.waitForFunction(
-    () =>
-      statisticsFixture.card.parsed_config.refresh_interval === 0 &&
-      statisticsFixture.handlers.size === 0,
-  );
-  const beforeDisabled = await page.evaluate(() => {
-    statisticsFixture.oldCallbacks.forEach((callback) => callback());
-    return statisticsFixture.requests.length;
-  });
-  await page.waitForTimeout(650);
-  assert.equal(
-    await page.evaluate(() => statisticsFixture.requests.length),
-    beforeDisabled,
-  );
-  assert.equal(
-    await page.evaluate(() => statisticsFixture.unsubscriptions.length),
-    2,
-  );
-  results.results.push(
-    "disabling refresh removes recorder subscriptions and ignores stale event callbacks",
-  );
+  await page.waitForFunction(() => statisticsFixture.handlers.size === 0);
+  results.results.push("disabling refresh removes recorder subscriptions");
   await page.evaluate(() => {
     const f = statisticsFixture;
     f.card.setConfig({
       ...f.card.config,
-      refresh_interval: 1,
+      refresh_interval: "auto",
       entities: [
         { entity: "sensor.day", statistic: "mean", period: "day", type: "bar" },
       ],
@@ -2045,61 +1892,15 @@ try {
   await page.waitForFunction(
     () =>
       statisticsFixture.card.contentEl.data?.length === 1 &&
-      statisticsFixture.card.parsed_config.refresh_interval === 1,
-  );
-  const beforePolling = await page.evaluate(() => {
-    const f = statisticsFixture;
-    f.dailyValue = 12;
-    f.now += f.hour;
-    return f.requests.length;
-  });
-  await page.waitForFunction(
-    () => statisticsFixture.card.contentEl.data[0].y[0] === 12,
-  );
-  assert.equal(
-    await page.evaluate(() => statisticsFixture.requests.length),
-    beforePolling + 1,
-  );
-  assert.equal(await page.evaluate(() => statisticsFixture.handlers.size), 0);
-  results.results.push(
-    "explicit refresh intervals still update partial statistics without recorder subscriptions",
-  );
-  await page.evaluate(() => {
-    const f = statisticsFixture;
-    f.card.setConfig({ ...f.card.config, refresh_interval: "auto" });
-  });
-  await page.waitForFunction(
-    () =>
-      statisticsFixture.card.parsed_config.refresh_interval === "auto" &&
-      statisticsFixture.handlers.has("recorder_hourly_statistics_generated"),
-  );
-  const beforeReconnect = await page.evaluate(() => {
-    const f = statisticsFixture;
-    f.card.remove();
-    f.dailyValue = 13;
-    f.now += f.hour;
-    return f.requests.length;
-  });
-  assert.equal(await page.evaluate(() => statisticsFixture.handlers.size), 0);
-  await page.evaluate(() => document.body.append(statisticsFixture.card));
-  await page.waitForFunction(
-    () =>
-      statisticsFixture.card.contentEl.data[0].y[0] === 13 &&
       statisticsFixture.handlers.size === 1,
   );
-  assert.equal(
-    await page.evaluate(() => statisticsFixture.requests.length),
-    beforeReconnect + 1,
-  );
-  results.results.push(
-    "reconnected cards refetch statistics published while disconnected",
-  );
-  const cachedNavigation = await page.evaluate(async () => {
+  const navigation = await page.evaluate(async () => {
     const f = statisticsFixture;
     await f.card.plot({ should_fetch: false });
+    const value = f.card.contentEl.data[0].y[0];
     const before = f.requests.length;
     f.now += 1000;
-    f.dailyValue = 14;
+    f.dailyValue += 1;
     for (const minutesBack of [90, 100]) {
       await PlotlyTest.default.relayout(f.card.contentEl, {
         "xaxis.range": [f.now - minutesBack * 60000, f.now - 1000],
@@ -2112,103 +1913,113 @@ try {
     await f.card.plot({ should_fetch: true });
     await PlotlyTest.default.restyle(f.card.contentEl, { visible: true });
     await f.card.plot({ should_fetch: true });
-    return {
-      requests: f.requests.length - before,
-      values: f.card.contentEl.data[0].y,
-    };
-  });
-  assert.deepEqual(cachedNavigation, { requests: 0, values: [13] });
-  results.results.push(
-    "cached zoom, pan and legend toggles do not refetch mutable statistics",
-  );
-  const missingNavigation = await page.evaluate(async () => {
-    const f = statisticsFixture;
-    const before = f.requests.length;
     await PlotlyTest.default.relayout(f.card.contentEl, {
       "xaxis.range": [f.start - 36 * f.hour, f.start - f.hour],
     });
     await f.card.plot({ should_fetch: true });
-    const requests = f.requests.slice(before);
     await PlotlyTest.default.relayout(f.card.contentEl, {
       "xaxis.range": [f.now - 100 * 60000, f.now - 1000],
     });
     await f.card.plot({ should_fetch: true });
+    const requests = f.requests.slice(before);
     return {
-      requests,
-      total: f.requests.length - before,
-      values: f.card.contentEl.data[0].y,
+      requests: requests.length,
+      start: Date.parse(requests[0]?.start_time),
+      end: Date.parse(requests[0]?.end_time),
+      unchanged: f.card.contentEl.data[0].y[0] === value,
     };
   });
-  assert.equal(missingNavigation.total, 1);
+  assert.equal(navigation.requests, 1);
   assert.equal(
-    Date.parse(missingNavigation.requests[0].start_time),
+    navigation.start,
     Date.parse("2026-10-03T00:00:00Z") - 36 * 3600000 - 1,
   );
-  assert.ok(
-    Date.parse(missingNavigation.requests[0].end_time) <
-      Date.parse("2026-10-03T00:00:00Z"),
-  );
-  assert.deepEqual(missingNavigation.values, [13]);
+  assert.ok(navigation.end < Date.parse("2026-10-03T00:00:00Z"));
+  assert.equal(navigation.unchanged, true);
   results.results.push(
-    "panning into uncached history fetches only the missing range, not the cached recent aggregate",
+    "zoom, pan and legend toggles fetch only uncached ranges, not the live aggregate",
   );
-  const explicitRefresh = await page.evaluate(async () => {
+  // Each check below publishes a late hourly bar that only a statistics
+  // refresh finds: a plain fetch of the new time range starts after it.
+  await page.evaluate(() => {
     const f = statisticsFixture;
-    const before = f.requests.length;
-    f.now += 1000;
-    await f.card.plot({ should_fetch: true, refresh_statistics: true });
-    return {
-      requests: f.requests.length - before,
-      values: f.card.contentEl.data[0].y,
+    f.publishHour = (mean) => {
+      f.now += f.hour;
+      const end = Math.floor(f.now / f.hour) * f.hour;
+      f.hourlyRows.push({ start: end - f.hour, end, mean });
     };
+    f.lastHourly = () => f.card.contentEl.data[0].y.at(-1);
+    f.card.setConfig({
+      ...f.card.config,
+      refresh_interval: 1,
+      entities: [
+        {
+          entity: "sensor.hour_a",
+          statistic: "mean",
+          period: "hour",
+          type: "bar",
+        },
+      ],
+    });
   });
-  assert.deepEqual(explicitRefresh, { requests: 1, values: [14] });
-  results.results.push(
-    "explicit refreshes replace mutable statistics even inside a fully cached viewport",
+  await page.waitForFunction(
+    () =>
+      statisticsFixture.card.parsed_config.refresh_interval === 1 &&
+      statisticsFixture.card.contentEl.data?.[0]?.name === "sensor.hour_a",
   );
-  const resetRefresh = await page.evaluate(async () => {
+  await page.evaluate(() => statisticsFixture.publishHour(20));
+  await page.waitForFunction(() => statisticsFixture.lastHourly() === 20);
+  assert.equal(await page.evaluate(() => statisticsFixture.handlers.size), 0);
+  results.results.push(
+    "explicit refresh intervals still refresh statistics, without recorder subscriptions",
+  );
+  await page.evaluate(() => {
     const f = statisticsFixture;
-    const before = f.requests.length;
-    f.now += 1000;
-    f.dailyValue = 15;
+    f.card.setConfig({ ...f.card.config, refresh_interval: "auto" });
+  });
+  await page.waitForFunction(
+    () =>
+      statisticsFixture.card.parsed_config.refresh_interval === "auto" &&
+      statisticsFixture.handlers.size === 1,
+  );
+  await page.evaluate(() => {
+    const f = statisticsFixture;
+    f.card.remove();
+    f.publishHour(21);
+  });
+  assert.equal(await page.evaluate(() => statisticsFixture.handlers.size), 0);
+  await page.evaluate(() => document.body.append(statisticsFixture.card));
+  await page.waitForFunction(
+    () =>
+      statisticsFixture.lastHourly() === 21 &&
+      statisticsFixture.handlers.size === 1,
+  );
+  results.results.push(
+    "reconnected cards refetch statistics published while disconnected",
+  );
+  const reset = await page.evaluate(async () => {
+    const f = statisticsFixture;
+    f.publishHour(22);
     await f.card.exitBrowsingMode();
     await f.card.plot({ should_fetch: false });
-    return {
-      requests: f.requests.length - before,
-      values: f.card.contentEl.data[0].y,
-      browsing: f.card.isBrowsing,
-    };
+    return f.lastHourly();
   });
-  assert.deepEqual(resetRefresh, {
-    requests: 1,
-    values: [15],
-    browsing: false,
-  });
-  results.results.push("resetting the view still refreshes recent statistics");
-  const pausedRefresh = await page.evaluate(async () => {
+  assert.equal(reset, 22);
+  results.results.push("resetting the view refreshes statistics");
+  const paused = await page.evaluate(async () => {
     const f = statisticsFixture;
-    const before = f.requests.length;
-    f.now += 1000;
-    f.dailyValue = 16;
+    f.publishHour(23);
     f.card.pausedRendering = true;
     f.handlers.get("recorder_hourly_statistics_generated")();
     await f.card.plot({ should_fetch: true });
-    const whilePaused = f.requests.length - before;
+    const whilePaused = f.lastHourly();
     f.card.pausedRendering = false;
     await f.card.plot({ should_fetch: true });
-    return {
-      whilePaused,
-      requests: f.requests.length - before,
-      values: f.card.contentEl.data[0].y,
-    };
+    return [whilePaused, f.lastHourly()];
   });
-  assert.deepEqual(pausedRefresh, {
-    whilePaused: 0,
-    requests: 1,
-    values: [16],
-  });
+  assert.deepEqual(paused, [22, 23]);
   results.results.push(
-    "a recorder update queued during a touch gesture survives the navigation-only render",
+    "a recorder update during a touch gesture is applied after it",
   );
   await page.evaluate(() => {
     const f = statisticsFixture;

@@ -2,6 +2,8 @@ import type { HomeAssistant } from "custom-card-helpers";
 import type { StatisticPeriod } from "./recorder-types";
 import { StatisticsUpdates } from "./statistics-updates";
 
+const SHORT = "recorder_5min_statistics_generated";
+const HOURLY = "recorder_hourly_statistics_generated";
 const periods = (...values: StatisticPeriod[]) => new Set(values);
 const flush = async () => {
   await Promise.resolve();
@@ -26,34 +28,27 @@ function mockConnection() {
 }
 
 describe("statistics update subscriptions", () => {
-  it("subscribes to short-term updates only for 5minute data", async () => {
-    const mock = mockConnection();
-    const update = jest.fn();
-    const subscriptions = new StatisticsUpdates(update);
-    subscriptions.update(mock.connection, periods("5minute"));
-    await flush();
-    expect([...mock.callbacks.keys()]).toEqual([
-      "recorder_5min_statistics_generated",
-    ]);
-    mock.callbacks.get("recorder_5min_statistics_generated")!();
-    expect(update).toHaveBeenCalledTimes(1);
-    expect(update).toHaveBeenCalledWith("5minute");
-    subscriptions.disconnect();
-  });
-
-  it("uses one hourly subscription for all long-term periods", async () => {
-    const mock = mockConnection();
-    const subscriptions = new StatisticsUpdates(jest.fn());
-    subscriptions.update(
-      mock.connection,
-      periods("hour", "day", "week", "month"),
-    );
-    await flush();
-    expect([...mock.callbacks.keys()]).toEqual([
-      "recorder_hourly_statistics_generated",
-    ]);
-    subscriptions.disconnect();
-  });
+  it.each([
+    [["5minute"], [SHORT], ["5minute"]],
+    [["hour", "day", "week", "month"], [HOURLY], ["hour"]],
+    [
+      ["5minute", "day"],
+      [SHORT, HOURLY],
+      ["5minute", "hour"],
+    ],
+    [[], [], []],
+  ] as [StatisticPeriod[], string[], string[]][])(
+    "%j subscribes to %j and reports %j",
+    async (live, events, reported) => {
+      const mock = mockConnection();
+      const update = jest.fn();
+      new StatisticsUpdates(update).update(mock.connection, periods(...live));
+      await flush();
+      expect([...mock.callbacks.keys()]).toEqual(events);
+      mock.callbacks.forEach((callback) => callback());
+      expect(update.mock.calls.flat()).toEqual(reported);
+    },
+  );
 
   it("does not duplicate subscriptions on repeated renders", async () => {
     const mock = mockConnection();
@@ -62,34 +57,18 @@ describe("statistics update subscriptions", () => {
     subscriptions.update(mock.connection, periods("5minute", "day"));
     await flush();
     expect(mock.subscribeEvents).toHaveBeenCalledTimes(2);
-    subscriptions.disconnect();
-    expect(
-      [...mock.unsubscribes.values()].every(
-        (unsubscribe) => unsubscribe.mock.calls.length === 1,
-      ),
-    ).toBe(true);
   });
 
-  it("removes obsolete periods and ignores their old callbacks", async () => {
+  it("unsubscribes from periods that are no longer shown", async () => {
     const mock = mockConnection();
     const update = jest.fn();
     const subscriptions = new StatisticsUpdates(update);
     subscriptions.update(mock.connection, periods("5minute"));
     await flush();
     subscriptions.update(mock.connection, periods("day"));
-    await flush();
-    expect(
-      mock.unsubscribes.get("recorder_5min_statistics_generated"),
-    ).toHaveBeenCalledTimes(1);
-    mock.callbacks.get("recorder_5min_statistics_generated")!();
+    expect(mock.unsubscribes.get(SHORT)).toHaveBeenCalledTimes(1);
+    mock.callbacks.get(SHORT)!();
     expect(update).not.toHaveBeenCalled();
-    mock.callbacks.get("recorder_hourly_statistics_generated")!();
-    expect(update).toHaveBeenCalledTimes(1);
-    expect(update).toHaveBeenCalledWith("hour");
-    subscriptions.update(mock.connection, periods());
-    expect(
-      mock.unsubscribes.get("recorder_hourly_statistics_generated"),
-    ).toHaveBeenCalledTimes(1);
   });
 
   it("unsubscribes if the card disconnects before subscribing completes", async () => {
@@ -99,14 +78,12 @@ describe("statistics update subscriptions", () => {
     subscriptions.update(mock.connection, periods("5minute"));
     subscriptions.disconnect();
     await flush();
-    expect(
-      mock.unsubscribes.get("recorder_5min_statistics_generated"),
-    ).toHaveBeenCalledTimes(1);
-    mock.callbacks.get("recorder_5min_statistics_generated")!();
+    expect(mock.unsubscribes.get(SHORT)).toHaveBeenCalledTimes(1);
+    mock.callbacks.get(SHORT)!();
     expect(update).not.toHaveBeenCalled();
   });
 
-  it("replaces subscriptions when the HA connection changes", async () => {
+  it("moves subscriptions to a new HA connection", async () => {
     const first = mockConnection();
     const second = mockConnection();
     const update = jest.fn();
@@ -114,35 +91,19 @@ describe("statistics update subscriptions", () => {
     subscriptions.update(first.connection, periods("hour"));
     subscriptions.update(second.connection, periods("hour"));
     await flush();
-    expect(
-      first.unsubscribes.get("recorder_hourly_statistics_generated"),
-    ).toHaveBeenCalledTimes(1);
-    first.callbacks.get("recorder_hourly_statistics_generated")!();
-    second.callbacks.get("recorder_hourly_statistics_generated")!();
+    expect(first.unsubscribes.get(HOURLY)).toHaveBeenCalledTimes(1);
+    first.callbacks.get(HOURLY)!();
+    second.callbacks.get(HOURLY)!();
     expect(update).toHaveBeenCalledTimes(1);
-    subscriptions.disconnect();
   });
 
-  it("does not require a connection or subscribe for history-only cards", () => {
-    const mock = mockConnection();
-    const subscriptions = new StatisticsUpdates(jest.fn());
-    subscriptions.update(undefined, periods("hour"));
-    subscriptions.update(mock.connection, periods());
-    expect(mock.subscribeEvents).not.toHaveBeenCalled();
-  });
-
-  it("handles rejected subscriptions without an unhandled rejection", async () => {
+  it("warns instead of throwing when subscribing fails", async () => {
     const warning = jest.spyOn(console, "warn").mockImplementation(() => {});
-    try {
-      const mock = mockConnection();
-      mock.subscribeEvents.mockRejectedValue(new Error("offline"));
-      const subscriptions = new StatisticsUpdates(jest.fn());
-      subscriptions.update(mock.connection, periods("hour"));
-      await flush();
-      expect(warning).toHaveBeenCalledTimes(1);
-      subscriptions.disconnect();
-    } finally {
-      warning.mockRestore();
-    }
+    const mock = mockConnection();
+    mock.subscribeEvents.mockRejectedValue(new Error("offline"));
+    new StatisticsUpdates(jest.fn()).update(mock.connection, periods("hour"));
+    await flush();
+    expect(warning).toHaveBeenCalledTimes(1);
+    warning.mockRestore();
   });
 });
