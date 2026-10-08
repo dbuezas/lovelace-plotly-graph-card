@@ -16,7 +16,7 @@ import { debounce, Delay, liveThrottle, sleep } from "./utils";
 import { parseISO } from "date-fns";
 import { TouchController } from "./touch-controller";
 import { ConfigParser } from "./parse-config/parse-config";
-import { merge } from "lodash";
+import merge from "lodash/merge";
 import {
   DEFAULT_PLOT_HEIGHT,
   finishInitialLoading,

@@ -2380,7 +2380,7 @@
                                   "$ref": "#/definitions/PlotlyExpression"
                                 },
                                 {
-                                  "description": "Sets the step in-between ticks on this axis. Use with `tick0`. Must be a positive number, or special strings available to *log* and *date* axes. If the axis `type` is *log*, then ticks are set every 10^(n*dtick) where n is the tick number. For example, to set a tick mark at 1, 10, 100, 1000, ... set dtick to 1. To set tick marks at 1, 100, 10000, ... set dtick to 2. To set tick marks at 1, 5, 25, 125, 625, 3125, ... set dtick to log_10(5), or 0.69897000433. *log* has several special values; *L<f>*, where `f` is a positive number, gives ticks linearly spaced in value (but not position). For example `tick0` = 0.1, `dtick` = *L0.5* will put ticks at 0.1, 0.6, 1.1, 1.6 etc. To show powers of 10 plus small digits between, use *D1* (all digits) or *D2* (only 2 and 5). `tick0` is ignored for *D1* and *D2*. If the axis `type` is *date*, then you must convert the time to milliseconds. For example, to set the interval between ticks to one day, set `dtick` to 86400000.0. *date* also has special values *M<n>* gives ticks spaced by a number of months. `n` must be a positive integer. To set ticks on the 15th of every third month, set `tick0` to *2000-01-15* and `dtick` to *M3*. To set ticks every 4 years, set `dtick` to *M48*"
+                                  "description": "Sets the step in-between ticks on this color bar. Use with `tick0`. Must be a positive number. Note: unlike on x/y axes, the special *log* and *date* string forms (*L<f>*, *D1*, *D2*, *M<n>*) are not supported here: this axis is always linear, so such strings are silently ignored and the step is set to 1."
                                 }
                               ]
                             },
@@ -28869,7 +28869,7 @@
                                   "$ref": "#/definitions/PlotlyExpression"
                                 },
                                 {
-                                  "description": "Sets the step in-between ticks on this axis. Use with `tick0`. Must be a positive number, or special strings available to *log* and *date* axes. If the axis `type` is *log*, then ticks are set every 10^(n*dtick) where n is the tick number. For example, to set a tick mark at 1, 10, 100, 1000, ... set dtick to 1. To set tick marks at 1, 100, 10000, ... set dtick to 2. To set tick marks at 1, 5, 25, 125, 625, 3125, ... set dtick to log_10(5), or 0.69897000433. *log* has several special values; *L<f>*, where `f` is a positive number, gives ticks linearly spaced in value (but not position). For example `tick0` = 0.1, `dtick` = *L0.5* will put ticks at 0.1, 0.6, 1.1, 1.6 etc. To show powers of 10 plus small digits between, use *D1* (all digits) or *D2* (only 2 and 5). `tick0` is ignored for *D1* and *D2*. If the axis `type` is *date*, then you must convert the time to milliseconds. For example, to set the interval between ticks to one day, set `dtick` to 86400000.0. *date* also has special values *M<n>* gives ticks spaced by a number of months. `n` must be a positive integer. To set ticks on the 15th of every third month, set `tick0` to *2000-01-15* and `dtick` to *M3*. To set ticks every 4 years, set `dtick` to *M48*"
+                                  "description": "Sets the step in-between ticks on this color bar. Use with `tick0`. Must be a positive number. Note: unlike on x/y axes, the special *log* and *date* string forms (*L<f>*, *D1*, *D2*, *M<n>*) are not supported here: this axis is always linear, so such strings are silently ignored and the step is set to 1."
                                 }
                               ]
                             },
@@ -48975,7 +48975,8 @@
                         }
                       ]
                     }
-                  }
+                  },
+                  "description": "Determines which parts of the graph a user can edit directly. `editable` sets every key here at once, and a key set here overrides it. `staticPlot` disables all of them."
                 }
               ]
             },
@@ -49147,7 +49148,7 @@
                 },
                 {
                   "type": "boolean",
-                  "description": "Determines whether to change the layout size when window is resized. In v3, this option will be removed and will always be true.",
+                  "description": "Determines whether to change the layout size when the graph container is resized. In v5, this option will be removed and will always be true.",
                   "default": false
                 }
               ]
@@ -49268,8 +49269,75 @@
                   "$ref": "#/definitions/PlotlyExpression"
                 },
                 {
-                  "description": "Statically override options for toImage modebar button allowed keys are format, filename, width, height, scale see ../components/modebar/buttons.js",
-                  "default": {}
+                  "type": "object",
+                  "properties": {
+                    "filename": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/definitions/PlotlyExpression"
+                        },
+                        {
+                          "type": "string",
+                          "description": "Sets the name of the downloaded file, without an extension. The button appends the extension that matches `format`. The name defaults to the plot title, then the plot subtitle, then *plot-image*."
+                        }
+                      ]
+                    },
+                    "format": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/definitions/PlotlyExpression"
+                        },
+                        {
+                          "enum": [
+                            "png",
+                            "jpeg",
+                            "webp",
+                            "svg",
+                            "full-json"
+                          ],
+                          "description": "Sets the format of exported image.",
+                          "default": "png"
+                        }
+                      ]
+                    },
+                    "height": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/definitions/PlotlyExpression"
+                        },
+                        {
+                          "type": "number",
+                          "minimum": 1,
+                          "description": "Sets the exported image height. Defaults to the value found in `layout.height` If set to *null*, the exported image height will match the current graph height."
+                        }
+                      ]
+                    },
+                    "scale": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/definitions/PlotlyExpression"
+                        },
+                        {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Sets a scaling for the generated image. If set, all features of a graphs (e.g. text, line width) are scaled, unlike simply setting a bigger *width* and *height*."
+                        }
+                      ]
+                    },
+                    "width": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/definitions/PlotlyExpression"
+                        },
+                        {
+                          "type": "number",
+                          "minimum": 1,
+                          "description": "Sets the exported image width. Defaults to the value found in `layout.width` If set to *null*, the exported image width will match the current graph width."
+                        }
+                      ]
+                    }
+                  },
+                  "description": "Statically overrides options for the toImage modebar button. The button reads only `format`, `filename`, `width`, `height` and `scale`, and drops every other key."
                 }
               ]
             },
@@ -56455,7 +56523,7 @@
                                   "$ref": "#/definitions/PlotlyExpression"
                                 },
                                 {
-                                  "description": "Sets the step in-between ticks on this axis. Use with `tick0`. Must be a positive number, or special strings available to *log* and *date* axes. If the axis `type` is *log*, then ticks are set every 10^(n*dtick) where n is the tick number. For example, to set a tick mark at 1, 10, 100, 1000, ... set dtick to 1. To set tick marks at 1, 100, 10000, ... set dtick to 2. To set tick marks at 1, 5, 25, 125, 625, 3125, ... set dtick to log_10(5), or 0.69897000433. *log* has several special values; *L<f>*, where `f` is a positive number, gives ticks linearly spaced in value (but not position). For example `tick0` = 0.1, `dtick` = *L0.5* will put ticks at 0.1, 0.6, 1.1, 1.6 etc. To show powers of 10 plus small digits between, use *D1* (all digits) or *D2* (only 2 and 5). `tick0` is ignored for *D1* and *D2*. If the axis `type` is *date*, then you must convert the time to milliseconds. For example, to set the interval between ticks to one day, set `dtick` to 86400000.0. *date* also has special values *M<n>* gives ticks spaced by a number of months. `n` must be a positive integer. To set ticks on the 15th of every third month, set `tick0` to *2000-01-15* and `dtick` to *M3*. To set ticks every 4 years, set `dtick` to *M48*"
+                                  "description": "Sets the step in-between ticks on this color bar. Use with `tick0`. Must be a positive number. Note: unlike on x/y axes, the special *log* and *date* string forms (*L<f>*, *D1*, *D2*, *M<n>*) are not supported here: this axis is always linear, so such strings are silently ignored and the step is set to 1."
                                 }
                               ]
                             },
@@ -61719,7 +61787,7 @@
                                   "$ref": "#/definitions/PlotlyExpression"
                                 },
                                 {
-                                  "description": "Sets the step in-between ticks on this axis. Use with `tick0`. Must be a positive number, or special strings available to *log* and *date* axes. If the axis `type` is *log*, then ticks are set every 10^(n*dtick) where n is the tick number. For example, to set a tick mark at 1, 10, 100, 1000, ... set dtick to 1. To set tick marks at 1, 100, 10000, ... set dtick to 2. To set tick marks at 1, 5, 25, 125, 625, 3125, ... set dtick to log_10(5), or 0.69897000433. *log* has several special values; *L<f>*, where `f` is a positive number, gives ticks linearly spaced in value (but not position). For example `tick0` = 0.1, `dtick` = *L0.5* will put ticks at 0.1, 0.6, 1.1, 1.6 etc. To show powers of 10 plus small digits between, use *D1* (all digits) or *D2* (only 2 and 5). `tick0` is ignored for *D1* and *D2*. If the axis `type` is *date*, then you must convert the time to milliseconds. For example, to set the interval between ticks to one day, set `dtick` to 86400000.0. *date* also has special values *M<n>* gives ticks spaced by a number of months. `n` must be a positive integer. To set ticks on the 15th of every third month, set `tick0` to *2000-01-15* and `dtick` to *M3*. To set ticks every 4 years, set `dtick` to *M48*"
+                                  "description": "Sets the step in-between ticks on this color bar. Use with `tick0`. Must be a positive number. Note: unlike on x/y axes, the special *log* and *date* string forms (*L<f>*, *D1*, *D2*, *M<n>*) are not supported here: this axis is always linear, so such strings are silently ignored and the step is set to 1."
                                 }
                               ]
                             },
@@ -66988,7 +67056,7 @@
                           "$ref": "#/definitions/PlotlyExpression"
                         },
                         {
-                          "description": "Sets the step in-between ticks on this axis. Use with `tick0`. Must be a positive number, or special strings available to *log* and *date* axes. If the axis `type` is *log*, then ticks are set every 10^(n*dtick) where n is the tick number. For example, to set a tick mark at 1, 10, 100, 1000, ... set dtick to 1. To set tick marks at 1, 100, 10000, ... set dtick to 2. To set tick marks at 1, 5, 25, 125, 625, 3125, ... set dtick to log_10(5), or 0.69897000433. *log* has several special values; *L<f>*, where `f` is a positive number, gives ticks linearly spaced in value (but not position). For example `tick0` = 0.1, `dtick` = *L0.5* will put ticks at 0.1, 0.6, 1.1, 1.6 etc. To show powers of 10 plus small digits between, use *D1* (all digits) or *D2* (only 2 and 5). `tick0` is ignored for *D1* and *D2*. If the axis `type` is *date*, then you must convert the time to milliseconds. For example, to set the interval between ticks to one day, set `dtick` to 86400000.0. *date* also has special values *M<n>* gives ticks spaced by a number of months. `n` must be a positive integer. To set ticks on the 15th of every third month, set `tick0` to *2000-01-15* and `dtick` to *M3*. To set ticks every 4 years, set `dtick` to *M48*"
+                          "description": "Sets the step in-between ticks on this color bar. Use with `tick0`. Must be a positive number. Note: unlike on x/y axes, the special *log* and *date* string forms (*L<f>*, *D1*, *D2*, *M<n>*) are not supported here: this axis is always linear, so such strings are silently ignored and the step is set to 1."
                         }
                       ]
                     },
@@ -71412,7 +71480,7 @@
                                   "$ref": "#/definitions/PlotlyExpression"
                                 },
                                 {
-                                  "description": "Sets the step in-between ticks on this axis. Use with `tick0`. Must be a positive number, or special strings available to *log* and *date* axes. If the axis `type` is *log*, then ticks are set every 10^(n*dtick) where n is the tick number. For example, to set a tick mark at 1, 10, 100, 1000, ... set dtick to 1. To set tick marks at 1, 100, 10000, ... set dtick to 2. To set tick marks at 1, 5, 25, 125, 625, 3125, ... set dtick to log_10(5), or 0.69897000433. *log* has several special values; *L<f>*, where `f` is a positive number, gives ticks linearly spaced in value (but not position). For example `tick0` = 0.1, `dtick` = *L0.5* will put ticks at 0.1, 0.6, 1.1, 1.6 etc. To show powers of 10 plus small digits between, use *D1* (all digits) or *D2* (only 2 and 5). `tick0` is ignored for *D1* and *D2*. If the axis `type` is *date*, then you must convert the time to milliseconds. For example, to set the interval between ticks to one day, set `dtick` to 86400000.0. *date* also has special values *M<n>* gives ticks spaced by a number of months. `n` must be a positive integer. To set ticks on the 15th of every third month, set `tick0` to *2000-01-15* and `dtick` to *M3*. To set ticks every 4 years, set `dtick` to *M48*"
+                                  "description": "Sets the step in-between ticks on this color bar. Use with `tick0`. Must be a positive number. Note: unlike on x/y axes, the special *log* and *date* string forms (*L<f>*, *D1*, *D2*, *M<n>*) are not supported here: this axis is always linear, so such strings are silently ignored and the step is set to 1."
                                 }
                               ]
                             },
@@ -73963,7 +74031,7 @@
                           "$ref": "#/definitions/PlotlyExpression"
                         },
                         {
-                          "description": "Sets the step in-between ticks on this axis. Use with `tick0`. Must be a positive number, or special strings available to *log* and *date* axes. If the axis `type` is *log*, then ticks are set every 10^(n*dtick) where n is the tick number. For example, to set a tick mark at 1, 10, 100, 1000, ... set dtick to 1. To set tick marks at 1, 100, 10000, ... set dtick to 2. To set tick marks at 1, 5, 25, 125, 625, 3125, ... set dtick to log_10(5), or 0.69897000433. *log* has several special values; *L<f>*, where `f` is a positive number, gives ticks linearly spaced in value (but not position). For example `tick0` = 0.1, `dtick` = *L0.5* will put ticks at 0.1, 0.6, 1.1, 1.6 etc. To show powers of 10 plus small digits between, use *D1* (all digits) or *D2* (only 2 and 5). `tick0` is ignored for *D1* and *D2*. If the axis `type` is *date*, then you must convert the time to milliseconds. For example, to set the interval between ticks to one day, set `dtick` to 86400000.0. *date* also has special values *M<n>* gives ticks spaced by a number of months. `n` must be a positive integer. To set ticks on the 15th of every third month, set `tick0` to *2000-01-15* and `dtick` to *M3*. To set ticks every 4 years, set `dtick` to *M48*"
+                          "description": "Sets the step in-between ticks on this color bar. Use with `tick0`. Must be a positive number. Note: unlike on x/y axes, the special *log* and *date* string forms (*L<f>*, *D1*, *D2*, *M<n>*) are not supported here: this axis is always linear, so such strings are silently ignored and the step is set to 1."
                         }
                       ]
                     },
@@ -76769,7 +76837,7 @@
                           "$ref": "#/definitions/PlotlyExpression"
                         },
                         {
-                          "description": "Sets the step in-between ticks on this axis. Use with `tick0`. Must be a positive number, or special strings available to *log* and *date* axes. If the axis `type` is *log*, then ticks are set every 10^(n*dtick) where n is the tick number. For example, to set a tick mark at 1, 10, 100, 1000, ... set dtick to 1. To set tick marks at 1, 100, 10000, ... set dtick to 2. To set tick marks at 1, 5, 25, 125, 625, 3125, ... set dtick to log_10(5), or 0.69897000433. *log* has several special values; *L<f>*, where `f` is a positive number, gives ticks linearly spaced in value (but not position). For example `tick0` = 0.1, `dtick` = *L0.5* will put ticks at 0.1, 0.6, 1.1, 1.6 etc. To show powers of 10 plus small digits between, use *D1* (all digits) or *D2* (only 2 and 5). `tick0` is ignored for *D1* and *D2*. If the axis `type` is *date*, then you must convert the time to milliseconds. For example, to set the interval between ticks to one day, set `dtick` to 86400000.0. *date* also has special values *M<n>* gives ticks spaced by a number of months. `n` must be a positive integer. To set ticks on the 15th of every third month, set `tick0` to *2000-01-15* and `dtick` to *M3*. To set ticks every 4 years, set `dtick` to *M48*"
+                          "description": "Sets the step in-between ticks on this color bar. Use with `tick0`. Must be a positive number. Note: unlike on x/y axes, the special *log* and *date* string forms (*L<f>*, *D1*, *D2*, *M<n>*) are not supported here: this axis is always linear, so such strings are silently ignored and the step is set to 1."
                         }
                       ]
                     },
@@ -79918,7 +79986,7 @@
                           "$ref": "#/definitions/PlotlyExpression"
                         },
                         {
-                          "description": "Sets the step in-between ticks on this axis. Use with `tick0`. Must be a positive number, or special strings available to *log* and *date* axes. If the axis `type` is *log*, then ticks are set every 10^(n*dtick) where n is the tick number. For example, to set a tick mark at 1, 10, 100, 1000, ... set dtick to 1. To set tick marks at 1, 100, 10000, ... set dtick to 2. To set tick marks at 1, 5, 25, 125, 625, 3125, ... set dtick to log_10(5), or 0.69897000433. *log* has several special values; *L<f>*, where `f` is a positive number, gives ticks linearly spaced in value (but not position). For example `tick0` = 0.1, `dtick` = *L0.5* will put ticks at 0.1, 0.6, 1.1, 1.6 etc. To show powers of 10 plus small digits between, use *D1* (all digits) or *D2* (only 2 and 5). `tick0` is ignored for *D1* and *D2*. If the axis `type` is *date*, then you must convert the time to milliseconds. For example, to set the interval between ticks to one day, set `dtick` to 86400000.0. *date* also has special values *M<n>* gives ticks spaced by a number of months. `n` must be a positive integer. To set ticks on the 15th of every third month, set `tick0` to *2000-01-15* and `dtick` to *M3*. To set ticks every 4 years, set `dtick` to *M48*"
+                          "description": "Sets the step in-between ticks on this color bar. Use with `tick0`. Must be a positive number. Note: unlike on x/y axes, the special *log* and *date* string forms (*L<f>*, *D1*, *D2*, *M<n>*) are not supported here: this axis is always linear, so such strings are silently ignored and the step is set to 1."
                         }
                       ]
                     },
@@ -84294,7 +84362,7 @@
                                   "$ref": "#/definitions/PlotlyExpression"
                                 },
                                 {
-                                  "description": "Sets the step in-between ticks on this axis. Use with `tick0`. Must be a positive number, or special strings available to *log* and *date* axes. If the axis `type` is *log*, then ticks are set every 10^(n*dtick) where n is the tick number. For example, to set a tick mark at 1, 10, 100, 1000, ... set dtick to 1. To set tick marks at 1, 100, 10000, ... set dtick to 2. To set tick marks at 1, 5, 25, 125, 625, 3125, ... set dtick to log_10(5), or 0.69897000433. *log* has several special values; *L<f>*, where `f` is a positive number, gives ticks linearly spaced in value (but not position). For example `tick0` = 0.1, `dtick` = *L0.5* will put ticks at 0.1, 0.6, 1.1, 1.6 etc. To show powers of 10 plus small digits between, use *D1* (all digits) or *D2* (only 2 and 5). `tick0` is ignored for *D1* and *D2*. If the axis `type` is *date*, then you must convert the time to milliseconds. For example, to set the interval between ticks to one day, set `dtick` to 86400000.0. *date* also has special values *M<n>* gives ticks spaced by a number of months. `n` must be a positive integer. To set ticks on the 15th of every third month, set `tick0` to *2000-01-15* and `dtick` to *M3*. To set ticks every 4 years, set `dtick` to *M48*"
+                                  "description": "Sets the step in-between ticks on this color bar. Use with `tick0`. Must be a positive number. Note: unlike on x/y axes, the special *log* and *date* string forms (*L<f>*, *D1*, *D2*, *M<n>*) are not supported here: this axis is always linear, so such strings are silently ignored and the step is set to 1."
                                 }
                               ]
                             },
@@ -91536,7 +91604,7 @@
                                   "$ref": "#/definitions/PlotlyExpression"
                                 },
                                 {
-                                  "description": "Sets the step in-between ticks on this axis. Use with `tick0`. Must be a positive number, or special strings available to *log* and *date* axes. If the axis `type` is *log*, then ticks are set every 10^(n*dtick) where n is the tick number. For example, to set a tick mark at 1, 10, 100, 1000, ... set dtick to 1. To set tick marks at 1, 100, 10000, ... set dtick to 2. To set tick marks at 1, 5, 25, 125, 625, 3125, ... set dtick to log_10(5), or 0.69897000433. *log* has several special values; *L<f>*, where `f` is a positive number, gives ticks linearly spaced in value (but not position). For example `tick0` = 0.1, `dtick` = *L0.5* will put ticks at 0.1, 0.6, 1.1, 1.6 etc. To show powers of 10 plus small digits between, use *D1* (all digits) or *D2* (only 2 and 5). `tick0` is ignored for *D1* and *D2*. If the axis `type` is *date*, then you must convert the time to milliseconds. For example, to set the interval between ticks to one day, set `dtick` to 86400000.0. *date* also has special values *M<n>* gives ticks spaced by a number of months. `n` must be a positive integer. To set ticks on the 15th of every third month, set `tick0` to *2000-01-15* and `dtick` to *M3*. To set ticks every 4 years, set `dtick` to *M48*"
+                                  "description": "Sets the step in-between ticks on this color bar. Use with `tick0`. Must be a positive number. Note: unlike on x/y axes, the special *log* and *date* string forms (*L<f>*, *D1*, *D2*, *M<n>*) are not supported here: this axis is always linear, so such strings are silently ignored and the step is set to 1."
                                 }
                               ]
                             },
@@ -101950,7 +102018,7 @@
                                   "$ref": "#/definitions/PlotlyExpression"
                                 },
                                 {
-                                  "description": "Sets the step in-between ticks on this axis. Use with `tick0`. Must be a positive number, or special strings available to *log* and *date* axes. If the axis `type` is *log*, then ticks are set every 10^(n*dtick) where n is the tick number. For example, to set a tick mark at 1, 10, 100, 1000, ... set dtick to 1. To set tick marks at 1, 100, 10000, ... set dtick to 2. To set tick marks at 1, 5, 25, 125, 625, 3125, ... set dtick to log_10(5), or 0.69897000433. *log* has several special values; *L<f>*, where `f` is a positive number, gives ticks linearly spaced in value (but not position). For example `tick0` = 0.1, `dtick` = *L0.5* will put ticks at 0.1, 0.6, 1.1, 1.6 etc. To show powers of 10 plus small digits between, use *D1* (all digits) or *D2* (only 2 and 5). `tick0` is ignored for *D1* and *D2*. If the axis `type` is *date*, then you must convert the time to milliseconds. For example, to set the interval between ticks to one day, set `dtick` to 86400000.0. *date* also has special values *M<n>* gives ticks spaced by a number of months. `n` must be a positive integer. To set ticks on the 15th of every third month, set `tick0` to *2000-01-15* and `dtick` to *M3*. To set ticks every 4 years, set `dtick` to *M48*"
+                                  "description": "Sets the step in-between ticks on this color bar. Use with `tick0`. Must be a positive number. Note: unlike on x/y axes, the special *log* and *date* string forms (*L<f>*, *D1*, *D2*, *M<n>*) are not supported here: this axis is always linear, so such strings are silently ignored and the step is set to 1."
                                 }
                               ]
                             },
@@ -106259,7 +106327,7 @@
                                   "$ref": "#/definitions/PlotlyExpression"
                                 },
                                 {
-                                  "description": "Sets the step in-between ticks on this axis. Use with `tick0`. Must be a positive number, or special strings available to *log* and *date* axes. If the axis `type` is *log*, then ticks are set every 10^(n*dtick) where n is the tick number. For example, to set a tick mark at 1, 10, 100, 1000, ... set dtick to 1. To set tick marks at 1, 100, 10000, ... set dtick to 2. To set tick marks at 1, 5, 25, 125, 625, 3125, ... set dtick to log_10(5), or 0.69897000433. *log* has several special values; *L<f>*, where `f` is a positive number, gives ticks linearly spaced in value (but not position). For example `tick0` = 0.1, `dtick` = *L0.5* will put ticks at 0.1, 0.6, 1.1, 1.6 etc. To show powers of 10 plus small digits between, use *D1* (all digits) or *D2* (only 2 and 5). `tick0` is ignored for *D1* and *D2*. If the axis `type` is *date*, then you must convert the time to milliseconds. For example, to set the interval between ticks to one day, set `dtick` to 86400000.0. *date* also has special values *M<n>* gives ticks spaced by a number of months. `n` must be a positive integer. To set ticks on the 15th of every third month, set `tick0` to *2000-01-15* and `dtick` to *M3*. To set ticks every 4 years, set `dtick` to *M48*"
+                                  "description": "Sets the step in-between ticks on this color bar. Use with `tick0`. Must be a positive number. Note: unlike on x/y axes, the special *log* and *date* string forms (*L<f>*, *D1*, *D2*, *M<n>*) are not supported here: this axis is always linear, so such strings are silently ignored and the step is set to 1."
                                 }
                               ]
                             },
@@ -111154,7 +111222,7 @@
                                   "$ref": "#/definitions/PlotlyExpression"
                                 },
                                 {
-                                  "description": "Sets the step in-between ticks on this axis. Use with `tick0`. Must be a positive number, or special strings available to *log* and *date* axes. If the axis `type` is *log*, then ticks are set every 10^(n*dtick) where n is the tick number. For example, to set a tick mark at 1, 10, 100, 1000, ... set dtick to 1. To set tick marks at 1, 100, 10000, ... set dtick to 2. To set tick marks at 1, 5, 25, 125, 625, 3125, ... set dtick to log_10(5), or 0.69897000433. *log* has several special values; *L<f>*, where `f` is a positive number, gives ticks linearly spaced in value (but not position). For example `tick0` = 0.1, `dtick` = *L0.5* will put ticks at 0.1, 0.6, 1.1, 1.6 etc. To show powers of 10 plus small digits between, use *D1* (all digits) or *D2* (only 2 and 5). `tick0` is ignored for *D1* and *D2*. If the axis `type` is *date*, then you must convert the time to milliseconds. For example, to set the interval between ticks to one day, set `dtick` to 86400000.0. *date* also has special values *M<n>* gives ticks spaced by a number of months. `n` must be a positive integer. To set ticks on the 15th of every third month, set `tick0` to *2000-01-15* and `dtick` to *M3*. To set ticks every 4 years, set `dtick` to *M48*"
+                                  "description": "Sets the step in-between ticks on this color bar. Use with `tick0`. Must be a positive number. Note: unlike on x/y axes, the special *log* and *date* string forms (*L<f>*, *D1*, *D2*, *M<n>*) are not supported here: this axis is always linear, so such strings are silently ignored and the step is set to 1."
                                 }
                               ]
                             },
@@ -118100,7 +118168,7 @@
                                   "$ref": "#/definitions/PlotlyExpression"
                                 },
                                 {
-                                  "description": "Sets the step in-between ticks on this axis. Use with `tick0`. Must be a positive number, or special strings available to *log* and *date* axes. If the axis `type` is *log*, then ticks are set every 10^(n*dtick) where n is the tick number. For example, to set a tick mark at 1, 10, 100, 1000, ... set dtick to 1. To set tick marks at 1, 100, 10000, ... set dtick to 2. To set tick marks at 1, 5, 25, 125, 625, 3125, ... set dtick to log_10(5), or 0.69897000433. *log* has several special values; *L<f>*, where `f` is a positive number, gives ticks linearly spaced in value (but not position). For example `tick0` = 0.1, `dtick` = *L0.5* will put ticks at 0.1, 0.6, 1.1, 1.6 etc. To show powers of 10 plus small digits between, use *D1* (all digits) or *D2* (only 2 and 5). `tick0` is ignored for *D1* and *D2*. If the axis `type` is *date*, then you must convert the time to milliseconds. For example, to set the interval between ticks to one day, set `dtick` to 86400000.0. *date* also has special values *M<n>* gives ticks spaced by a number of months. `n` must be a positive integer. To set ticks on the 15th of every third month, set `tick0` to *2000-01-15* and `dtick` to *M3*. To set ticks every 4 years, set `dtick` to *M48*"
+                                  "description": "Sets the step in-between ticks on this color bar. Use with `tick0`. Must be a positive number. Note: unlike on x/y axes, the special *log* and *date* string forms (*L<f>*, *D1*, *D2*, *M<n>*) are not supported here: this axis is always linear, so such strings are silently ignored and the step is set to 1."
                                 }
                               ]
                             },
@@ -119365,7 +119433,7 @@
                                   "$ref": "#/definitions/PlotlyExpression"
                                 },
                                 {
-                                  "description": "Sets the step in-between ticks on this axis. Use with `tick0`. Must be a positive number, or special strings available to *log* and *date* axes. If the axis `type` is *log*, then ticks are set every 10^(n*dtick) where n is the tick number. For example, to set a tick mark at 1, 10, 100, 1000, ... set dtick to 1. To set tick marks at 1, 100, 10000, ... set dtick to 2. To set tick marks at 1, 5, 25, 125, 625, 3125, ... set dtick to log_10(5), or 0.69897000433. *log* has several special values; *L<f>*, where `f` is a positive number, gives ticks linearly spaced in value (but not position). For example `tick0` = 0.1, `dtick` = *L0.5* will put ticks at 0.1, 0.6, 1.1, 1.6 etc. To show powers of 10 plus small digits between, use *D1* (all digits) or *D2* (only 2 and 5). `tick0` is ignored for *D1* and *D2*. If the axis `type` is *date*, then you must convert the time to milliseconds. For example, to set the interval between ticks to one day, set `dtick` to 86400000.0. *date* also has special values *M<n>* gives ticks spaced by a number of months. `n` must be a positive integer. To set ticks on the 15th of every third month, set `tick0` to *2000-01-15* and `dtick` to *M3*. To set ticks every 4 years, set `dtick` to *M48*"
+                                  "description": "Sets the step in-between ticks on this color bar. Use with `tick0`. Must be a positive number. Note: unlike on x/y axes, the special *log* and *date* string forms (*L<f>*, *D1*, *D2*, *M<n>*) are not supported here: this axis is always linear, so such strings are silently ignored and the step is set to 1."
                                 }
                               ]
                             },
@@ -121639,7 +121707,7 @@
                           "$ref": "#/definitions/PlotlyExpression"
                         },
                         {
-                          "description": "Sets the step in-between ticks on this axis. Use with `tick0`. Must be a positive number, or special strings available to *log* and *date* axes. If the axis `type` is *log*, then ticks are set every 10^(n*dtick) where n is the tick number. For example, to set a tick mark at 1, 10, 100, 1000, ... set dtick to 1. To set tick marks at 1, 100, 10000, ... set dtick to 2. To set tick marks at 1, 5, 25, 125, 625, 3125, ... set dtick to log_10(5), or 0.69897000433. *log* has several special values; *L<f>*, where `f` is a positive number, gives ticks linearly spaced in value (but not position). For example `tick0` = 0.1, `dtick` = *L0.5* will put ticks at 0.1, 0.6, 1.1, 1.6 etc. To show powers of 10 plus small digits between, use *D1* (all digits) or *D2* (only 2 and 5). `tick0` is ignored for *D1* and *D2*. If the axis `type` is *date*, then you must convert the time to milliseconds. For example, to set the interval between ticks to one day, set `dtick` to 86400000.0. *date* also has special values *M<n>* gives ticks spaced by a number of months. `n` must be a positive integer. To set ticks on the 15th of every third month, set `tick0` to *2000-01-15* and `dtick` to *M3*. To set ticks every 4 years, set `dtick` to *M48*"
+                          "description": "Sets the step in-between ticks on this color bar. Use with `tick0`. Must be a positive number. Note: unlike on x/y axes, the special *log* and *date* string forms (*L<f>*, *D1*, *D2*, *M<n>*) are not supported here: this axis is always linear, so such strings are silently ignored and the step is set to 1."
                         }
                       ]
                     },
@@ -124895,7 +124963,7 @@
                           "$ref": "#/definitions/PlotlyExpression"
                         },
                         {
-                          "description": "Sets the step in-between ticks on this axis. Use with `tick0`. Must be a positive number, or special strings available to *log* and *date* axes. If the axis `type` is *log*, then ticks are set every 10^(n*dtick) where n is the tick number. For example, to set a tick mark at 1, 10, 100, 1000, ... set dtick to 1. To set tick marks at 1, 100, 10000, ... set dtick to 2. To set tick marks at 1, 5, 25, 125, 625, 3125, ... set dtick to log_10(5), or 0.69897000433. *log* has several special values; *L<f>*, where `f` is a positive number, gives ticks linearly spaced in value (but not position). For example `tick0` = 0.1, `dtick` = *L0.5* will put ticks at 0.1, 0.6, 1.1, 1.6 etc. To show powers of 10 plus small digits between, use *D1* (all digits) or *D2* (only 2 and 5). `tick0` is ignored for *D1* and *D2*. If the axis `type` is *date*, then you must convert the time to milliseconds. For example, to set the interval between ticks to one day, set `dtick` to 86400000.0. *date* also has special values *M<n>* gives ticks spaced by a number of months. `n` must be a positive integer. To set ticks on the 15th of every third month, set `tick0` to *2000-01-15* and `dtick` to *M3*. To set ticks every 4 years, set `dtick` to *M48*"
+                          "description": "Sets the step in-between ticks on this color bar. Use with `tick0`. Must be a positive number. Note: unlike on x/y axes, the special *log* and *date* string forms (*L<f>*, *D1*, *D2*, *M<n>*) are not supported here: this axis is always linear, so such strings are silently ignored and the step is set to 1."
                         }
                       ]
                     },
@@ -127915,7 +127983,7 @@
                           "$ref": "#/definitions/PlotlyExpression"
                         },
                         {
-                          "description": "Sets the step in-between ticks on this axis. Use with `tick0`. Must be a positive number, or special strings available to *log* and *date* axes. If the axis `type` is *log*, then ticks are set every 10^(n*dtick) where n is the tick number. For example, to set a tick mark at 1, 10, 100, 1000, ... set dtick to 1. To set tick marks at 1, 100, 10000, ... set dtick to 2. To set tick marks at 1, 5, 25, 125, 625, 3125, ... set dtick to log_10(5), or 0.69897000433. *log* has several special values; *L<f>*, where `f` is a positive number, gives ticks linearly spaced in value (but not position). For example `tick0` = 0.1, `dtick` = *L0.5* will put ticks at 0.1, 0.6, 1.1, 1.6 etc. To show powers of 10 plus small digits between, use *D1* (all digits) or *D2* (only 2 and 5). `tick0` is ignored for *D1* and *D2*. If the axis `type` is *date*, then you must convert the time to milliseconds. For example, to set the interval between ticks to one day, set `dtick` to 86400000.0. *date* also has special values *M<n>* gives ticks spaced by a number of months. `n` must be a positive integer. To set ticks on the 15th of every third month, set `tick0` to *2000-01-15* and `dtick` to *M3*. To set ticks every 4 years, set `dtick` to *M48*"
+                          "description": "Sets the step in-between ticks on this color bar. Use with `tick0`. Must be a positive number. Note: unlike on x/y axes, the special *log* and *date* string forms (*L<f>*, *D1*, *D2*, *M<n>*) are not supported here: this axis is always linear, so such strings are silently ignored and the step is set to 1."
                         }
                       ]
                     },
@@ -130842,7 +130910,7 @@
                           "$ref": "#/definitions/PlotlyExpression"
                         },
                         {
-                          "description": "Sets the step in-between ticks on this axis. Use with `tick0`. Must be a positive number, or special strings available to *log* and *date* axes. If the axis `type` is *log*, then ticks are set every 10^(n*dtick) where n is the tick number. For example, to set a tick mark at 1, 10, 100, 1000, ... set dtick to 1. To set tick marks at 1, 100, 10000, ... set dtick to 2. To set tick marks at 1, 5, 25, 125, 625, 3125, ... set dtick to log_10(5), or 0.69897000433. *log* has several special values; *L<f>*, where `f` is a positive number, gives ticks linearly spaced in value (but not position). For example `tick0` = 0.1, `dtick` = *L0.5* will put ticks at 0.1, 0.6, 1.1, 1.6 etc. To show powers of 10 plus small digits between, use *D1* (all digits) or *D2* (only 2 and 5). `tick0` is ignored for *D1* and *D2*. If the axis `type` is *date*, then you must convert the time to milliseconds. For example, to set the interval between ticks to one day, set `dtick` to 86400000.0. *date* also has special values *M<n>* gives ticks spaced by a number of months. `n` must be a positive integer. To set ticks on the 15th of every third month, set `tick0` to *2000-01-15* and `dtick` to *M3*. To set ticks every 4 years, set `dtick` to *M48*"
+                          "description": "Sets the step in-between ticks on this color bar. Use with `tick0`. Must be a positive number. Note: unlike on x/y axes, the special *log* and *date* string forms (*L<f>*, *D1*, *D2*, *M<n>*) are not supported here: this axis is always linear, so such strings are silently ignored and the step is set to 1."
                         }
                       ]
                     },
@@ -133578,7 +133646,7 @@
                           "$ref": "#/definitions/PlotlyExpression"
                         },
                         {
-                          "description": "Sets the step in-between ticks on this axis. Use with `tick0`. Must be a positive number, or special strings available to *log* and *date* axes. If the axis `type` is *log*, then ticks are set every 10^(n*dtick) where n is the tick number. For example, to set a tick mark at 1, 10, 100, 1000, ... set dtick to 1. To set tick marks at 1, 100, 10000, ... set dtick to 2. To set tick marks at 1, 5, 25, 125, 625, 3125, ... set dtick to log_10(5), or 0.69897000433. *log* has several special values; *L<f>*, where `f` is a positive number, gives ticks linearly spaced in value (but not position). For example `tick0` = 0.1, `dtick` = *L0.5* will put ticks at 0.1, 0.6, 1.1, 1.6 etc. To show powers of 10 plus small digits between, use *D1* (all digits) or *D2* (only 2 and 5). `tick0` is ignored for *D1* and *D2*. If the axis `type` is *date*, then you must convert the time to milliseconds. For example, to set the interval between ticks to one day, set `dtick` to 86400000.0. *date* also has special values *M<n>* gives ticks spaced by a number of months. `n` must be a positive integer. To set ticks on the 15th of every third month, set `tick0` to *2000-01-15* and `dtick` to *M3*. To set ticks every 4 years, set `dtick` to *M48*"
+                          "description": "Sets the step in-between ticks on this color bar. Use with `tick0`. Must be a positive number. Note: unlike on x/y axes, the special *log* and *date* string forms (*L<f>*, *D1*, *D2*, *M<n>*) are not supported here: this axis is always linear, so such strings are silently ignored and the step is set to 1."
                         }
                       ]
                     },
@@ -137105,7 +137173,7 @@
                           "$ref": "#/definitions/PlotlyExpression"
                         },
                         {
-                          "description": "Sets the step in-between ticks on this axis. Use with `tick0`. Must be a positive number, or special strings available to *log* and *date* axes. If the axis `type` is *log*, then ticks are set every 10^(n*dtick) where n is the tick number. For example, to set a tick mark at 1, 10, 100, 1000, ... set dtick to 1. To set tick marks at 1, 100, 10000, ... set dtick to 2. To set tick marks at 1, 5, 25, 125, 625, 3125, ... set dtick to log_10(5), or 0.69897000433. *log* has several special values; *L<f>*, where `f` is a positive number, gives ticks linearly spaced in value (but not position). For example `tick0` = 0.1, `dtick` = *L0.5* will put ticks at 0.1, 0.6, 1.1, 1.6 etc. To show powers of 10 plus small digits between, use *D1* (all digits) or *D2* (only 2 and 5). `tick0` is ignored for *D1* and *D2*. If the axis `type` is *date*, then you must convert the time to milliseconds. For example, to set the interval between ticks to one day, set `dtick` to 86400000.0. *date* also has special values *M<n>* gives ticks spaced by a number of months. `n` must be a positive integer. To set ticks on the 15th of every third month, set `tick0` to *2000-01-15* and `dtick` to *M3*. To set ticks every 4 years, set `dtick` to *M48*"
+                          "description": "Sets the step in-between ticks on this color bar. Use with `tick0`. Must be a positive number. Note: unlike on x/y axes, the special *log* and *date* string forms (*L<f>*, *D1*, *D2*, *M<n>*) are not supported here: this axis is always linear, so such strings are silently ignored and the step is set to 1."
                         }
                       ]
                     },
@@ -142805,7 +142873,7 @@
                                   "$ref": "#/definitions/PlotlyExpression"
                                 },
                                 {
-                                  "description": "Sets the step in-between ticks on this axis. Use with `tick0`. Must be a positive number, or special strings available to *log* and *date* axes. If the axis `type` is *log*, then ticks are set every 10^(n*dtick) where n is the tick number. For example, to set a tick mark at 1, 10, 100, 1000, ... set dtick to 1. To set tick marks at 1, 100, 10000, ... set dtick to 2. To set tick marks at 1, 5, 25, 125, 625, 3125, ... set dtick to log_10(5), or 0.69897000433. *log* has several special values; *L<f>*, where `f` is a positive number, gives ticks linearly spaced in value (but not position). For example `tick0` = 0.1, `dtick` = *L0.5* will put ticks at 0.1, 0.6, 1.1, 1.6 etc. To show powers of 10 plus small digits between, use *D1* (all digits) or *D2* (only 2 and 5). `tick0` is ignored for *D1* and *D2*. If the axis `type` is *date*, then you must convert the time to milliseconds. For example, to set the interval between ticks to one day, set `dtick` to 86400000.0. *date* also has special values *M<n>* gives ticks spaced by a number of months. `n` must be a positive integer. To set ticks on the 15th of every third month, set `tick0` to *2000-01-15* and `dtick` to *M3*. To set ticks every 4 years, set `dtick` to *M48*"
+                                  "description": "Sets the step in-between ticks on this color bar. Use with `tick0`. Must be a positive number. Note: unlike on x/y axes, the special *log* and *date* string forms (*L<f>*, *D1*, *D2*, *M<n>*) are not supported here: this axis is always linear, so such strings are silently ignored and the step is set to 1."
                                 }
                               ]
                             },
@@ -146067,7 +146135,7 @@
                           "$ref": "#/definitions/PlotlyExpression"
                         },
                         {
-                          "description": "Sets the step in-between ticks on this axis. Use with `tick0`. Must be a positive number, or special strings available to *log* and *date* axes. If the axis `type` is *log*, then ticks are set every 10^(n*dtick) where n is the tick number. For example, to set a tick mark at 1, 10, 100, 1000, ... set dtick to 1. To set tick marks at 1, 100, 10000, ... set dtick to 2. To set tick marks at 1, 5, 25, 125, 625, 3125, ... set dtick to log_10(5), or 0.69897000433. *log* has several special values; *L<f>*, where `f` is a positive number, gives ticks linearly spaced in value (but not position). For example `tick0` = 0.1, `dtick` = *L0.5* will put ticks at 0.1, 0.6, 1.1, 1.6 etc. To show powers of 10 plus small digits between, use *D1* (all digits) or *D2* (only 2 and 5). `tick0` is ignored for *D1* and *D2*. If the axis `type` is *date*, then you must convert the time to milliseconds. For example, to set the interval between ticks to one day, set `dtick` to 86400000.0. *date* also has special values *M<n>* gives ticks spaced by a number of months. `n` must be a positive integer. To set ticks on the 15th of every third month, set `tick0` to *2000-01-15* and `dtick` to *M3*. To set ticks every 4 years, set `dtick` to *M48*"
+                          "description": "Sets the step in-between ticks on this color bar. Use with `tick0`. Must be a positive number. Note: unlike on x/y axes, the special *log* and *date* string forms (*L<f>*, *D1*, *D2*, *M<n>*) are not supported here: this axis is always linear, so such strings are silently ignored and the step is set to 1."
                         }
                       ]
                     },
@@ -149944,7 +150012,7 @@
                                   "$ref": "#/definitions/PlotlyExpression"
                                 },
                                 {
-                                  "description": "Sets the step in-between ticks on this axis. Use with `tick0`. Must be a positive number, or special strings available to *log* and *date* axes. If the axis `type` is *log*, then ticks are set every 10^(n*dtick) where n is the tick number. For example, to set a tick mark at 1, 10, 100, 1000, ... set dtick to 1. To set tick marks at 1, 100, 10000, ... set dtick to 2. To set tick marks at 1, 5, 25, 125, 625, 3125, ... set dtick to log_10(5), or 0.69897000433. *log* has several special values; *L<f>*, where `f` is a positive number, gives ticks linearly spaced in value (but not position). For example `tick0` = 0.1, `dtick` = *L0.5* will put ticks at 0.1, 0.6, 1.1, 1.6 etc. To show powers of 10 plus small digits between, use *D1* (all digits) or *D2* (only 2 and 5). `tick0` is ignored for *D1* and *D2*. If the axis `type` is *date*, then you must convert the time to milliseconds. For example, to set the interval between ticks to one day, set `dtick` to 86400000.0. *date* also has special values *M<n>* gives ticks spaced by a number of months. `n` must be a positive integer. To set ticks on the 15th of every third month, set `tick0` to *2000-01-15* and `dtick` to *M3*. To set ticks every 4 years, set `dtick` to *M48*"
+                                  "description": "Sets the step in-between ticks on this color bar. Use with `tick0`. Must be a positive number. Note: unlike on x/y axes, the special *log* and *date* string forms (*L<f>*, *D1*, *D2*, *M<n>*) are not supported here: this axis is always linear, so such strings are silently ignored and the step is set to 1."
                                 }
                               ]
                             },
@@ -154290,7 +154358,7 @@
                                   "$ref": "#/definitions/PlotlyExpression"
                                 },
                                 {
-                                  "description": "Sets the step in-between ticks on this axis. Use with `tick0`. Must be a positive number, or special strings available to *log* and *date* axes. If the axis `type` is *log*, then ticks are set every 10^(n*dtick) where n is the tick number. For example, to set a tick mark at 1, 10, 100, 1000, ... set dtick to 1. To set tick marks at 1, 100, 10000, ... set dtick to 2. To set tick marks at 1, 5, 25, 125, 625, 3125, ... set dtick to log_10(5), or 0.69897000433. *log* has several special values; *L<f>*, where `f` is a positive number, gives ticks linearly spaced in value (but not position). For example `tick0` = 0.1, `dtick` = *L0.5* will put ticks at 0.1, 0.6, 1.1, 1.6 etc. To show powers of 10 plus small digits between, use *D1* (all digits) or *D2* (only 2 and 5). `tick0` is ignored for *D1* and *D2*. If the axis `type` is *date*, then you must convert the time to milliseconds. For example, to set the interval between ticks to one day, set `dtick` to 86400000.0. *date* also has special values *M<n>* gives ticks spaced by a number of months. `n` must be a positive integer. To set ticks on the 15th of every third month, set `tick0` to *2000-01-15* and `dtick` to *M3*. To set ticks every 4 years, set `dtick` to *M48*"
+                                  "description": "Sets the step in-between ticks on this color bar. Use with `tick0`. Must be a positive number. Note: unlike on x/y axes, the special *log* and *date* string forms (*L<f>*, *D1*, *D2*, *M<n>*) are not supported here: this axis is always linear, so such strings are silently ignored and the step is set to 1."
                                 }
                               ]
                             },
@@ -157905,7 +157973,7 @@
                                   "$ref": "#/definitions/PlotlyExpression"
                                 },
                                 {
-                                  "description": "Sets the step in-between ticks on this axis. Use with `tick0`. Must be a positive number, or special strings available to *log* and *date* axes. If the axis `type` is *log*, then ticks are set every 10^(n*dtick) where n is the tick number. For example, to set a tick mark at 1, 10, 100, 1000, ... set dtick to 1. To set tick marks at 1, 100, 10000, ... set dtick to 2. To set tick marks at 1, 5, 25, 125, 625, 3125, ... set dtick to log_10(5), or 0.69897000433. *log* has several special values; *L<f>*, where `f` is a positive number, gives ticks linearly spaced in value (but not position). For example `tick0` = 0.1, `dtick` = *L0.5* will put ticks at 0.1, 0.6, 1.1, 1.6 etc. To show powers of 10 plus small digits between, use *D1* (all digits) or *D2* (only 2 and 5). `tick0` is ignored for *D1* and *D2*. If the axis `type` is *date*, then you must convert the time to milliseconds. For example, to set the interval between ticks to one day, set `dtick` to 86400000.0. *date* also has special values *M<n>* gives ticks spaced by a number of months. `n` must be a positive integer. To set ticks on the 15th of every third month, set `tick0` to *2000-01-15* and `dtick` to *M3*. To set ticks every 4 years, set `dtick` to *M48*"
+                                  "description": "Sets the step in-between ticks on this color bar. Use with `tick0`. Must be a positive number. Note: unlike on x/y axes, the special *log* and *date* string forms (*L<f>*, *D1*, *D2*, *M<n>*) are not supported here: this axis is always linear, so such strings are silently ignored and the step is set to 1."
                                 }
                               ]
                             },
@@ -160427,7 +160495,7 @@
                                   "$ref": "#/definitions/PlotlyExpression"
                                 },
                                 {
-                                  "description": "Sets the step in-between ticks on this axis. Use with `tick0`. Must be a positive number, or special strings available to *log* and *date* axes. If the axis `type` is *log*, then ticks are set every 10^(n*dtick) where n is the tick number. For example, to set a tick mark at 1, 10, 100, 1000, ... set dtick to 1. To set tick marks at 1, 100, 10000, ... set dtick to 2. To set tick marks at 1, 5, 25, 125, 625, 3125, ... set dtick to log_10(5), or 0.69897000433. *log* has several special values; *L<f>*, where `f` is a positive number, gives ticks linearly spaced in value (but not position). For example `tick0` = 0.1, `dtick` = *L0.5* will put ticks at 0.1, 0.6, 1.1, 1.6 etc. To show powers of 10 plus small digits between, use *D1* (all digits) or *D2* (only 2 and 5). `tick0` is ignored for *D1* and *D2*. If the axis `type` is *date*, then you must convert the time to milliseconds. For example, to set the interval between ticks to one day, set `dtick` to 86400000.0. *date* also has special values *M<n>* gives ticks spaced by a number of months. `n` must be a positive integer. To set ticks on the 15th of every third month, set `tick0` to *2000-01-15* and `dtick` to *M3*. To set ticks every 4 years, set `dtick` to *M48*"
+                                  "description": "Sets the step in-between ticks on this color bar. Use with `tick0`. Must be a positive number. Note: unlike on x/y axes, the special *log* and *date* string forms (*L<f>*, *D1*, *D2*, *M<n>*) are not supported here: this axis is always linear, so such strings are silently ignored and the step is set to 1."
                                 }
                               ]
                             },
@@ -173185,7 +173253,7 @@
                                   "$ref": "#/definitions/PlotlyExpression"
                                 },
                                 {
-                                  "description": "Sets the step in-between ticks on this axis. Use with `tick0`. Must be a positive number, or special strings available to *log* and *date* axes. If the axis `type` is *log*, then ticks are set every 10^(n*dtick) where n is the tick number. For example, to set a tick mark at 1, 10, 100, 1000, ... set dtick to 1. To set tick marks at 1, 100, 10000, ... set dtick to 2. To set tick marks at 1, 5, 25, 125, 625, 3125, ... set dtick to log_10(5), or 0.69897000433. *log* has several special values; *L<f>*, where `f` is a positive number, gives ticks linearly spaced in value (but not position). For example `tick0` = 0.1, `dtick` = *L0.5* will put ticks at 0.1, 0.6, 1.1, 1.6 etc. To show powers of 10 plus small digits between, use *D1* (all digits) or *D2* (only 2 and 5). `tick0` is ignored for *D1* and *D2*. If the axis `type` is *date*, then you must convert the time to milliseconds. For example, to set the interval between ticks to one day, set `dtick` to 86400000.0. *date* also has special values *M<n>* gives ticks spaced by a number of months. `n` must be a positive integer. To set ticks on the 15th of every third month, set `tick0` to *2000-01-15* and `dtick` to *M3*. To set ticks every 4 years, set `dtick` to *M48*"
+                                  "description": "Sets the step in-between ticks on this color bar. Use with `tick0`. Must be a positive number. Note: unlike on x/y axes, the special *log* and *date* string forms (*L<f>*, *D1*, *D2*, *M<n>*) are not supported here: this axis is always linear, so such strings are silently ignored and the step is set to 1."
                                 }
                               ]
                             },
@@ -176593,7 +176661,7 @@
                           "$ref": "#/definitions/PlotlyExpression"
                         },
                         {
-                          "description": "Sets the step in-between ticks on this axis. Use with `tick0`. Must be a positive number, or special strings available to *log* and *date* axes. If the axis `type` is *log*, then ticks are set every 10^(n*dtick) where n is the tick number. For example, to set a tick mark at 1, 10, 100, 1000, ... set dtick to 1. To set tick marks at 1, 100, 10000, ... set dtick to 2. To set tick marks at 1, 5, 25, 125, 625, 3125, ... set dtick to log_10(5), or 0.69897000433. *log* has several special values; *L<f>*, where `f` is a positive number, gives ticks linearly spaced in value (but not position). For example `tick0` = 0.1, `dtick` = *L0.5* will put ticks at 0.1, 0.6, 1.1, 1.6 etc. To show powers of 10 plus small digits between, use *D1* (all digits) or *D2* (only 2 and 5). `tick0` is ignored for *D1* and *D2*. If the axis `type` is *date*, then you must convert the time to milliseconds. For example, to set the interval between ticks to one day, set `dtick` to 86400000.0. *date* also has special values *M<n>* gives ticks spaced by a number of months. `n` must be a positive integer. To set ticks on the 15th of every third month, set `tick0` to *2000-01-15* and `dtick` to *M3*. To set ticks every 4 years, set `dtick` to *M48*"
+                          "description": "Sets the step in-between ticks on this color bar. Use with `tick0`. Must be a positive number. Note: unlike on x/y axes, the special *log* and *date* string forms (*L<f>*, *D1*, *D2*, *M<n>*) are not supported here: this axis is always linear, so such strings are silently ignored and the step is set to 1."
                         }
                       ]
                     },
@@ -182654,7 +182722,7 @@
                                   "$ref": "#/definitions/PlotlyExpression"
                                 },
                                 {
-                                  "description": "Sets the step in-between ticks on this axis. Use with `tick0`. Must be a positive number, or special strings available to *log* and *date* axes. If the axis `type` is *log*, then ticks are set every 10^(n*dtick) where n is the tick number. For example, to set a tick mark at 1, 10, 100, 1000, ... set dtick to 1. To set tick marks at 1, 100, 10000, ... set dtick to 2. To set tick marks at 1, 5, 25, 125, 625, 3125, ... set dtick to log_10(5), or 0.69897000433. *log* has several special values; *L<f>*, where `f` is a positive number, gives ticks linearly spaced in value (but not position). For example `tick0` = 0.1, `dtick` = *L0.5* will put ticks at 0.1, 0.6, 1.1, 1.6 etc. To show powers of 10 plus small digits between, use *D1* (all digits) or *D2* (only 2 and 5). `tick0` is ignored for *D1* and *D2*. If the axis `type` is *date*, then you must convert the time to milliseconds. For example, to set the interval between ticks to one day, set `dtick` to 86400000.0. *date* also has special values *M<n>* gives ticks spaced by a number of months. `n` must be a positive integer. To set ticks on the 15th of every third month, set `tick0` to *2000-01-15* and `dtick` to *M3*. To set ticks every 4 years, set `dtick` to *M48*"
+                                  "description": "Sets the step in-between ticks on this color bar. Use with `tick0`. Must be a positive number. Note: unlike on x/y axes, the special *log* and *date* string forms (*L<f>*, *D1*, *D2*, *M<n>*) are not supported here: this axis is always linear, so such strings are silently ignored and the step is set to 1."
                                 }
                               ]
                             },
@@ -187070,7 +187138,7 @@
                                   "$ref": "#/definitions/PlotlyExpression"
                                 },
                                 {
-                                  "description": "Sets the step in-between ticks on this axis. Use with `tick0`. Must be a positive number, or special strings available to *log* and *date* axes. If the axis `type` is *log*, then ticks are set every 10^(n*dtick) where n is the tick number. For example, to set a tick mark at 1, 10, 100, 1000, ... set dtick to 1. To set tick marks at 1, 100, 10000, ... set dtick to 2. To set tick marks at 1, 5, 25, 125, 625, 3125, ... set dtick to log_10(5), or 0.69897000433. *log* has several special values; *L<f>*, where `f` is a positive number, gives ticks linearly spaced in value (but not position). For example `tick0` = 0.1, `dtick` = *L0.5* will put ticks at 0.1, 0.6, 1.1, 1.6 etc. To show powers of 10 plus small digits between, use *D1* (all digits) or *D2* (only 2 and 5). `tick0` is ignored for *D1* and *D2*. If the axis `type` is *date*, then you must convert the time to milliseconds. For example, to set the interval between ticks to one day, set `dtick` to 86400000.0. *date* also has special values *M<n>* gives ticks spaced by a number of months. `n` must be a positive integer. To set ticks on the 15th of every third month, set `tick0` to *2000-01-15* and `dtick` to *M3*. To set ticks every 4 years, set `dtick` to *M48*"
+                                  "description": "Sets the step in-between ticks on this color bar. Use with `tick0`. Must be a positive number. Note: unlike on x/y axes, the special *log* and *date* string forms (*L<f>*, *D1*, *D2*, *M<n>*) are not supported here: this axis is always linear, so such strings are silently ignored and the step is set to 1."
                                 }
                               ]
                             },
@@ -191107,7 +191175,7 @@
                                   "$ref": "#/definitions/PlotlyExpression"
                                 },
                                 {
-                                  "description": "Sets the step in-between ticks on this axis. Use with `tick0`. Must be a positive number, or special strings available to *log* and *date* axes. If the axis `type` is *log*, then ticks are set every 10^(n*dtick) where n is the tick number. For example, to set a tick mark at 1, 10, 100, 1000, ... set dtick to 1. To set tick marks at 1, 100, 10000, ... set dtick to 2. To set tick marks at 1, 5, 25, 125, 625, 3125, ... set dtick to log_10(5), or 0.69897000433. *log* has several special values; *L<f>*, where `f` is a positive number, gives ticks linearly spaced in value (but not position). For example `tick0` = 0.1, `dtick` = *L0.5* will put ticks at 0.1, 0.6, 1.1, 1.6 etc. To show powers of 10 plus small digits between, use *D1* (all digits) or *D2* (only 2 and 5). `tick0` is ignored for *D1* and *D2*. If the axis `type` is *date*, then you must convert the time to milliseconds. For example, to set the interval between ticks to one day, set `dtick` to 86400000.0. *date* also has special values *M<n>* gives ticks spaced by a number of months. `n` must be a positive integer. To set ticks on the 15th of every third month, set `tick0` to *2000-01-15* and `dtick` to *M3*. To set ticks every 4 years, set `dtick` to *M48*"
+                                  "description": "Sets the step in-between ticks on this color bar. Use with `tick0`. Must be a positive number. Note: unlike on x/y axes, the special *log* and *date* string forms (*L<f>*, *D1*, *D2*, *M<n>*) are not supported here: this axis is always linear, so such strings are silently ignored and the step is set to 1."
                                 }
                               ]
                             },
@@ -194210,7 +194278,7 @@
                                   "$ref": "#/definitions/PlotlyExpression"
                                 },
                                 {
-                                  "description": "Sets the step in-between ticks on this axis. Use with `tick0`. Must be a positive number, or special strings available to *log* and *date* axes. If the axis `type` is *log*, then ticks are set every 10^(n*dtick) where n is the tick number. For example, to set a tick mark at 1, 10, 100, 1000, ... set dtick to 1. To set tick marks at 1, 100, 10000, ... set dtick to 2. To set tick marks at 1, 5, 25, 125, 625, 3125, ... set dtick to log_10(5), or 0.69897000433. *log* has several special values; *L<f>*, where `f` is a positive number, gives ticks linearly spaced in value (but not position). For example `tick0` = 0.1, `dtick` = *L0.5* will put ticks at 0.1, 0.6, 1.1, 1.6 etc. To show powers of 10 plus small digits between, use *D1* (all digits) or *D2* (only 2 and 5). `tick0` is ignored for *D1* and *D2*. If the axis `type` is *date*, then you must convert the time to milliseconds. For example, to set the interval between ticks to one day, set `dtick` to 86400000.0. *date* also has special values *M<n>* gives ticks spaced by a number of months. `n` must be a positive integer. To set ticks on the 15th of every third month, set `tick0` to *2000-01-15* and `dtick` to *M3*. To set ticks every 4 years, set `dtick` to *M48*"
+                                  "description": "Sets the step in-between ticks on this color bar. Use with `tick0`. Must be a positive number. Note: unlike on x/y axes, the special *log* and *date* string forms (*L<f>*, *D1*, *D2*, *M<n>*) are not supported here: this axis is always linear, so such strings are silently ignored and the step is set to 1."
                                 }
                               ]
                             },

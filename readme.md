@@ -1451,7 +1451,7 @@ Replaced with [extended_touch_support](#extended_touch_support) in v4.0.0. `disa
 
 ## Plotly.js 4 compatibility
 
-This card uses Plotly.js 4.1.1. Review custom Plotly configurations when
+This card uses Plotly.js 4.1.2. Review custom Plotly configurations when
 upgrading from 2.x or 3.x:
 
 Plotly.js 3 removed the deprecated `pointcloud` and `heatmapgl` trace types,
@@ -1475,7 +1475,7 @@ migrated before upgrading.
   to send chart data to Plotly Cloud. The previous 300 ms double-click delay
   is also retained unless configured otherwise.
 
-See the [Plotly.js changelog](https://github.com/plotly/plotly.js/blob/v4.1.1/CHANGELOG.md)
+See the [Plotly.js changelog](https://github.com/plotly/plotly.js/blob/v4.1.2/CHANGELOG.md)
 for the complete list of changes, including changes to SPLOM axis matching
 and event coordinates.
 
