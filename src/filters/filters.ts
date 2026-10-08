@@ -398,25 +398,14 @@ const filters = {
     (names: string | string[]): FilterFn =>
     ({ xs, vars }) => {
       const timestamps = xs.map(ms);
-      if (timestamps.some((time) => !Number.isFinite(time)))
-        throw new Error("align_timestamps requires valid timestamps");
-      const aligned: Record<string, unknown> = Object.create(null);
+      const aligned: Record<string, unknown> = {};
       for (const name of typeof names === "string" ? [names] : names) {
         const source = vars[name];
         if (!Array.isArray(source?.xs) || !Array.isArray(source?.ys))
           throw new Error(`align_timestamps: '${name}' is not a stored series`);
-        if (source.xs.length !== source.ys.length)
-          throw new Error(`align_timestamps: '${name}' has different x/y lengths`);
         // Match exact instants without changing the stored series' time grid.
         const byTime = new Map<number, number>();
-        source.xs.forEach((x: Date, index: number) => {
-          const time = ms(x);
-          if (!Number.isFinite(time))
-            throw new Error(
-              `align_timestamps: '${name}' contains an invalid timestamp`,
-            );
-          byTime.set(time, index);
-        });
+        source.xs.forEach((x: Date, index: number) => byTime.set(ms(x), index));
         const indices = timestamps.map((time) => byTime.get(time));
         const project = (values: unknown[]) =>
           values?.length
@@ -426,7 +415,7 @@ const filters = {
             : [];
         aligned[name] = {
           ...source,
-          xs: xs.slice(),
+          xs,
           ys: indices.map((index) =>
             index === undefined ? null : (source.ys[index] ?? null),
           ),

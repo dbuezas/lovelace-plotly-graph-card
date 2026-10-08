@@ -781,16 +781,12 @@ This can also be used to fetch data by calling a HA service. As this is a call t
 
 ##### Using vars
 
-When combining series, match their timestamps rather than assuming their array
-indexes line up. Even statistics with the same period can have missing periods
-or different start times. Use `align_timestamps: name` (or `align_timestamps: [name1, name2]`)
-after `store_var` on an earlier entity. It creates aligned copies under
-`vars.aligned`, using the current trace's `xs` without changing either original
-series. Each call replaces `vars.aligned` with the requested series.
-
-Only exact timestamps match, regardless of the display timezone. Missing matches
-become `null`; zero and existing gaps are preserved. No resampling, interpolation
-or extrapolation is performed. Handle `null` explicitly when combining values:
+Use `align_timestamps: name` (or `align_timestamps: [name1, name2]`) to match a
+previously stored series to the current trace's exact timestamps under
+`vars.aligned`, without changing either original series; missing matches become
+`null`. Each call replaces `vars.aligned` with the requested series.
+Place it directly before the `map_y` that uses it: intervening filters that drop
+or move points, such as `filter` or `resample`, break alignment with `i` again.
 
 ```yaml
 type: custom:plotly-graph

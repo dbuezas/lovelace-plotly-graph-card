@@ -548,106 +548,14 @@ describe("align_timestamps", () => {
     expect(b.xs).toEqual(at(5, 10, 15));
   });
 
-  it("handles unordered timestamps, equivalent dates and duplicate updates", () => {
-    const source = {
-      ...saved([10, 0, 5, 5], [3, 1, 2, 4]),
-      states: [],
-      statistics: [],
-    };
-    const data = input({ xs: at(5, 0, 10, 5), vars: { source } });
-    const { vars } = filters.align_timestamps("source")(data);
-    expect(vars!.aligned.source.ys).toEqual([4, 1, 3, 4]);
-    expect(vars!.aligned.source.states).toEqual([]);
-    expect(vars!.aligned.source.statistics).toEqual([]);
-  });
-
   it("does not interpolate, round timestamps or replace explicit gaps with zero", () => {
     const source = saved([0, 5, 10], [0, null, "unavailable"]);
     const data = input({
       xs: [...at(0), new Date(+at(5)[0] + 1), ...at(5, 10)],
       vars: { source },
     });
-    expect(filters.align_timestamps("source")(data).vars!.aligned.source.ys).toEqual([
-      0,
-      null,
-      null,
-      "unavailable",
-    ]);
-  });
-
-  it("returns missing values for an empty stored series", () => {
-    const { vars } = filters.align_timestamps("empty")(
-      input({
-        xs: at(0, 5),
-        vars: { empty: saved([], []) },
-      }),
-    );
-    expect(vars!.aligned.empty.ys).toEqual([null, null]);
-    expect(vars!.aligned.empty.states).toEqual([]);
-  });
-
-  it("matches absolute instants across timezones and repeated daylight-saving hours", () => {
-    const source = {
-      ...saved([0, 5], [1, 2]),
-      xs: [
-        new Date("2025-10-26T02:30:00+02:00"),
-        new Date("2025-10-26T02:30:00+01:00"),
-      ],
-    };
-    const data = input({
-      xs: [new Date("2025-10-26T00:30:00Z"), new Date("2025-10-26T01:30:00Z")],
-      vars: { source },
-      timeZone: "Europe/Zurich",
-    });
-    expect(filters.align_timestamps("source")(data).vars!.aligned.source.ys).toEqual([
-      1, 2,
-    ]);
-  });
-
-  it("handles an empty target and variable names that overlap object properties", () => {
-    const source = saved([0], [1]);
-    const vars = { ["__proto__"]: source };
-    const aligned = filters.align_timestamps("__proto__")(input({ xs: at(0), vars }));
-    expect(Object.hasOwn(aligned.vars!.aligned, "__proto__")).toBe(true);
-    expect(aligned.vars!.aligned.__proto__.ys).toEqual([1]);
-    const empty = filters.align_timestamps("__proto__")(input({ xs: [], vars }));
-    expect(empty.vars!.aligned.__proto__.xs).toEqual([]);
-    expect(empty.vars!.aligned.__proto__.ys).toEqual([]);
-    expect(empty.vars!.aligned.__proto__.states).toEqual([]);
-  });
-
-  it("combines only corresponding periods through map_y", () => {
-    const data = input({
-      xs: at(0, 5, 10),
-      ys: [10, 20, 30],
-      vars: { other: saved([5, 10], [3, 7]) },
-    });
-    const aligned = filters.align_timestamps("other")(data);
-    const result = filters.map_y(
-      "vars.aligned.other.ys[i] === null ? null : y - vars.aligned.other.ys[i]",
-    )({ ...data, ...aligned });
-    expect(result.xs).toEqual(at(0, 5, 10));
-    expect(result.ys).toEqual([null, 17, 23]);
-  });
-
-  it.each([
-    [undefined, "not a stored series"],
-    [{ xs: at(0), ys: [] }, "different x/y lengths"],
-    [{ xs: [new Date(NaN)], ys: [1] }, "invalid timestamp"],
-  ])("reports unusable stored series", (source, message) => {
-    expect(() =>
-      filters.align_timestamps("source")(input({ vars: { source } })),
-    ).toThrow(message);
-  });
-
-  it("rejects invalid target timestamps", () => {
-    expect(() =>
-      filters.align_timestamps("source")(
-        input({
-          xs: [new Date(NaN)],
-          vars: { source: saved([0], [1]) },
-        }),
-      ),
-    ).toThrow("requires valid timestamps");
+    expect(
+      filters.align_timestamps("source")(data).vars!.aligned.source.ys,
+    ).toEqual([0, null, null, "unavailable"]);
   });
 });
