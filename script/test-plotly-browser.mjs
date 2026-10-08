@@ -1266,6 +1266,39 @@ try {
   results.results.push(
     "generated and reused filter lists render through the card",
   );
+  const numericTrendline = await page.evaluate(async () => {
+    const card = document.getElementById("card-under-test");
+    card.setConfig({
+      type: "custom:plotly-graph",
+      refresh_interval: 0,
+      entities: [
+        {
+          entity: "",
+          mode: "lines",
+          filters: [
+            {
+              fn: "() => ({ xs: [2.1, 2.4, 2.9, 3.2, 3.7], ys: [7.3, 8.2, 9.7, 10.6, 12.1] })",
+            },
+            { trendline: "linear" },
+          ],
+        },
+      ],
+      layout: { xaxis: { type: "linear" } },
+    });
+    await card.plot({ should_fetch: false });
+    return {
+      x: card.contentEl.data[0].x,
+      rendered: card.contentEl.calcdata[0].map(({ x, y }) => ({ x, y })),
+      error: card.errorMsgEl.textContent,
+    };
+  });
+  assert.equal(numericTrendline.error, "");
+  assert.deepEqual(numericTrendline.x, [2.1, 2.4, 2.9, 3.2, 3.7]);
+  assert.equal(numericTrendline.rendered.length, 5);
+  for (const point of numericTrendline.rendered) {
+    assert.ok(Math.abs(point.y - (3 * point.x + 1)) < 1e-8);
+  }
+  results.results.push("numeric trendline filters render on a linear X axis");
   const shiftedHistoryResults = await page.evaluate(async () => {
     const card = document.getElementById("card-under-test");
     const now = Date.now();
