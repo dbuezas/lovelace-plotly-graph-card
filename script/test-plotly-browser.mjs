@@ -1266,6 +1266,82 @@ try {
   results.results.push(
     "generated and reused filter lists render through the card",
   );
+  const coalescedHistory = await page.evaluate(async () => {
+    const card = new CardTest.PlotlyGraph();
+    card.style.cssText =
+      "display:block;position:fixed;top:0;left:0;width:480px";
+    const now = Date.now();
+    const entity = "sensor.burst";
+    const state = (value, timestamp) => ({
+      entity_id: entity,
+      state: String(value),
+      attributes: {},
+      last_changed: new Date(timestamp).toISOString(),
+      last_updated: new Date(timestamp).toISOString(),
+    });
+    let callback;
+    let requests = 0;
+    const connection = {
+      subscribeMessage: async (cb) => {
+        callback = cb;
+        return () => {};
+      },
+      addEventListener() {},
+      removeEventListener() {},
+    };
+    const hass = {
+      locale: { language: "en" },
+      states: { [entity]: state(1, now - 10000) },
+      connection,
+      callWS: async ({ start_time }) => {
+        requests++;
+        return {
+          [entity]: [
+            { s: "1", lu: Date.parse(start_time) / 1000 },
+            { s: "1", lu: (now - 10000) / 1000 },
+          ],
+        };
+      },
+    };
+    card.hass = hass;
+    card.setConfig({
+      type: "custom:plotly-graph",
+      refresh_interval: "auto",
+      hours_to_show: 0.5,
+      entities: [{ entity, extend_to_present: false }],
+    });
+    document.body.append(card);
+    await card.plot({ should_fetch: true });
+    card.hass = { ...hass, states: { [entity]: state(3, now - 2000) } };
+    callback?.({
+      states: {
+        [entity]: [
+          { s: "2", lu: (now - 5000) / 1000 },
+          { s: "3", lu: (now - 2000) / 1000 },
+        ],
+      },
+    });
+    await card.plot({ should_fetch: false });
+    const deadline = performance.now() + 5000;
+    while (
+      card.contentEl.data[0].y.at(-1) !== "3" &&
+      performance.now() < deadline
+    )
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    const result = {
+      values: card.contentEl.data[0].y.slice(-3),
+      requests,
+      error: card.errorMsgEl.textContent,
+    };
+    card.remove();
+    return result;
+  });
+  assert.equal(coalescedHistory.error, "");
+  assert.deepEqual(coalescedHistory.values, ["1", "2", "3"]);
+  assert.equal(coalescedHistory.requests, 1);
+  results.results.push(
+    "coalesced frontend snapshots do not lose intermediate live history states",
+  );
   const shiftedHistoryResults = await page.evaluate(async () => {
     const card = document.getElementById("card-under-test");
     const now = Date.now();

@@ -1221,6 +1221,12 @@ autorange_after_scroll: true
 
 Update data every `refresh_interval` seconds.
 
+With `auto`, live state history uses Home Assistant's history stream. Unlike
+frontend state snapshots, the stream includes intermediate changes in a burst
+and catches up with states that Recorder has not committed yet. A card uses one
+stream for its live history entities and closes it when removed or when automatic
+refresh is disabled.
+
 With `auto`, live statistics also refresh when Home Assistant publishes new
 5-minute or hourly statistics, even if the entity's state has not changed.
 Each event refreshes only its matching resolution: daily, weekly and monthly
@@ -1229,6 +1235,8 @@ Entity state changes can still update the display without refetching statistics.
 Zooming, panning and toggling traces only fetch missing ranges; they do not
 invalidate cached statistics. Resetting the view also refreshes recent values.
 An explicit refresh interval continues to poll at the configured interval.
+The unconfirmed tail after the last recorded state is checked again, so delayed
+Recorder writes are not permanently hidden behind a cached request boundary.
 
 Examples:
 

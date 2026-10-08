@@ -28,6 +28,9 @@ import { inTimeZone } from "./timezone";
 import { getEditorYAxisRelayout } from "./parse-config/defaults";
 import { prepareHistoryLineGaps } from "./history-line-gaps";
 import { StatisticsUpdates } from "./statistics-updates";
+import { HistoryUpdates } from "./history-updates";
+import { getEntityKey } from "./cache/Cache";
+import { mapStates } from "./cache/fetch-states";
 import type { StatisticsUpdatePeriod } from "./cache/statistics-refresh";
 
 const componentName = isProduction ? "plotly-graph" : "plotly-graph-dev";
@@ -62,6 +65,19 @@ export class PlotlyGraph extends HTMLElement {
   statisticsUpdates = new StatisticsUpdates((period) => {
     this.statisticsFetchPeriods.add(period);
     this.plot({ should_fetch: false }, 500);
+  });
+  historyUpdates = new HistoryUpdates((states) => {
+    let changed = false;
+    for (const entity of this.configParser.historyEntities) {
+      const history = mapStates(entity.entity, states[entity.entity]);
+      if (!history.length) continue;
+      this.configParser.cache.add(entity, history, [
+        +history[0].x,
+        +history.at(-1)!.x,
+      ]);
+      changed = true;
+    }
+    if (changed) this.plot({ should_fetch: false }, this.liveThrottle.change());
   });
   pausedRendering = false;
   handles: {
@@ -283,6 +299,7 @@ export class PlotlyGraph extends HTMLElement {
     this.resetButtonEl.removeEventListener("click", this.exitBrowsingMode);
     this.touchController.disconnect();
     this.statisticsUpdates.disconnect();
+    this.historyUpdates.disconnect();
   }
 
   connectPlotlyListeners() {
@@ -360,14 +377,15 @@ export class PlotlyGraph extends HTMLElement {
         const oldState = this._hass?.states[entity.entity];
         if (state && oldState !== state) {
           shouldPlot = true;
-          const start = new Date(oldState?.last_updated || state.last_updated);
           const end = new Date(state.last_updated);
-          const range: [number, number] = [+start, +end];
-          if (isEntityIdAttrConfig(entity) || isEntityIdStateConfig(entity)) {
+          if (
+            (isEntityIdAttrConfig(entity) || isEntityIdStateConfig(entity)) &&
+            !this.historyUpdates.has(entity.entity)
+          ) {
             this.configParser.cache.add(
               entity,
               [{ state, x: new Date(end), y: null }],
-              range
+              [+end, +end],
             );
           }
         }
@@ -386,6 +404,24 @@ export class PlotlyGraph extends HTMLElement {
       this.isConnected && this.parsed_config?.refresh_interval === "auto"
         ? this.configParser.statisticsPeriods
         : new Set(),
+    );
+    const entities =
+      this.isConnected && this.parsed_config?.refresh_interval === "auto"
+        ? this.configParser.historyEntities
+        : [];
+    this.historyUpdates.update(
+      this.hass?.connection,
+      entities.map((entity) => entity.entity),
+      entities.some(isEntityIdAttrConfig),
+      () =>
+        Math.min(
+          ...entities.map((entity) => {
+            const key = getEntityKey(entity);
+            const cache = this.configParser.cache;
+            return cache.histories[key]?.at(-1)?.x.getTime() ??
+              cache.ranges[key]?.[0]?.[0] ?? Date.now();
+          }),
+        ),
     );
   }
 
