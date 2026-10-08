@@ -273,21 +273,7 @@ entities:
 
 ### Shared data requests
 
-Cards on the same page and Home Assistant connection share compatible pending
-and in-flight history/statistics requests. Requests queued in the same event-loop
-turn combine their entity IDs. History boundaries may differ by up to one second;
-each card still receives its exact requested range. Attribute history and
-statistics require matching boundaries, and different statistics periods or
-requested fields stay separate.
-If a measurement falls exactly on a card's shifted start boundary, that card
-fetches separately to preserve Home Assistant's boundary behavior.
-
-Completed responses are not kept in a shared cache. Each card retains its own
-cache and independently mutable data. This reduces duplicate recorder work when
-multiple cards load matching data together; it does not speed up unrelated
-queries or share requests across browser tabs.
-Cards in a batch wait for the same response, so a small card can also wait longer
-when combined with a larger query.
+Cards on the same Home Assistant connection share pending or in-flight history/statistics requests only when their time ranges and options match, while keeping their caches and response data independent.
 
 ### Statistics support
 

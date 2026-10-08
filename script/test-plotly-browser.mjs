@@ -1225,25 +1225,25 @@ try {
   );
   const sharedCards = await page.evaluate(async () => {
     const template = document.getElementById("card-under-test");
-    const start = Date.now() - 7200000;
-    const end = start + 3600000;
+    const originalNow = Date.now;
+    let clock = originalNow();
+    const start = clock - 86400000;
+    Date.now = () => clock;
     const requests = [];
+    const snapshots = [];
     const hass = {
       ...template.hass,
       connection: {},
       callWS: async (request) => {
         requests.push(request);
         await new Promise((resolve) => setTimeout(resolve, 10));
-        const ids = request.entity_ids || request.statistic_ids;
         return Object.fromEntries(
-          ids.map((id) => [
+          request.entity_ids.map((id) => [
             id,
-            request.entity_ids
-              ? [
-                  { s: "1", lu: Date.parse(request.start_time) / 1000 },
-                  { s: "2", lu: (start + 600000) / 1000 },
-                ]
-              : [{ start, end: start + 300000, mean: 3 }],
+            [
+              { s: id === "sensor.one" ? "1" : "3", lu: start / 1000 },
+              { s: id === "sensor.one" ? "2" : "4", lu: (start + 600000) / 1000 },
+            ],
           ]),
         );
       },
@@ -1254,74 +1254,58 @@ try {
       card.setConfig({
         type: "custom:plotly-graph",
         refresh_interval: 0,
-        visible_range: [start + index * 4, end + index * 4],
-        entities: [{ entity: "sensor.one", extend_to_present: false }],
+        hours_to_show: 24,
+        entities: [
+          {
+            entity: index === 0 ? "sensor.one" : "sensor.two",
+            extend_to_present: false,
+          },
+        ],
       });
+      const update = card.configParser.update.bind(card.configParser);
+      card.configParser.update = (input) => {
+        snapshots[index] ??= input.now;
+        clock += 4;
+        return update(input);
+      };
       card.hass = hass;
       document.body.append(card);
       return card;
     });
     try {
       await Promise.all(cards.map((card) => card.plot({ should_fetch: true })));
-      const history = {
-        requests: requests.splice(0),
+      return {
+        requests,
+        snapshots,
         values: cards.map((card) => card.contentEl.data[0].y),
-        starts: cards.map((card) => +new Date(card.contentEl.data[0].x[0])),
         errors: cards.map((card) => card.errorMsgEl.textContent),
       };
-      const statistics = [];
-      for (const periods of [
-        ["5minute", "5minute"],
-        ["5minute", "hour"],
-      ]) {
-        cards.forEach((card) => card.configParser.cache.clearCache());
-        cards.forEach((card, index) =>
-          card.setConfig({
-            type: "custom:plotly-graph",
-            refresh_interval: 0,
-            visible_range: [start, end],
-            entities: [
-              {
-                entity: "sensor.one",
-                statistic: "mean",
-                period: periods[index],
-              },
-            ],
-          }),
-        );
-        await Promise.all(
-          cards.map((card) => card.plot({ should_fetch: true })),
-        );
-        statistics.push({
-          requests: requests.splice(0),
-          values: cards.map((card) => card.contentEl.data[0].y),
-          errors: cards.map((card) => card.errorMsgEl.textContent),
-        });
-      }
-      return { start, history, statistics };
     } finally {
+      Date.now = originalNow;
       cards.forEach((card) => card.remove());
     }
   });
-  assert.equal(sharedCards.history.requests.length, 1);
-  assert.deepEqual(sharedCards.history.values, [
-    ["1", "2"],
-    ["1", "2"],
+  assert.equal(sharedCards.requests.length, 1);
+  assert.equal(sharedCards.snapshots[0], sharedCards.snapshots[1]);
+  assert.equal(
+    Date.parse(sharedCards.requests[0].end_time),
+    sharedCards.snapshots[0],
+  );
+  assert.equal(
+    Date.parse(sharedCards.requests[0].start_time),
+    sharedCards.snapshots[0] - 86400000 - 1,
+  );
+  assert.deepEqual(sharedCards.requests[0].entity_ids, [
+    "sensor.one",
+    "sensor.two",
   ]);
-  assert.deepEqual(sharedCards.history.starts, [
-    sharedCards.start,
-    sharedCards.start + 4,
+  assert.deepEqual(sharedCards.values, [
+    ["1", "2"],
+    ["3", "4"],
   ]);
-  assert.deepEqual(sharedCards.history.errors, ["", ""]);
-  assert.equal(sharedCards.statistics[0].requests.length, 1);
-  assert.equal(sharedCards.statistics[1].requests.length, 2);
-  for (const state of sharedCards.statistics) {
-    assert.deepEqual(state.values, [[3], [3]]);
-    assert.deepEqual(state.errors, ["", ""]);
-  }
+  assert.deepEqual(sharedCards.errors, ["", ""]);
   results.results.push(
-    "two cards share history with 4 ms boundary drift and keep their exact ranges",
-    "two cards share matching statistics but keep different periods separate",
+    "two cards share default frame ranges despite a 4 ms clock drift and render their own data",
   );
   const generatedFilters = await page.evaluate(async () => {
     const card = document.getElementById("card-under-test");

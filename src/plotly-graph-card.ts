@@ -539,7 +539,7 @@ export class PlotlyGraph extends HTMLElement {
     this.renderDeferred = false;
     this.plot({ should_fetch: false });
   };
-  _plot = debounce(async () => {
+  _plot = debounce(async (now) => {
     this.liveThrottle.renderStarted();
     if (this.pausedRendering) return;
     // Off-screen cards update every 30 s, and catch up once scrolled into
@@ -564,9 +564,9 @@ export class PlotlyGraph extends HTMLElement {
         if (i++ > 50) throw new Error("Card didn't load");
         console.log("waiting for loading");
         await sleep(100);
+        now = Date.now();
       }
       // Invalidate between parses, not while an older fetch is still running.
-      const now = Date.now();
       if (refresh_statistics) {
         await this.configParser.cache.refreshStatistics(now);
       } else {
@@ -598,6 +598,7 @@ export class PlotlyGraph extends HTMLElement {
         this.config
       );
       const { errors, parsed } = await this.configParser.update({
+        now,
         yaml,
         hass: this.hass,
         css_vars: this.getCSSVars(),

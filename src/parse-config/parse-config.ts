@@ -68,6 +68,7 @@ class ConfigParser {
     hass: HomeAssistant;
     css_vars: HATheme;
     statisticsUpdates?: ReadonlySet<StatisticsUpdatePeriod>;
+    now?: number;
   }) {
     if (this.busy) throw new Error("ParseConfig was updated while busy");
     this.busy = true;
@@ -82,11 +83,13 @@ class ConfigParser {
     hass,
     css_vars,
     statisticsUpdates,
+    now = Date.now(),
   }: {
     yaml: InputConfig;
     hass: HomeAssistant;
     css_vars: HATheme;
     statisticsUpdates?: ReadonlySet<StatisticsUpdatePeriod>;
+    now?: number;
   }): Promise<{ errors: Error[]; parsed: Config }> {
     this.yaml = {};
     this.errors = [];
@@ -94,7 +97,7 @@ class ConfigParser {
     this.hass = hass;
     this.historyPrefetched = false;
     // All fetch paths in this update share one cutoff, even after slow requests.
-    this.fetchTime = Date.now();
+    this.fetchTime = now;
     this.nextStatisticsPeriods = new Set();
     this.statisticsUpdates = statisticsUpdates;
     // Dynamic ranges advance on refresh; concrete ranges can come from browsing.
@@ -325,7 +328,11 @@ class ConfigParser {
       );
       const hours_to_show = this.fnParam.getFromConfig("hours_to_show");
       if (isRelativeTime(hours_to_show)) {
-        const [start, end] = parseRelativeTime(hours_to_show, this.timeZone);
+        const [start, end] = parseRelativeTime(
+          hours_to_show,
+          this.timeZone,
+          this.fetchTime,
+        );
         visible_range = [start + global_offset, end + global_offset];
       } else {
         let ms_to_show;
@@ -338,7 +345,7 @@ class ConfigParser {
             `${hours_to_show} is not a valid duration. Use numbers, durations (e.g 1d) or dynamic time (e.g current_day)`
           );
         }
-        const now = Date.now();
+        const now = this.fetchTime;
         visible_range = [
           now - ms_to_show + global_offset,
           now + global_offset,

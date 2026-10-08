@@ -5,8 +5,6 @@ import {
   StatisticsRequest,
 } from "./shared-requests";
 import fetchStatistics from "./fetch-statistics";
-import { fetchStatesBatch } from "./fetch-states";
-import Cache from "./Cache";
 
 const start = Date.parse("2025-01-01T00:00:00Z");
 const end = start + 24 * 3600000;
@@ -39,6 +37,7 @@ describe("shared card requests", () => {
       hass(callWS, connection),
       history(["sensor.one", "sensor.two"]),
     );
+    await Promise.resolve();
     const b = requestCardData(
       hass(callWS, connection),
       history(["sensor.two", "sensor.three"]),
@@ -53,78 +52,7 @@ describe("shared card requests", () => {
     ]);
   });
 
-  it("shares requests reached through asynchronous parser steps in the same turn", async () => {
-    const callWS = jest.fn().mockResolvedValue({});
-    const ha = hass(callWS);
-    const a = requestCardData(ha, history());
-    await Promise.resolve();
-    await Promise.resolve();
-    const b = requestCardData(ha, history(["sensor.two"], 4));
-    await Promise.all([a, b]);
-    expect(callWS).toHaveBeenCalledTimes(1);
-  });
-
-  it("projects millisecond differences, rebuilding the boundary and excluding end points", async () => {
-    const rows = [
-      { s: "0", lu: start / 1000 },
-      { s: "1", lu: (start + 2) / 1000, lc: (start - 10) / 1000 },
-      { s: "2", lu: (start + 5) / 1000 },
-      { s: "unavailable", lu: (end - 1) / 1000 },
-      { s: "unknown", lu: end / 1000 },
-      { s: "3", lu: (end + 3) / 1000 },
-      { s: "4", lu: (end + 4) / 1000 },
-    ];
-    const callWS = jest.fn().mockResolvedValue({ "sensor.one": rows });
-    const ha = hass(callWS);
-    const [a, b] = await Promise.all([
-      requestCardData(ha, history()),
-      requestCardData(ha, history(undefined, 4)),
-    ]);
-    expect(callWS.mock.calls[0][0].start_time).toBe(
-      new Date(start).toISOString(),
-    );
-    expect(callWS.mock.calls[0][0].end_time).toBe(
-      new Date(end + 4).toISOString(),
-    );
-    expect(a["sensor.one"]).toEqual(rows.slice(0, 4));
-    expect(b["sensor.one"]).toEqual([
-      { s: "1", lu: (start + 4) / 1000 },
-      ...rows.slice(2, 6),
-    ]);
-  });
-
-  it("refetches an exact start boundary when minimal history has omitted later equal states", async () => {
-    const changes = [
-      { s: "0", lu: start / 1000 },
-      { s: "1", lu: (start + 2) / 1000 },
-      { s: "2", lu: (start + 4) / 1000 },
-      { s: "2", lu: (start + 5) / 1000 },
-    ];
-    const callWS = jest.fn(async (request: HistoryRequest) => {
-      const boundary = Date.parse(request.start_time) / 1000;
-      const end = Date.parse(request.end_time) / 1000;
-      const previous = changes.filter(({ lu }) => lu < boundary).at(-1);
-      const rows = previous ? [{ s: previous.s, lu: boundary }] : [];
-      for (const row of changes) {
-        if (row.lu > boundary && row.lu < end && rows.at(-1)?.s !== row.s)
-          rows.push(row);
-      }
-      return { "sensor.one": rows };
-    });
-    const ha = hass(callWS);
-    const [a, b] = await Promise.all([
-      requestCardData(ha, history()),
-      requestCardData(ha, history(undefined, 4)),
-    ]);
-    expect(callWS).toHaveBeenCalledTimes(2);
-    expect(a["sensor.one"]).toEqual(changes.slice(1, 3));
-    expect(b["sensor.one"]).toEqual([
-      { s: "1", lu: (start + 4) / 1000 },
-      { s: "2", lu: (start + 5) / 1000 },
-    ]);
-  });
-
-  it("reuses an in-flight superset for a smaller history window without fetching extra data", async () => {
+  it("reuses an in-flight entity superset only for the same history window", async () => {
     let finish!: (data: unknown) => void;
     const callWS = jest.fn(
       () =>
@@ -135,23 +63,13 @@ describe("shared card requests", () => {
     const ha = hass(callWS);
     const a = requestCardData(ha, history(["sensor.one", "sensor.two"]));
     await tick();
-    const narrower = {
-      ...history(),
-      start_time: new Date(start + 3600000).toISOString(),
-      end_time: new Date(end - 3600000).toISOString(),
-    };
-    const b = requestCardData(ha, narrower);
-    finish({ "sensor.one": [{ s: "unavailable", lu: start / 1000 }] });
+    const b = requestCardData(ha, history());
+    const rows = [{ s: "unavailable", lu: start / 1000 }];
+    finish({ "sensor.one": rows, "sensor.two": rows });
     const [first, second] = await Promise.all([a, b]);
     expect(callWS).toHaveBeenCalledTimes(1);
-    expect(first["sensor.one"][0]).toEqual({
-      s: "unavailable",
-      lu: start / 1000,
-    });
-    expect(second["sensor.one"][0]).toEqual({
-      s: "unavailable",
-      lu: (start + 3600000) / 1000,
-    });
+    expect(first).toEqual({ "sensor.one": rows, "sensor.two": rows });
+    expect(second).toEqual({ "sensor.one": rows });
   });
 
   it("does not reuse uncovered entities or later end times after dispatch", async () => {
@@ -173,28 +91,17 @@ describe("shared card requests", () => {
     await Promise.all([b, c]);
     finish({});
     await a;
-    expect(callWS).toHaveBeenCalledTimes(2);
+    expect(callWS).toHaveBeenCalledTimes(3);
   });
 
-  it("bounds the total drift instead of chaining arbitrarily wider ranges", async () => {
-    const callWS = jest.fn().mockResolvedValue({});
-    const ha = hass(callWS);
-    await Promise.all(
-      [0, 900, 1800].map((offset) =>
-        requestCardData(ha, history(undefined, offset)),
-      ),
-    );
-    expect(callWS).toHaveBeenCalledTimes(2);
-  });
-
-  it("does not combine different history windows or attribute requirements", async () => {
+  it("keeps even millisecond range differences and history options separate", async () => {
     const callWS = jest.fn().mockResolvedValue({});
     const ha = hass(callWS);
     await Promise.all([
       requestCardData(ha, history()),
       requestCardData(ha, {
         ...history(),
-        end_time: new Date(end + 1001).toISOString(),
+        end_time: new Date(end + 4).toISOString(),
       }),
       requestCardData(ha, {
         ...history(),
@@ -205,21 +112,6 @@ describe("shared card requests", () => {
       requestCardData(ha, { ...history(), significant_changes_only: true }),
     ]);
     expect(callWS).toHaveBeenCalledTimes(5);
-  });
-
-  it("does not adjust the boundaries of attribute history requests", async () => {
-    const callWS = jest.fn().mockResolvedValue({});
-    const ha = hass(callWS);
-    await Promise.all(
-      [0, 4].map((offset) =>
-        requestCardData(ha, {
-          ...history(undefined, offset),
-          no_attributes: false,
-          minimal_response: false,
-        }),
-      ),
-    );
-    expect(callWS).toHaveBeenCalledTimes(2);
   });
 
   it("keeps connections isolated even when they use the same transport function", async () => {
@@ -258,7 +150,30 @@ describe("shared card requests", () => {
     expect(callWS).toHaveBeenCalledTimes(2);
   });
 
-  it("rejects all consumers and retries after a failed request", async () => {
+  it("retries an invalid-entity batch per card so healthy cards still load", async () => {
+    const error = { code: "invalid_entity_ids", message: "Invalid entity_ids" };
+    const rows = [{ s: "1", lu: start / 1000 }];
+    const callWS = jest.fn(async ({ entity_ids }: HistoryRequest) => {
+      if (entity_ids.includes("sensor.my-typo")) throw error;
+      return { "sensor.ok": rows };
+    });
+    const ha = hass(callWS);
+    const settled = await Promise.allSettled([
+      requestCardData(ha, history(["sensor.ok"])),
+      requestCardData(ha, history(["sensor.my-typo"])),
+    ]);
+    expect(settled).toEqual([
+      { status: "fulfilled", value: { "sensor.ok": rows } },
+      { status: "rejected", reason: error },
+    ]);
+    expect(callWS.mock.calls.map(([request]) => request.entity_ids)).toEqual([
+      ["sensor.ok", "sensor.my-typo"],
+      ["sensor.ok"],
+      ["sensor.my-typo"],
+    ]);
+  });
+
+  it("rejects transport failures without extra retries and accepts the next request", async () => {
     const error = new Error("offline");
     const callWS = jest.fn().mockRejectedValueOnce(error).mockResolvedValue({});
     const ha = hass(callWS);
@@ -293,75 +208,10 @@ describe("shared card requests", () => {
     expect(callWS).toHaveBeenCalledTimes(2);
   });
 
-  it("batches statistics IDs but keeps periods, field sets and exact ranges separate", async () => {
+  it("batches the statistics fetch path but keeps periods and exact ranges separate", async () => {
     const callWS = jest.fn().mockResolvedValue({});
     const ha = hass(callWS);
     await Promise.all([
-      requestCardData(ha, statistics()),
-      requestCardData(ha, statistics(["sensor.two"])),
-      requestCardData(ha, { ...statistics(), period: "5minute" }),
-      requestCardData(ha, { ...statistics(), period: "day" }),
-      requestCardData(ha, { ...statistics(), types: ["mean"] }),
-      requestCardData(ha, {
-        ...statistics(),
-        start_time: new Date(start + 4).toISOString(),
-      }),
-    ]);
-    expect(callWS).toHaveBeenCalledTimes(5);
-    expect(callWS.mock.calls[0][0].statistic_ids).toEqual([
-      "sensor.one",
-      "sensor.two",
-    ]);
-  });
-
-  it("canonicalizes field sets and leaves shared statistics independently mutable", async () => {
-    const callWS = jest.fn().mockResolvedValue({
-      "sensor.one": [{ start: new Date(start).toISOString(), mean: 4, max: 8 }],
-    });
-    const ha = hass(callWS);
-    const [a, b] = await Promise.all([
-      requestCardData(ha, { ...statistics(), types: ["mean", "max"] }),
-      requestCardData(ha, { ...statistics(), types: ["max", "mean"] }),
-    ]);
-    a["sensor.one"][0].mean = 99;
-    expect(b["sensor.one"][0].mean).toBe(4);
-    expect(callWS).toHaveBeenCalledTimes(1);
-  });
-
-  it("integrates with separate card caches rather than merging their mutable arrays", async () => {
-    const connection = {};
-    const callWS = jest.fn(async ({ entity_ids }) =>
-      Object.fromEntries(
-        entity_ids.map((id: string) => [id, [{ s: "1", lu: start / 1000 }]]),
-      ),
-    );
-    const a = new Cache(),
-      b = new Cache();
-    await Promise.all([
-      a.fetch([start, end], { entity: "sensor.one" }, hass(callWS, connection)),
-      b.fetch([start, end], { entity: "sensor.one" }, hass(callWS, connection)),
-    ]);
-    expect(callWS).toHaveBeenCalledTimes(1);
-    a.getData({ entity: "sensor.one" }).xs.splice(0);
-    expect(b.getData({ entity: "sensor.one" }).ys).toEqual(["1"]);
-    a.clearCache();
-    expect(b.getData({ entity: "sensor.one" }).ys).toEqual(["1"]);
-  });
-
-  it("integrates both statistics and state fetch paths", async () => {
-    const callWS = jest.fn().mockResolvedValue({});
-    const ha = hass(callWS);
-    await Promise.all([
-      fetchStatesBatch(
-        ha,
-        [{ entity: "sensor.one" }],
-        [new Date(start), new Date(end)],
-      ),
-      fetchStatesBatch(
-        ha,
-        [{ entity: "sensor.two" }],
-        [new Date(start), new Date(end)],
-      ),
       fetchStatistics(
         ha,
         [{ entity: "sensor.one", statistic: "mean", period: "hour" }],
@@ -372,7 +222,17 @@ describe("shared card requests", () => {
         [{ entity: "sensor.two", statistic: "max", period: "hour" }],
         [new Date(start), new Date(end)],
       ),
+      requestCardData(ha, { ...statistics(), period: "5minute" }),
+      requestCardData(ha, { ...statistics(), period: "day" }),
+      requestCardData(ha, {
+        ...statistics(),
+        start_time: new Date(start + 4).toISOString(),
+      }),
     ]);
-    expect(callWS).toHaveBeenCalledTimes(2);
+    expect(callWS).toHaveBeenCalledTimes(4);
+    expect(callWS.mock.calls[0][0].statistic_ids).toEqual([
+      "sensor.one",
+      "sensor.two",
+    ]);
   });
 });

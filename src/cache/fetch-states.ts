@@ -8,7 +8,7 @@ import {
   isEntityIdAttrConfig,
 } from "../types";
 
-export type CompressedHistoryState = {
+type CompressedHistoryState = {
   s: string;
   a?: Record<string, unknown>;
   lc?: number;
