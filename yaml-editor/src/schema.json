@@ -114,6 +114,9 @@
                     "$ref": "#/definitions/With$fn<{store_var:string;}>"
                   },
                   {
+                    "$ref": "#/definitions/With$fn<{align_vars:string|string[];}>"
+                  },
+                  {
                     "$ref": "#/definitions/With$fn<{trendline:\"linear\"|\"polynomial\"|\"power\"|\"exponential\"|\"theil_sen\"|\"robust_polynomial\"|\"fft\"|Partial<TrendlineParam>;}>"
                   },
                   {
@@ -433,6 +436,19 @@
       },
       "type": "object"
     },
+    "With$fn<string|string[]>": {
+      "anyOf": [
+        {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        {
+          "type": "string"
+        }
+      ]
+    },
     "With$fn<string|string[]|undefined>": {
       "anyOf": [
         {
@@ -465,6 +481,17 @@
       },
       "required": [
         "add"
+      ],
+      "type": "object"
+    },
+    "With$fn<{align_vars:string|string[];}>": {
+      "properties": {
+        "align_vars": {
+          "$ref": "#/definitions/With$fn<string|string[]>"
+        }
+      },
+      "required": [
+        "align_vars"
       ],
       "type": "object"
     },

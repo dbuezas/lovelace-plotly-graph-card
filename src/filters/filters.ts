@@ -394,6 +394,48 @@ const filters = {
     ({ vars, xs, ys, states, statistics, meta }) => ({
       vars: { ...vars, [var_name]: { xs, ys, states, statistics, meta } },
     }),
+  align_vars:
+    (names: string | string[]): FilterFn =>
+    ({ xs, vars }) => {
+      const timestamps = xs.map(ms);
+      if (timestamps.some((time) => !Number.isFinite(time)))
+        throw new Error("align_vars requires valid timestamps");
+      const aligned: Record<string, unknown> = Object.create(null);
+      for (const name of typeof names === "string" ? [names] : names) {
+        const source = vars[name];
+        if (!Array.isArray(source?.xs) || !Array.isArray(source?.ys))
+          throw new Error(`align_vars: '${name}' is not a stored series`);
+        if (source.xs.length !== source.ys.length)
+          throw new Error(`align_vars: '${name}' has different x/y lengths`);
+        // Match exact instants without changing the stored series' time grid.
+        const byTime = new Map<number, number>();
+        source.xs.forEach((x: Date, index: number) => {
+          const time = ms(x);
+          if (!Number.isFinite(time))
+            throw new Error(
+              `align_vars: '${name}' contains an invalid timestamp`,
+            );
+          byTime.set(time, index);
+        });
+        const indices = timestamps.map((time) => byTime.get(time));
+        const project = (values: unknown[]) =>
+          values?.length
+            ? indices.map((index) =>
+                index === undefined ? null : (values[index] ?? null),
+              )
+            : [];
+        aligned[name] = {
+          ...source,
+          xs: xs.slice(),
+          ys: indices.map((index) =>
+            index === undefined ? null : (source.ys[index] ?? null),
+          ),
+          states: project(source.states),
+          statistics: project(source.statistics),
+        };
+      }
+      return { vars: { ...vars, aligned } };
+    },
   trendline: (p3: TrendlineType | Partial<TrendlineParam> = "linear") => {
     let p2: Partial<TrendlineParam> = {};
     if (typeof p3 == "string") {

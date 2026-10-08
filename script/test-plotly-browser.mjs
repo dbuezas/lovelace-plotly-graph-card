@@ -1266,6 +1266,82 @@ try {
   results.results.push(
     "generated and reused filter lists render through the card",
   );
+  const alignedStatistics = await page.evaluate(async () => {
+    const card = document.getElementById("card-under-test");
+    const start = Date.UTC(2025, 0, 1);
+    const xs = [0, 5, 10, 15, 20].map((minute) => start + minute * 60000);
+    const rows = (indices, values) =>
+      indices.map((index, i) => ({
+        start: xs[index],
+        end: xs[index] + 300000,
+        mean: values[i],
+      }));
+    card.hass = {
+      ...card.hass,
+      states: {},
+      callWS: async ({ statistic_ids }) =>
+        Object.fromEntries(
+          statistic_ids.map((id) => [
+            id,
+            id === "sensor.target"
+              ? rows([0, 1, 2, 3, 4], [10, 20, 30, 40, 50])
+              : rows([1, 3, 4], [3, 7, 8]),
+          ]),
+        ),
+    };
+    card.setConfig({
+      type: "custom:plotly-graph",
+      refresh_interval: 0,
+      visible_range: [start, start + 1500000],
+      time_zone: "UTC",
+      entities: [
+        {
+          entity: "sensor.source",
+          statistic: "mean",
+          period: "5minute",
+          internal: true,
+          filters: [{ store_var: "source" }],
+        },
+        ...[false, true].map((subset) => ({
+          entity: "sensor.target",
+          statistic: "mean",
+          period: "5minute",
+          filters: [
+            ...(subset ? [{ filter: "i > 1" }] : []),
+            { align_vars: "source" },
+            {
+              map_y:
+                "vars.aligned.source.ys[i] == null ? null : y - vars.aligned.source.ys[i]",
+            },
+          ],
+        })),
+      ],
+    });
+    await card.plot({ should_fetch: true });
+    return {
+      values: card.contentEl.data.map((trace) => trace.y),
+      timestamps: card.contentEl.data.map((trace) =>
+        trace.x.map((x) =>
+          typeof x === "string" ? Date.parse(x.replace(" ", "T") + "Z") : +x,
+        ),
+      ),
+      paths: card.contentEl.querySelectorAll(".scatterlayer .js-line").length,
+      error: card.errorMsgEl.textContent,
+    };
+  });
+  assert.equal(alignedStatistics.error, "");
+  assert.deepEqual(alignedStatistics.values, [
+    [null, 17, null, 33, 42],
+    [null, 33, 42],
+  ]);
+  assert.deepEqual(alignedStatistics.timestamps, [
+    [0, 5, 10, 15, 20].map((minute) => Date.UTC(2025, 0, 1) + minute * 60000),
+    [10, 15, 20].map((minute) => Date.UTC(2025, 0, 1) + minute * 60000),
+  ]);
+  assert.ok(alignedStatistics.paths > 0);
+  results.results.push(
+    "stored statistics align by timestamp across missing periods and different trace ranges without resampling",
+  );
   const shiftedHistoryResults = await page.evaluate(async () => {
     const card = document.getElementById("card-under-test");
     const now = Date.now();

@@ -8,6 +8,8 @@ const RIGHT_4 = "deduplicate_adjacent" satisfies FilterInput;
 const RIGHT_5 = "force_numeric" satisfies FilterInput;
 const RIGHT_6 = "resample" satisfies FilterInput;
 const RIGHT_7 = { resample: "5m" } satisfies FilterInput;
+const RIGHT_8 = { align_vars: "stored" } satisfies FilterInput;
+const RIGHT_9 = { align_vars: ["one", "two"] } satisfies FilterInput;
 
 //@ts-expect-error
 const WRONG_1 = "add" satisfies FilterInput;
@@ -488,5 +490,164 @@ describe("resample", () => {
       series([0, null, 40]),
     );
     expect(result.ys).toEqual([0, 0, null, null]);
+  });
+});
+
+describe("align_vars", () => {
+  const at = (...minutes: number[]) =>
+    minutes.map((minute) => new Date(Date.UTC(2025, 0, 1, 0, minute)));
+  const saved = (minutes: number[], ys: any[]) => ({
+    xs: at(...minutes),
+    ys,
+    states: ys.map((_, i) => ({ state: `state ${i}` })),
+    statistics: ys.map((_, i) => ({ mean: i })),
+    meta: { unit_of_measurement: "Wh" },
+  });
+
+  it("matches periods rather than indexes and preserves the original series", () => {
+    const source = saved([5, 15, 20], [0, 30, 40]);
+    const original = structuredClone(source);
+    const data = input({
+      xs: at(0, 5, 10, 15),
+      ys: [10, 20, 30, 40],
+      vars: { source, unrelated: "keep" },
+    });
+    const { vars } = filters.align_vars("source")(data);
+    expect(vars!.aligned.source).toEqual({
+      xs: data.xs,
+      ys: [null, 0, null, 30],
+      states: [null, source.states[0], null, source.states[1]],
+      statistics: [null, source.statistics[0], null, source.statistics[1]],
+      meta: source.meta,
+    });
+    expect(vars!.source).toBe(source);
+    expect(vars!.unrelated).toBe("keep");
+    expect(source).toEqual(original);
+    expect(data.vars).not.toHaveProperty("aligned");
+    expect(data.xs).toEqual(at(0, 5, 10, 15));
+    expect(data.ys).toEqual([10, 20, 30, 40]);
+  });
+
+  it("supports multiple series and can align them again to a different trace", () => {
+    const a = saved([0, 5, 10], [1, 2, 3]);
+    const b = saved([5, 10, 15], [4, 5, 6]);
+    const first = filters.align_vars(["a", "b"])(
+      input({
+        xs: at(0, 5, 10),
+        vars: { a, b },
+      }),
+    );
+    expect(first.vars!.aligned.a.ys).toEqual([1, 2, 3]);
+    expect(first.vars!.aligned.b.ys).toEqual([null, 4, 5]);
+    const second = filters.align_vars("b")(
+      input({ xs: at(10, 15), vars: first.vars }),
+    );
+    expect(second.vars!.aligned.b.ys).toEqual([5, 6]);
+    expect(second.vars!.aligned).not.toHaveProperty("a");
+    expect(first.vars!.aligned.b.ys).toEqual([null, 4, 5]);
+    expect(b.xs).toEqual(at(5, 10, 15));
+  });
+
+  it("handles unordered timestamps, equivalent dates and duplicate updates", () => {
+    const source = {
+      ...saved([10, 0, 5, 5], [3, 1, 2, 4]),
+      states: [],
+      statistics: [],
+    };
+    const data = input({ xs: at(5, 0, 10, 5), vars: { source } });
+    const { vars } = filters.align_vars("source")(data);
+    expect(vars!.aligned.source.ys).toEqual([4, 1, 3, 4]);
+    expect(vars!.aligned.source.states).toEqual([]);
+    expect(vars!.aligned.source.statistics).toEqual([]);
+  });
+
+  it("does not interpolate, round timestamps or replace explicit gaps with zero", () => {
+    const source = saved([0, 5, 10], [0, null, "unavailable"]);
+    const data = input({
+      xs: [...at(0), new Date(+at(5)[0] + 1), ...at(5, 10)],
+      vars: { source },
+    });
+    expect(filters.align_vars("source")(data).vars!.aligned.source.ys).toEqual([
+      0,
+      null,
+      null,
+      "unavailable",
+    ]);
+  });
+
+  it("returns missing values for an empty stored series", () => {
+    const { vars } = filters.align_vars("empty")(
+      input({
+        xs: at(0, 5),
+        vars: { empty: saved([], []) },
+      }),
+    );
+    expect(vars!.aligned.empty.ys).toEqual([null, null]);
+    expect(vars!.aligned.empty.states).toEqual([]);
+  });
+
+  it("matches absolute instants across timezones and repeated daylight-saving hours", () => {
+    const source = {
+      ...saved([0, 5], [1, 2]),
+      xs: [
+        new Date("2025-10-26T02:30:00+02:00"),
+        new Date("2025-10-26T02:30:00+01:00"),
+      ],
+    };
+    const data = input({
+      xs: [new Date("2025-10-26T00:30:00Z"), new Date("2025-10-26T01:30:00Z")],
+      vars: { source },
+      timeZone: "Europe/Zurich",
+    });
+    expect(filters.align_vars("source")(data).vars!.aligned.source.ys).toEqual([
+      1, 2,
+    ]);
+  });
+
+  it("handles an empty target and variable names that overlap object properties", () => {
+    const source = saved([0], [1]);
+    const vars = { ["__proto__"]: source };
+    const aligned = filters.align_vars("__proto__")(input({ xs: at(0), vars }));
+    expect(Object.hasOwn(aligned.vars!.aligned, "__proto__")).toBe(true);
+    expect(aligned.vars!.aligned.__proto__.ys).toEqual([1]);
+    const empty = filters.align_vars("__proto__")(input({ xs: [], vars }));
+    expect(empty.vars!.aligned.__proto__.xs).toEqual([]);
+    expect(empty.vars!.aligned.__proto__.ys).toEqual([]);
+    expect(empty.vars!.aligned.__proto__.states).toEqual([]);
+  });
+
+  it("combines only corresponding periods through map_y", () => {
+    const data = input({
+      xs: at(0, 5, 10),
+      ys: [10, 20, 30],
+      vars: { other: saved([5, 10], [3, 7]) },
+    });
+    const aligned = filters.align_vars("other")(data);
+    const result = filters.map_y(
+      "vars.aligned.other.ys[i] === null ? null : y - vars.aligned.other.ys[i]",
+    )({ ...data, ...aligned });
+    expect(result.xs).toEqual(at(0, 5, 10));
+    expect(result.ys).toEqual([null, 17, 23]);
+  });
+
+  it.each([
+    [undefined, "not a stored series"],
+    [{ xs: at(0), ys: [] }, "different x/y lengths"],
+    [{ xs: [new Date(NaN)], ys: [1] }, "invalid timestamp"],
+  ])("reports unusable stored series", (source, message) => {
+    expect(() =>
+      filters.align_vars("source")(input({ vars: { source } })),
+    ).toThrow(message);
+  });
+
+  it("rejects invalid target timestamps", () => {
+    expect(() =>
+      filters.align_vars("source")(
+        input({
+          xs: [new Date(NaN)],
+          vars: { source: saved([0], [1]) },
+        }),
+      ),
+    ).toThrow("requires valid timestamps");
   });
 });
