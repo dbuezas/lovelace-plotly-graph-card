@@ -201,6 +201,44 @@ entities:
   - sensor.humidity
 ```
 
+## Trace names
+
+A trace is named after its entity. The name comes from Home Assistant's own
+naming, so it matches what the built-in cards show and follows a renamed device
+or area.
+
+Set `name` to override it:
+
+```yaml
+type: custom:plotly-graph
+entities:
+  - entity: sensor.living_room_thermostat_temperature
+    name: Inside
+```
+
+On Home Assistant 2026.4 and later, `name` can also be a list of parts, so you
+can pick which context to show. In a legend with several traces, dropping the
+device name is often what makes the labels readable:
+
+```yaml
+type: custom:plotly-graph
+entities:
+  - entity: sensor.living_room_thermostat_temperature
+    name:
+      - type: area
+      - type: entity
+```
+
+Each part is one of `entity`, `device`, `area`, `floor`, or `text` with a
+literal value (`{type: text, text: "Inside"}`). Parts that resolve to nothing
+are dropped. Earlier Home Assistant versions cannot resolve a list and fall back
+to the entity's friendly name, so a plain string keeps working everywhere.
+
+Filters that rename their trace still win: `trendline` labels its trace `Trend`,
+and any `fn` filter returning a new `meta.friendly_name` behaves the same way.
+`$ex meta.friendly_name` also keeps returning the entity's `friendly_name`
+attribute, unchanged.
+
 ## Color schemes
 
 Changes default line and bar colors. Explicit `line.color` and `marker.color`
