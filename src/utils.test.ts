@@ -1,4 +1,4 @@
-import { debounce } from "./utils";
+import { debounce, liveThrottle } from "./utils";
 
 async function advance(ms: number) {
   await new Promise(setImmediate);
@@ -92,6 +92,72 @@ describe("debounce", () => {
     await advance(516);
     await Promise.all([first, ...queued]);
     expect(render).toHaveBeenCalledTimes(2);
+  });
+
+  it("calls a delay function only once the active render has finished", async () => {
+    let finish!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      finish = resolve;
+    });
+    const render = jest
+      .fn()
+      .mockImplementationOnce(() => gate)
+      .mockResolvedValue(undefined);
+    const update = debounce(render);
+    const first = update();
+    await advance(16);
+    const delay = jest.fn(() => 300);
+    const queued = update(delay);
+    await advance(1000);
+    expect(delay).not.toHaveBeenCalled();
+    finish();
+    await advance(0);
+    expect(delay).toHaveBeenCalledTimes(1);
+    await advance(315);
+    expect(render).toHaveBeenCalledTimes(1);
+    await advance(1);
+    await Promise.all([first, queued]);
+    expect(render).toHaveBeenCalledTimes(2);
+  });
+
+  // Wired like the card: a live change asks for a render
+  const liveRenders = () => {
+    const throttle = liveThrottle();
+    const renders: number[] = [];
+    const update = debounce(async () => {
+      throttle.renderStarted();
+      renders.push(Date.now());
+      throttle.renderEnded();
+    });
+    return { change: () => update(throttle.change()), renders };
+  };
+
+  it("renders a burst of live changes once", async () => {
+    const { change, renders } = liveRenders();
+    const start = Date.now();
+    const calls: Promise<void>[] = [];
+    for (let i = 0; i < 4; i++) {
+      calls.push(change());
+      await advance(30);
+    }
+    await advance(200);
+    await Promise.all(calls);
+    expect(renders.map((t) => t - start)).toEqual([116]);
+  });
+
+  it("keeps rendering a stream of live changes, 500 ms apart", async () => {
+    const { change, renders } = liveRenders();
+    const start = Date.now();
+    const calls: Promise<void>[] = [];
+    for (let i = 0; i < 20; i++) {
+      calls.push(change());
+      await advance(100);
+    }
+    await advance(700);
+    await Promise.all(calls);
+    // 100 ms after the first change, then 500 ms after each render ended
+    // (+16 ms for the animation frame); the last one includes the last change
+    expect(renders.map((t) => t - start)).toEqual([116, 632, 1148, 1664, 2180]);
   });
 
   it.each([false, true])(

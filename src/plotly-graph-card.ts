@@ -12,7 +12,7 @@ import {
 } from "./types";
 import isProduction from "./is-production";
 import "./hot-reload";
-import { debounce, sleep } from "./utils";
+import { debounce, Delay, liveThrottle, sleep } from "./utils";
 import { parseISO } from "date-fns";
 import { TouchController } from "./touch-controller";
 import { ConfigParser } from "./parse-config/parse-config";
@@ -64,9 +64,11 @@ export class PlotlyGraph extends HTMLElement {
   pausedRendering = false;
   handles: {
     resizeObserver?: ResizeObserver;
+    intersectionObserver?: IntersectionObserver;
     relayoutListener?: EventEmitter;
     restyleListener?: EventEmitter;
     refreshTimeout?: number;
+    offScreenTimeout?: number;
     legendItemClick?: EventEmitter;
     legendItemDoubleclick?: EventEmitter;
     dataClick?: EventEmitter;
@@ -253,6 +255,11 @@ export class PlotlyGraph extends HTMLElement {
       this.size = nextSize;
       this.plot({ should_fetch: false });
     };
+    this.handles.intersectionObserver = new IntersectionObserver(([entry]) => {
+      this.onScreen = entry.isIntersecting;
+      if (this.onScreen) this.catchUp();
+    });
+    this.handles.intersectionObserver.observe(this.cardEl);
     this.handles.resizeObserver = new ResizeObserver(updateCardSize);
     this.handles.resizeObserver.observe(this.cardEl);
 
@@ -265,8 +272,10 @@ export class PlotlyGraph extends HTMLElement {
 
   disconnectedCallback() {
     this.handles.resizeObserver?.disconnect();
+    this.handles.intersectionObserver?.disconnect();
     this.disconnectPlotlyListeners();
     clearTimeout(this.handles.refreshTimeout!);
+    clearTimeout(this.handles.offScreenTimeout);
     this.resetButtonEl.removeEventListener("click", this.exitBrowsingMode);
     this.touchController.disconnect();
     this.statisticsUpdates.disconnect();
@@ -360,7 +369,7 @@ export class PlotlyGraph extends HTMLElement {
         }
       }
       if (shouldPlot) {
-        this.plot({ should_fetch: false }, 500);
+        this.plot({ should_fetch: false }, this.liveThrottle.change());
       }
     }
     this._hass = hass;
@@ -505,14 +514,35 @@ export class PlotlyGraph extends HTMLElement {
       should_fetch: boolean;
       refresh_statistics?: boolean;
     },
-    delay?: number
+    delay?: Delay
   ) => {
     if (should_fetch || refresh_statistics) this.fetchScheduled = true;
     if (refresh_statistics) this.statisticsRefreshScheduled = true;
     await this._plot(delay);
   };
+  liveThrottle = liveThrottle();
+  onScreen = true;
+  renderDeferred = false;
+  lastRender = -Infinity;
+  catchUp = () => {
+    clearTimeout(this.handles.offScreenTimeout);
+    if (!this.renderDeferred) return;
+    this.renderDeferred = false;
+    this.plot({ should_fetch: false });
+  };
   _plot = debounce(async () => {
+    this.liveThrottle.renderStarted();
     if (this.pausedRendering) return;
+    // Off-screen cards update every 30 s, and catch up once scrolled into
+    // view. They still update, for full-page screenshots.
+    const wait = this.lastRender + 30_000 - performance.now();
+    if (!this.onScreen && this.parsed_config && wait > 0) {
+      this.renderDeferred = true;
+      clearTimeout(this.handles.offScreenTimeout);
+      this.handles.offScreenTimeout = window.setTimeout(this.catchUp, wait);
+      return;
+    }
+    this.lastRender = performance.now();
     try {
       const should_fetch = this.fetchScheduled;
       this.fetchScheduled = false;
@@ -631,6 +661,7 @@ export class PlotlyGraph extends HTMLElement {
       if (this.isConnected) this.connectPlotlyListeners();
     } finally {
       finishInitialLoading(this.cardEl, this.loadingEl);
+      this.liveThrottle.renderEnded();
     }
   });
   // The height of your card. Home Assistant uses this to automatically
