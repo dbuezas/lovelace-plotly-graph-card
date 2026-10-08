@@ -8,8 +8,8 @@ const RIGHT_4 = "deduplicate_adjacent" satisfies FilterInput;
 const RIGHT_5 = "force_numeric" satisfies FilterInput;
 const RIGHT_6 = "resample" satisfies FilterInput;
 const RIGHT_7 = { resample: "5m" } satisfies FilterInput;
-const RIGHT_8 = { align_vars: "stored" } satisfies FilterInput;
-const RIGHT_9 = { align_vars: ["one", "two"] } satisfies FilterInput;
+const RIGHT_8 = { align_timestamps: "stored" } satisfies FilterInput;
+const RIGHT_9 = { align_timestamps: ["one", "two"] } satisfies FilterInput;
 
 //@ts-expect-error
 const WRONG_1 = "add" satisfies FilterInput;
@@ -493,7 +493,7 @@ describe("resample", () => {
   });
 });
 
-describe("align_vars", () => {
+describe("align_timestamps", () => {
   const at = (...minutes: number[]) =>
     minutes.map((minute) => new Date(Date.UTC(2025, 0, 1, 0, minute)));
   const saved = (minutes: number[], ys: any[]) => ({
@@ -512,7 +512,7 @@ describe("align_vars", () => {
       ys: [10, 20, 30, 40],
       vars: { source, unrelated: "keep" },
     });
-    const { vars } = filters.align_vars("source")(data);
+    const { vars } = filters.align_timestamps("source")(data);
     expect(vars!.aligned.source).toEqual({
       xs: data.xs,
       ys: [null, 0, null, 30],
@@ -531,7 +531,7 @@ describe("align_vars", () => {
   it("supports multiple series and can align them again to a different trace", () => {
     const a = saved([0, 5, 10], [1, 2, 3]);
     const b = saved([5, 10, 15], [4, 5, 6]);
-    const first = filters.align_vars(["a", "b"])(
+    const first = filters.align_timestamps(["a", "b"])(
       input({
         xs: at(0, 5, 10),
         vars: { a, b },
@@ -539,7 +539,7 @@ describe("align_vars", () => {
     );
     expect(first.vars!.aligned.a.ys).toEqual([1, 2, 3]);
     expect(first.vars!.aligned.b.ys).toEqual([null, 4, 5]);
-    const second = filters.align_vars("b")(
+    const second = filters.align_timestamps("b")(
       input({ xs: at(10, 15), vars: first.vars }),
     );
     expect(second.vars!.aligned.b.ys).toEqual([5, 6]);
@@ -555,7 +555,7 @@ describe("align_vars", () => {
       statistics: [],
     };
     const data = input({ xs: at(5, 0, 10, 5), vars: { source } });
-    const { vars } = filters.align_vars("source")(data);
+    const { vars } = filters.align_timestamps("source")(data);
     expect(vars!.aligned.source.ys).toEqual([4, 1, 3, 4]);
     expect(vars!.aligned.source.states).toEqual([]);
     expect(vars!.aligned.source.statistics).toEqual([]);
@@ -567,7 +567,7 @@ describe("align_vars", () => {
       xs: [...at(0), new Date(+at(5)[0] + 1), ...at(5, 10)],
       vars: { source },
     });
-    expect(filters.align_vars("source")(data).vars!.aligned.source.ys).toEqual([
+    expect(filters.align_timestamps("source")(data).vars!.aligned.source.ys).toEqual([
       0,
       null,
       null,
@@ -576,7 +576,7 @@ describe("align_vars", () => {
   });
 
   it("returns missing values for an empty stored series", () => {
-    const { vars } = filters.align_vars("empty")(
+    const { vars } = filters.align_timestamps("empty")(
       input({
         xs: at(0, 5),
         vars: { empty: saved([], []) },
@@ -599,7 +599,7 @@ describe("align_vars", () => {
       vars: { source },
       timeZone: "Europe/Zurich",
     });
-    expect(filters.align_vars("source")(data).vars!.aligned.source.ys).toEqual([
+    expect(filters.align_timestamps("source")(data).vars!.aligned.source.ys).toEqual([
       1, 2,
     ]);
   });
@@ -607,10 +607,10 @@ describe("align_vars", () => {
   it("handles an empty target and variable names that overlap object properties", () => {
     const source = saved([0], [1]);
     const vars = { ["__proto__"]: source };
-    const aligned = filters.align_vars("__proto__")(input({ xs: at(0), vars }));
+    const aligned = filters.align_timestamps("__proto__")(input({ xs: at(0), vars }));
     expect(Object.hasOwn(aligned.vars!.aligned, "__proto__")).toBe(true);
     expect(aligned.vars!.aligned.__proto__.ys).toEqual([1]);
-    const empty = filters.align_vars("__proto__")(input({ xs: [], vars }));
+    const empty = filters.align_timestamps("__proto__")(input({ xs: [], vars }));
     expect(empty.vars!.aligned.__proto__.xs).toEqual([]);
     expect(empty.vars!.aligned.__proto__.ys).toEqual([]);
     expect(empty.vars!.aligned.__proto__.states).toEqual([]);
@@ -622,7 +622,7 @@ describe("align_vars", () => {
       ys: [10, 20, 30],
       vars: { other: saved([5, 10], [3, 7]) },
     });
-    const aligned = filters.align_vars("other")(data);
+    const aligned = filters.align_timestamps("other")(data);
     const result = filters.map_y(
       "vars.aligned.other.ys[i] === null ? null : y - vars.aligned.other.ys[i]",
     )({ ...data, ...aligned });
@@ -636,13 +636,13 @@ describe("align_vars", () => {
     [{ xs: [new Date(NaN)], ys: [1] }, "invalid timestamp"],
   ])("reports unusable stored series", (source, message) => {
     expect(() =>
-      filters.align_vars("source")(input({ vars: { source } })),
+      filters.align_timestamps("source")(input({ vars: { source } })),
     ).toThrow(message);
   });
 
   it("rejects invalid target timestamps", () => {
     expect(() =>
-      filters.align_vars("source")(
+      filters.align_timestamps("source")(
         input({
           xs: [new Date(NaN)],
           vars: { source: saved([0], [1]) },

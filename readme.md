@@ -542,7 +542,7 @@ entities:
     filters:
       - store_var: myVar # stores the datapoints inside `vars.myVar`
       - load_var: myVar # loads the datapoints from `vars.myVar`
-      - align_vars: myVar # matches its timestamps to the current trace, available as `vars.aligned.myVar`
+      - align_timestamps: myVar # matches its timestamps to the current trace, available as `vars.aligned.myVar`
 
       # The filters below will only be applied to numeric values. Missing (unavailable) and non-numerics will be left untouched
       - add: 5 # adds 5 to each datapoint
@@ -745,7 +745,7 @@ This can also be used to fetch data by calling a HA service. As this is a call t
 
 When combining series, match their timestamps rather than assuming their array
 indexes line up. Even statistics with the same period can have missing periods
-or different start times. Use `align_vars: name` (or `align_vars: [name1, name2]`)
+or different start times. Use `align_timestamps: name` (or `align_timestamps: [name1, name2]`)
 after `store_var` on an earlier entity. It creates aligned copies under
 `vars.aligned`, using the current trace's `xs` without changing either original
 series. Each call replaces `vars.aligned` with the requested series.
@@ -768,7 +768,7 @@ entities:
     period: 5minute
     name: Temperature difference
     filters:
-      - align_vars: outdoor
+      - align_timestamps: outdoor
       - map_y: >-
           y == null || vars.aligned.outdoor.ys[i] == null
             ? null : y - vars.aligned.outdoor.ys[i]
@@ -792,7 +792,7 @@ entities:
     filters:
       - resample: 5m
       - map_y: parseFloat(y)
-      - align_vars: relative_humidity
+      - align_timestamps: relative_humidity
       - map_y: >-
           vars.aligned.relative_humidity.ys[i] == null ? null :
           (6.112 * Math.exp((17.67 * y)/(y+243.5)) * +vars.aligned.relative_humidity.ys[i] * 2.1674)/(273.15+y);
@@ -814,7 +814,7 @@ entities:
     name: Dew point
     filters:
       - map_y: parseFloat(y)
-      - align_vars: relative_humidity
+      - align_timestamps: relative_humidity
       - map_y: >-
           {
             // https://www.omnicalculator.com/physics/dew-point
@@ -848,7 +848,7 @@ entities:
     name: sum of temperatures
     filters:
       - map_y: parseFloat(y)
-      - align_vars: temp1
+      - align_timestamps: temp1
       - map_y: vars.aligned.temp1.ys[i] == null ? null : y + vars.aligned.temp1.ys[i]
 ```
 

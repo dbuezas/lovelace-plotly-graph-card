@@ -1308,7 +1308,7 @@ try {
           period: "5minute",
           filters: [
             ...(subset ? [{ filter: "i > 1" }] : []),
-            { align_vars: "source" },
+            { align_timestamps: "source" },
             {
               map_y:
                 "vars.aligned.source.ys[i] == null ? null : y - vars.aligned.source.ys[i]",

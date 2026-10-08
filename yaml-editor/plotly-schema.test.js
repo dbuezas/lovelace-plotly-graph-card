@@ -466,11 +466,11 @@ test("generated schema includes trace-owned layout and data fields", () => {
     defaults: { yaxes: { autoshift: true, shift: 20 } },
   };
   assert.equal(validate(card), true, JSON.stringify(validate.errors));
-  for (const align_vars of ["source", ["source", "other"]]) {
+  for (const align_timestamps of ["source", ["source", "other"]]) {
     assert.equal(
       validate({
         ...card,
-        entities: [{ entity: "sensor.test", filters: [{ align_vars }] }],
+        entities: [{ entity: "sensor.test", filters: [{ align_timestamps }] }],
       }),
       true,
       JSON.stringify(validate.errors),
@@ -479,7 +479,7 @@ test("generated schema includes trace-owned layout and data fields", () => {
   assert.equal(
     validate({
       ...card,
-      entities: [{ entity: "sensor.test", filters: [{ align_vars: 5 }] }],
+      entities: [{ entity: "sensor.test", filters: [{ align_timestamps: 5 }] }],
     }),
     false,
   );
