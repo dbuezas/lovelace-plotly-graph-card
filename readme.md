@@ -104,6 +104,34 @@ overriding fixed editor bounds. Bounds included by `fit_y_data` remain included.
 
 ## Advanced
 
+### Aligning zero on multiple Y-axes
+
+Set `align_zero: true` to place zero at the same height on automatically scaled,
+overlaid linear Y-axes:
+
+```yaml
+type: custom:plotly-graph
+align_zero: true
+entities:
+  - entity: sensor.power
+    yaxis: y
+  - entity: sensor.electricity_price
+    yaxis: y2
+```
+
+The card uses Plotly's calculated ranges for the visible traces, then extends
+them through native `autorangeoptions.include`. It never narrows those ranges,
+and autorange stays enabled. The zero position is chosen to minimize the largest
+proportional range expansion, rather than forcing every axis to be symmetric.
+Hiding or showing a series recalculates the alignment.
+
+Only axes overlaid in the same plot area participate. Explicit ranges (including
+template and fixed visual-editor bounds), Y-axis zoom, one-sided autorange, nonnegative
+range modes, fixed autorange limits, matched/scaled axes, and non-linear axes are
+left unchanged and may therefore have a different zero position. Independent
+subplots are not linked. The option is off by default and can add one native
+relayout after rendering.
+
 ### Filling, line width, color
 
 ![](docs/resources/example1.png)

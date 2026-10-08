@@ -29,6 +29,10 @@ import { getEditorYAxisRelayout } from "./parse-config/defaults";
 import { prepareHistoryLineGaps } from "./history-line-gaps";
 import { StatisticsUpdates } from "./statistics-updates";
 import type { StatisticsUpdatePeriod } from "./cache/statistics-refresh";
+import {
+  getZeroAlignmentProtectedAxes,
+  getZeroAlignmentRelayout,
+} from "./zero-alignment";
 
 const componentName = isProduction ? "plotly-graph" : "plotly-graph-dev";
 
@@ -42,6 +46,8 @@ export class PlotlyGraph extends HTMLElement {
   contentEl: Plotly.PlotlyHTMLElement & {
     data: (Plotly.Data & { entity: string })[];
     layout: Plotly.Layout;
+    _fullLayout: Plotly.Layout;
+    _fullData: { yaxis?: string; visible?: unknown }[];
   };
   errorMsgEl: HTMLElement;
   plotlyStyleEl: HTMLStyleElement;
@@ -663,6 +669,9 @@ export class PlotlyGraph extends HTMLElement {
       copyPlotlyStyles(this.plotlyStyleEl);
       this.touchController.Fx = (Plotly as any).Fx;
       await this.withoutRelayout(async () => {
+        const protectedAxes = this.parsed_config.align_zero
+          ? getZeroAlignmentProtectedAxes(layout)
+          : undefined;
         const drawnEntities = prepareHistoryLineGaps(
           entities,
           this.parsed_config.raw_plotly_config,
@@ -683,6 +692,14 @@ export class PlotlyGraph extends HTMLElement {
           this.contentEl.layout.yaxis?.range,
         );
         if (editorUpdate) await Plotly.relayout(this.contentEl, editorUpdate);
+        if (protectedAxes) {
+          const alignment = getZeroAlignmentRelayout(
+            this.contentEl._fullLayout,
+            this.contentEl._fullData,
+            protectedAxes,
+          );
+          if (alignment) await Plotly.relayout(this.contentEl, alignment);
+        }
         this.contentEl.style.visibility = "";
       });
       if (this.isConnected) this.connectPlotlyListeners();

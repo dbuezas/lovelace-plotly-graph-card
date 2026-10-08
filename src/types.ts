@@ -78,6 +78,8 @@ export type InputConfig = {
   fit_y_data?: boolean;
   /** Use a logarithmic main y-axis unless a Plotly axis type is specified. */
   logarithmic_scale?: boolean;
+  /** Align zero on automatically scaled, overlaid linear Y-axes. */
+  align_zero?: boolean;
   offset?: TimeDurationStr;
   entities: (InputEntityOptions & Partial<Plotly.Data>)[];
   defaults?: {
@@ -126,6 +128,7 @@ export type Config = {
   max_y_axis?: number;
   fit_y_data?: boolean;
   logarithmic_scale?: boolean;
+  align_zero?: boolean;
   hours_to_show: number;
   editor_y_axis?: {
     partial_bound?: boolean;

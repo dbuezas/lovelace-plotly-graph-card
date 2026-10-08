@@ -27,6 +27,7 @@ jobs:
       - run: npm run test:browser
       - run: npm run test:autorange
       - run: npm run test:resize
+      - run: npm run test:zero-alignment
       - run: npm run test:card-lifecycle
       - run: npm run test:loading
       - run: npm run test:touch

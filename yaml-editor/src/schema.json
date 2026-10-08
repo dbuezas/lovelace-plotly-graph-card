@@ -211318,6 +211318,18 @@
     }
   },
   "properties": {
+    "align_zero": {
+      "anyOf": [
+        {
+          "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
+          "type": "string"
+        },
+        {
+          "type": "boolean"
+        }
+      ],
+      "description": "Align zero on automatically scaled, overlaid linear Y-axes."
+    },
     "autorange_after_scroll": {
       "anyOf": [
         {
