@@ -1,6 +1,5 @@
 import { tz, tzOffset } from "@date-fns/tz";
 import { HomeAssistant } from "custom-card-helpers";
-import { parseISO } from "date-fns";
 
 /**
  * Plotly has no timezone support: it draws JS Dates and numeric ranges in the
@@ -68,16 +67,6 @@ export function toPlotlyDateString(timestamp: number, timeZone: string) {
   // "2024-03-31T02:30:00.000Z" -> "2024-03-31 02:30:00.000"
   if (iso.length === 24) return iso.slice(0, 10) + " " + iso.slice(11, 23);
   return iso.replace(/^\+/, "").replace("T", " ").slice(0, -1);
-}
-
-/**
- * Timestamp of a naive date string from Plotly, read as wall clock time in `timeZone`.
- * Known issue: with @date-fns/tz 1.5, a wall time that falls in a DST gap of
- * the browser's own timezone comes back shifted by the gap. Fix proposed in
- * https://github.com/date-fns/tz/pull/79
- */
-export function parsePlotlyDateString(str: string, timeZone: string) {
-  return +parseISO(str, { in: tz(timeZone) });
 }
 
 function isPlainObject(value: any) {

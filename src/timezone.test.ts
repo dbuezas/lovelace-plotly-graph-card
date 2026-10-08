@@ -1,12 +1,11 @@
 import {
-  parsePlotlyDateString,
   resolveTimeZone,
   toPlotlyDateString,
   toPlotlyTimeZone,
 } from "./timezone";
 import { parseRelativeTime } from "./duration/duration";
-import { tzOffset } from "@date-fns/tz";
-import { endOfWeek, setDefaultOptions, startOfWeek } from "date-fns";
+import { tz as inZone, tzOffset } from "@date-fns/tz";
+import { endOfWeek, parseISO, setDefaultOptions, startOfWeek } from "date-fns";
 
 const hass = (time_zone: string, server = "Pacific/Chatham") =>
   ({ locale: { time_zone }, config: { time_zone: server } }) as any;
@@ -77,26 +76,10 @@ describe("wall clock conversion", () => {
     for (const tz of ["Europe/Rome", "America/New_York", "Australia/Lord_Howe"])
       for (let t = Date.UTC(2024, 0, 1); t < Date.UTC(2025, 0, 1); t += 3.7e6) {
         const str = toPlotlyDateString(t, tz);
-        const back = parsePlotlyDateString(str, tz);
+        const back = +parseISO(str, { in: inZone(tz) });
         // ambiguous wall times (DST fall back) may resolve to either instant
         expect(toPlotlyDateString(back, tz)).toBe(str);
       }
-  });
-});
-
-describe("parsePlotlyDateString", () => {
-  it("parses the date strings Plotly returns", () => {
-    const tz = "Asia/Kolkata"; // UTC+5:30
-    expect(parsePlotlyDateString("2024-03-31 02:30:00.5", tz)).toBe(
-      Date.UTC(2024, 2, 30, 21, 0, 0, 500),
-    );
-    expect(parsePlotlyDateString("2024-03-31 02:30", tz)).toBe(
-      Date.UTC(2024, 2, 30, 21),
-    );
-    expect(parsePlotlyDateString("2024-03-31", tz)).toBe(
-      Date.UTC(2024, 2, 30, 18, 30),
-    );
-    expect(parsePlotlyDateString("nonsense", tz)).toBeNaN();
   });
 });
 
