@@ -23,7 +23,7 @@ import {
   setDateFnDefaultOptions,
 } from "../duration/duration";
 import { parseStatistics } from "./parse-statistics";
-import { getStatisticsTypes } from "./statistics-types";
+import { canSelectStatisticsTypes } from "./statistics-types";
 import { HomeAssistant } from "custom-card-helpers";
 import filters from "../filters/filters";
 import bounds from "binary-search-bounds";
@@ -58,6 +58,7 @@ class ConfigParser {
   private retainedCacheRanges: Record<string, TimestampRange[]> = {};
   private failedFetches = new Map<string, unknown>();
   private statisticsTypes?: StatisticType[];
+  private canSelectStatisticsTypes = false;
   public resetObservedRange() {
     this.observed_range = [Date.now(), Date.now()];
   }
@@ -104,7 +105,8 @@ class ConfigParser {
       Array.isArray(inputRange) && !inputRange.some(is$fn);
     this.retainedCacheRanges = {};
     this.yaml_with_defaults = addPreParsingDefaults(input_yaml, css_vars);
-    this.statisticsTypes = getStatisticsTypes(input_yaml, this.yaml_with_defaults);
+    this.statisticsTypes = undefined;
+    this.canSelectStatisticsTypes = canSelectStatisticsTypes(input_yaml);
     setDateFnDefaultOptions(hass);
 
     this.fnParam = {
@@ -367,8 +369,8 @@ class ConfigParser {
       return;
     }
 
-    const fetch_mask: boolean[] = this.fnParam.getFromConfig("fetch_mask") || [];
     const requests: {
+      index: number;
       entity: StatisticsFetchConfig;
       range: TimestampRange;
     }[] = [];
@@ -380,7 +382,6 @@ class ConfigParser {
         time_offset: timeOffset,
       } = entity;
       if (
-        fetch_mask[i] === false ||
         !entityId ||
         [entityId, statistic, period, timeOffset].some(is$fn)
       ) {
@@ -394,13 +395,12 @@ class ConfigParser {
           period
         );
         if (!statisticsParams) return;
-        if (!this.shouldFetch(i, statisticsParams.period)) return;
         const offset = parseTimeDuration(timeOffset);
         requests.push({
+          index: i,
           entity: {
             entity: entityId,
             ...statisticsParams,
-            types: this.statisticsTypes,
           },
           range: [
             visible_range[0] - offset,
@@ -413,8 +413,17 @@ class ConfigParser {
       }
     });
 
-    if (requests.length < 2) return;
-    await this.cache.prefetchStatistics(requests, this.hass!);
+    // Use normalized requests so parseStatistics remains the only source of
+    // defaults. Include masked traces to keep cache coverage stable on refresh.
+    this.statisticsTypes = this.canSelectStatisticsTypes && requests.length
+      ? [...new Set(requests.map(({ entity }) => entity.statistic))].sort()
+      : undefined;
+    const fetchRequests = requests.filter(({ index, entity }) =>
+      this.shouldFetch(index, entity.period)
+    );
+    for (const request of requests) request.entity.types = this.statisticsTypes;
+    if (fetchRequests.length < 2) return;
+    await this.cache.prefetchStatistics(fetchRequests, this.hass!);
   }
 
   private async fetchDataForEntity(path: string) {

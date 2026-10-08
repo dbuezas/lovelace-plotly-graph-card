@@ -1,5 +1,5 @@
-import Cache, { getEntityKey } from "./Cache";
-import type { EntityIdStatisticsConfig, StatisticsFetchConfig } from "../types";
+import Cache from "./Cache";
+import type { EntityIdStatisticsConfig } from "../types";
 
 const range: [number, number] = [
   Date.parse("2025-01-01T00:00:00Z"),
@@ -19,37 +19,6 @@ function mockHass() {
 }
 
 describe("Cache.prefetchStatistics", () => {
-  it("separates field coverage while canonicalizing equivalent selections", async () => {
-    const cache = new Cache();
-    const { hass, callWS } = mockHass();
-    const mean: StatisticsFetchConfig = {
-      ...entity("sensor.one"),
-      types: ["mean"],
-    };
-    const band: StatisticsFetchConfig = { ...mean, types: ["mean", "max"] };
-    expect(getEntityKey(band)).toBe(
-      getEntityKey({ ...band, types: ["max", "mean", "max"] }),
-    );
-    expect(getEntityKey(mean)).not.toBe(getEntityKey(band));
-    expect(getEntityKey(mean)).not.toBe(getEntityKey(entity("sensor.one")));
-    await cache.prefetchStatistics(
-      [
-        { entity: mean, range },
-        { entity: band, range },
-        { entity: entity("sensor.one"), range },
-      ],
-      hass,
-    );
-    expect(callWS.mock.calls.map(([request]) => request.types)).toEqual([
-      ["mean"],
-      ["max", "mean"],
-      undefined,
-    ]);
-    await cache.fetch(range, { ...band, types: ["max", "mean"] }, hass);
-    expect(callWS).toHaveBeenCalledTimes(3);
-    expect(cache.getData({ ...band, statistic: "max" }).ys).toEqual([8]);
-  });
-
   it("serializes prefetch and fetch calls without duplicate requests", async () => {
     const cache = new Cache();
     const { hass, callWS } = mockHass();

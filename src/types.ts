@@ -151,6 +151,7 @@ export type EntityIdStatisticsConfig = {
   period: StatisticPeriod;
 };
 export type StatisticsFetchConfig = EntityIdStatisticsConfig & {
+  // One sorted, unique field selection shared by every trace in a parser update.
   types?: StatisticType[];
 };
 export type EntityIdConfig =

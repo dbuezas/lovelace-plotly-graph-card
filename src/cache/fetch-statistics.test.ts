@@ -69,24 +69,6 @@ describe("fetchStatistics", () => {
     ).toEqual({ "sensor.one": [] });
   });
 
-  it("requests a sorted union of the selected fields", async () => {
-    const callWS = jest.fn().mockResolvedValue({});
-    await fetchStatistics({ callWS } as any, [
-      { ...entity("sensor.one"), types: ["mean", "max"] },
-      { ...entity("sensor.two"), types: ["min", "mean"] },
-    ], range);
-    expect(callWS.mock.calls[0][0].types).toEqual(["max", "mean", "min"]);
-  });
-
-  it("does not restrict fields if any caller needs the full response", async () => {
-    const callWS = jest.fn().mockResolvedValue({});
-    await fetchStatistics({ callWS } as any, [
-      { ...entity("sensor.one"), types: ["mean"] },
-      entity("sensor.two"),
-    ], range);
-    expect(callWS.mock.calls[0][0]).not.toHaveProperty("types");
-  });
-
   it("preserves null statistics and ISO timestamps", async () => {
     const point = { start: range[0].toISOString(), mean: null, sum: 5 };
     const callWS = jest.fn().mockResolvedValue({ "sensor.one": [point] });

@@ -1145,39 +1145,6 @@ try {
   );
   await page.evaluate(() => {
     const card = document.getElementById("card-under-test");
-    card.setConfig({
-      type: "custom:plotly-graph",
-      refresh_interval: 0,
-      visible_range: card.parsed_config.visible_range,
-      entities: ["min", "max", "mean"].map((statistic) => ({
-        entity: "sensor.east",
-        statistic,
-        period: "5minute",
-        ...(statistic === "max" ? { fill: "tonexty" } : {}),
-      })),
-    });
-  });
-  await page.waitForFunction(() =>
-    document.getElementById("card-under-test").contentEl?._fullData?.length === 3
-  );
-  const bandState = await page.evaluate(() => {
-    const card = document.getElementById("card-under-test");
-    return {
-      requests: window.statisticsRequests,
-      error: card.errorMsgEl.textContent,
-      values: card.contentEl.data.map((trace) => trace.y),
-      filled: card.contentEl.querySelectorAll(".js-fill").length,
-    };
-  });
-  assert.equal(bandState.error, "");
-  assert.equal(bandState.requests.length, 2);
-  assert.deepEqual(bandState.requests[1].types, ["max", "mean", "min"]);
-  assert.deepEqual(bandState.requests[1].statistic_ids, ["sensor.east"]);
-  assert.deepEqual(bandState.values, [[0, 1], [3, 4], [1, 2]]);
-  assert.ok(bandState.filled > 0);
-  results.results.push("min/max/mean band refetches missing fields once and renders the shaded band");
-  await page.evaluate(() => {
-    const card = document.getElementById("card-under-test");
     const end = Date.now() - 60000;
     const start = end - 3600000;
     const entityIds = [

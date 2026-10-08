@@ -13,9 +13,7 @@ async function fetchStatistics(
     throw new Error("Cannot batch statistics with different periods");
   }
   const entityIds = [...new Set(entities.map(({ entity }) => entity))];
-  const types = entities.every(({ types }) => types?.length)
-    ? [...new Set(entities.flatMap(({ types }) => types ?? []))].sort()
-    : undefined;
+  const types = entities[0].types;
   let statistics: Statistics = {};
   try {
     const statsP = hass.callWS<Statistics>({

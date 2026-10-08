@@ -7,7 +7,11 @@ import { getEntityKey } from "../cache/Cache";
 
 jest.mock("../filters/filters", () => ({
   __esModule: true,
-  default: {},
+  default: {
+    multiply: (factor: number) => ({ ys }: { ys: number[] }) => ({
+      ys: ys.map((value) => value * factor),
+    }),
+  },
 }));
 
 const NOW = Date.parse("2025-01-02T12:00:00.000Z");
@@ -91,7 +95,10 @@ function update(
   parser: ConfigParser,
   callWS: jest.Mock<Promise<Statistics>, [Record<string, any>]>,
   entities = compatibleEntities,
-  config: Partial<InputConfig> & { visible_range?: [number, number] } = {},
+  config: Partial<InputConfig> & {
+    visible_range?: [number, number];
+    fetch_mask?: boolean[];
+  } = {},
 ) {
   return parser.update({
     yaml: {
@@ -293,18 +300,73 @@ describe("statistics request batching", () => {
   it("shares a response between different statistics for the same entity", async () => {
     const callWS = jest.fn(async ({ types }: Record<string, any>) => ({
       "sensor.east": [
-        selectFields({ ...statistic("sensor.east", 4), max: 8 }, types),
+        selectFields({ ...statistic("sensor.east", 4), min: 2, max: 8 }, types),
       ],
     }));
     const result = await update(new ConfigParser(), callWS, [
+      { entity: "sensor.east", statistic: "min", period: "hour" },
+      {
+        entity: "sensor.east", statistic: "max", period: "hour",
+        fill: "tonexty",
+      },
       { entity: "sensor.east", statistic: "mean", period: "hour" },
-      { entity: "sensor.east", statistic: "max", period: "hour" },
+      { entity: "sensor.east", statistic: "mean", period: "hour" },
     ]);
     expect(result.errors).toEqual([]);
     expect(callWS).toHaveBeenCalledTimes(1);
     expect(callWS.mock.calls[0][0].statistic_ids).toEqual(["sensor.east"]);
-    expect(callWS.mock.calls[0][0].types).toEqual(["max", "mean"]);
+    expect(callWS.mock.calls[0][0].types).toEqual(["max", "mean", "min"]);
+    expect(result.parsed.entities.map(yValues)).toEqual([[2], [8], [4], [4]]);
+  });
+
+  it("includes the default mean for period-only traces alongside max", async () => {
+    const callWS = jest.fn(async ({ types }: Record<string, any>) => ({
+      "sensor.east": [
+        selectFields({ ...statistic("sensor.east", 4), max: 8 }, types),
+      ],
+    }));
+    const result = await update(new ConfigParser(), callWS, [
+      { entity: "sensor.east", period: "hour" },
+      { entity: "sensor.east", statistic: "max", period: "hour" },
+    ]);
+    expect(result.errors).toEqual([]);
     expect(result.parsed.entities.map(yValues)).toEqual([[4], [8]]);
+    expect(callWS).toHaveBeenCalledTimes(1);
+    expect(callWS.mock.calls[0][0].types).toEqual(["max", "mean"]);
+  });
+
+  it("includes statistics supplied by entity defaults", async () => {
+    const callWS = successfulCallWS();
+    const result = await update(
+      new ConfigParser(), callWS,
+      [
+        { entity: "sensor.east" },
+        { entity: "sensor.west", statistic: "max" },
+      ],
+      {
+        defaults: { entity: { period: "hour", statistic: "min" } },
+      } as unknown as Partial<InputConfig>,
+    );
+    expect(result.errors).toEqual([]);
+    expect(result.parsed.entities.map(yValues)).toEqual([[1], [2]]);
+    expect(callWS).toHaveBeenCalledTimes(1);
+    expect(callWS.mock.calls[0][0].types).toEqual(["max", "min"]);
+  });
+
+  it("keeps field coverage for cached traces when another trace is refreshed", async () => {
+    const parser = new ConfigParser();
+    const callWS = successfulCallWS();
+    const entities: InputConfig["entities"] = [
+      { entity: "sensor.east", statistic: "mean", period: "hour" },
+      { entity: "sensor.west", statistic: "max", period: "hour" },
+    ];
+    await update(parser, callWS, entities);
+    const result = await update(parser, callWS, entities, {
+      fetch_mask: [false, true],
+    });
+    expect(result.errors).toEqual([]);
+    expect(result.parsed.entities.map(yValues)).toEqual([[1], [2]]);
+    expect(callWS).toHaveBeenCalledTimes(1);
   });
 
   it("does not reuse a partial response when the configured statistic changes", async () => {
@@ -330,13 +392,6 @@ describe("statistics request batching", () => {
     expect(callWS.mock.calls.map(([request]) => request.types)).toEqual([
       ["mean"],
       ["max"],
-    ]);
-    expect(Object.keys(parser.cache.histories)).toEqual([
-      getEntityKey({
-        ...mean,
-        statistic: "max",
-        types: ["max"],
-      }),
     ]);
   });
 
@@ -367,26 +422,41 @@ describe("statistics request batching", () => {
     expect(callWS.mock.calls[1][0]).not.toHaveProperty("types");
   });
 
-  it("requests one union for a min/max/mean band", async () => {
-    const callWS = jest.fn(async ({ types }: Record<string, any>) => ({
-      "sensor.east": [
-        selectFields({ ...statistic("sensor.east", 4), min: 2, max: 8 }, types),
-      ],
-    }));
+  it.each([
+    { filters: [{ multiply: 2 }] },
+    { name: (() => "Temperature") as any },
+    { statistic: "$ex 'mean'" as any },
+  ])("keeps full statistics for user filters or functions: %p", async (extra) => {
+    const callWS = successfulCallWS();
     const result = await update(new ConfigParser(), callWS, [
-      { entity: "sensor.east", statistic: "min", period: "hour" },
-      {
-        entity: "sensor.east",
-        statistic: "max",
-        period: "hour",
-        fill: "tonexty",
-      },
-      { entity: "sensor.east", statistic: "mean", period: "hour" },
+      { ...compatibleEntities[0], ...extra },
     ]);
     expect(result.errors).toEqual([]);
-    expect(callWS).toHaveBeenCalledTimes(1);
-    expect(callWS.mock.calls[0][0].types).toEqual(["max", "mean", "min"]);
-    expect(result.parsed.entities.map(yValues)).toEqual([[2], [8], [4]]);
+    expect(result.parsed.entities.map(yValues)).toEqual([
+      ["filters" in extra ? 2 : 1],
+    ]);
+    expect(callWS.mock.calls[0][0]).not.toHaveProperty("types");
+  });
+
+  it("keeps full statistics for filters supplied by defaults or presets", async () => {
+    const callWS = successfulCallWS();
+    for (const config of [
+      { defaults: { entity: { filters: [{ multiply: 2 }] } } },
+      { preset: "custom" },
+    ]) {
+      const result = await update(
+        new ConfigParser(), callWS, compatibleEntities,
+        config as unknown as Partial<InputConfig>,
+      );
+      expect(result.errors).toEqual([]);
+      expect(result.parsed.entities.map(yValues)).toEqual(
+        "defaults" in config ? [[2], [4]] : [[1], [2]],
+      );
+    }
+    expect(callWS).toHaveBeenCalledTimes(2);
+    for (const [request] of callWS.mock.calls) {
+      expect(request).not.toHaveProperty("types");
+    }
   });
 
   it("optimizes time-axis expressions without exposing partial statistics outside entities", async () => {

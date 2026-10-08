@@ -127,7 +127,7 @@ export function getEntityKey(entity: FetchConfig) {
     return `${entity.entity}::attribute:`;
   } else if (isEntityIdStatisticsConfig(entity)) {
     const types = "types" in entity && entity.types?.length
-      ? `::types:${[...new Set(entity.types)].sort().join(",")}`
+      ? `::types:${entity.types.join(",")}`
       : "";
     return `${entity.entity}::statistics::${entity.period}${types}`;
   } else if (isEntityIdStateConfig(entity)) {
@@ -441,9 +441,7 @@ export default class Cache {
           );
           const groupKey = JSON.stringify([
             request.entity.period,
-            request.entity.types?.length
-              ? [...new Set(request.entity.types)].sort()
-              : null,
+            request.entity.types ?? null,
             +dates[0],
             +dates[1],
           ]);
