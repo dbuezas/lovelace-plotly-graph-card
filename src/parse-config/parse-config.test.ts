@@ -105,6 +105,40 @@ describe("statistics request batching", () => {
     jest.restoreAllMocks();
   });
 
+  it("draws dates in the configured timezone", async () => {
+    const callWS = successfulCallWS();
+    const result = await update(new ConfigParser(), callWS, compatibleEntities, {
+      time_zone: "Pacific/Chatham",
+      hours_to_show: "1h",
+    });
+
+    expect(result.errors).toEqual([]);
+    // NOW is 12:00Z, i.e. 01:45 next day in Chatham (UTC+13:45)
+    expect(result.parsed.layout.xaxis!.range).toEqual([
+      "2025-01-03 00:45:00.000",
+      "2025-01-03 01:45:00.000",
+    ]);
+    expect(result.parsed.visible_range).toEqual([NOW - 3600000, NOW]);
+    for (const trace of result.parsed.entities)
+      for (const x of (trace as any).x) expect(typeof x).toBe("string");
+  });
+
+  it("falls back to the browser's timezone for an invalid time_zone", async () => {
+    const callWS = successfulCallWS();
+    const result = await update(new ConfigParser(), callWS, compatibleEntities, {
+      time_zone: "Mars/Olympus",
+      hours_to_show: "current_day",
+    });
+
+    expect(result.errors.map((e) => e.message)).toEqual([
+      "time_zone: unknown timezone 'Mars/Olympus'",
+    ]);
+    const start = new Date(NOW);
+    start.setHours(0, 0, 0, 0);
+    expect(result.parsed.visible_range[0]).toBe(+start);
+    expect(result.parsed.entities.map(yValues)).toEqual([[1], [2]]);
+  });
+
   it("fetches compatible statistics entities in one request", async () => {
     const callWS = successfulCallWS();
     const parser = new ConfigParser();

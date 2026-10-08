@@ -453,7 +453,7 @@ entities:
       width: 1
       dash: dot
       color: deepskyblue
-    x: $ex [Date.now(), Date.now()]
+    x: $ex [new Date(), new Date()]
     y: [0, 1]
 layout:
   yaxis9:
@@ -1250,6 +1250,26 @@ config:
 ** Home Assistant custom Number and Date format will be ignored, only the language determines the locale **
 
 When using `hours_to_show: current_week`, the "First day of the week" configured in Home Assistant is used
+
+## time_zone:
+
+Dates are shown in the "Time zone" chosen in the Home Assistant user profile (your browser's or the server's), but it can be overridden like this:
+
+```yaml
+time_zone: server # Home Assistant's timezone
+time_zone: local # the browser's timezone
+time_zone: Europe/Rome # any IANA timezone
+```
+
+This also applies to the boundaries of `hours_to_show: current_day` and friends, and to `integrate`'s `reset_every`.
+
+For `integrate`, `reset_every: 1d` resets at calendar midnight in the selected time zone, including 23- and 25-hour days. `reset_every: 24h` and other intervals remain fixed durations. `offset` shifts the reset by the specified elapsed duration after midnight, not by wall-clock hours.
+
+An invalid `time_zone` is reported as an error and the browser's timezone is used instead.
+
+Give times as `Date` objects (e.g. `new Date()`), not as numbers like `Date.now()`: only Dates are converted to the selected time zone, so a number would be drawn in the browser's time zone.
+
+When a timezone other than the browser's is used, the x values Plotly hands back (e.g. `points[0].x` in `on_click`, and hover values) are date strings in that timezone, like `"2024-03-31 02:30:00.000"`, not `Date` objects. Don't pass them to `new Date(...)`, which would read them in the browser's timezone. The `xs` passed to `$fn` and filters are still real `Date`s.
 
 ## Presets
 

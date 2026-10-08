@@ -94,6 +94,12 @@ export type InputConfig = {
   disable_pinch_to_zoom?: boolean; // old, same as extended_touch_support: false
   autorange_after_scroll?: boolean; // defaults to false
   preset?: string | string[];
+  /**
+   * Timezone the x axis is drawn in: "local" (the browser's), "server"
+   * (Home Assistant's), or an IANA name like "Europe/Rome".
+   * Defaults to the Home Assistant user profile setting.
+   */
+  time_zone?: "local" | "server" | string;
 };
 
 export type EntityConfig = EntityIdConfig & {
@@ -137,6 +143,7 @@ export type Config = {
   visible_range: [number, number];
   on_dblclick: Function;
   autorange_after_scroll: boolean;
+  time_zone?: "local" | "server" | string;
 };
 export type EntityIdStateConfig = {
   entity: string;
