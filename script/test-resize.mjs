@@ -112,6 +112,15 @@ try {
       const frames = async (n) => {
         for (let i = 0; i < n; i++) await new Promise(requestAnimationFrame);
       };
+      // Slow machines need more frames: wait for the change, up to ~2 s
+      const until = async (condition) => {
+        for (let i = 0; i < 120 && !condition(); i++) await frames(1);
+      };
+      const ysChange = async () => {
+        const before = ys();
+        await until(() => ys() !== before);
+        return ys();
+      };
       const ys = () => window.card.contentEl.data[0].y.join();
       const config = (y) => ({
         type: "custom:plotly-graph",
@@ -128,7 +137,7 @@ try {
         window.spacer = document.createElement("div");
         window.spacer.style.height = "3000px";
         card.before(window.spacer); // below the fold
-        await frames(5);
+        await until(() => !card.onScreen);
         return card.onScreen;
       }
       if (step === "update") {
@@ -136,14 +145,10 @@ try {
         await frames(10);
         return ys();
       }
-      if (step === "rendered") {
-        await frames(10);
-        return ys();
-      }
+      if (step === "rendered") return ysChange();
       if (step === "scroll") {
         window.spacer.remove();
-        await frames(10);
-        const result = ys();
+        const result = await ysChange();
         window.card.remove();
         Plotly.purge(window.card.contentEl);
         return result;
