@@ -598,6 +598,18 @@ try {
     "hold_to_scan: false: a tap shows the tooltip again"
   );
 
+  // --- scrollZoom: false only turns off the mouse wheel
+  await mount({ config: { scrollZoom: false } });
+  check(await pinchOut(), "scrollZoom: false: pinch still zooms");
+  s0 = await state();
+  await page.mouse.move(cx, cy);
+  await page.mouse.wheel(0, -300);
+  await wait(300);
+  check(
+    (await state()).range === s0.range,
+    "scrollZoom: false: the mouse wheel doesn't zoom"
+  );
+
   // --- Two quick swipes are pans, not a double-tap-drag
   await mount({});
   s0 = await state();
