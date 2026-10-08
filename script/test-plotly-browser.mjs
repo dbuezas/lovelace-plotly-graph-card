@@ -725,6 +725,43 @@ try {
     return card.contentEl._fullLayout.width <= 320;
   });
   results.results.push("Lovelace card with mock HA state");
+  const automaticMargin = await page.evaluate(async () => {
+    const card = document.getElementById("card-under-test");
+    await card.setConfig({
+      type: "custom:plotly-graph",
+      refresh_interval: 0,
+      hours_to_show: "24h",
+      layout: { xaxis: { tickformat: "%H:%M" } },
+      entities: [
+        {
+          entity: "",
+          x: [Date.now() - 3600000, Date.now()],
+          y: [10, 20],
+          unit_of_measurement: "W",
+        },
+        {
+          entity: "",
+          x: [Date.now() - 3600000, Date.now()],
+          y: [18, 22],
+          unit_of_measurement: "°C",
+        },
+      ],
+    });
+    await card.plot({ should_fetch: false });
+    return {
+      error: card.errorMsgEl.textContent,
+      margin: card.contentEl._fullLayout.margin.r,
+      title: card.contentEl._fullLayout.yaxis2.title.text,
+      axes: card.contentEl._fullData.map((trace) => trace.yaxis),
+      lines: card.contentEl.querySelectorAll(".scatterlayer .js-line").length,
+    };
+  });
+  assert.equal(automaticMargin.error, "");
+  assert.equal(automaticMargin.margin, 60);
+  assert.equal(automaticMargin.title, "°C");
+  assert.deepEqual(automaticMargin.axes, ["y", "y2"]);
+  assert.equal(automaticMargin.lines, 2);
+  results.results.push("automatic margin reaches the rendered secondary axis");
   const editorCardCases = await page.evaluate(async () => {
     const card = document.getElementById("card-under-test");
     const cases = [
