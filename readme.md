@@ -233,6 +233,8 @@ entities:
 
 Fetch and plot long-term statistics of an entity
 
+The card requests only the statistic fields used by its traces. Traces with the same sensor, period and time range still share one response, including min/max/mean bands. Entity expressions, filters and presets keep the full statistics response, since custom code can read other fields through `statistics`. Functions used only for time ranges or layout do not disable this optimization.
+
 #### for entities with state_class=measurement (normal sensors, like temperature)
 
 ```yaml

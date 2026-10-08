@@ -19,13 +19,10 @@ import {
   CachedStateEntity,
   EntityData,
   EntityIdStatisticsConfig,
+  StatisticsFetchConfig,
 } from "../types";
 export type FetchConfig =
-  | {
-      statistic: "state" | "sum" | "min" | "max" | "mean";
-      period: "5minute" | "hour" | "day" | "week" | "month";
-      entity: string;
-    }
+  | StatisticsFetchConfig
   | {
       attribute: string;
       entity: string;
@@ -129,7 +126,10 @@ export function getEntityKey(entity: FetchConfig) {
   if (isEntityIdAttrConfig(entity)) {
     return `${entity.entity}::attribute:`;
   } else if (isEntityIdStatisticsConfig(entity)) {
-    return `${entity.entity}::statistics::${entity.period}`;
+    const types = "types" in entity && entity.types?.length
+      ? `::types:${[...new Set(entity.types)].sort().join(",")}`
+      : "";
+    return `${entity.entity}::statistics::${entity.period}${types}`;
   } else if (isEntityIdStateConfig(entity)) {
     return `${entity.entity}`;
   }
@@ -413,7 +413,7 @@ export default class Cache {
   async prefetchStatistics(
     requests: {
       range: TimestampRange;
-      entity: EntityIdStatisticsConfig;
+      entity: StatisticsFetchConfig;
     }[],
     hass: HomeAssistant
   ): Promise<void> {
@@ -424,7 +424,7 @@ export default class Cache {
         {
           dates: [Date, Date];
           range: [number, number];
-          entities: Map<string, EntityIdStatisticsConfig>;
+          entities: Map<string, StatisticsFetchConfig>;
         }
       >();
 
@@ -441,6 +441,9 @@ export default class Cache {
           );
           const groupKey = JSON.stringify([
             request.entity.period,
+            request.entity.types?.length
+              ? [...new Set(request.entity.types)].sort()
+              : null,
             +dates[0],
             +dates[1],
           ]);

@@ -150,6 +150,9 @@ export type EntityIdStatisticsConfig = {
   statistic: StatisticType;
   period: StatisticPeriod;
 };
+export type StatisticsFetchConfig = EntityIdStatisticsConfig & {
+  types?: StatisticType[];
+};
 export type EntityIdConfig =
   | EntityIdStateConfig
   | EntityIdAttrConfig

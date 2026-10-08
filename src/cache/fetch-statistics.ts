@@ -1,10 +1,10 @@
 import { HomeAssistant } from "custom-card-helpers";
 import { Statistics } from "../recorder-types";
-import { CachedStatisticsEntity, EntityIdStatisticsConfig } from "../types";
+import { CachedStatisticsEntity, StatisticsFetchConfig } from "../types";
 
 async function fetchStatistics(
   hass: HomeAssistant,
-  entities: EntityIdStatisticsConfig[],
+  entities: StatisticsFetchConfig[],
   [start, end]: [Date, Date]
 ): Promise<Record<string, CachedStatisticsEntity[]>> {
   if (entities.length === 0) return {};
@@ -13,6 +13,9 @@ async function fetchStatistics(
     throw new Error("Cannot batch statistics with different periods");
   }
   const entityIds = [...new Set(entities.map(({ entity }) => entity))];
+  const types = entities.every(({ types }) => types?.length)
+    ? [...new Set(entities.flatMap(({ types }) => types ?? []))].sort()
+    : undefined;
   let statistics: Statistics = {};
   try {
     const statsP = hass.callWS<Statistics>({
@@ -21,6 +24,7 @@ async function fetchStatistics(
       end_time: end.toISOString(),
       statistic_ids: entityIds,
       period,
+      ...(types ? { types } : {}),
     });
     statistics = await statsP;
   } catch (e: any) {

@@ -23,15 +23,16 @@ import {
   setDateFnDefaultOptions,
 } from "../duration/duration";
 import { parseStatistics } from "./parse-statistics";
+import { getStatisticsTypes } from "./statistics-types";
 import { HomeAssistant } from "custom-card-helpers";
 import filters from "../filters/filters";
 import bounds from "binary-search-bounds";
 import { has } from "lodash";
-import { StatisticPeriod, StatisticValue } from "../recorder-types";
+import { StatisticPeriod, StatisticType, StatisticValue } from "../recorder-types";
 import {
   Config,
   EntityData,
-  EntityIdStatisticsConfig,
+  StatisticsFetchConfig,
   HassEntity,
   InputConfig,
   TimestampRange,
@@ -56,6 +57,7 @@ class ConfigParser {
   private preserveObservedRange = false;
   private retainedCacheRanges: Record<string, TimestampRange[]> = {};
   private failedFetches = new Map<string, unknown>();
+  private statisticsTypes?: StatisticType[];
   public resetObservedRange() {
     this.observed_range = [Date.now(), Date.now()];
   }
@@ -102,6 +104,7 @@ class ConfigParser {
       Array.isArray(inputRange) && !inputRange.some(is$fn);
     this.retainedCacheRanges = {};
     this.yaml_with_defaults = addPreParsingDefaults(input_yaml, css_vars);
+    this.statisticsTypes = getStatisticsTypes(input_yaml, this.yaml_with_defaults);
     setDateFnDefaultOptions(hass);
 
     this.fnParam = {
@@ -366,7 +369,7 @@ class ConfigParser {
 
     const fetch_mask: boolean[] = this.fnParam.getFromConfig("fetch_mask") || [];
     const requests: {
-      entity: EntityIdStatisticsConfig;
+      entity: StatisticsFetchConfig;
       range: TimestampRange;
     }[] = [];
     entities.forEach((entity, i) => {
@@ -394,7 +397,11 @@ class ConfigParser {
         if (!this.shouldFetch(i, statisticsParams.period)) return;
         const offset = parseTimeDuration(timeOffset);
         requests.push({
-          entity: { entity: entityId, ...statisticsParams },
+          entity: {
+            entity: entityId,
+            ...statisticsParams,
+            types: this.statisticsTypes,
+          },
           range: [
             visible_range[0] - offset,
             Math.min(visible_range[1] - offset, this.fetchTime),
@@ -426,7 +433,9 @@ class ConfigParser {
     const attribute = this.fnParam.getFromConfig(path + ".attribute");
     const fetchConfig = {
       entity: this.fnParam.getFromConfig(path + ".entity"),
-      ...(statisticsParams ? statisticsParams : attribute ? { attribute } : {}),
+      ...(statisticsParams
+        ? { ...statisticsParams, types: this.statisticsTypes }
+        : attribute ? { attribute } : {}),
     };
     const offset = parseTimeDuration(
       this.fnParam.getFromConfig(path + ".time_offset")

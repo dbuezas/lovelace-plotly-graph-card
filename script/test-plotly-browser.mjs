@@ -1075,6 +1075,7 @@ try {
     const start = end - 3600000;
     const ids = ["sensor.east", "sensor.west", "sensor.north", "sensor.south"];
     window.statisticsRequests = [];
+    window.statisticsBounds = [start, end];
     card.hass = {
       ...card.hass,
       callWS: async (request) => {
@@ -1085,9 +1086,11 @@ try {
           request.statistic_ids.map((id, index) => [
             id,
             [
-              { start, end: start + 300000, mean: index + 1 },
-              { start: start + 300000, end: start + 600000, mean: index + 2 },
-            ],
+              { start, end: start + 300000, mean: index + 1, min: index, max: index + 3 },
+              { start: start + 300000, end: start + 600000, mean: index + 2, min: index + 1, max: index + 4 },
+            ].map((row) => Object.fromEntries(Object.entries(row).filter(([key]) =>
+              !request.types || key === "start" || key === "end" || request.types.includes(key)
+            ))),
           ]),
         );
       },
@@ -1095,7 +1098,11 @@ try {
     card.setConfig({
       type: "custom:plotly-graph",
       refresh_interval: 0,
-      visible_range: [start, end],
+      visible_range: "$fn () => window.statisticsBounds",
+      layout: { xaxis: {
+        tickvals: "$fn () => [window.statisticsBounds[0]]",
+        ticktext: "$fn () => ['Start']",
+      } },
       entities: ids.map((entity) => ({
         entity,
         statistic: "mean",
@@ -1126,6 +1133,7 @@ try {
     "sensor.south",
   ]);
   assert.equal(statisticsState.requests[0].period, "5minute");
+  assert.deepEqual(statisticsState.requests[0].types, ["mean"]);
   assert.deepEqual(statisticsState.values, [
     [1, 2],
     [2, 3],
@@ -1133,8 +1141,41 @@ try {
     [4, 5],
   ]);
   results.results.push(
-    "four statistics traces render from one request and reuse the cache",
+    "four statistics traces request only mean and render from one cached response",
   );
+  await page.evaluate(() => {
+    const card = document.getElementById("card-under-test");
+    card.setConfig({
+      type: "custom:plotly-graph",
+      refresh_interval: 0,
+      visible_range: card.parsed_config.visible_range,
+      entities: ["min", "max", "mean"].map((statistic) => ({
+        entity: "sensor.east",
+        statistic,
+        period: "5minute",
+        ...(statistic === "max" ? { fill: "tonexty" } : {}),
+      })),
+    });
+  });
+  await page.waitForFunction(() =>
+    document.getElementById("card-under-test").contentEl?._fullData?.length === 3
+  );
+  const bandState = await page.evaluate(() => {
+    const card = document.getElementById("card-under-test");
+    return {
+      requests: window.statisticsRequests,
+      error: card.errorMsgEl.textContent,
+      values: card.contentEl.data.map((trace) => trace.y),
+      filled: card.contentEl.querySelectorAll(".js-fill").length,
+    };
+  });
+  assert.equal(bandState.error, "");
+  assert.equal(bandState.requests.length, 2);
+  assert.deepEqual(bandState.requests[1].types, ["max", "mean", "min"]);
+  assert.deepEqual(bandState.requests[1].statistic_ids, ["sensor.east"]);
+  assert.deepEqual(bandState.values, [[0, 1], [3, 4], [1, 2]]);
+  assert.ok(bandState.filled > 0);
+  results.results.push("min/max/mean band refetches missing fields once and renders the shaded band");
   await page.evaluate(() => {
     const card = document.getElementById("card-under-test");
     const end = Date.now() - 60000;
