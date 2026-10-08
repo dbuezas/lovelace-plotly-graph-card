@@ -185,13 +185,13 @@ test("converts object arrays and dynamic subplot properties", () => {
   );
 });
 
-test("derives enabled traces from uncommented registrations", () => {
-  const source = `// traces
-    require("plotly.js/lib/bar"),
-    // require("plotly.js/lib/image"),
-    require("plotly.js/lib/scattermap"),
-    // components
-    require("plotly.js/lib/calendars"),
+test("derives enabled traces from registrations and on-demand groups", () => {
+  const source = `
+    Plotly.register([require("plotly.js/lib/bar")]);
+    const calendars = () => import("plotly.js/lib/calendars");
+    const groupOf: Record<string, string> = {
+      scattermap: "map",
+    };
   `;
   const runtime = {
     traces: {
@@ -434,12 +434,11 @@ test("generated schema includes trace-owned layout and data fields", () => {
     assert.ok(layout[key], `Missing layout.${key}`);
   }
   assert.ok(layout.geo);
-  assert.equal(layout.map, undefined);
-  assert.equal(
+  assert.ok(layout.map);
+  assert.ok(
     valueBranch(schema.definitions.PlotlyLayout).patternProperties[
       "^map([2-9]|[1-9][0-9]+)$"
     ],
-    undefined,
   );
   assert.ok(
     valueBranch(schema.definitions.PlotlyLayoutYAxis).properties.autoshift,
@@ -518,10 +517,9 @@ test("config suggestions only include registered geographic subplots", () => {
   };
   collectEnums(zoom);
   assert.ok(suggestions.includes("geo"));
-  assert.equal(
+  assert.ok(
     suggestions.some(
       (value) => typeof value === "string" && value.split("+").includes("map"),
     ),
-    false,
   );
 });
