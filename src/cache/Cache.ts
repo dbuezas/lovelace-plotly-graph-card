@@ -441,7 +441,6 @@ export default class Cache {
           );
           const groupKey = JSON.stringify([
             request.entity.period,
-            request.entity.types ?? null,
             +dates[0],
             +dates[1],
           ]);

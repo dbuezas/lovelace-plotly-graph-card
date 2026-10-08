@@ -30,3 +30,4 @@ jobs:
       - run: npm run test:card-lifecycle
       - run: npm run test:loading
       - run: npm run test:touch
+      - run: npm run test:split

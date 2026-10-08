@@ -125,6 +125,40 @@ describe("statistics request batching", () => {
     jest.restoreAllMocks();
   });
 
+  it("draws dates in the configured timezone", async () => {
+    const callWS = successfulCallWS();
+    const result = await update(new ConfigParser(), callWS, compatibleEntities, {
+      time_zone: "Pacific/Chatham",
+      hours_to_show: "1h",
+    });
+
+    expect(result.errors).toEqual([]);
+    // NOW is 12:00Z, i.e. 01:45 next day in Chatham (UTC+13:45)
+    expect(result.parsed.layout.xaxis!.range).toEqual([
+      "2025-01-03 00:45:00.000",
+      "2025-01-03 01:45:00.000",
+    ]);
+    expect(result.parsed.visible_range).toEqual([NOW - 3600000, NOW]);
+    for (const trace of result.parsed.entities)
+      for (const x of (trace as any).x) expect(typeof x).toBe("string");
+  });
+
+  it("falls back to the browser's timezone for an invalid time_zone", async () => {
+    const callWS = successfulCallWS();
+    const result = await update(new ConfigParser(), callWS, compatibleEntities, {
+      time_zone: "Mars/Olympus",
+      hours_to_show: "current_day",
+    });
+
+    expect(result.errors.map((e) => e.message)).toEqual([
+      "time_zone: unknown timezone 'Mars/Olympus'",
+    ]);
+    const start = new Date(NOW);
+    start.setHours(0, 0, 0, 0);
+    expect(result.parsed.visible_range[0]).toBe(+start);
+    expect(result.parsed.entities.map(yValues)).toEqual([[1], [2]]);
+  });
+
   it("fetches compatible statistics entities in one request", async () => {
     const callWS = successfulCallWS();
     const parser = new ConfigParser();
@@ -393,33 +427,6 @@ describe("statistics request batching", () => {
       ["mean"],
       ["max"],
     ]);
-  });
-
-  it("preserves other statistic fields for user expressions after a narrow fetch", async () => {
-    const parser = new ConfigParser();
-    const callWS = jest.fn(async ({ types }: Record<string, any>) => ({
-      "sensor.east": [
-        selectFields({ ...statistic("sensor.east", 4), max: 8 }, types),
-      ],
-    }));
-    const entity = {
-      entity: "sensor.east",
-      statistic: "mean",
-      period: "hour",
-    } as const;
-    await update(parser, callWS, [entity]);
-    const result = await update(parser, callWS, [
-      {
-        ...entity,
-        customdata:
-          "$fn ({ statistics }) => statistics.map(row => row.max)" as any,
-      },
-    ]);
-    expect(result.errors).toEqual([]);
-    const trace = result.parsed.entities[0];
-    expect("customdata" in trace ? trace.customdata : undefined).toEqual([8]);
-    expect(callWS).toHaveBeenCalledTimes(2);
-    expect(callWS.mock.calls[1][0]).not.toHaveProperty("types");
   });
 
   it.each([

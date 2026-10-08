@@ -39,6 +39,7 @@ import {
   YValue,
 } from "../types";
 import getDeprecationError from "./deprecations";
+import { resolveTimeZone, toPlotlyTimeZone } from "../timezone";
 
 class ConfigParser {
   private yaml: Partial<Config> = {};
@@ -59,6 +60,8 @@ class ConfigParser {
   private failedFetches = new Map<string, unknown>();
   private statisticsTypes?: StatisticType[];
   private canSelectStatisticsTypes = false;
+  /** IANA timezone the plot is drawn in, undefined for the browser's */
+  public timeZone?: string;
   public resetObservedRange() {
     this.observed_range = [Date.now(), Date.now()];
   }
@@ -104,7 +107,7 @@ class ConfigParser {
     this.preserveObservedRange =
       Array.isArray(inputRange) && !inputRange.some(is$fn);
     this.retainedCacheRanges = {};
-    this.yaml_with_defaults = addPreParsingDefaults(input_yaml, css_vars);
+    this.yaml_with_defaults = addPreParsingDefaults(input_yaml, css_vars, hass);
     this.statisticsTypes = undefined;
     this.canSelectStatisticsTypes = canSelectStatisticsTypes(input_yaml);
     setDateFnDefaultOptions(hass);
@@ -117,7 +120,9 @@ class ConfigParser {
       getFromConfig: () => "",
       get: () => "",
     };
+    await this.evalTimeZone();
     for (const [key, value] of Object.entries(this.yaml_with_defaults)) {
+      if (key === "time_zone") continue; // evaluated by evalTimeZone
       try {
         await this.evalNode({
           parent: this.yaml,
@@ -132,6 +137,7 @@ class ConfigParser {
     }
     this.cache.retain(this.retainedCacheRanges);
     this.yaml = addPostParsingDefaults(this.yaml as Config);
+    this.yaml = toPlotlyTimeZone(this.yaml as Config, this.timeZone);
     // Publish one complete snapshot; HA updates can arrive while fetching.
     this.statisticsPeriods = this.nextStatisticsPeriods;
 
@@ -324,7 +330,7 @@ class ConfigParser {
       );
       const hours_to_show = this.fnParam.getFromConfig("hours_to_show");
       if (isRelativeTime(hours_to_show)) {
-        const [start, end] = parseRelativeTime(hours_to_show);
+        const [start, end] = parseRelativeTime(hours_to_show, this.timeZone);
         visible_range = [start + global_offset, end + global_offset];
       } else {
         let ms_to_show;
@@ -346,6 +352,30 @@ class ConfigParser {
       this.yaml.visible_range = visible_range;
     }
     return visible_range;
+  }
+
+  /**
+   * Resolves the timezone once, before anything else, so the whole plot uses
+   * the same one. An invalid value is reported and falls back to the
+   * browser's timezone instead of breaking the card.
+   */
+  private async evalTimeZone() {
+    this.timeZone = undefined;
+    try {
+      if (this.yaml_with_defaults && "time_zone" in this.yaml_with_defaults) {
+        await this.evalNode({
+          parent: this.yaml,
+          path: "time_zone",
+          key: "time_zone",
+          value: this.yaml_with_defaults.time_zone,
+        });
+      }
+      this.timeZone = resolveTimeZone(this.yaml.time_zone, this.hass);
+    } catch (e) {
+      console.warn("Plotly Graph Card: Error parsing [time_zone]", e);
+      this.errors?.push(e as Error);
+    }
+    this.fnParam.timeZone = this.timeZone;
   }
 
   private shouldFetch(index: number, period?: StatisticPeriod) {
@@ -685,6 +715,8 @@ type FnParam = {
   statistics?: StatisticValue[];
   states?: HassEntity[];
   meta?: HassEntity["attributes"];
+  /** IANA timezone the plot is drawn in, undefined for the browser's */
+  timeZone?: string;
 };
 export const getEntityIndex = (path: string) =>
   +path.match(/entities\.(\d+)/)![1];

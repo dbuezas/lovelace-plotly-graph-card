@@ -53,13 +53,17 @@ Web app to assist you with syntax validation and autocomplete: [Plotly graph car
 ### Manually
 
 1. Go to [Releases](https://github.com/dbuezas/lovelace-plotly-graph-card/releases)
-2. Download `plotly-graph-card.js` and copy it to your Home Assistant config dir as `<config>/www/plotly-graph-card.js`
+2. Download **all** `.js` files of the release into `<config>/www/plotly-graph-card/`. The card loads the other files only when a chart needs them. From a terminal on Home Assistant:
+   ```sh
+   mkdir -p /config/www/plotly-graph-card && cd /config/www/plotly-graph-card
+   curl -s https://api.github.com/repos/dbuezas/lovelace-plotly-graph-card/releases/latest | grep -o '"browser_download_url": *"[^"]*"' | cut -d'"' -f4 | xargs -n1 curl -sLO
+   ```
 3. Add a resource to your dashboard configuration. There are two ways:
-   1. **Using UI**: `Settings` → `Dashboards` → `More Options icon` → `Resources` → `Add Resource` → Set Url as `/local/plotly-graph-card.js` → Set Resource type as `JavaScript Module`.
+   1. **Using UI**: `Settings` → `Dashboards` → `More Options icon` → `Resources` → `Add Resource` → Set Url as `/local/plotly-graph-card/plotly-graph-card.js` → Set Resource type as `JavaScript Module`.
       _Note: If you do not see the Resources menu, you will need to enable Advanced Mode in your User Profile_
    2. **Using YAML**: Add following code to lovelace section.
       ```resources:
-        - url: /local/plotly-graph-card.js
+        - url: /local/plotly-graph-card/plotly-graph-card.js
           type: module
       ```
 
@@ -196,6 +200,44 @@ entities:
   - sensor.temperature
   - sensor.humidity
 ```
+
+## Trace names
+
+A trace is named after its entity. The name comes from Home Assistant's own
+naming, so it matches what the built-in cards show and follows a renamed device
+or area.
+
+Set `name` to override it:
+
+```yaml
+type: custom:plotly-graph
+entities:
+  - entity: sensor.living_room_thermostat_temperature
+    name: Inside
+```
+
+On Home Assistant 2026.4 and later, `name` can also be a list of parts, so you
+can pick which context to show. In a legend with several traces, dropping the
+device name is often what makes the labels readable:
+
+```yaml
+type: custom:plotly-graph
+entities:
+  - entity: sensor.living_room_thermostat_temperature
+    name:
+      - type: area
+      - type: entity
+```
+
+Each part is one of `entity`, `device`, `area`, `floor`, or `text` with a
+literal value (`{type: text, text: "Inside"}`). Parts that resolve to nothing
+are dropped. Earlier Home Assistant versions cannot resolve a list and fall back
+to the entity's friendly name, so a plain string keeps working everywhere.
+
+Filters that rename their trace still win: `trendline` labels its trace `Trend`,
+and any `fn` filter returning a new `meta.friendly_name` behaves the same way.
+`$ex meta.friendly_name` also keeps returning the entity's `friendly_name`
+attribute, unchanged.
 
 ## Color schemes
 
@@ -451,7 +493,7 @@ entities:
       width: 1
       dash: dot
       color: deepskyblue
-    x: $ex [Date.now(), Date.now()]
+    x: $ex [new Date(), new Date()]
     y: [0, 1]
 layout:
   yaxis9:
@@ -1249,6 +1291,26 @@ config:
 
 When using `hours_to_show: current_week`, the "First day of the week" configured in Home Assistant is used
 
+## time_zone:
+
+Dates are shown in the "Time zone" chosen in the Home Assistant user profile (your browser's or the server's), but it can be overridden like this:
+
+```yaml
+time_zone: server # Home Assistant's timezone
+time_zone: local # the browser's timezone
+time_zone: Europe/Rome # any IANA timezone
+```
+
+This also applies to the boundaries of `hours_to_show: current_day` and friends, and to `integrate`'s `reset_every`.
+
+For `integrate`, `reset_every: 1d` resets at calendar midnight in the selected time zone, including 23- and 25-hour days. `reset_every: 24h` and other intervals remain fixed durations. `offset` shifts the reset by the specified elapsed duration after midnight, not by wall-clock hours.
+
+An invalid `time_zone` is reported as an error and the browser's timezone is used instead.
+
+Give times as `Date` objects (e.g. `new Date()`), not as numbers like `Date.now()`: only Dates are converted to the selected time zone, so a number would be drawn in the browser's time zone.
+
+When a timezone other than the browser's is used, the x values Plotly hands back (e.g. `points[0].x` in `on_click`, and hover values) are date strings in that timezone, like `"2024-03-31 02:30:00.000"`, not `Date` objects. Don't pass them to `new Date(...)`, which would read them in the browser's timezone. The `xs` passed to `$fn` and filters are still real `Date`s.
+
 ## Presets
 
 If you find yourself reusing the same card configuration frequently, you can save it as a preset.
@@ -1441,8 +1503,8 @@ as well as the `transforms` API. Configurations using these features must be
 migrated before upgrading.
 
 - Plotly.js 4 removes Mapbox traces and `layout.mapbox`, MathJax 2 support,
-  Chart Studio options and `*src` attributes. Mapbox traces were not registered
-  in this card's bundle; this update does not add map trace support.
+  Chart Studio options and `*src` attributes. Use the MapLibre types
+  `scattermap`, `choroplethmap` and `densitymap` instead.
 - Colors must use valid CSS syntax. `hsv(...)` is no longer supported, and RGB
   channels between 0 and 1 are no longer interpreted as fractions of 255.
   Standard hex colors and `rgba(52, 152, 219, 0.82)` continue to work.
@@ -1501,10 +1563,11 @@ properties are not interchangeable with Cartesian axis titles, which use
 
 The card's own top-level `title:` option is unchanged.
 
-The bundled Plotly build also supports `scattergl`, `splom`, `parcoords`,
-`scatterpolargl`, and `scattersmith`. WebGL traces require browser WebGL support.
-The MapLibre types `scattermap`, `choroplethmap`, and `densitymap` are not included
-to keep the bundle size down.
+Every Plotly trace type is supported, including `image`, `quiver` and the
+MapLibre maps `scattermap`, `choroplethmap` and `densitymap`. WebGL traces
+require browser WebGL support. The card only downloads the code of the trace
+types it draws: lines and bars come with Plotly's core, other types are loaded
+the first time a card needs them.
 
 # Development
 
@@ -1512,7 +1575,7 @@ to keep the bundle size down.
 - Clone the repo
 - run `npm i`
 - run `npm start`
-- From a dashboard in edit mode, go to `Manage resources` and add `http://127.0.0.1:8000/plotly-graph-card.js` as url with resource type JavaScript
+- From a dashboard in edit mode, go to `Manage resources` and add `http://127.0.0.1:8000/plotly-graph-card.js` as url with resource type JavaScript Module
 - ATTENTION: The development card is `type: custom:plotly-graph-dev` (mind the extra `-dev`)
 - Either use Safari or Enable [chrome://flags/#unsafely-treat-insecure-origin-as-secure](chrome://flags/#unsafely-treat-insecure-origin-as-secure) and add your HA address (e.g http://homeassistant.local:8123): Chrome doesn't allow public network resources from requesting private-network resources - unless the public-network resource is secure (HTTPS) and the private-network resource provides appropriate (yet-undefined) CORS headers. More [here](https://stackoverflow.com/questions/66534759/chrome-cors-error-on-request-to-localhost-dev-server-from-remote-site)
 
