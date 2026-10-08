@@ -997,7 +997,11 @@ Remember you can add a `console.log(the_object_you_want_to_inspect)` and see its
 - Functions are allowed for those properties (`entity`, `attribute`, ...) but they do not receive entity data as parameters. You can still use the `hass` parameter to get the last state of an entity if you need to.
 - Functions cannot return functions for performance reasons. (feature request if you need this)
 - Defaults are not applied to the subelements returned by a function. (feature request if you need this)
-- You can get other values from the yaml with the `getFromConfig` parameter, but if they are functions they need to be defined before.
+- You can get other values from the yaml with the `getFromConfig` parameter,
+  but user-defined functions need to be defined before their callers. Built-in
+  entity defaults such as `name` and `unit_of_measurement` can be resolved on
+  demand within the same entity and are evaluated only once per update. This
+  does not evaluate later entities or move filters ahead of their YAML position.
 - Any function which uses the result of a filter, needs to be placed in the YAML below the filter. For instance, `name: $ex ys.at(-1)` where the filter is modifying `ys`.
 - The same is true of consecutive filters - order matters. This is due to the fact that filters are translated internally to function calls, executed in the order they are parsed.
 

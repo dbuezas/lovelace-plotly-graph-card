@@ -27,6 +27,7 @@ import { HomeAssistant } from "custom-card-helpers";
 import filters from "../filters/filters";
 import bounds from "binary-search-bounds";
 import has from "lodash/has";
+import set from "lodash/set";
 import { StatisticPeriod, StatisticValue } from "../recorder-types";
 import {
   Config,
@@ -39,6 +40,7 @@ import {
 } from "../types";
 import getDeprecationError from "./deprecations";
 import { resolveTimeZone, toPlotlyTimeZone } from "../timezone";
+import { isPureDefault } from "./pure-default";
 
 class ConfigParser {
   private yaml: Partial<Config> = {};
@@ -57,6 +59,8 @@ class ConfigParser {
   private preserveObservedRange = false;
   private retainedCacheRanges: Record<string, TimestampRange[]> = {};
   private failedFetches = new Map<string, unknown>();
+  private evaluatedDefaults = new Map<string, unknown>();
+  private evaluatingDefaults = new Set<string>();
   /** IANA timezone the plot is drawn in, undefined for the browser's */
   public timeZone?: string;
   public resetObservedRange() {
@@ -91,6 +95,8 @@ class ConfigParser {
     this.yaml = {};
     this.errors = [];
     this.failedFetches.clear();
+    this.evaluatedDefaults.clear();
+    this.evaluatingDefaults.clear();
     this.hass = hass;
     this.historyPrefetched = false;
     // All fetch paths in this update share one cutoff, even after slow requests.
@@ -195,7 +201,9 @@ class ConfigParser {
     const isFunction = typeof value === "function";
     const isFilterList = isFunction && /^entities\.\d+\.filters$/.test(path);
     if (isFunction) {
-      parent[key] = value = value(this.fnParam);
+      parent[key] = value = isPureDefault(value)
+        ? this.evalDefault(value, path)
+        : value(this.fnParam);
       if (isFilterList && !Array.isArray(value)) {
         throw new Error("filters must evaluate to an array");
       }
@@ -603,16 +611,51 @@ class ConfigParser {
     if (has(this.yaml, path)) return get(this.yaml, path);
 
     let value = this.yaml_with_defaults;
-    for (const key of path.split(".")) {
+    const keys = path.split(".");
+    for (const [index, key] of keys.entries()) {
       if (value === undefined) return undefined;
       value = value[key];
       if (is$fn(value)) {
+        const entityPath = path.match(/^entities\.\d+\./)?.[0];
+        // Entity defaults depend on the currently fetched/filtered metadata.
+        // Do not evaluate a future entity using the current entity's context.
+        if (
+          index === keys.length - 1 &&
+          isPureDefault(value) &&
+          (!entityPath ||
+            (callingPath.startsWith(entityPath) &&
+              this.fnParam.meta !== undefined))
+        ) {
+          return this.evalDefault(value, path);
+        }
         throw new Error(
           `Since [${path}] is a $fn, it has to be defined before [${callingPath}]`
         );
       }
     }
     return value;
+  }
+  private evalDefault(fn: Function, path: string) {
+    if (this.evaluatedDefaults.has(path))
+      return this.evaluatedDefaults.get(path);
+    if (this.evaluatingDefaults.has(path))
+      throw new Error(`Circular default dependency at [${path}]`);
+
+    this.evaluatingDefaults.add(path);
+    try {
+      const getFromConfig = (query: string) => this.getEvaledPath(query, path);
+      const value = fn({
+        ...this.fnParam,
+        path,
+        getFromConfig,
+        get: getFromConfig,
+      });
+      this.evaluatedDefaults.set(path, value);
+      set(this.yaml, path, value);
+      return value;
+    } finally {
+      this.evaluatingDefaults.delete(path);
+    }
   }
   private async evalFilter(input: {
     parent: object;
