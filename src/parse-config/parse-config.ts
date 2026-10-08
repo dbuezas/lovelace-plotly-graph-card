@@ -27,7 +27,7 @@ import { canSelectStatisticsTypes } from "./statistics-types";
 import { HomeAssistant } from "custom-card-helpers";
 import filters from "../filters/filters";
 import bounds from "binary-search-bounds";
-import { has } from "lodash";
+import has from "lodash/has";
 import { StatisticPeriod, StatisticType, StatisticValue } from "../recorder-types";
 import {
   Config,
