@@ -9,6 +9,7 @@ const noop$fn = () => () => {};
 const defaultEntityRequired = {
   entity: "",
   show_value: false,
+  show_extrema: false,
   internal: false,
   time_offset: "0s",
   on_legend_click: noop$fn,

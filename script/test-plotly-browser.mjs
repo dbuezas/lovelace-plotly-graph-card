@@ -1266,6 +1266,106 @@ try {
   results.results.push(
     "generated and reused filter lists render through the card",
   );
+  const extremaState = await page.evaluate(async () => {
+    const card = new CardTest.PlotlyGraph();
+    card.id = "extrema-card";
+    card.style.cssText = "display:block;position:fixed;top:0;left:0;width:480px;z-index:10";
+    const start = Date.now() - 3600000;
+    window.extremaRequests = [];
+    card.hass = {
+      ...document.getElementById("card-under-test").hass,
+      states: {
+        "sensor.extrema": {
+          entity_id: "sensor.extrema",
+          state: "3",
+          attributes: { unit_of_measurement: "W" },
+          last_changed: new Date(start + 1800000).toISOString(),
+          last_updated: new Date(start + 1800000).toISOString(),
+        },
+      },
+      callWS: async (request) => {
+        window.extremaRequests.push(request);
+        assertRequest(request);
+        return {
+          "sensor.extrema": [4, 1, 6, 3].map((value, i) => ({
+            s: String(value), lu: (start + i * 600000) / 1000,
+          })),
+        };
+      },
+    };
+    function assertRequest(request) {
+      if (request.type !== "history/history_during_period")
+        throw new Error("Unexpected extrema request");
+    }
+    card.setConfig({
+      type: "custom:plotly-graph",
+      time_zone: "UTC",
+      refresh_interval: 0,
+      visible_range: [start, start + 1800000],
+      entities: [
+        {
+          entity: "sensor.extrema",
+          name: "Line",
+          uid: "line",
+          extend_to_present: false,
+          show_extrema: true,
+          filters: [{ multiply: 2 }],
+          fill: "tozeroy",
+        },
+        {
+          entity: "sensor.extrema",
+          name: "Bar",
+          type: "bar",
+          extend_to_present: false,
+          show_extrema: true,
+          marker: { color: "red" },
+          texttemplate: "%{y:.0f} W",
+        },
+      ],
+    });
+    document.body.append(card);
+    await card.plot({ should_fetch: true });
+    return {
+      error: card.errorMsgEl.textContent,
+      requests: window.extremaRequests.length,
+      types: card.contentEl.data.map((trace) => trace.type),
+      labels: card.contentEl.data.slice(2).map((trace) => ({
+        y: trace.y,
+        x: trace.x.map((x) => Date.parse(`${x}Z`) - start),
+        group: trace.legendgroup,
+        sourceGroup: card.contentEl.data[trace.name === "Line" ? 0 : 1].legendgroup,
+        fill: trace.fill,
+      })),
+      renderedText: [...card.contentEl.querySelectorAll(".scatterlayer .textpoint text")]
+        .map((text) => text.textContent.trim()),
+      uids: card.contentEl._fullData.map((trace) => trace.uid),
+    };
+  });
+  assert.equal(extremaState.error, "");
+  assert.equal(extremaState.requests, 1);
+  assert.deepEqual(extremaState.types.slice(1), ["bar", "scatter", "scatter"]);
+  assert.deepEqual(extremaState.labels.map(({ y, x, fill }) => ({ y, x, fill })), [
+    { y: [2, 12], x: [600000, 1200000], fill: "none" },
+    { y: [1, 6], x: [600000, 1200000], fill: "none" },
+  ]);
+  assert.ok(extremaState.labels.every(({ group, sourceGroup }) => group === sourceGroup));
+  assert.deepEqual(extremaState.renderedText, ["2 W", "12 W", "1 W", "6 W"]);
+  assert.equal(new Set(extremaState.uids).size, 4);
+  await page.locator("#extrema-card .legend .legendtoggle").first().click();
+  await page.waitForFunction(() => {
+    const data = document.getElementById("extrema-card").contentEl.data;
+    return data[0].visible === "legendonly" && data[2].visible === "legendonly";
+  });
+  const extremaLegend = await page.locator("#extrema-card").evaluate((card) => {
+    const data = card.contentEl.data;
+    const barVisible = data[1].visible !== "legendonly" && data[3].visible !== "legendonly";
+    card.remove();
+    return barVisible;
+  });
+  assert.equal(extremaLegend, true);
+  results.results.push(
+    "filtered extrema render as native labels without extra requests and toggle with their source",
+  );
   const shiftedHistoryResults = await page.evaluate(async () => {
     const card = document.getElementById("card-under-test");
     const now = Date.now();

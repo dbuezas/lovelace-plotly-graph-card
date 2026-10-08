@@ -360,6 +360,25 @@ entities:
 
 Note that `5minute` period statistics are limited in time as normal recorder history is, contrary to other periods which keep data for years.
 
+## show_extrema:
+
+Labels the minimum and maximum of a line or vertical bar series at their actual
+positions. Values are taken after filters and, for time series, within the
+visible time window. Non-numeric and unavailable values are ignored. Ties use
+the first occurrence; a constant series gets one label.
+
+```yaml
+type: custom:plotly-graph
+entities:
+  - entity: sensor.temperature
+    show_extrema: true
+```
+
+Supported trace types are `scatter`, `scattergl` and vertical `bar`.
+Labels use the trace color, unit and `texttemplate`/`textfont` formatting and
+toggle together with the series in the legend. No additional history is fetched.
+For example, `texttemplate: '%{y:.1f} °C'` sets one decimal place.
+
 ## show_value:
 
 Shows the value of the last datapoint as text in a scatter plot.

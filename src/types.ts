@@ -28,6 +28,7 @@ export type InputEntityOptions = {
   period?: StatisticPeriod | "auto" | AutoPeriodConfig;
   unit_of_measurement?: string;
   internal?: boolean;
+  show_extrema?: boolean;
   show_value?:
     | boolean
     | {
@@ -105,6 +106,7 @@ export type InputConfig = {
 export type EntityConfig = EntityIdConfig & {
   unit_of_measurement?: string;
   internal: boolean;
+  show_extrema?: boolean;
   show_value:
     | boolean
     | {
