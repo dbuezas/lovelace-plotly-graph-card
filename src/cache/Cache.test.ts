@@ -16,12 +16,88 @@ function state(timestamp: number): CachedStateEntity {
 }
 
 describe("Cache merging", () => {
+  afterEach(() => jest.restoreAllMocks());
+
+  const boundary = (timestamp: number): CachedStateEntity => ({
+    ...state(timestamp),
+    fake_boundary_datapoint: true,
+  });
+
+  it("appends a newer state without a full merge", () => {
+    const cache = new Cache();
+    cache.add(entity, [state(0), state(10)], [0, 10]);
+    const sort = jest.spyOn(cache.histories[key], "sort");
+
+    cache.add(entity, [state(20)], [11, 20]);
+
+    expect(sort).not.toHaveBeenCalled();
+    expect(cache.getData(entity).xs.map(Number)).toEqual([0, 10, 20]);
+    expect(cache.ranges[key]).toEqual([[0, 20]]);
+  });
+
+  it("adds a state shared by attribute traces once", () => {
+    const cache = new Cache();
+    const temperature = { entity: "climate.test", attribute: "temperature" };
+    const humidity = { ...temperature, attribute: "humidity" };
+    const attributeKey = getEntityKey(temperature);
+    cache.add(temperature, [state(0)], [0, 0]);
+    const sort = jest.spyOn(cache.histories[attributeKey], "sort");
+
+    cache.add(temperature, [state(10)], [1, 10]);
+    cache.add(humidity, [state(10)], [10, 20]);
+
+    expect(sort).not.toHaveBeenCalled();
+    expect(cache.getData(humidity).xs.map(Number)).toEqual([0, 10]);
+    expect(cache.ranges[attributeKey]).toEqual([[0, 20]]);
+  });
+
+  it.each([
+    ["an older state", [state(0), state(20)], [state(10)], [0, 10, 20]],
+    [
+      "an earlier duplicate",
+      [state(0), state(10), state(20)],
+      [state(10)],
+      [0, 10, 20],
+    ],
+    ["a batch", [state(0)], [state(20), state(10), state(10)], [0, 10, 20]],
+    ["a newer boundary", [state(0)], [boundary(10)], [0]],
+    ["a state after the leading boundary", [boundary(0)], [state(10)], [0, 10]],
+  ])("merges %s like before", (_, cached, added, xs) => {
+    const cache = new Cache();
+    cache.add(entity, cached, [0, 20]);
+    cache.add(entity, added, [0, 20]);
+    expect(cache.getData(entity).xs.map(Number)).toEqual(xs);
+  });
+
+  it("replaces statistics refetched at the same timestamp", () => {
+    const cache = new Cache();
+    const statistics = {
+      ...entity,
+      statistic: "mean" as const,
+      period: "day" as const,
+    };
+    const sample = (
+      timestamp: number,
+      mean: number,
+    ): CachedStatisticsEntity => ({
+      x: new Date(timestamp),
+      y: null,
+      statistics: { mean } as CachedStatisticsEntity["statistics"],
+    });
+
+    cache.add(statistics, [sample(10, 1)], [0, 10]);
+    cache.add(statistics, [sample(10, 2)], [10, 20]);
+    cache.add(statistics, [sample(20, 3)], [20, 30]);
+
+    expect(cache.getData(statistics).ys).toEqual([2, 3]);
+  });
+
   it("merges large histories without exceeding argument limits", () => {
     const cache = new Cache();
     const first = state(0);
     cache.add(entity, [first], [0, 0]);
     const history = Array.from({ length: 200_000 }, (_, index) =>
-      state(index + 1)
+      state(index + 1),
     );
 
     cache.add(entity, history, [0, 200_000]);
@@ -30,7 +106,7 @@ describe("Cache merging", () => {
     expect(merged).toHaveLength(history.length + 1);
     expect(merged[0]).toBe(first);
     expect(
-      merged.slice(1).every((sample, index) => sample === history[index])
+      merged.slice(1).every((sample, index) => sample === history[index]),
     ).toBe(true);
     expect(cache.ranges[key]).toEqual([[0, 200_000]]);
   });
