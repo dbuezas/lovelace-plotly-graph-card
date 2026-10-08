@@ -239,6 +239,11 @@ try {
       type,
       data: fixtures[type],
     }));
+    // Trace types are loaded on demand, the same way the card does it
+    await PlotlyTest.loadPlotlyModules(
+      Object.keys(fixtures).map((type) => ({ type })),
+      {}
+    );
     for (const [type, data] of Object.entries(fixtures)) {
       const div = document.createElement("div");
       document.body.append(div);

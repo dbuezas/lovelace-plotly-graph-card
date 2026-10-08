@@ -1,4 +1,3 @@
-import Plotly from "./plotly";
 import { TouchGestures } from "./types";
 
 type PlotlyEl = Plotly.PlotlyHTMLElement & {
@@ -11,7 +10,7 @@ type PlotlyEl = Plotly.PlotlyHTMLElement & {
 };
 
 // Public, but missing in the plotly.js types
-const Fx = (Plotly as any).Fx as {
+type Fx = {
   hover: (el: HTMLElement, evt: object, subplot?: string) => void;
   unhover: (el: HTMLElement) => void;
 };
@@ -45,10 +44,10 @@ const draggerOf = (el: PlotlyEl, touch?: Touch) => {
 // Plotly starts a drag on every touch on the plot. When a gesture takes the
 // touch, end Plotly's drag: finish it if it already moved (keeps a started
 // pan), else cancel it, so Plotly emits no click or double click on touchend.
-const takeOver = (el: PlotlyEl) => {
+const takeOver = (el: PlotlyEl, controller: TouchController) => {
   if (el._dragged) document.dispatchEvent(new MouseEvent("mouseup"));
   el._dragging = false;
-  Fx.unhover(el);
+  controller.Fx?.unhover(el);
 };
 
 // Zoom and pan go through Plotly's scroll zoom, so Plotly handles axis types,
@@ -108,7 +107,7 @@ const pinch: Gesture = (el, controller) => {
         if (!controller.enabled.pinch_to_zoom || e.touches.length < 2) return;
         dragger = draggerOf(el, e.touches[0]) ?? draggerOf(el, e.touches[1]);
         if (!dragger) return;
-        takeOver(el);
+        takeOver(el, controller);
         controller.zoomStart();
       }
       stop(e);
@@ -171,7 +170,7 @@ const doubleTapDrag: Gesture = (el, controller) => {
         if (!moved(t, tap)) return stop(e); // still a double tap for Plotly
         if (!el._dragging) return void (tap = undefined); // scan has it
         zooming = true;
-        takeOver(el);
+        takeOver(el, controller);
         controller.zoomStart();
       }
       stop(e);
@@ -204,7 +203,7 @@ const scan: Gesture = (el, controller) => {
   let timer: ReturnType<typeof setTimeout> | undefined;
   const hover = (dragger: Element, clientX: number, clientY: number) => {
     const { hovermode } = el.layout;
-    Fx.hover(
+    controller.Fx?.hover(
       el,
       {
         clientX,
@@ -234,7 +233,7 @@ const scan: Gesture = (el, controller) => {
       const h = { dragger, x: t.clientX, y: t.clientY, scanning: false };
       hold = h;
       timer = setTimeout(() => {
-        takeOver(el);
+        takeOver(el, controller);
         h.scanning = true;
         hover(dragger, h.x, h.y);
       }, SCAN_HOLD_MS);
@@ -260,7 +259,7 @@ const tapWithoutTooltip: Gesture = (el, controller) => ({
   end: (e) => {
     // _dragging is still set when Plotly owns the touch (no gesture took it)
     if (controller.enabled.hold_to_scan && !e.touches.length && el._dragging)
-      setTimeout(() => Fx.unhover(el)); // after Plotly's touchend
+      setTimeout(() => controller.Fx?.unhover(el)); // after Plotly's touchend
   },
 });
 
@@ -276,6 +275,7 @@ export class TouchController {
   onZoomStart: () => any;
   onZoomEnd: () => any;
   zooms = 0;
+  Fx?: Fx; // set by the card once Plotly is loaded
   listeners: [TouchEventName, Handler][] = [];
   cleanups: (() => void)[] = [];
   constructor(param: {
