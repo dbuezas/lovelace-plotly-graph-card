@@ -44,6 +44,7 @@ export function parseStatistics(
       "100d": "day",
       "100w": "week",
       "100M": "month",
+      "100y": "year",
     };
   }
   if (getIsAutoPeriodConfig(period)) {

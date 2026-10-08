@@ -1,32 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "definitions": {
-    "With$fn<AutoPeriodConfig>": {
-      "properties": {
-        "0": {
-          "anyOf": [
-            {
-              "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
-              "type": "string"
-            },
-            {
-              "enum": [
-                "5minute",
-                "day",
-                "hour",
-                "month",
-                "week"
-              ],
-              "type": "string"
-            }
-          ]
-        }
-      },
-      "required": [
-        "0"
-      ],
-      "type": "object"
-    },
     "With$fn<EntityName|undefined>": {
       "anyOf": [
         {
@@ -228,7 +202,7 @@
               "type": "string"
             },
             {
-              "$ref": "#/definitions/With$fn<AutoPeriodConfig>"
+              "$ref": "#/definitions/With$fn<Partial<Record<TimeDurationStr,\"hour\"|\"5minute\"|\"day\"|\"week\"|\"month\"|\"year\">>>"
             },
             {
               "enum": [
@@ -237,7 +211,8 @@
                 "day",
                 "hour",
                 "month",
-                "week"
+                "week",
+                "year"
               ],
               "type": "string"
             }
@@ -321,6 +296,30 @@
         },
         "unit_of_measurement": {
           "$ref": "#/definitions/With$fn<string|undefined>"
+        }
+      },
+      "type": "object"
+    },
+    "With$fn<Partial<Record<TimeDurationStr,\"hour\"|\"5minute\"|\"day\"|\"week\"|\"month\"|\"year\">>>": {
+      "properties": {
+        "0": {
+          "anyOf": [
+            {
+              "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
+              "type": "string"
+            },
+            {
+              "enum": [
+                "5minute",
+                "day",
+                "hour",
+                "month",
+                "week",
+                "year"
+              ],
+              "type": "string"
+            }
+          ]
         }
       },
       "type": "object"

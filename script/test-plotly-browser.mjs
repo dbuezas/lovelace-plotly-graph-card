@@ -1140,6 +1140,74 @@ try {
   results.results.push(
     "four statistics traces render from one request and reuse the cache",
   );
+  const annualStatistics = await page.evaluate(async () => {
+    const card = document.getElementById("card-under-test");
+    const start = Date.parse("2023-01-01T00:00:00Z");
+    const next = Date.parse("2024-01-01T00:00:00Z");
+    const end = Date.parse("2025-01-01T00:00:00Z");
+    const requests = [];
+    card.hass = {
+      ...card.hass,
+      callWS: async (request) => {
+        if (
+          request.type !== "recorder/statistics_during_period" ||
+          request.period !== "year"
+        )
+          throw new Error("Expected native yearly statistics");
+        requests.push(request);
+        return Object.fromEntries(
+          request.statistic_ids.map((id, i) => [
+            id,
+            [
+              { start, end: next, max: 100 + i },
+              { start: next, end, max: 200 + i },
+            ],
+          ]),
+        );
+      },
+    };
+    card.setConfig({
+      type: "custom:plotly-graph",
+      refresh_interval: 0,
+      visible_range: [start, end],
+      entities: [
+        {
+          entity: "sensor.annual_one",
+          statistic: "max",
+          period: "year",
+          type: "bar",
+        },
+        {
+          entity: "sensor.annual_two",
+          statistic: "max",
+          period: { "0m": "month", "12M": "year" },
+          type: "bar",
+        },
+      ],
+    });
+    await card.plot({ should_fetch: true });
+    await card.plot({ should_fetch: true });
+    return {
+      requests,
+      values: card.contentEl.calcdata.map((points) =>
+        points.map((point) => point.s),
+      ),
+      error: card.errorMsgEl.textContent,
+    };
+  });
+  assert.equal(annualStatistics.error, "");
+  assert.equal(annualStatistics.requests.length, 1);
+  assert.deepEqual(annualStatistics.requests[0].statistic_ids, [
+    "sensor.annual_one",
+    "sensor.annual_two",
+  ]);
+  assert.deepEqual(annualStatistics.values, [
+    [100, 200],
+    [101, 201],
+  ]);
+  results.results.push(
+    "fixed and automatic yearly statistics render from one native request and reuse the cache",
+  );
   await page.evaluate(() => {
     const card = document.getElementById("card-under-test");
     const end = Date.now() - 60000;

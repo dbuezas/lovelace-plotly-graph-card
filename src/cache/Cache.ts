@@ -23,7 +23,7 @@ import {
 export type FetchConfig =
   | {
       statistic: "state" | "sum" | "min" | "max" | "mean";
-      period: "5minute" | "hour" | "day" | "week" | "month";
+      period: StatisticPeriod;
       entity: string;
     }
   | {
