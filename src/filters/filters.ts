@@ -7,6 +7,8 @@ import {
 } from "../duration/duration";
 import { StatisticValue } from "../recorder-types";
 import { HassEntity, YValue } from "../types";
+import { inTimeZone } from "../timezone";
+import { startOfDay } from "date-fns";
 
 import BaseRegression from "ml-regression-base";
 import LinearRegression from "ml-regression-simple-linear";
@@ -18,6 +20,8 @@ import { RobustPolynomialRegression } from "ml-regression-robust-polynomial";
 import FFTRegression from "./fft-regression";
 
 const castFloat = (y: any) => parseFloat(y);
+// `+date` is much slower than getTime() in V8
+const ms = (x: any): number => (x instanceof Date ? x.getTime() : +x);
 const myEval = typeof window != "undefined" ? window.eval : global.eval;
 
 type FilterData = {
@@ -28,6 +32,8 @@ type FilterData = {
   meta: HassEntity["attributes"];
   vars: Record<any, any>;
   hass: HomeAssistant;
+  /** IANA timezone the plot is drawn in, undefined for the browser's */
+  timeZone?: string;
 };
 export type FilterFn = (p: FilterData) => Partial<FilterData>;
 
@@ -138,7 +144,7 @@ const filters = {
     (unit: keyof typeof timeUnits = "h") =>
     ({ xs, ys, meta }) => {
       const last = {
-        x: +xs[0],
+        x: ms(xs[0]),
         y: NaN,
       };
       checkTimeUnits(unit);
@@ -150,7 +156,7 @@ const filters = {
         },
         xs,
         ys: mapNumbers(ys, (y, i) => {
-          const x = +xs[i];
+          const x = ms(xs[i]);
           const dateDelta = (x - last.x) / timeUnits[unit];
           const yDeriv = (y - last.y) / dateDelta;
           last.y = y;
@@ -174,14 +180,16 @@ const filters = {
     const reset_every = parseTimeDuration(param.reset_every ?? "0s");
     const offset = parseTimeDuration(param.offset ?? "0s");
     checkTimeUnits(unit);
-    const date = new Date();
-    date.setHours(0, 0, 0, 0);
-    const t0 = +date + offset;
-    return ({ xs, ys, meta }) => {
+    return ({ xs, ys, meta, timeZone }) => {
+      const t0 = +startOfDay(Date.now(), inTimeZone(timeZone)) + offset;
+      const resetAt = (x: number) =>
+        param.reset_every === "1d"
+          ? +startOfDay(x - offset, inTimeZone(timeZone)) + offset
+          : t0 + Math.floor((x - t0) / reset_every) * reset_every;
       let yAcc = 0;
       let last = {
         x: NaN,
-        laps: 0,
+        reset: NaN,
         y: 0,
       };
       return {
@@ -191,15 +199,15 @@ const filters = {
         },
         xs: xs,
         ys: mapNumbers(ys, (y, i) => {
-          const x = +xs[i];
+          const x = ms(xs[i]);
           let intervalStart = last.x;
           if (reset_every > 0) {
-            const laps = Math.floor((x - t0) / reset_every);
-            if (laps !== last.laps) {
+            const reset = resetAt(x);
+            if (reset !== last.reset) {
               yAcc = 0;
-              last.laps = laps;
+              last.reset = reset;
               // only the part after the reset belongs to the new period
-              intervalStart = Math.max(intervalStart, t0 + laps * reset_every);
+              intervalStart = Math.max(intervalStart, reset);
             }
           }
           const dateDelta = (x - intervalStart) / timeUnits[unit];
@@ -233,12 +241,12 @@ const filters = {
       };
       for (let i = 0; i < ys.length + window_size - 1; i++) {
         if (i < ys.length) {
-          acc.x += +xs[i];
+          acc.x += ms(xs[i]);
           acc.y += ys[i];
           acc.count++;
         }
         if (i >= window_size) {
-          acc.x -= +xs[i - window_size];
+          acc.x -= ms(xs[i - window_size]);
           acc.y -= ys[i - window_size];
           acc.count--;
         }
@@ -266,11 +274,11 @@ const filters = {
       };
       for (let i = 0; i < ys.length + window_size - 1; i++) {
         if (i < ys.length) {
-          acc.x += +xs[i];
+          acc.x += ms(xs[i]);
           acc.ys.push(ys[i]);
         }
         if (i >= window_size) {
-          acc.x -= +xs[i - window_size];
+          acc.x -= ms(xs[i - window_size]);
           acc.ys.shift();
         }
         if (shouldEmitWindow(i, ys.length, window_size, extended, centered)) {
@@ -351,7 +359,7 @@ const filters = {
       };
       // Linear interpolation between neighbours, or hold the last value
       const lerp = (x: number, i: number) => {
-        const [xa, xb, ya, yb] = [+xs[i], +xs[i + 1], ys[i], ys[i + 1]];
+        const [xa, xb, ya, yb] = [ms(xs[i]), ms(xs[i + 1]), ys[i], ys[i + 1]];
         if (
           typeof ya !== "number" ||
           typeof yb !== "number" ||
@@ -362,11 +370,11 @@ const filters = {
         return ya + ((yb - ya) * (x - xa)) / (xb - xa);
       };
       const interval = parseTimeDuration(intervalStr);
-      const x0 = Math.floor(+xs[0] / interval) * interval;
-      const x1 = +xs[xs.length - 1];
+      const x0 = Math.floor(ms(xs[0]) / interval) * interval;
+      const x1 = ms(xs[xs.length - 1]);
       let i = 0;
       for (let x = x0; x < x1; x += interval) {
-        while (+xs[i + 1] <= x && i < xs.length - 1) {
+        while (ms(xs[i + 1]) <= x && i < xs.length - 1) {
           i++;
         }
         data.xs.push(new Date(x));
@@ -400,9 +408,9 @@ const filters = {
     const forecast = parseTimeDuration(p.forecast);
     return (data) => {
       const { xs, ys, meta, ...rest } = force_numeric(data);
-      const t0 = +xs[0] - 0.1; // otherwise the power series doesn't work
-      const t1 = +xs[xs.length - 1];
-      const xs_numbers = xs.map((x) => +x - t0);
+      const t0 = ms(xs[0]) - 0.1; // otherwise the power series doesn't work
+      const t1 = ms(xs[xs.length - 1]);
+      const xs_numbers = xs.map((x) => ms(x) - t0);
       let RegressionClass = trendlineTypes[p.type];
       if (!RegressionClass) {
         throw new Error(

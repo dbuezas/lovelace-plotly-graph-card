@@ -4,6 +4,11 @@ import Cache, {
   HistoryFetchRequest,
 } from "../cache/Cache";
 import { updateObservedRange } from "../cache/observed-range";
+import {
+  getStatisticsUpdatePeriod,
+  isLiveStatisticsRange,
+  StatisticsUpdatePeriod,
+} from "../cache/statistics-refresh";
 import { HATheme } from "./themed-layout";
 
 import propose from "propose";
@@ -21,8 +26,8 @@ import { parseStatistics } from "./parse-statistics";
 import { HomeAssistant } from "custom-card-helpers";
 import filters from "../filters/filters";
 import bounds from "binary-search-bounds";
-import { has } from "lodash";
-import { StatisticValue } from "../recorder-types";
+import has from "lodash/has";
+import { StatisticPeriod, StatisticValue } from "../recorder-types";
 import {
   Config,
   EntityData,
@@ -33,6 +38,7 @@ import {
   YValue,
 } from "../types";
 import getDeprecationError from "./deprecations";
+import { resolveTimeZone, toPlotlyTimeZone } from "../timezone";
 
 class ConfigParser {
   private yaml: Partial<Config> = {};
@@ -40,6 +46,9 @@ class ConfigParser {
   private yaml_with_defaults?: InputConfig;
   private hass?: HomeAssistant;
   cache = new Cache();
+  statisticsPeriods: ReadonlySet<StatisticPeriod> = new Set();
+  private nextStatisticsPeriods = new Set<StatisticPeriod>();
+  private statisticsUpdates?: ReadonlySet<StatisticsUpdatePeriod>;
   private busy = false;
   private fnParam!: FnParam;
   private observed_range: [number, number] = [Date.now(), Date.now()];
@@ -48,6 +57,8 @@ class ConfigParser {
   private preserveObservedRange = false;
   private retainedCacheRanges: Record<string, TimestampRange[]> = {};
   private failedFetches = new Map<string, unknown>();
+  /** IANA timezone the plot is drawn in, undefined for the browser's */
+  public timeZone?: string;
   public resetObservedRange() {
     this.observed_range = [Date.now(), Date.now()];
   }
@@ -56,6 +67,7 @@ class ConfigParser {
     yaml: InputConfig;
     hass: HomeAssistant;
     css_vars: HATheme;
+    statisticsUpdates?: ReadonlySet<StatisticsUpdatePeriod>;
   }) {
     if (this.busy) throw new Error("ParseConfig was updated while busy");
     this.busy = true;
@@ -69,10 +81,12 @@ class ConfigParser {
     yaml: input_yaml,
     hass,
     css_vars,
+    statisticsUpdates,
   }: {
     yaml: InputConfig;
     hass: HomeAssistant;
     css_vars: HATheme;
+    statisticsUpdates?: ReadonlySet<StatisticsUpdatePeriod>;
   }): Promise<{ errors: Error[]; parsed: Config }> {
     this.yaml = {};
     this.errors = [];
@@ -81,6 +95,8 @@ class ConfigParser {
     this.historyPrefetched = false;
     // All fetch paths in this update share one cutoff, even after slow requests.
     this.fetchTime = Date.now();
+    this.nextStatisticsPeriods = new Set();
+    this.statisticsUpdates = statisticsUpdates;
     // Dynamic ranges advance on refresh; concrete ranges can come from browsing.
     const inputRange = "visible_range" in input_yaml
       ? input_yaml.visible_range
@@ -99,7 +115,9 @@ class ConfigParser {
       getFromConfig: () => "",
       get: () => "",
     };
+    await this.evalTimeZone();
     for (const [key, value] of Object.entries(this.yaml_with_defaults)) {
+      if (key === "time_zone") continue; // evaluated by evalTimeZone
       try {
         await this.evalNode({
           parent: this.yaml,
@@ -114,6 +132,9 @@ class ConfigParser {
     }
     this.cache.retain(this.retainedCacheRanges);
     this.yaml = addPostParsingDefaults(this.yaml as Config);
+    this.yaml = toPlotlyTimeZone(this.yaml as Config, this.timeZone);
+    // Publish one complete snapshot; HA updates can arrive while fetching.
+    this.statisticsPeriods = this.nextStatisticsPeriods;
 
     return { errors: this.errors, parsed: this.yaml as Config };
   }
@@ -171,14 +192,17 @@ class ConfigParser {
     const error = getDeprecationError(path, value);
     if (error) this.errors?.push(error);
 
-    if (typeof value === "function") {
-      /**
-       * Allowing functions that return functions makes it very slow when large arrays are returned.
-       * This is because awaits are expensive.
-       */
-
+    const isFunction = typeof value === "function";
+    const isFilterList = isFunction && /^entities\.\d+\.filters$/.test(path);
+    if (isFunction) {
       parent[key] = value = value(this.fnParam);
-    } else if (isObjectOrArray(value)) {
+      if (isFilterList && !Array.isArray(value)) {
+        throw new Error("filters must evaluate to an array");
+      }
+    }
+    // Generated filters need the regular filter traversal, but other function
+    // results (including large data arrays) must stay opaque.
+    if (isObjectOrArray(value) && (!isFunction || isFilterList)) {
       const me = Array.isArray(value) ? [] : {};
       parent[key] = me;
       for (const [childKey, childValue] of Object.entries(value)) {
@@ -205,12 +229,39 @@ class ConfigParser {
     if (path.match(/^entities\.\d+\.filters\.\d+$/)) {
       await this.evalFilter({ parent, path, key, value });
     }
+    if (
+      path.match(/^entities\.\d+\.filters$/) &&
+      this.fnParam.getFromConfig("autorange_after_scroll") &&
+      !this.fnParam.getFromConfig("raw_plotly_config") &&
+      this.fnParam.xs &&
+      this.fnParam.xs.every((x) => x instanceof Date)
+    ) {
+      // Filters may generate dates outside the range already trimmed at fetch time.
+      // Other x formats may represent non-time axes; leave those unchanged.
+      // Clip after the complete chain without mutating arrays stored in vars.
+      const [start, end] = this.getVisibleRange();
+      const mask = this.fnParam.xs.map((x) => +x >= start && +x <= end);
+      this.fnParam.xs = this.fnParam.xs.filter((_, i) => mask[i]);
+      this.fnParam.ys = this.fnParam.ys?.filter((_, i) => mask[i]);
+      this.fnParam.states = this.fnParam.states?.filter((_, i) => mask[i]);
+      this.fnParam.statistics = this.fnParam.statistics?.filter((_, i) => mask[i]);
+    }
     if (path.match(/^entities\.\d+$/)) {
       if (!this.fnParam.xs) {
         await this.fetchDataForEntity(path);
       }
       const me = parent[key];
       if (!this.fnParam.getFromConfig("raw_plotly_config")) {
+        // Bar fills use marker.color, not the line color assigned by the palette.
+        if (me.type === "bar" && me.marker?.color === undefined) {
+          const layout = this.yaml_with_defaults?.layout;
+          if (
+            layout?.colorway === undefined &&
+            layout?.template?.layout?.colorway === undefined
+          ) {
+            me.marker = { ...me.marker, color: me.line?.color };
+          }
+        }
         if (!me.x) me.x = this.fnParam.xs;
         if (!me.y) me.y = this.fnParam.ys;
         if (me.x.length === 0 && me.y.length === 0) {
@@ -274,7 +325,7 @@ class ConfigParser {
       );
       const hours_to_show = this.fnParam.getFromConfig("hours_to_show");
       if (isRelativeTime(hours_to_show)) {
-        const [start, end] = parseRelativeTime(hours_to_show);
+        const [start, end] = parseRelativeTime(hours_to_show, this.timeZone);
         visible_range = [start + global_offset, end + global_offset];
       } else {
         let ms_to_show;
@@ -296,6 +347,40 @@ class ConfigParser {
       this.yaml.visible_range = visible_range;
     }
     return visible_range;
+  }
+
+  /**
+   * Resolves the timezone once, before anything else, so the whole plot uses
+   * the same one. An invalid value is reported and falls back to the
+   * browser's timezone instead of breaking the card.
+   */
+  private async evalTimeZone() {
+    this.timeZone = undefined;
+    try {
+      if (this.yaml_with_defaults && "time_zone" in this.yaml_with_defaults) {
+        await this.evalNode({
+          parent: this.yaml,
+          path: "time_zone",
+          key: "time_zone",
+          value: this.yaml_with_defaults.time_zone,
+        });
+      }
+      this.timeZone = resolveTimeZone(this.yaml.time_zone, this.hass);
+    } catch (e) {
+      console.warn("Plotly Graph Card: Error parsing [time_zone]", e);
+      this.errors?.push(e as Error);
+    }
+    this.fnParam.timeZone = this.timeZone;
+  }
+
+  private shouldFetch(index: number, period?: StatisticPeriod) {
+    const fetchMask: boolean[] = this.fnParam.getFromConfig("fetch_mask") || [];
+    if (fetchMask[index] === false) return false;
+    return (
+      !this.statisticsUpdates ||
+      (period !== undefined &&
+        this.statisticsUpdates.has(getStatisticsUpdatePeriod(period)))
+    );
   }
 
   private async prefetchStatistics() {
@@ -336,6 +421,7 @@ class ConfigParser {
           period
         );
         if (!statisticsParams) return;
+        if (!this.shouldFetch(i, statisticsParams.period)) return;
         const offset = parseTimeDuration(timeOffset);
         requests.push({
           entity: { entity: entityId, ...statisticsParams },
@@ -380,6 +466,14 @@ class ConfigParser {
       visible_range[0] - offset,
       Math.min(visible_range[1] - offset, this.fetchTime),
     ];
+    if (
+      statisticsParams &&
+      isLiveStatisticsRange(
+        range_to_fetch,
+        statisticsParams.period,
+        this.fetchTime
+      )
+    ) this.nextStatisticsPeriods.add(statisticsParams.period);
     const range_to_retain = [
       this.observed_range[0] - offset,
       // A live state can arrive while a history request is in flight. Keeping
@@ -403,7 +497,7 @@ class ConfigParser {
       }
     }
     let data: EntityData;
-    if (fetch_mask[i] === false) {
+    if (!this.shouldFetch(i, statisticsParams?.period)) {
       data = this.cache.getData(fetchConfig, [range_to_retain]);
     } else {
       const requestKey = JSON.stringify([
@@ -430,7 +524,7 @@ class ConfigParser {
       this.fnParam.getFromConfig(path + ".extend_to_present") ??
       !statisticsParams;
 
-    data.xs = data.xs.map((x) => new Date(+x + offset));
+    if (offset) data.xs = data.xs.map((x) => new Date(+x + offset));
 
     removeOutOfRange(data, this.observed_range);
     if (extend_to_present && data.xs.length > 0) {
@@ -438,11 +532,14 @@ class ConfigParser {
       // this would make it also work if filters change the data.
       // Would also need to be combined with yet another removeOutOfRange call.
       const last_i = data.xs.length - 1;
-      const now = Math.min(this.observed_range[1], Date.now());
-      data.xs.push(new Date(Math.min(this.observed_range[1], now + offset)));
-      data.ys.push(data.ys[last_i]);
-      if (data.states.length) data.states.push(data.states[last_i]);
-      if (data.statistics.length) data.statistics.push(data.statistics[last_i]);
+      // Shift the source cutoff before limiting it to the displayed range.
+      const end = Math.min(this.observed_range[1], this.fetchTime + offset);
+      if (end > +data.xs[last_i]) {
+        data.xs.push(new Date(end));
+        data.ys.push(data.ys[last_i]);
+        if (data.states.length) data.states.push(data.states[last_i]);
+        if (data.statistics.length) data.statistics.push(data.statistics[last_i]);
+      }
     }
     this.fnParam.xs = data.xs;
     this.fnParam.ys = data.ys;
@@ -455,7 +552,7 @@ class ConfigParser {
     visibleRange: [number, number],
     fetchMask: boolean[],
   ) {
-    if (this.historyPrefetched) return;
+    if (this.historyPrefetched || this.statisticsUpdates) return;
     this.historyPrefetched = true;
 
     const requests: HistoryFetchRequest[] = [];
@@ -600,6 +697,8 @@ type FnParam = {
   statistics?: StatisticValue[];
   states?: HassEntity[];
   meta?: HassEntity["attributes"];
+  /** IANA timezone the plot is drawn in, undefined for the browser's */
+  timeZone?: string;
 };
 export const getEntityIndex = (path: string) =>
   +path.match(/entities\.(\d+)/)![1];

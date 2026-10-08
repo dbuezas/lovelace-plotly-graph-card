@@ -1,4 +1,4 @@
-import { merge } from "lodash";
+import merge from "lodash/merge";
 import { HomeAssistant } from "custom-card-helpers";
 import { computeEntityName } from "../entity-name";
 import { Config, InputConfig } from "../types";

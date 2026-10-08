@@ -44,6 +44,12 @@ export type InputEntityOptions = {
   on_click?: Function;
 };
 
+export type TouchGestures = {
+  pinch_to_zoom: boolean;
+  double_tap_drag_to_zoom: boolean;
+  hold_to_scan: boolean;
+};
+
 export type InputConfig = {
   type: "custom:plotly-graph";
   /**
@@ -86,9 +92,16 @@ export type InputConfig = {
   raw_plotly_config?: boolean;
   significant_changes_only?: boolean; // defaults to false
   minimal_response?: boolean; // defaults to true
-  disable_pinch_to_zoom?: boolean; // defaults to false
+  extended_touch_support?: boolean | Partial<TouchGestures>; // defaults to true
+  disable_pinch_to_zoom?: boolean; // old, same as extended_touch_support: false
   autorange_after_scroll?: boolean; // defaults to false
   preset?: string | string[];
+  /**
+   * Timezone the x axis is drawn in: "local" (the browser's), "server"
+   * (Home Assistant's), or an IANA name like "Europe/Rome".
+   * Defaults to the Home Assistant user profile setting.
+   */
+  time_zone?: "local" | "server" | string;
 };
 
 export type EntityConfig = EntityIdConfig & {
@@ -127,10 +140,12 @@ export type Config = {
   raw_plotly_config: boolean;
   significant_changes_only: boolean;
   minimal_response: boolean;
+  extended_touch_support?: boolean | Partial<TouchGestures>;
   disable_pinch_to_zoom: boolean;
   visible_range: [number, number];
   on_dblclick: Function;
   autorange_after_scroll: boolean;
+  time_zone?: "local" | "server" | string;
 };
 export type EntityIdStateConfig = {
   entity: string;

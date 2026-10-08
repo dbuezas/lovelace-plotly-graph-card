@@ -2,7 +2,10 @@ export function isTruthy<T>(x: T | null): x is T {
   return Boolean(x);
 }
 
-const insertStyleHack = (styleEl: HTMLStyleElement) => {
+// Plotly adds its CSS to the document head, which doesn't reach the card's
+// shadow DOM, so copy it in. Called after each load of Plotly modules, since
+// lazily loaded chart types can add more.
+const copyPlotlyStyles = (styleEl: HTMLStyleElement) => {
   const style = Array.from(
     document.querySelectorAll<Element & LinkStyle>(`style[id^="plotly.js"]`)
   )
@@ -12,10 +15,11 @@ const insertStyleHack = (styleEl: HTMLStyleElement) => {
     .map((rule) => rule.cssText)
     .join("\n");
 
-  styleEl.innerHTML += `
+  const css = `
     .js-plotly-plot .plotly .modebar-btn {
       fill: rgb(136,136,136);
     }
     ${style}`;
+  if (styleEl.textContent !== css) styleEl.textContent = css;
 };
-export default insertStyleHack;
+export default copyPlotlyStyles;
