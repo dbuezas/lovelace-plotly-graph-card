@@ -105,7 +105,7 @@ class ConfigParser {
     this.preserveObservedRange =
       Array.isArray(inputRange) && !inputRange.some(is$fn);
     this.retainedCacheRanges = {};
-    this.yaml_with_defaults = addPreParsingDefaults(input_yaml, css_vars);
+    this.yaml_with_defaults = addPreParsingDefaults(input_yaml, css_vars, hass);
     setDateFnDefaultOptions(hass);
 
     this.fnParam = {
