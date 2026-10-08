@@ -400,10 +400,10 @@ Note that `5minute` period statistics are limited in time as normal recorder his
 
 ## show_extrema:
 
-Labels the minimum and maximum of a line or vertical bar series at their actual
-positions. Values are taken after filters and, for time series, within the
-visible time window. Non-numeric and unavailable values are ignored. Ties use
-the first occurrence; a constant series gets one label.
+Labels the minimum and maximum of `scatter`, `scattergl` and vertical `bar`
+series after filters, within the visible time window for time series.
+Non-numeric/unavailable values are ignored; ties use the first occurrence and
+constant series get one label. Labels toggle with the series in the legend.
 
 ```yaml
 type: custom:plotly-graph
@@ -412,10 +412,9 @@ entities:
     show_extrema: true
 ```
 
-Supported trace types are `scatter`, `scattergl` and vertical `bar`.
-Labels use the trace color, unit and `texttemplate`/`textfont` formatting and
-toggle together with the series in the legend. No additional history is fetched.
-For example, `texttemplate: '%{y:.1f} °C'` sets one decimal place.
+Labels use the series color and unit. Set `texttemplate: '%{y:.1f} °C'` to change
+the format. On a `bar` trace, this also prints text on every bar, since Plotly
+applies the same `texttemplate` to the bars themselves.
 
 ## show_value:
 

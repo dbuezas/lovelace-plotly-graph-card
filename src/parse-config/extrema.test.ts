@@ -5,11 +5,10 @@ const dates = (...hours: number[]) =>
 const range: [number, number] = [0, 4 * 3600000];
 
 describe("extrema labels", () => {
-  it("labels the filtered minimum and maximum without changing the source", () => {
+  it("labels the minimum and maximum without changing the source", () => {
     const trace = {
       x: dates(0, 1, 2, 3),
       y: [4, "2", null, 8],
-      customdata: ["a", "b", "c", "d"],
       unit_of_measurement: "W",
       line: { color: "blue" },
       xaxis: "x2",
@@ -17,13 +16,13 @@ describe("extrema labels", () => {
       fill: "tonexty",
       stackgroup: "power",
       uid: "power",
+      hovertemplate: "Source hover",
     } satisfies Parameters<typeof getExtremaTrace>[0];
     const before = structuredClone(trace);
     const labels = getExtremaTrace(trace, range)!;
     expect(labels).toMatchObject({
       x: dates(1, 3),
       y: [2, 8],
-      customdata: ["b", "d"],
       xaxis: "x2",
       yaxis: "y2",
       type: "scatter",
@@ -34,6 +33,7 @@ describe("extrema labels", () => {
       stackgroup: undefined,
       showlegend: false,
       uid: "power-extrema",
+      hovertemplate: null,
     });
     expect(trace).toEqual(before);
   });
@@ -70,30 +70,16 @@ describe("extrema labels", () => {
     });
   });
 
-  it("preserves point-specific formatting and a bar's explicit color", () => {
-    const labels = getExtremaTrace(
-      {
-        type: "bar",
-        x: [0, 1, 2],
-        y: [3, 8, 1],
-        marker: { color: "red" },
-        line: { color: "blue" },
-        texttemplate: ["first", "maximum", "minimum"],
-        textfont: { color: ["red", "green", "blue"], size: [10, 11, 12] },
-        visible: "legendonly",
-        legendgroup: "energy",
-      },
-      range,
-    )!;
-    expect(labels).toMatchObject({
-      x: [2, 1],
-      y: [1, 8],
-      marker: { color: "red" },
-      texttemplate: ["minimum", "maximum"],
-      textfont: { color: ["blue", "green"], size: [12, 11] },
-      visible: "legendonly",
-      legendgroup: "energy",
-    });
+  it("ignores invalid numeric coordinates and dates", () => {
+    expect(
+      getExtremaTrace(
+        {
+          x: [NaN, Infinity, new Date(NaN), ...dates(0, 1)],
+          y: [-100, 100, 200, 2, 8],
+        },
+        range,
+      ),
+    ).toMatchObject({ x: dates(0, 1), y: [2, 8] });
   });
 
   it("does not attach Cartesian labels to non-Cartesian or horizontal traces", () => {
