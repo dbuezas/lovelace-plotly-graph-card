@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <link rel="icon" type="image/svg+xml" href="<%= require('./icon.svg') %>" />
+    <link rel="icon" type="image/svg+xml" href="/src/icon.svg" />
     <title>Plotly graph card yaml editor</title>
     <meta name="description" content="YAML editor for Plotly Graph Card" />
     <meta name="theme-color" content="#42e3ff" />
@@ -25,7 +25,7 @@
         <img
           alt="GitHub icon"
           height="32"
-          src="<%= require('@fortawesome/fontawesome-free/svgs/brands/github.svg') %>"
+          src="/node_modules/@fortawesome/fontawesome-free/svgs/brands/github.svg"
           width="32"
         />
       </a>
@@ -35,7 +35,7 @@
       <div id="editor"></div>
       <div id="problems"></div>
       <div id="toast-container" style="position: fixed; bottom: 20px; right: 20px;"></div>
-
     </main>
+    <script type="module" src="/src/index.ts"></script>
   </body>
 </html>

@@ -1,24 +1,17 @@
 import assert from "node:assert/strict";
-import { build } from "esbuild";
+import { bundleInMemory } from "../build.mjs";
 import { chromium } from "playwright";
 
 // Share the actual Plotly instance with the card so failures can be injected
 // without replacing its event system or the card's render path.
-const bundle = await build({
-  stdin: {
-    contents: `export { default as Plotly } from './src/plotly';
+const [bundle] = await bundleInMemory({
+  code: `export { default as Plotly } from './src/plotly';
       export { PlotlyGraph } from './src/plotly-graph-card';`,
-    resolveDir: process.cwd(),
-    loader: "ts",
-  },
-  bundle: true,
-  write: false,
-  format: "iife",
-  globalName: "LifecycleTest",
-  outdir: "dist",
-  minify: true,
+  name: "LifecycleTest",
 });
-const browser = await chromium.launch();
+const browser = await chromium.launch({
+  executablePath: process.env.CHROME || undefined,
+});
 try {
   const page = await browser.newPage();
   page.setDefaultTimeout(5000);
@@ -27,7 +20,7 @@ try {
   page.on("pageerror", (error) => errors.push(error.message));
   await page.setContent("<!doctype html><body></body>");
   await page.addScriptTag({
-    content: bundle.outputFiles.find((file) => file.path.endsWith(".js")).text,
+    content: bundle.code,
   });
   const results = await page.evaluate(async () => {
     const { Plotly, PlotlyGraph } = LifecycleTest;
@@ -62,6 +55,7 @@ try {
     );
     const card = new PlotlyGraph();
     const noop = () => {};
+    /** @type {[string, string, object | undefined][]} */
     const handlerEvents = [
       ["plotly_relayout", "onRelayout", {}],
       ["plotly_restyle", "onRestyle", {}],

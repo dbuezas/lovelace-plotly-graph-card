@@ -1,29 +1,22 @@
 import assert from "node:assert/strict";
-import { build } from "esbuild";
+import { bundleInMemory } from "../build.mjs";
 import { chromium } from "playwright";
 
-const bundle = await build({
-  stdin: {
-    contents: `export { default as Plotly } from './src/plotly';
+const [bundle] = await bundleInMemory({
+  code: `export { default as Plotly } from './src/plotly';
       export { PlotlyGraph } from './src/plotly-graph-card';`,
-    resolveDir: process.cwd(),
-    loader: "ts",
-  },
-  bundle: true,
-  write: false,
-  format: "iife",
-  globalName: "AutorangeTest",
-  outdir: "dist",
-  minify: true,
+  name: "AutorangeTest",
 });
-const browser = await chromium.launch();
+const browser = await chromium.launch({
+  executablePath: process.env.CHROME || undefined,
+});
 try {
   const page = await browser.newPage();
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.setContent("<!doctype html><body></body>");
   await page.addScriptTag({
-    content: bundle.outputFiles.find((file) => file.path.endsWith(".js")).text,
+    content: bundle.code,
   });
   const results = await page.evaluate(async () => {
     const { Plotly, PlotlyGraph } = AutorangeTest;
