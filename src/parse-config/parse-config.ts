@@ -44,6 +44,7 @@ import {
 } from "../types";
 import getDeprecationError from "./deprecations";
 import { resolveTimeZone, toPlotlyTimeZone } from "../timezone";
+import { getExtremaTrace } from "./extrema";
 
 class ConfigParser {
   private yaml: Partial<Config> = {};
@@ -325,6 +326,14 @@ class ConfigParser {
             x: trace.x.slice(-1),
             y: trace.y.slice(-1),
           });
+        }
+        if (trace.show_extrema) {
+          const extrema = getExtremaTrace(trace, this.getVisibleRange());
+          if (extrema) {
+            trace.legendgroup ??= "group" + i;
+            extrema.legendgroup = trace.legendgroup;
+            entities.push(extrema);
+          }
         }
       }
     }

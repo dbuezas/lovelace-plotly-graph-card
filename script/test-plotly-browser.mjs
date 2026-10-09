@@ -1277,6 +1277,74 @@ try {
   results.results.push(
     "generated and reused filter lists render through the card",
   );
+  const extremaState = await page.evaluate(async () => {
+    const card = new CardTest.PlotlyGraph();
+    card.id = "extrema-card";
+    card.style.cssText =
+      "display:block;position:fixed;top:0;left:0;width:480px;z-index:10";
+    const start = Date.now() - 3600000;
+    card.hass = document.getElementById("card-under-test").hass;
+    const samples = {
+      fn: `() => ({ xs: [0, 1, 2, 3].map(i => new Date(${start} + i * 600000)), ys: [4, 1, 6, 3] })`,
+    };
+    card.setConfig({
+      type: "custom:plotly-graph",
+      time_zone: "UTC",
+      refresh_interval: 0,
+      visible_range: [start, start + 1800000],
+      entities: [
+        {
+          entity: "",
+          name: "Line",
+          uid: "line",
+          unit_of_measurement: "W",
+          extend_to_present: false,
+          show_extrema: true,
+          filters: [samples, { multiply: 2 }],
+          fill: "tozeroy",
+        },
+        {
+          entity: "",
+          name: "Bar",
+          uid: "bar",
+          type: "bar",
+          extend_to_present: false,
+          show_extrema: true,
+          filters: [samples],
+          marker: { color: "red" },
+          texttemplate: "%{y:.0f} W",
+        },
+      ],
+    });
+    document.body.append(card);
+    await card.plot({ should_fetch: true });
+    return {
+      error: card.errorMsgEl.textContent,
+      renderedText: [
+        ...card.contentEl.querySelectorAll(".scatterlayer .textpoint text"),
+      ].map((text) => text.textContent.trim()),
+      uids: card.contentEl._fullData.map((trace) => trace.uid),
+    };
+  });
+  assert.equal(extremaState.error, "");
+  assert.deepEqual(extremaState.renderedText, ["2 W", "12 W", "1 W", "6 W"]);
+  assert.equal(new Set(extremaState.uids).size, 4);
+  await page.locator("#extrema-card .legend .legendtoggle").first().click();
+  await page.waitForFunction(() => {
+    const data = document.getElementById("extrema-card").contentEl.data;
+    return data[0].visible === "legendonly" && data[2].visible === "legendonly";
+  });
+  const extremaLegend = await page.locator("#extrema-card").evaluate((card) => {
+    const data = card.contentEl.data;
+    const barVisible =
+      data[1].visible !== "legendonly" && data[3].visible !== "legendonly";
+    card.remove();
+    return barVisible;
+  });
+  assert.equal(extremaLegend, true);
+  results.results.push(
+    "filtered extrema labels render, have unique uids and toggle with their source",
+  );
   const coalescedHistory = await page.evaluate(async () => {
     const card = new CardTest.PlotlyGraph();
     card.style.cssText =

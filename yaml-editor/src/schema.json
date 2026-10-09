@@ -243,6 +243,17 @@
             }
           ]
         },
+        "show_extrema": {
+          "anyOf": [
+            {
+              "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
+              "type": "string"
+            },
+            {
+              "type": "boolean"
+            }
+          ]
+        },
         "show_value": {
           "anyOf": [
             {
