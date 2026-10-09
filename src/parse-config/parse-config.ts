@@ -66,6 +66,8 @@ class ConfigParser {
   private canSelectStatisticsTypes = false;
   /** IANA timezone the plot is drawn in, undefined for the browser's */
   public timeZone?: string;
+  historyEntities: HistoryFetchConfig[] = [];
+  private nextHistoryEntities = new Map<string, HistoryFetchConfig>();
   public resetObservedRange() {
     this.observed_range = [Date.now(), Date.now()];
   }
@@ -103,6 +105,7 @@ class ConfigParser {
     // All fetch paths in this update share one cutoff, even after slow requests.
     this.fetchTime = Date.now();
     this.nextStatisticsPeriods = new Set();
+    this.nextHistoryEntities = new Map();
     this.statisticsUpdates = statisticsUpdates;
     // Dynamic ranges advance on refresh; concrete ranges can come from browsing.
     const inputRange =
@@ -143,6 +146,7 @@ class ConfigParser {
     this.yaml = toPlotlyTimeZone(this.yaml as Config, this.timeZone);
     // Publish one complete snapshot; HA updates can arrive while fetching.
     this.statisticsPeriods = this.nextStatisticsPeriods;
+    this.historyEntities = [...this.nextHistoryEntities.values()];
 
     return { errors: this.errors, parsed: this.yaml as Config };
   }
@@ -504,6 +508,13 @@ class ConfigParser {
         : Number.POSITIVE_INFINITY,
     ] as [number, number];
     const entityKey = getEntityKey(fetchConfig);
+    if (
+      !statisticsParams &&
+      fetchConfig.entity &&
+      range_to_fetch[1] >= this.fetchTime
+    ) {
+      this.nextHistoryEntities.set(entityKey, fetchConfig);
+    }
     (this.retainedCacheRanges[entityKey] ??= []).push(range_to_retain);
     const fetch_mask: boolean[] =
       this.fnParam.getFromConfig("fetch_mask") || [];
@@ -528,9 +539,13 @@ class ConfigParser {
         throw this.failedFetches.get(requestKey);
       }
       try {
-        data = await this.cache.fetch(range_to_fetch, fetchConfig, this.hass!, [
-          range_to_retain,
-        ]);
+        data = await this.cache.fetch(
+          range_to_fetch,
+          fetchConfig,
+          this.hass!,
+          [range_to_retain],
+          this.fetchTime,
+        );
       } catch (error) {
         this.failedFetches.set(requestKey, error);
         throw error;
@@ -602,7 +617,7 @@ class ConfigParser {
       }
     }
     if (requests.length < 2) return;
-    await this.cache.prefetchHistory(requests, this.hass!);
+    await this.cache.prefetchHistory(requests, this.hass!, this.fetchTime);
   }
 
   private getEvaledPath(path: string, callingPath: string) {

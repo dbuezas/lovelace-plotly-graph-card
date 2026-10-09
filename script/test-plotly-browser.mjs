@@ -1277,6 +1277,125 @@ try {
   results.results.push(
     "generated and reused filter lists render through the card",
   );
+  const coalescedHistory = await page.evaluate(async () => {
+    const card = new CardTest.PlotlyGraph();
+    card.style.cssText =
+      "display:block;position:fixed;top:0;left:0;width:480px";
+    const now = Date.now();
+    const entity = "sensor.burst";
+    const quiet = "binary_sensor.quiet";
+    const state = (value, timestamp) => ({
+      entity_id: entity,
+      state: String(value),
+      attributes: {},
+      last_changed: new Date(timestamp).toISOString(),
+      last_updated: new Date(timestamp).toISOString(),
+    });
+    let callback;
+    const streamRequests = [];
+    let requests = 0;
+    const connection = {
+      subscribeMessage: async (cb, request) => {
+        streamRequests.push(request);
+        if (request.entity_ids.includes(entity)) callback = cb;
+        return () => {};
+      },
+      addEventListener() {},
+      removeEventListener() {},
+    };
+    const hass = {
+      locale: { language: "en" },
+      states: {
+        [entity]: state(1, now - 10000),
+        [quiet]: { ...state(0, now - 48 * 3600000), entity_id: quiet },
+      },
+      connection,
+      callWS: async ({ start_time, entity_ids }) => {
+        requests++;
+        return Object.fromEntries(
+          entity_ids.map((id) => [
+            id,
+            id === entity
+              ? [
+                  { s: "1", lu: Date.parse(start_time) / 1000 },
+                  { s: "1", lu: (now - 10000) / 1000 },
+                ]
+              : [{ s: "0", lu: Date.parse(start_time) / 1000 }],
+          ]),
+        );
+      },
+    };
+    card.hass = hass;
+    card.setConfig({
+      type: "custom:plotly-graph",
+      refresh_interval: "auto",
+      hours_to_show: 24,
+      entities: [{ entity, extend_to_present: false }, { entity: quiet }],
+    });
+    document.body.append(card);
+    await card.plot({ should_fetch: true });
+    for (let index = 0; index < 2000; index++) {
+      callback?.({
+        states: {
+          [entity]: [{ s: String(index % 2), lu: (now - 9000 + index) / 1000 }],
+        },
+      });
+    }
+    card.hass = {
+      ...hass,
+      states: { ...hass.states, [entity]: state(3, now - 2000) },
+    };
+    callback?.({
+      states: {
+        [entity]: [
+          { s: "2", lu: (now - 5000) / 1000 },
+          { s: "3", lu: (now - 2000) / 1000 },
+        ],
+      },
+    });
+    await card.plot({ should_fetch: false });
+    const deadline = performance.now() + 5000;
+    while (
+      card.contentEl.data[0].y.at(-1) !== "3" &&
+      performance.now() < deadline
+    )
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    const result = {
+      values: card.contentEl.data[0].y.slice(-3),
+      samples: card.contentEl.data[0].y.length,
+      requests,
+      ranges: card.configParser.cache.ranges[entity].length,
+      busyStart: Date.parse(
+        streamRequests.find((request) => request.entity_ids.includes(entity))
+          .start_time,
+      ),
+      expectedBusyStart: now - 10001,
+      error: card.errorMsgEl.textContent,
+    };
+    card.historyUpdates.disconnect();
+    card.hass = {
+      ...hass,
+      states: { ...hass.states, [entity]: state(4, now - 1000) },
+    };
+    result.resumeStart = Date.parse(streamRequests.at(-1).start_time);
+    result.expectedResumeStart = now - 2001;
+    await card.plot({ should_fetch: false });
+    card.remove();
+    return result;
+  });
+  assert.equal(coalescedHistory.error, "");
+  assert.deepEqual(coalescedHistory.values, ["1", "2", "3"]);
+  assert.equal(coalescedHistory.samples, 2004);
+  assert.equal(coalescedHistory.requests, 1);
+  assert.equal(coalescedHistory.ranges, 1);
+  assert.equal(coalescedHistory.busyStart, coalescedHistory.expectedBusyStart);
+  assert.equal(
+    coalescedHistory.resumeStart,
+    coalescedHistory.expectedResumeStart,
+  );
+  results.results.push(
+    "coalesced frontend snapshots do not lose intermediate live history states",
+  );
   const shiftedHistoryResults = await page.evaluate(async () => {
     const card = document.getElementById("card-under-test");
     const now = Date.now();
