@@ -275,6 +275,8 @@ entities:
 
 Fetch and plot long-term statistics of an entity
 
+The card requests only the statistic fields used by its traces. Traces with the same sensor, period and time range still share one response, including min/max/mean bands. Entity expressions, filters and presets keep the full statistics response, since custom code can read other fields through `statistics`. Functions used only for time ranges or layout do not disable this optimization.
+
 #### for entities with state_class=measurement (normal sensors, like temperature)
 
 ```yaml
@@ -1085,6 +1087,59 @@ entities:
 hours_to_show: current_day
 ```
 
+#### Linked tooltips in stacked subplots
+
+To show tooltips in all stacked subplots when hovering over one of them, use
+Plotly's native [`hoversubplots: axis`](https://plotly.com/javascript/reference/layout/#layout-hoversubplots)
+with `hovermode: x`. The traces must share the **same X axis** (`x`), which is
+the default, not just matching ranges on separate axes.
+
+This example places temperature and humidity in separate vertical panels. Replace
+the entity IDs with sensors that provide mean statistics. Using the same period
+gives both traces matching timestamps.
+
+```yaml
+type: custom:plotly-graph
+hours_to_show: 24h
+entities:
+  - entity: sensor.garden_temperature
+    name: Temperature
+    statistic: mean
+    period: hour
+  - entity: sensor.garden_humidity
+    name: Humidity
+    statistic: mean
+    period: hour
+    yaxis: y2
+layout:
+  height: 360
+  hovermode: x
+  hoversubplots: axis
+  margin:
+    l: 60
+    r: 20
+    t: 10
+    b: 50
+  xaxis:
+    anchor: y2
+  yaxis:
+    domain: [0.55, 1]
+    anchor: x
+  yaxis2:
+    domain: [0, 0.45]
+    anchor: x
+    overlaying: false
+    side: left
+```
+
+`overlaying: false` overrides the card's default secondary-axis overlay, so the
+second trace occupies its own panel. `side: left` keeps its Y axis on the left,
+and `xaxis.anchor: y2` places the date ticks below the lower panel; neither is
+required for linked hover. This works within one card; it does **not**
+synchronize hover between separate Home Assistant cards or expose `on_hover`
+callbacks. See [#398](https://github.com/dbuezas/lovelace-plotly-graph-card/issues/398)
+for that remaining request.
+
 #### disabling hover text
 
 can be achieved by setting inside entities:
@@ -1277,6 +1332,13 @@ autorange_after_scroll: true
 
 Update data every `refresh_interval` seconds.
 
+With `auto`, live state history uses Home Assistant's history stream. Unlike
+frontend state snapshots, the stream includes intermediate changes in a burst
+and catches up with states that Recorder has not committed yet. Entities with
+the same history start time share a stream, so a quiet entity does not make a
+busy entity replay older history. Streams close when the card is removed or
+automatic refresh is disabled.
+
 With `auto`, live statistics also refresh when Home Assistant publishes new
 5-minute or hourly statistics, even if the entity's state has not changed.
 Each event refreshes only its matching resolution: daily, weekly and monthly
@@ -1285,6 +1347,8 @@ Entity state changes can still update the display without refetching statistics.
 Zooming, panning and toggling traces only fetch missing ranges; they do not
 invalidate cached statistics. Resetting the view also refreshes recent values.
 An explicit refresh interval continues to poll at the configured interval.
+The unconfirmed tail after the last recorded state is checked again, so delayed
+Recorder writes are not permanently hidden behind a cached request boundary.
 
 Examples:
 

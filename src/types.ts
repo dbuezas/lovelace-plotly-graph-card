@@ -159,6 +159,10 @@ export type EntityIdStatisticsConfig = {
   statistic: StatisticType;
   period: StatisticPeriod;
 };
+export type StatisticsFetchConfig = EntityIdStatisticsConfig & {
+  // One sorted, unique field selection shared by every trace in a parser update.
+  types?: StatisticType[];
+};
 export type EntityIdConfig =
   | EntityIdStateConfig
   | EntityIdAttrConfig
@@ -192,6 +196,7 @@ export type CachedBaseEntity = {
 };
 export type CachedStateEntity = CachedBaseEntity & {
   state: HassEntity;
+  unconfirmed?: true;
 };
 export type CachedStatisticsEntity = CachedBaseEntity & {
   statistics: StatisticValue;
