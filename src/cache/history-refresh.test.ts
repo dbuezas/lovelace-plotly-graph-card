@@ -53,9 +53,7 @@ describe("late recorder history", () => {
     async (path) => {
       const cache = new Cache();
       const { rows, hass } = recorder();
-      const clock = vi
-        .spyOn(Date, "now")
-        .mockReturnValue(start + 10 * second);
+      const clock = vi.spyOn(Date, "now").mockReturnValue(start + 10 * second);
       const fetch = () =>
         path === "single"
           ? cache.fetch([start, Date.now()], entity, hass)

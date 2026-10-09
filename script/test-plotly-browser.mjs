@@ -230,7 +230,7 @@ try {
     // Trace types are loaded on demand, the same way the card does it
     await PlotlyTest.loadPlotlyModules(
       Object.keys(fixtures).map((type) => ({ type })),
-      {}
+      {},
     );
     for (const [type, data] of Object.entries(fixtures)) {
       const div = document.createElement("div");
@@ -1343,7 +1343,8 @@ try {
       requests,
       ranges: card.configParser.cache.ranges[entity].length,
       busyStart: Date.parse(
-        streamRequests.find((request) => request.entity_ids.includes(entity)).start_time,
+        streamRequests.find((request) => request.entity_ids.includes(entity))
+          .start_time,
       ),
       expectedBusyStart: now - 10001,
       error: card.errorMsgEl.textContent,
@@ -1365,7 +1366,10 @@ try {
   assert.equal(coalescedHistory.requests, 1);
   assert.equal(coalescedHistory.ranges, 1);
   assert.equal(coalescedHistory.busyStart, coalescedHistory.expectedBusyStart);
-  assert.equal(coalescedHistory.resumeStart, coalescedHistory.expectedResumeStart);
+  assert.equal(
+    coalescedHistory.resumeStart,
+    coalescedHistory.expectedResumeStart,
+  );
   results.results.push(
     "coalesced frontend snapshots do not lose intermediate live history states",
   );

@@ -37,7 +37,7 @@ const findPlotlyCore = {
       this.getModuleInfo(id)?.importedIds.forEach(visit);
     };
     const entry = [...this.getModuleIds()].find((id) =>
-      id.endsWith("/src/plotly.ts")
+      id.endsWith("/src/plotly.ts"),
     );
     if (entry) visit(entry);
   },
@@ -56,7 +56,7 @@ export const cardInputOptions = ({ production = true, input } = {}) => ({
   transform: {
     define: {
       "process.env.NODE_ENV": JSON.stringify(
-        production ? "production" : "development"
+        production ? "production" : "development",
       ),
     },
     // Some dependencies (the stream polyfill of the image trace) expect
@@ -101,7 +101,7 @@ export const bundleInMemory = async ({ input, code, name, split = false }) => {
   const { output } = await bundle.generate(
     split
       ? cardOutputOptions()
-      : { format: "iife", name, codeSplitting: false, minify: true }
+      : { format: "iife", name, codeSplitting: false, minify: true },
   );
   await bundle.close();
   return output;
