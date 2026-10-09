@@ -154,6 +154,22 @@ test("keeps literal and regular-expression enum alternatives", () => {
   ]);
 });
 
+test("accepts false for axis overlaying like Plotly's runtime", () => {
+  const schema = valueBranch(
+    convertPlotlyNode({
+      overlaying: {
+        valType: "enumerated",
+        values: ["free", "/^y([2-9]|[1-9][0-9]+)?( domain)?$/"],
+      },
+    }),
+  );
+
+  assert.deepEqual(valueBranch(schema.properties.overlaying).anyOf, [
+    { enum: [false, "free"] },
+    { pattern: "^y([2-9]|[1-9][0-9]+)?( domain)?$", type: "string" },
+  ]);
+});
+
 test("converts object arrays and dynamic subplot properties", () => {
   const schema = valueBranch(
     convertPlotlyNode({
@@ -343,6 +359,7 @@ test("checked-in schema is generated from Plotly runtime metadata", () => {
       annotations: [{ text: "Current value", x: 1, y: 2 }],
       xaxis2: { visible: false },
       yaxis: { range: [0, 50] },
+      yaxis2: { overlaying: false },
     },
     config: {
       displayModeBar: false,

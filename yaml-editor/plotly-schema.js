@@ -222,6 +222,19 @@ function escapeRegex(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+// Plotly's runtime also accepts false for overlaying (see
+// src/plots/cartesian/position_defaults.js), but plot-schema.json omits it.
+function withRuntimeValues(name, attribute) {
+  if (
+    name !== "overlaying" ||
+    attribute?.valType !== "enumerated" ||
+    attribute.values?.includes(false)
+  ) {
+    return attribute;
+  }
+  return { ...attribute, values: [false, ...attribute.values] };
+}
+
 function objectSchema(attributes) {
   const properties = {};
   const patternProperties = {};
@@ -235,7 +248,7 @@ function objectSchema(attributes) {
       continue;
     }
 
-    const converted = convertPlotlyNode(attribute);
+    const converted = convertPlotlyNode(withRuntimeValues(name, attribute));
     properties[name] = converted;
 
     if (attribute && typeof attribute === "object" && attribute._isSubplotObj) {
