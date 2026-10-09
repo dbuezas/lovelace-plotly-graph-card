@@ -10,7 +10,8 @@ import { HomeAssistant } from "custom-card-helpers";
  *
  * A `timeZone` of `undefined` means "the browser's timezone" (no conversion).
  */
-export type TimeZoneConfig = "local" | "server" | string;
+/** "local", "server" or an IANA name like "Europe/Rome" */
+export type TimeZoneConfig = string;
 
 const browserTimeZone = () => {
   try {

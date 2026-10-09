@@ -24,7 +24,7 @@ describe("getInitialPlotHeight", () => {
 
 describe("initial loading state", () => {
   it("sets the reserved height on the card", () => {
-    const setProperty = jest.fn();
+    const setProperty = vi.fn();
     const card = { style: { setProperty } } as unknown as HTMLElement;
 
     setInitialLoadingHeight(card, { height: 420 });
@@ -36,9 +36,9 @@ describe("initial loading state", () => {
   });
 
   it("removes the loader and accessibility busy state", () => {
-    const remove = jest.fn();
-    const setCardAttribute = jest.fn();
-    const setIndicatorAttribute = jest.fn();
+    const remove = vi.fn();
+    const setCardAttribute = vi.fn();
+    const setIndicatorAttribute = vi.fn();
     const card = {
       classList: { remove },
       setAttribute: setCardAttribute,
