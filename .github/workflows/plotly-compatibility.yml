@@ -17,7 +17,7 @@ jobs:
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
       - run: bun run tsc
-      - name: Lint
+      - name: Lint and format check
         run: |
           bun run lint:check || {
             echo "::error::Run 'bun run lint:fix' and commit the result. Fix by hand what it can't."
