@@ -7,7 +7,7 @@ export function isTruthy<T>(x: T | null): x is T {
 // lazily loaded chart types can add more.
 const copyPlotlyStyles = (styleEl: HTMLStyleElement) => {
   const style = Array.from(
-    document.querySelectorAll<Element & LinkStyle>(`style[id^="plotly.js"]`)
+    document.querySelectorAll<Element & LinkStyle>(`style[id^="plotly.js"]`),
   )
     .map((styleEl) => styleEl.sheet)
     .filter(isTruthy)

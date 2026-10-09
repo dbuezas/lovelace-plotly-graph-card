@@ -230,7 +230,7 @@ try {
     // Trace types are loaded on demand, the same way the card does it
     await PlotlyTest.loadPlotlyModules(
       Object.keys(fixtures).map((type) => ({ type })),
-      {}
+      {},
     );
     for (const [type, data] of Object.entries(fixtures)) {
       const div = document.createElement("div");
@@ -1261,14 +1261,19 @@ try {
       type: "custom:plotly-graph",
       refresh_interval: 0,
       visible_range: [end - 86400000, end],
-      entities: [{
-        entity: "sensor.one",
-        hovertemplate: '$ex `${get(".name")}: %{y} ${get(".unit_of_measurement")}<extra></extra>`',
-        extend_to_present: false,
-      }],
+      entities: [
+        {
+          entity: "sensor.one",
+          hovertemplate:
+            '$ex `${get(".name")}: %{y} ${get(".unit_of_measurement")}<extra></extra>`',
+          extend_to_present: false,
+        },
+      ],
     });
     await card.plot({ should_fetch: true });
-    PlotlyTest.default.Fx.hover(card.contentEl, [{ curveNumber: 0, pointNumber: 0 }]);
+    PlotlyTest.default.Fx.hover(card.contentEl, [
+      { curveNumber: 0, pointNumber: 0 },
+    ]);
     return {
       error: card.errorMsgEl.textContent,
       template: card.contentEl._fullData[0].hovertemplate,
@@ -1278,7 +1283,9 @@ try {
   assert.equal(defaultHover.error, "");
   assert.equal(defaultHover.template, "sensor.one: %{y} W<extra></extra>");
   assert.match(defaultHover.text, /sensor\.one: 1 W/);
-  results.results.push("custom hover templates render with on-demand default names and units");
+  results.results.push(
+    "custom hover templates render with on-demand default names and units",
+  );
   const shiftedHistoryResults = await page.evaluate(async () => {
     const card = document.getElementById("card-under-test");
     const now = Date.now();

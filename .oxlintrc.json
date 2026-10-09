@@ -1,19 +1,13 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "ignorePatterns": [
-    "dist",
-    "yaml-editor/dist",
-    "yaml-editor/node_modules"
-  ],
+  "ignorePatterns": ["dist", "yaml-editor/dist", "yaml-editor/node_modules"],
   "rules": {
     "no-eval": "off",
     "typescript/restrict-template-expressions": "off"
   },
   "overrides": [
     {
-      "files": [
-        "yaml-editor/*.test.js"
-      ],
+      "files": ["yaml-editor/*.test.js"],
       "rules": {
         "typescript/no-floating-promises": "off"
       }

@@ -29,16 +29,19 @@ function setup() {
       .filter((sample) => Date.parse(sample.last_updated) < start)
       .at(-1);
     const boundary = previous ? [state(start, previous.state)] : [];
-    return Object.fromEntries(request.entity_ids.map((entity_id: string) => [
-      entity_id, [
-        ...boundary,
-        ...samples.filter(
-          (sample) =>
-            Date.parse(sample.last_updated) >= start &&
-            Date.parse(sample.last_updated) <= end,
-        ),
-      ].map((sample) => ({ ...sample, entity_id })),
-    ]));
+    return Object.fromEntries(
+      request.entity_ids.map((entity_id: string) => [
+        entity_id,
+        [
+          ...boundary,
+          ...samples.filter(
+            (sample) =>
+              Date.parse(sample.last_updated) >= start &&
+              Date.parse(sample.last_updated) <= end,
+          ),
+        ].map((sample) => ({ ...sample, entity_id })),
+      ]),
+    );
   });
   const hass = {
     callWS,
@@ -161,7 +164,8 @@ describe("ConfigParser cache retention", () => {
       expect(result.errors).toEqual([]);
       expect(callWS).toHaveBeenCalledTimes(hour - 23);
       expect(callWS.mock.calls.at(-1)![0].entity_ids).toEqual([
-        "sensor.one", "sensor.two",
+        "sensor.one",
+        "sensor.two",
       ]);
       for (const [index, entity] of entities.entries()) {
         expect(ys(result.parsed.entities[index])).toEqual(
@@ -174,13 +178,17 @@ describe("ConfigParser cache retention", () => {
       }
     }
 
-    const result = await update({
-      visible_range: [BASE + 21 * HOUR, BASE + 24 * HOUR],
-    }, entities);
+    const result = await update(
+      {
+        visible_range: [BASE + 21 * HOUR, BASE + 24 * HOUR],
+      },
+      entities,
+    );
     expect(result.errors).toEqual([]);
     expect(callWS).toHaveBeenCalledTimes(7);
     expect(callWS.mock.calls.at(-1)![0].entity_ids).toEqual([
-      "sensor.one", "sensor.two",
+      "sensor.one",
+      "sensor.two",
     ]);
     for (const trace of result.parsed.entities) {
       expect(ys(trace)?.slice(0, 4)).toEqual(["21", "22", "23", "24"]);
