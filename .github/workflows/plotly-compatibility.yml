@@ -20,9 +20,10 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run tsc
+      - run: npm run lint
       - run: npm run build
       - name: Unit tests
-        run: npm test -- --ci
+        run: npm test
       - run: npx playwright install --with-deps chromium
       - run: npm run test:browser
       - run: npm run test:autorange

@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "npm run schema && webpack serve --open --mode development",
-    "build": "npm run schema && rm -rf dist && webpack --mode production",
+    "start": "npm run schema && vite --open",
+    "build": "npm run schema && vite build",
     "schema": "node generate-schema.js",
     "test": "node --test plotly-schema.test.js",
     "deploy": "pnpm run build && npx --yes gh-pages -d dist"
@@ -13,17 +13,10 @@
   "dependencies": {
     "@fortawesome/fontawesome-free": "^6.0.0",
     "@schemastore/schema-catalog": "^0.0.6",
-    "css-loader": "^7.0.0",
-    "css-minimizer-webpack-plugin": "^8.0.0",
-    "html-webpack-plugin": "^5.0.0",
-    "mini-css-extract-plugin": "^2.0.0",
     "monaco-editor": "^0.50.0",
     "monaco-yaml": "^5.2.2",
-    "ts-loader": "^9.0.0",
     "typescript-json-schema": "^0.65.1",
-    "webpack": "^5.0.0",
-    "webpack-cli": "^5.0.0",
-    "webpack-dev-server": "^6.0.0"
+    "vite": "^8.3.3"
   },
   "devDependencies": {
     "ajv": "^8.17.1"

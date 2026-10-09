@@ -13,7 +13,7 @@ const entity = (id: string): EntityIdStatisticsConfig => ({
 
 describe("fetchStatistics", () => {
   it("rejects mixed periods before sending a request", async () => {
-    const callWS = jest.fn();
+    const callWS = vi.fn();
     await expect(
       fetchStatistics(
         { callWS } as any,
@@ -25,7 +25,7 @@ describe("fetchStatistics", () => {
   });
 
   it("does not request all statistics for an empty list", async () => {
-    const callWS = jest.fn();
+    const callWS = vi.fn();
     expect(await fetchStatistics({ callWS } as any, [], range)).toEqual({});
     expect(callWS).not.toHaveBeenCalled();
   });
@@ -37,7 +37,7 @@ describe("fetchStatistics", () => {
       mean: 7,
       max: 9,
     };
-    const callWS = jest
+    const callWS = vi
       .fn()
       .mockResolvedValue({ "sensor.two": [point], "sensor.extra": [point] });
     const result = await fetchStatistics(
@@ -63,7 +63,7 @@ describe("fetchStatistics", () => {
   });
 
   it("handles an empty response", async () => {
-    const callWS = jest.fn().mockResolvedValue({});
+    const callWS = vi.fn().mockResolvedValue({});
     expect(
       await fetchStatistics({ callWS } as any, [entity("sensor.one")], range),
     ).toEqual({ "sensor.one": [] });
@@ -71,7 +71,7 @@ describe("fetchStatistics", () => {
 
   it("preserves null statistics and ISO timestamps", async () => {
     const point = { start: range[0].toISOString(), mean: null, sum: 5 };
-    const callWS = jest.fn().mockResolvedValue({ "sensor.one": [point] });
+    const callWS = vi.fn().mockResolvedValue({ "sensor.one": [point] });
     const result = await fetchStatistics(
       { callWS } as any,
       [entity("sensor.one")],
@@ -82,9 +82,9 @@ describe("fetchStatistics", () => {
   });
 
   it("identifies the affected ids when a request fails", async () => {
-    const log = jest.spyOn(console, "error").mockImplementation(() => {});
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
     try {
-      const callWS = jest.fn().mockRejectedValue({ message: "offline" });
+      const callWS = vi.fn().mockRejectedValue({ message: "offline" });
       await expect(
         fetchStatistics(
           { callWS } as any,

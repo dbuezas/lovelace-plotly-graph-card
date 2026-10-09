@@ -1,3 +1,5 @@
 declare module "plotly.js/lib/locales/*";
-declare module "*.css";
-declare module "process/browser";
+declare module "*?raw" {
+  const content: string;
+  export default content;
+}

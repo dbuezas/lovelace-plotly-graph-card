@@ -2,26 +2,11 @@
 // serves that build like HACS does and checks what each page downloads.
 // Usage: npm run test:split (CHROME=/path/to/chrome to use another Chrome)
 import { createServer } from "node:http";
-import { basename } from "node:path";
-import { build } from "esbuild";
+import { bundleInMemory } from "../build.mjs";
 import { chromium } from "playwright";
 
-const { outputFiles } = await build({
-  entryPoints: ["src/plotly-graph-card.ts"],
-  bundle: true,
-  minify: true,
-  splitting: true,
-  format: "esm",
-  chunkNames: "[name]-[hash]",
-  loader: { ".css": "empty" },
-  inject: ["src/process-shim.ts"],
-  outdir: "dist",
-  write: false,
-});
 const files = new Map(
-  outputFiles
-    .filter((f) => f.path.endsWith(".js"))
-    .map((f) => [basename(f.path), f.text])
+  (await bundleInMemory({ split: true })).map((f) => [f.fileName, f.code])
 );
 const BASE = "/hacsfiles/lovelace-plotly-graph-card/";
 const blocked = new Set();
@@ -32,7 +17,7 @@ const server = createServer((req, res) => {
   if (url.pathname.startsWith(BASE) && files.has(name)) {
     requests.push(name);
     if (blocked.has(name)) return res.writeHead(404).end();
-    res.setHeader("Content-Type", "text/javascript");
+    res.setHeader("Content-Type", "text/javascript; charset=utf-8");
     return res.end(files.get(name));
   }
   res.setHeader("Content-Type", "text/html");
@@ -54,7 +39,7 @@ const check = (ok, msg, extra = "") =>
   );
 const fileOf = (name) =>
   [...files.keys()].find((n) =>
-    new RegExp(`^${name}-[A-Z0-9]{8}\\.js$`).test(n)
+    new RegExp(`^${name}-[\\w-]{8}\\.js$`).test(n)
   );
 const take = () => requests.splice(0);
 
@@ -297,7 +282,17 @@ try {
     { id: "geo", traces: [{ type: "scattergeo", lat: [47], lon: [8] }] },
   ]);
   check(
-    out[0].error.includes("didn't load"),
+    out[0].error.includes("didn't load") &&
+      (await page.evaluate(() => {
+        const msg = document
+          .getElementById("geo")
+          .shadowRoot.querySelector("#error-msg");
+        // fully visible (not clipped by the card) and offers a reload
+        return (
+          msg.querySelector("button")?.textContent === "Reload" &&
+          msg.closest("ha-card").offsetHeight >= msg.offsetHeight
+        );
+      })),
     "a missing file shows a clear error",
     out[0].error.slice(0, 60)
   );
