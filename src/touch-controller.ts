@@ -22,7 +22,7 @@ const SCAN_HOLD_MS = 300;
 type Handler = (e: TouchEvent) => void;
 type Gesture = (
   el: PlotlyEl,
-  controller: TouchController
+  controller: TouchController,
 ) => {
   start: Handler;
   move: Handler;
@@ -60,7 +60,7 @@ const wheel = (
   dragger: Element,
   clientX: number,
   clientY: number,
-  deltaY: number
+  deltaY: number,
 ) => {
   const scrollZoom =
     dragger.closest<PlotlyEl>(".js-plotly-plot")?._context?._scrollZoom;
@@ -68,7 +68,7 @@ const wheel = (
   if (scrollZoom) scrollZoom.cartesian = true;
   try {
     dragger.dispatchEvent(
-      new WheelEvent("wheel", { clientX, clientY, deltaY })
+      new WheelEvent("wheel", { clientX, clientY, deltaY }),
     );
   } finally {
     if (scrollZoom) scrollZoom.cartesian = enabled;
@@ -180,7 +180,7 @@ const doubleTapDrag: Gesture = (el, controller) => {
         tap.dragger,
         t.clientX,
         tap.y,
-        Math.exp((tap.lastY - t.clientY) / 200)
+        Math.exp((tap.lastY - t.clientY) / 200),
       );
       tap.lastX = t.clientX;
       tap.lastY = t.clientY;
@@ -212,7 +212,7 @@ const scan: Gesture = (el, controller) => {
         // "closest" needs the finger right on a point; follow x instead
         hovermode: !hovermode || hovermode === "closest" ? "x" : hovermode,
       },
-      dragger.getAttribute("data-subplot") ?? undefined
+      dragger.getAttribute("data-subplot") ?? undefined,
     );
   };
   const end = () => {
@@ -296,7 +296,7 @@ export class TouchController {
         ["touchstart", start],
         ["touchmove", move],
         ["touchend", end],
-        ["touchcancel", end]
+        ["touchcancel", end],
       );
     }
     for (const [type, fn] of this.listeners)

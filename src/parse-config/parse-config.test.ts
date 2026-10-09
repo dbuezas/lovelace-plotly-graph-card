@@ -107,10 +107,15 @@ describe("statistics request batching", () => {
 
   it("draws dates in the configured timezone", async () => {
     const callWS = successfulCallWS();
-    const result = await update(new ConfigParser(), callWS, compatibleEntities, {
-      time_zone: "Pacific/Chatham",
-      hours_to_show: "1h",
-    });
+    const result = await update(
+      new ConfigParser(),
+      callWS,
+      compatibleEntities,
+      {
+        time_zone: "Pacific/Chatham",
+        hours_to_show: "1h",
+      },
+    );
 
     expect(result.errors).toEqual([]);
     // NOW is 12:00Z, i.e. 01:45 next day in Chatham (UTC+13:45)
@@ -125,10 +130,15 @@ describe("statistics request batching", () => {
 
   it("falls back to the browser's timezone for an invalid time_zone", async () => {
     const callWS = successfulCallWS();
-    const result = await update(new ConfigParser(), callWS, compatibleEntities, {
-      time_zone: "Mars/Olympus",
-      hours_to_show: "current_day",
-    });
+    const result = await update(
+      new ConfigParser(),
+      callWS,
+      compatibleEntities,
+      {
+        time_zone: "Mars/Olympus",
+        hours_to_show: "current_day",
+      },
+    );
 
     expect(result.errors.map((e) => e.message)).toEqual([
       "time_zone: unknown timezone 'Mars/Olympus'",
@@ -169,9 +179,10 @@ describe("statistics request batching", () => {
         statistic_ids.map((id: string) => [
           id,
           samples
-            .filter(({ timestamp }) =>
-              timestamp >= Date.parse(start_time) &&
-              timestamp <= Date.parse(end_time),
+            .filter(
+              ({ timestamp }) =>
+                timestamp >= Date.parse(start_time) &&
+                timestamp <= Date.parse(end_time),
             )
             .map(({ timestamp, value }) => ({
               ...statistic(id, value),
@@ -192,7 +203,8 @@ describe("statistics request batching", () => {
       expect(result.errors).toEqual([]);
       expect(callWS).toHaveBeenCalledTimes(elapsed + 1);
       expect(callWS.mock.calls[elapsed][0].statistic_ids).toEqual([
-        "sensor.east", "sensor.west",
+        "sensor.east",
+        "sensor.west",
       ]);
       const expected = [21, 22, 23, 24].map((value) => value + elapsed);
       expect(result.parsed.entities.map(yValues)).toEqual([expected, expected]);
@@ -213,10 +225,15 @@ describe("statistics request batching", () => {
     expect(result.errors).toEqual([]);
     expect(callWS).toHaveBeenCalledTimes(8);
     expect(callWS.mock.calls[7][0].statistic_ids).toEqual([
-      "sensor.east", "sensor.west",
+      "sensor.east",
+      "sensor.west",
     ]);
-    expect(result.parsed.entities.map((trace) => yValues(trace)?.slice(0, 4)))
-      .toEqual([[21, 22, 23, 24], [21, 22, 23, 24]]);
+    expect(
+      result.parsed.entities.map((trace) => yValues(trace)?.slice(0, 4)),
+    ).toEqual([
+      [21, 22, 23, 24],
+      [21, 22, 23, 24],
+    ]);
   });
 
   it("keeps incompatible statistics periods in separate requests", async () => {

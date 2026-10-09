@@ -7,10 +7,7 @@ describe("getFetchMask", () => {
 
   it("does not fetch traces hidden through the legend", () => {
     expect(
-      getFetchMask(
-        [{ visible: true }, { visible: "legendonly" }, {}],
-        true
-      )
+      getFetchMask([{ visible: true }, { visible: "legendonly" }, {}], true),
     ).toStrictEqual([true, false, true]);
   });
 

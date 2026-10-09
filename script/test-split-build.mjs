@@ -6,7 +6,7 @@ import { bundleInMemory } from "../build.mjs";
 import { chromium } from "playwright";
 
 const files = new Map(
-  (await bundleInMemory({ split: true })).map((f) => [f.fileName, f.code])
+  (await bundleInMemory({ split: true })).map((f) => [f.fileName, f.code]),
 );
 const BASE = "/hacsfiles/lovelace-plotly-graph-card/";
 const blocked = new Set();
@@ -35,12 +35,10 @@ const browser = await chromium.launch({
 const results = [];
 const check = (ok, msg, extra = "") =>
   results.push(
-    `${ok ? "PASS" : "FAIL"}  ${msg}${extra === "" ? "" : `  (${extra})`}`
+    `${ok ? "PASS" : "FAIL"}  ${msg}${extra === "" ? "" : `  (${extra})`}`,
   );
 const fileOf = (name) =>
-  [...files.keys()].find((n) =>
-    new RegExp(`^${name}-[\\w-]{8}\\.js$`).test(n)
-  );
+  [...files.keys()].find((n) => new RegExp(`^${name}-[\\w-]{8}\\.js$`).test(n));
 const take = () => requests.splice(0);
 
 try {
@@ -97,7 +95,7 @@ try {
     }, cards);
   const removeAll = () =>
     page.evaluate(() =>
-      document.querySelectorAll("plotly-graph").forEach((c) => c.remove())
+      document.querySelectorAll("plotly-graph").forEach((c) => c.remove()),
     );
 
   const startup = take();
@@ -105,18 +103,18 @@ try {
     startup.includes("plotly-graph-card.js") &&
       !startup.includes(fileOf("plotly")),
     "a page without graphs doesn't download Plotly",
-    `${startup.length} files`
+    `${startup.length} files`,
   );
 
   // Plotly starts downloading as soon as a card is on the page, while the
   // card still waits for its data (here: no hass yet)
   await page.evaluate(() =>
-    document.body.append(document.createElement("plotly-graph"))
+    document.body.append(document.createElement("plotly-graph")),
   );
   await page.waitForTimeout(500);
   check(
     take().includes(fileOf("plotly")),
-    "Plotly downloads while the card still waits for data"
+    "Plotly downloads while the card still waits for data",
   );
   await removeAll();
 
@@ -132,7 +130,7 @@ try {
   check(
     out[0].types.join() === "scatter,bar,box" && !out[0].error,
     "a chart that mixes line, bar and box renders",
-    out[0].types.join()
+    out[0].types.join(),
   );
   check(out[1].types.join() === "pie" && !out[1].error, "a pie chart renders");
   check(
@@ -142,17 +140,17 @@ try {
         .contentEl.querySelector(".modebar");
       return getComputedStyle(modebar).position === "absolute";
     }),
-    "Plotly's styles reach the card (modebar is positioned)"
+    "Plotly's styles reach the card (modebar is positioned)",
   );
   check(
     got.filter((n) => n === fileOf("charts2d")).length === 1 &&
       got.includes(fileOf("pie")),
-    "two cards that need the same group download it once"
+    "two cards that need the same group download it once",
   );
   check(
     new Set(got).size === got.length,
     "no file is downloaded twice",
-    `${got.length} files`
+    `${got.length} files`,
   );
 
   await removeAll();
@@ -164,7 +162,7 @@ try {
   check(
     out.every((c) => !c.error && c.types.length) && got.length === 0,
     "switching dashboard view downloads nothing again",
-    got.join(" ")
+    got.join(" "),
   );
 
   out = await mount([{ id: "de", language: "de", traces: [{}] }]);
@@ -172,7 +170,7 @@ try {
   check(
     got.join() === fileOf("de") && !out[0].error,
     "a German user downloads only the German locale",
-    got.join(" ")
+    got.join(" "),
   );
   // Each language on a fresh page, so no other locale is loaded already.
   // HA codes that Plotly names differently, and a regional locale whose
@@ -192,12 +190,12 @@ try {
         !!document
           .getElementById("l")
           .contentEl.querySelector(`[data-title="${pan}"]`),
-      pan
+      pan,
     );
     check(
       title && !out[0].error && files.every((f) => got.includes(fileOf(f))),
       `${language}: the modebar is translated`,
-      files.map(fileOf).join(" ")
+      files.map(fileOf).join(" "),
     );
   }
 
@@ -265,7 +263,7 @@ try {
     check(
       out[i].types.join() === type && !out[i].error,
       `${type} renders`,
-      out[i].error
+      out[i].error,
     );
   check(
     await page.evaluate(() => {
@@ -274,7 +272,7 @@ try {
         .contentEl.querySelector(".maplibregl-canvas");
       return !!canvas && getComputedStyle(canvas).position === "absolute";
     }),
-    "MapLibre's styles reach the card"
+    "MapLibre's styles reach the card",
   );
 
   blocked.add(fileOf("geo"));
@@ -294,7 +292,7 @@ try {
         );
       })),
     "a missing file shows a clear error",
-    out[0].error.slice(0, 60)
+    out[0].error.slice(0, 60),
   );
   blocked.clear();
   await page.reload();
@@ -304,7 +302,7 @@ try {
   ]);
   check(
     out[0].types.join() === "scattergeo" && !out[0].error,
-    "after the file is back, a reload fixes it"
+    "after the file is back, a reload fixes it",
   );
 
   check(errors.length === 0, "no page errors", errors.join("; "));
