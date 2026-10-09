@@ -230,7 +230,7 @@ try {
     // Trace types are loaded on demand, the same way the card does it
     await PlotlyTest.loadPlotlyModules(
       Object.keys(fixtures).map((type) => ({ type })),
-      {}
+      {},
     );
     for (const [type, data] of Object.entries(fixtures)) {
       const div = document.createElement("div");
@@ -1256,7 +1256,8 @@ try {
   );
   const resampleTimezone = await page.evaluate(async () => {
     const card = new CardTest.PlotlyGraph();
-    card.style.cssText = "display:block;position:fixed;top:0;left:0;width:480px";
+    card.style.cssText =
+      "display:block;position:fixed;top:0;left:0;width:480px";
     card.hass = {
       locale: { language: "en", time_zone: "local" },
       config: { time_zone: "Europe/Zurich" },
@@ -1266,19 +1267,26 @@ try {
       type: "custom:plotly-graph",
       time_zone: "America/Phoenix",
       refresh_interval: 0,
-      visible_range: [Date.parse("2024-03-05T07:00Z"), Date.parse("2024-03-07T07:00Z")],
-      entities: [{
-        entity: "",
-        type: "bar",
-        extend_to_present: false,
-        filters: [
-          { fn: `() => ({
+      visible_range: [
+        Date.parse("2024-03-05T07:00Z"),
+        Date.parse("2024-03-07T07:00Z"),
+      ],
+      entities: [
+        {
+          entity: "",
+          type: "bar",
+          extend_to_present: false,
+          filters: [
+            {
+              fn: `() => ({
             xs: [5, 6, 7].map(day => new Date(\`2024-03-0\${day}T07:00:00Z\`)),
             ys: [10, 20, 30], states: [], statistics: []
-          })` },
-          { resample: "1d" },
-        ],
-      }],
+          })`,
+            },
+            { resample: "1d" },
+          ],
+        },
+      ],
     });
     document.body.append(card);
     try {
@@ -1286,7 +1294,7 @@ try {
       return {
         error: card.errorMsgEl.textContent,
         ys: card.contentEl.data[0].y,
-        positions: card.contentEl.calcdata[0].map(point => point.p),
+        positions: card.contentEl.calcdata[0].map((point) => point.p),
       };
     } finally {
       card.remove();
@@ -1294,7 +1302,10 @@ try {
   });
   assert.equal(resampleTimezone.error, "");
   assert.deepEqual(resampleTimezone.ys, [10, 20]);
-  assert.deepEqual(resampleTimezone.positions, [Date.UTC(2024, 2, 5), Date.UTC(2024, 2, 6)]);
+  assert.deepEqual(resampleTimezone.positions, [
+    Date.UTC(2024, 2, 5),
+    Date.UTC(2024, 2, 6),
+  ]);
   results.results.push("the card passes its configured timezone to resample");
   const shiftedHistoryResults = await page.evaluate(async () => {
     const card = document.getElementById("card-under-test");

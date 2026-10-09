@@ -36,7 +36,7 @@ const colorSchemes = {
   orange_to_purple: ["#ffb400", "#d2980d", "#a57c1b", "#786028", "#363445", "#48446e", "#5e569b", "#776bcd", "#9080ff"],
   pink_foam: ["#54bebe", "#76c8c8", "#98d1d1", "#badbdb", "#dedad2", "#e4bcad", "#df979e", "#d7658b", "#c80064"],
   salmon_to_aqua: ["#e27c7c", "#a86464", "#6d4b4b", "#503f3f", "#333333", "#3c4e4b", "#466964", "#599e94", "#6cd4c5"],
-}
+};
 function isColorSchemeArray(obj: any): obj is ColorSchemeArray {
   return Array.isArray(obj);
 }
@@ -44,7 +44,7 @@ function isColorSchemeArray(obj: any): obj is ColorSchemeArray {
 export type ColorSchemeNames = keyof typeof colorSchemes;
 
 export function parseColorScheme(
-  color_scheme: InputConfig["color_scheme"]
+  color_scheme: InputConfig["color_scheme"],
 ): ColorSchemeArray {
   const schemeName = color_scheme ?? "category10";
   const colorScheme = isColorSchemeArray(schemeName)
@@ -55,8 +55,8 @@ export function parseColorScheme(
   if (colorScheme === null) {
     throw new Error(
       `color_scheme: "${color_scheme}" is not valid. Valid are an array of colors (see readme) or ${Object.keys(
-        colorSchemes
-      )}`
+        colorSchemes,
+      )}`,
     );
   }
   return colorScheme;

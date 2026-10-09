@@ -6,7 +6,9 @@ import { parseColorScheme } from "./parse-color-scheme";
 import { getEntityIndex } from "./parse-config";
 import getThemedLayout, { HATheme } from "./themed-layout";
 import { DEFAULT_PLOT_HEIGHT } from "../loading-state";
-declare const window: Window & { PlotlyGraphCardPresets?: Record<string, InputConfig> };
+declare const window: Window & {
+  PlotlyGraphCardPresets?: Record<string, InputConfig>;
+};
 const noop$fn = () => () => {};
 const defaultEntityRequired = {
   entity: "",
@@ -51,7 +53,7 @@ const defaultEntityOptional = {
   },
   hovertemplate: ({ getFromConfig }) =>
     `<b>${getFromConfig(".name")}</b><br><i>%{x}</i><br>%{y} ${getFromConfig(
-      ".unit_of_measurement"
+      ".unit_of_measurement",
     )}<extra></extra>`,
   yaxis: ({ getFromConfig, path }) => {
     const units: string[] = [];
@@ -130,7 +132,7 @@ const defaultYamlOptional: {
       Array.from({ length: 28 }).map((_, i) => [
         `xaxis${i + 2}`,
         { ...defaultExtraXAxes },
-      ])
+      ]),
     ),
     yaxis: {
       // automargin: true, // it makes zooming very jumpy
@@ -144,7 +146,7 @@ const defaultYamlOptional: {
       Array.from({ length: 27 }).map((_, i) => [
         `yaxis${i + 3}`,
         { ...defaultExtraYAxes },
-      ])
+      ]),
     ),
     legend: {
       orientation: "h",
@@ -178,7 +180,10 @@ const defaultYamlOptional: {
   },
 };
 
-function getPresetYaml(presets: string | string[] | undefined, skips?: Set<string>): Partial<InputConfig> {
+function getPresetYaml(
+  presets: string | string[] | undefined,
+  skips?: Set<string>,
+): Partial<InputConfig> {
   if (!window.PlotlyGraphCardPresets || presets === undefined) return {};
   if (!Array.isArray(presets)) presets = [presets];
   if (presets.length == 0) return {};
@@ -200,7 +205,7 @@ function getPresetYaml(presets: string | string[] | undefined, skips?: Set<strin
 export function addPreParsingDefaults(
   yaml_in: InputConfig,
   css_vars: HATheme,
-  hass?: HomeAssistant
+  hass?: HomeAssistant,
 ): InputConfig {
   // merging in two steps to ensure ha_theme and raw_plotly_config took its default value
   let yaml = merge({}, yaml_in, defaultYamlRequired, yaml_in);
@@ -212,8 +217,8 @@ export function addPreParsingDefaults(
         {},
         yaml.layout[axis],
         yaml.defaults[d + "axes"],
-        preset.defaults?.[d+ "axes"] ?? {},
-        yaml.layout[axis]
+        preset.defaults?.[d + "axes"] ?? {},
+        yaml.layout[axis],
       );
     }
   }
@@ -225,7 +230,7 @@ export function addPreParsingDefaults(
     },
     yaml.raw_plotly_config ? {} : defaultYamlOptional,
     preset,
-    yaml
+    yaml,
   );
 
   yaml.entities = yaml.entities.map((entity) => {
@@ -246,7 +251,7 @@ export function addPreParsingDefaults(
       defaultEntityRequired,
       yaml.raw_plotly_config ? {} : defaultEntityOptional,
       yaml.defaults?.entity,
-      entity
+      entity,
     );
     // An entity's name list replaces the default one instead of being merged by index
     if (entityName !== undefined) entity.name = entityName;
@@ -255,7 +260,8 @@ export function addPreParsingDefaults(
     // count too.
     if (entity.name && typeof entity.name === "object") {
       const id = entity.entity ?? "";
-      entity.name = computeEntityName(hass, hass?.states[id], entity.name) ?? id;
+      entity.name =
+        computeEntityName(hass, hass?.states[id], entity.name) ?? id;
     }
     // Entity filters replace defaults.entity.filters instead of being merged by index
     if (entityFilters !== undefined)
@@ -268,7 +274,7 @@ export function addPreParsingDefaults(
 }
 
 export function addPostParsingDefaults(
-  yaml: Config & { visible_range: [number, number] }
+  yaml: Config & { visible_range: [number, number] },
 ): Config {
   /**
    * These cannot be done via defaults because they depend on the entities already being fully evaluated and filtered
@@ -276,12 +282,14 @@ export function addPostParsingDefaults(
   const yAxisTitles = Object.fromEntries(
     yaml.entities.flatMap((entity) =>
       "yaxis" in entity && entity.yaxis
-        ? [[
-            "yaxis" + entity.yaxis.slice(1),
-            { title: { text: entity.unit_of_measurement } },
-          ]]
-        : []
-    )
+        ? [
+            [
+              "yaxis" + entity.yaxis.slice(1),
+              { title: { text: entity.unit_of_measurement } },
+            ],
+          ]
+        : [],
+    ),
   );
   const layout = merge(
     {},
@@ -294,7 +302,7 @@ export function addPostParsingDefaults(
           },
         },
     yaml.raw_plotly_config ? {} : yAxisTitles,
-    yaml.layout
+    yaml.layout,
   );
   const templateAxis =
     typeof layout.template === "object" && layout.template !== null
@@ -371,10 +379,12 @@ export function addPostParsingDefaults(
 export function getEditorYAxisRelayout(
   yaml: Config,
   range: readonly unknown[] | undefined,
-): (Partial<Plotly.Layout> & {
-  "yaxis.range": [number | null, number | null];
-  "yaxis.autorange": boolean;
-}) | undefined {
+):
+  | (Partial<Plotly.Layout> & {
+      "yaxis.range": [number | null, number | null];
+      "yaxis.autorange": boolean;
+    })
+  | undefined {
   if (!range || range.length !== 2) return;
   const [minimum, maximum] = range;
   if (
