@@ -11,16 +11,18 @@ async function hotReload() {
   wss.on("connection", () => console.log(wss.clients.size));
   wss.on("close", () => console.log(wss.clients.size));
   const sendToClients = (
-    /** @type {{ action: string; payload?: any }} */ message
+    /** @type {{ action: string; payload?: any }} */ message,
   ) => {
-    wss.clients.forEach(function each(
-      /** @type {{ readyState: number; send: (arg0: string) => void; }} */ client
-    ) {
-      if (client.readyState === WebSocket.OPEN) {
-        console.log("sending");
-        client.send(JSON.stringify(message));
-      }
-    });
+    wss.clients.forEach(
+      function each(
+        /** @type {{ readyState: number; send: (arg0: string) => void; }} */ client,
+      ) {
+        if (client.readyState === WebSocket.OPEN) {
+          console.log("sending");
+          client.send(JSON.stringify(message));
+        }
+      },
+    );
   };
   chokidar.watch("src", watchOptn).on("all", async (...args) => {
     console.log(args);
@@ -28,9 +30,9 @@ async function hotReload() {
       sendToClients({ action: "update-app" });
     } catch (e) {
       console.error(e);
-      sendToClients({ action: "error", payload: e.message });
+      sendToClients({ action: "error", payload: String(e) });
     }
   });
 }
 
-hotReload();
+void hotReload();

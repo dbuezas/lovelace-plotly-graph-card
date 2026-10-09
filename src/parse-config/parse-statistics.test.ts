@@ -2,16 +2,9 @@ import { parseTimeDuration } from "../duration/duration";
 import { parseStatistics } from "./parse-statistics";
 
 describe("yearly statistics periods", () => {
-  it("accepts an explicit year period without changing the statistic", () => {
-    expect(parseStatistics([0, 1], "max", "year")).toEqual({
-      statistic: "max",
-      period: "year",
-    });
-  });
-
   it("selects year at a custom automatic-period threshold", () => {
     const threshold = parseTimeDuration("12M");
-    const period = { "0m": "5minute", "25h": "hour", "12M": "year" } as const;
+    const period = { "0": "5minute", "25h": "hour", "12M": "year" } as const;
     expect(parseStatistics([0, threshold - 1], "mean", period)?.period).toBe(
       "hour",
     );

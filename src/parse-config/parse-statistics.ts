@@ -17,12 +17,12 @@ function getIsAutoPeriodConfig(periodObj: any): periodObj is AutoPeriodConfig {
     const duration = parseTimeDuration(durationStr as any); // will throw if not a valud duration
     if (!STATISTIC_PERIODS.includes(period as any)) {
       throw new Error(
-        `Error parsing automatic period config: "${period}" not expected. Must be ${STATISTIC_PERIODS}`
+        `Error parsing automatic period config: "${period}" not expected. Must be ${STATISTIC_PERIODS}`,
       );
     }
     if (duration <= lastDuration) {
       throw new Error(
-        `Error parsing automatic period config: ranges must be sorted in ascending order, "${durationStr}" not expected`
+        `Error parsing automatic period config: ranges must be sorted in ascending order, "${durationStr}" not expected`,
       );
     }
     lastDuration = duration;
@@ -32,7 +32,7 @@ function getIsAutoPeriodConfig(periodObj: any): periodObj is AutoPeriodConfig {
 export function parseStatistics(
   visible_range: number[],
   statistic?: StatisticType,
-  period?: StatisticPeriod | "auto" | AutoPeriodConfig
+  period?: StatisticPeriod | "auto" | AutoPeriodConfig,
 ) {
   if (!statistic && !period) return null;
   statistic ??= "mean";
@@ -55,8 +55,8 @@ export function parseStatistics(
       ([duration, period]) =>
         [parseTimeDuration(duration as any), period] as [
           number,
-          StatisticPeriod
-        ]
+          StatisticPeriod,
+        ],
     );
 
     for (const [fromMS, aPeriod] of mapping) {
@@ -69,11 +69,11 @@ export function parseStatistics(
   }
   if (!STATISTIC_TYPES.includes(statistic))
     throw new Error(
-      `statistic: "${statistic}" is not valid. Use ${STATISTIC_TYPES}`
+      `statistic: "${statistic}" is not valid. Use ${STATISTIC_TYPES}`,
     );
   if (!STATISTIC_PERIODS.includes(period))
     throw new Error(
-      `period: "${period}" is not valid. Use ${STATISTIC_PERIODS}`
+      `period: "${period}" is not valid. Use ${STATISTIC_PERIODS}`,
     );
   return { statistic, period };
 }

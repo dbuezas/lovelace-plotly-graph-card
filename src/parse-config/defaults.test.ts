@@ -291,7 +291,7 @@ describe("visual editor y-axis bounds", () => {
     expect(
       apply({ min_y_axis: 300, max_y_axis: 1500, fit_y_data: true, layout })
         .layout,
-    ).toEqual({ ...layout, xaxis: { range: [0, 100] } });
+    ).toEqual({ ...layout, xaxis: { range: [0, 100] }, margin: { r: 30 } });
   });
 
   test("explicit autorange options override editor bounds", () => {

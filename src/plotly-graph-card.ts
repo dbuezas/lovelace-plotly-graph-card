@@ -28,6 +28,9 @@ import { inTimeZone } from "./timezone";
 import { getEditorYAxisRelayout } from "./parse-config/defaults";
 import { prepareHistoryLineGaps } from "./history-line-gaps";
 import { StatisticsUpdates } from "./statistics-updates";
+import { HistoryUpdates } from "./history-updates";
+import { getEntityKey } from "./cache/Cache";
+import { mapStates } from "./cache/fetch-states";
 import type { StatisticsUpdatePeriod } from "./cache/statistics-refresh";
 
 const componentName = isProduction ? "plotly-graph" : "plotly-graph-dev";
@@ -35,7 +38,7 @@ const componentName = isProduction ? "plotly-graph" : "plotly-graph-dev";
 console.info(
   `%c ${componentName.toUpperCase()} %c ${version} ${process.env.NODE_ENV}`,
   "color: orange; font-weight: bold; background: black",
-  "color: white; font-weight: bold; background: dimgray"
+  "color: white; font-weight: bold; background: dimgray",
 );
 
 export class PlotlyGraph extends HTMLElement {
@@ -61,9 +64,25 @@ export class PlotlyGraph extends HTMLElement {
   private statisticsFetchPeriods = new Set<StatisticsUpdatePeriod>();
   statisticsUpdates = new StatisticsUpdates((period) => {
     this.statisticsFetchPeriods.add(period);
-    this.plot({ should_fetch: false }, 500);
+    void this.plot({ should_fetch: false }, 500);
+  });
+  historyUpdates = new HistoryUpdates((states, start) => {
+    let changed = false;
+    for (const entity of this.configParser.historyEntities) {
+      const history = mapStates(entity.entity, states[entity.entity]);
+      if (!history.length) continue;
+      // The stream is complete from its start, including intervals with no changes.
+      this.configParser.cache.add(entity, history, [
+        Math.min(start, +history[0].x),
+        +history.at(-1)!.x,
+      ]);
+      changed = true;
+    }
+    if (changed)
+      void this.plot({ should_fetch: false }, this.liveThrottle.change());
   });
   pausedRendering = false;
+  filesFailed = false; // the browser remembers failed imports until a reload
   handles: {
     resizeObserver?: ResizeObserver;
     intersectionObserver?: IntersectionObserver;
@@ -205,6 +224,10 @@ export class PlotlyGraph extends HTMLElement {
               overflow-wrap: break-word;
               display: none;
             }
+            /* No chart (e.g. files didn't load): don't overlay, take space */
+            ha-card:not(:has(.plot-container)) > #error-msg {
+              position: static;
+            }
             #error-msg a{
               color: mediumturquoise;
             }
@@ -230,7 +253,7 @@ export class PlotlyGraph extends HTMLElement {
       },
       onZoomEnd: () => {
         this.pausedRendering = false;
-        if (this.isConnected) this.plot({ should_fetch: true });
+        if (this.isConnected) void this.plot({ should_fetch: true });
       },
     });
   }
@@ -253,9 +276,10 @@ export class PlotlyGraph extends HTMLElement {
       if (
         this.size.width === nextSize.width &&
         this.size.height === nextSize.height
-      ) return;
+      )
+        return;
       this.size = nextSize;
-      this.plot({ should_fetch: false });
+      void this.plot({ should_fetch: false });
     };
     this.handles.intersectionObserver = new IntersectionObserver(([entry]) => {
       this.onScreen = entry.isIntersecting;
@@ -271,7 +295,7 @@ export class PlotlyGraph extends HTMLElement {
     this.updateStatisticsSubscriptions();
     // Start downloading Plotly while the data is fetched (errors show on render)
     import("./plotly").catch(() => {});
-    this.plot({ should_fetch: true, refresh_statistics: true });
+    void this.plot({ should_fetch: true, refresh_statistics: true });
   }
 
   disconnectedCallback() {
@@ -283,42 +307,43 @@ export class PlotlyGraph extends HTMLElement {
     this.resetButtonEl.removeEventListener("click", this.exitBrowsingMode);
     this.touchController.disconnect();
     this.statisticsUpdates.disconnect();
+    this.historyUpdates.disconnect();
   }
 
   connectPlotlyListeners() {
     if (this.plotlyListenersConnected) return;
     this.handles.relayoutListener = this.contentEl.on(
       "plotly_relayout",
-      this.onRelayout
+      this.onRelayout,
     )!;
     this.handles.restyleListener = this.contentEl.on(
       "plotly_restyle",
-      this.onRestyle
+      this.onRestyle,
     )!;
     this.handles.legendItemClick = this.contentEl.on(
       "plotly_legendclick",
-      this.onLegendItemClick
+      this.onLegendItemClick,
     )!;
     this.handles.legendItemDoubleclick = this.contentEl.on(
       "plotly_legenddoubleclick",
-      this.onLegendItemDoubleclick
+      this.onLegendItemDoubleclick,
     )!;
     this.handles.dataClick = this.contentEl.on(
       "plotly_click",
-      this.onDataClick
+      this.onDataClick,
     )!;
     this.handles.doubleclick = this.contentEl.on(
       "plotly_doubleclick",
-      this.onDoubleclick
+      this.onDoubleclick,
     )!;
     this.handles.annotationClick = this.contentEl.on(
       "plotly_clickannotation",
-      this.onAnnotationClick
+      this.onAnnotationClick,
     )!;
     this.handles.buttonClick = this.contentEl.on(
       // @ts-ignore Not properly typed in @types/plotly.js
       "plotly_buttonclicked",
-      this.onButtonClick
+      this.onButtonClick,
     )!;
     this.plotlyListenersConnected = true;
   }
@@ -329,17 +354,17 @@ export class PlotlyGraph extends HTMLElement {
     this.handles.restyleListener?.off("plotly_restyle", this.onRestyle);
     this.handles.legendItemClick?.off(
       "plotly_legendclick",
-      this.onLegendItemClick
+      this.onLegendItemClick,
     );
     this.handles.legendItemDoubleclick?.off(
       "plotly_legenddoubleclick",
-      this.onLegendItemDoubleclick
+      this.onLegendItemDoubleclick,
     );
     this.handles.dataClick?.off("plotly_click", this.onDataClick);
     this.handles.doubleclick?.off("plotly_doubleclick", this.onDoubleclick);
     this.handles.annotationClick?.off(
       "plotly_clickannotation",
-      this.onAnnotationClick
+      this.onAnnotationClick,
     );
     this.handles.buttonClick?.off("plotly_buttonclicked", this.onButtonClick);
     this.plotlyListenersConnected = false;
@@ -360,20 +385,19 @@ export class PlotlyGraph extends HTMLElement {
         const oldState = this._hass?.states[entity.entity];
         if (state && oldState !== state) {
           shouldPlot = true;
-          const start = new Date(oldState?.last_updated || state.last_updated);
           const end = new Date(state.last_updated);
-          const range: [number, number] = [+start, +end];
-          if (isEntityIdAttrConfig(entity) || isEntityIdStateConfig(entity)) {
-            this.configParser.cache.add(
-              entity,
-              [{ state, x: new Date(end), y: null }],
-              range
-            );
+          if (
+            (isEntityIdAttrConfig(entity) || isEntityIdStateConfig(entity)) &&
+            !this.historyUpdates.has(entity.entity)
+          ) {
+            this.configParser.cache.add(entity, [
+              { state, x: new Date(end), y: null, unconfirmed: true },
+            ]);
           }
         }
       }
       if (shouldPlot) {
-        this.plot({ should_fetch: false }, this.liveThrottle.change());
+        void this.plot({ should_fetch: false }, this.liveThrottle.change());
       }
     }
     this._hass = hass;
@@ -386,6 +410,31 @@ export class PlotlyGraph extends HTMLElement {
       this.isConnected && this.parsed_config?.refresh_interval === "auto"
         ? this.configParser.statisticsPeriods
         : new Set(),
+    );
+    const entities =
+      this.isConnected && this.parsed_config?.refresh_interval === "auto"
+        ? this.configParser.historyEntities
+        : [];
+    this.historyUpdates.update(
+      this.hass?.connection,
+      entities.map((entity) => entity.entity),
+      entities.some(isEntityIdAttrConfig),
+      (entityId) =>
+        Math.min(
+          ...entities
+            .filter((entity) => entity.entity === entityId)
+            .map((entity) => {
+              const key = getEntityKey(entity);
+              const cache = this.configParser.cache;
+              const history = cache.histories[key] ?? [];
+              for (let index = history.length - 1; index >= 0; index--) {
+                const row = history[index];
+                if (!("unconfirmed" in row && row.unconfirmed))
+                  return row.x.getTime();
+              }
+              return cache.ranges[key]?.[0]?.[0] ?? Date.now();
+            }),
+        ),
     );
   }
 
@@ -434,7 +483,7 @@ export class PlotlyGraph extends HTMLElement {
   exitBrowsingMode = async () => {
     this.isBrowsing = false;
     this.resetButtonEl.classList.add("hidden");
-    this.withoutRelayout(async () => {
+    void this.withoutRelayout(async () => {
       this.configParser.resetObservedRange();
       await this.plot({ should_fetch: true, refresh_statistics: true });
     });
@@ -488,10 +537,9 @@ export class PlotlyGraph extends HTMLElement {
   // The user supplied configuration. Throw an exception and Lovelace will
   // render an error card.
   async setConfig(config: InputConfig) {
-    const was = this.config;
     this.config = config;
     setInitialLoadingHeight(this.cardEl, config.layout);
-    this.exitBrowsingMode();
+    void this.exitBrowsingMode();
   }
   getCSSVars() {
     const styles = window.getComputedStyle(this.contentEl);
@@ -505,25 +553,28 @@ export class PlotlyGraph extends HTMLElement {
         cssVar(
           "--ha-font-family-body",
           "--paper-font-body1_-_font-family",
-          "--mdc-typography-body1-font-family"
+          "--mdc-typography-body1-font-family",
         ) || styles.fontFamily,
       "font-size": cssVar("--ha-font-size-s") || "12px",
       "font-weight":
         cssVar(
           "--ha-font-weight-normal",
           "--paper-font-body1_-_font-weight",
-          "--mdc-typography-body1-font-weight"
+          "--mdc-typography-body1-font-weight",
         ) || "400",
     };
   }
   fetchScheduled = false;
   private statisticsRefreshScheduled = false;
   plot = async (
-    { should_fetch, refresh_statistics = false }: {
+    {
+      should_fetch,
+      refresh_statistics = false,
+    }: {
       should_fetch: boolean;
       refresh_statistics?: boolean;
     },
-    delay?: Delay
+    delay?: Delay,
   ) => {
     if (should_fetch || refresh_statistics) this.fetchScheduled = true;
     if (refresh_statistics) this.statisticsRefreshScheduled = true;
@@ -537,11 +588,11 @@ export class PlotlyGraph extends HTMLElement {
     clearTimeout(this.handles.offScreenTimeout);
     if (!this.renderDeferred) return;
     this.renderDeferred = false;
-    this.plot({ should_fetch: false });
+    void this.plot({ should_fetch: false });
   };
   _plot = debounce(async () => {
     this.liveThrottle.renderStarted();
-    if (this.pausedRendering) return;
+    if (this.pausedRendering || this.filesFailed) return;
     // Off-screen cards update every 30 s, and catch up once scrolled into
     // view. They still update, for full-page screenshots.
     const wait = this.lastRender + 30_000 - performance.now();
@@ -589,21 +640,22 @@ export class PlotlyGraph extends HTMLElement {
         {
           layout: {
             ...this.size,
-            ...{ uirevision },
+            uirevision,
           },
           fetch_mask,
         },
         visible_range ? { visible_range } : {},
 
-        this.config
+        this.config,
       );
       const { errors, parsed } = await this.configParser.update({
         yaml,
         hass: this.hass,
         css_vars: this.getCSSVars(),
-        statisticsUpdates: !should_fetch && statisticsUpdates.size > 0
-          ? statisticsUpdates
-          : undefined,
+        statisticsUpdates:
+          !should_fetch && statisticsUpdates.size > 0
+            ? statisticsUpdates
+            : undefined,
       });
       // The user moved the plot while the data loaded. That move started a
       // new render, so don't draw the old range over it.
@@ -616,7 +668,7 @@ export class PlotlyGraph extends HTMLElement {
       this.parsed_config = parsed;
       const touch = parsed.disable_pinch_to_zoom
         ? false
-        : parsed.extended_touch_support ?? true;
+        : (parsed.extended_touch_support ?? true);
       const enabled = (gesture: keyof TouchGestures) =>
         typeof touch === "object" ? touch[gesture] !== false : touch;
       this.touchController.enabled = {
@@ -637,7 +689,7 @@ export class PlotlyGraph extends HTMLElement {
       if (refresh_interval !== "auto" && refresh_interval > 0) {
         this.handles.refreshTimeout = window.setTimeout(
           () => this.plot({ should_fetch: true, refresh_statistics: true }),
-          refresh_interval * 1000
+          refresh_interval * 1000,
         );
       }
       this.titleEl.innerText = this.parsed_config.title || "";
@@ -651,13 +703,19 @@ export class PlotlyGraph extends HTMLElement {
         const locale = await plotly.loadPlotlyModules(
           entities,
           layout,
-          config.locale
+          config.locale,
         );
         if (locale) config.locale = locale;
         Plotly = plotly.default;
       } catch (e: any) {
+        this.filesFailed = true;
         this.errorMsgEl.style.display = "block";
-        this.errorMsgEl.innerText = `Some files of the card didn't load (${e?.message}). Reload the page. If it keeps happening, reinstall the card (for a manual install, copy all files of the release).`;
+        this.errorMsgEl.innerText = `Some files of the card didn't load (${e?.message}). If reloading doesn't help, reinstall the card (for a manual install, copy all files of the release). `;
+        const reload = this.errorMsgEl.appendChild(
+          document.createElement("button"),
+        );
+        reload.textContent = "Reload";
+        reload.onclick = () => location.reload();
         return;
       }
       copyPlotlyStyles(this.plotlyStyleEl);
@@ -676,7 +734,10 @@ export class PlotlyGraph extends HTMLElement {
             "yaxis.autorange": true,
           };
           // Plotly accepts attribute paths, but its public types only list nested keys.
-          await Plotly.relayout(this.contentEl, update as Partial<Plotly.Layout>);
+          await Plotly.relayout(
+            this.contentEl,
+            update as Partial<Plotly.Layout>,
+          );
         }
         const editorUpdate = getEditorYAxisRelayout(
           this.parsed_config,

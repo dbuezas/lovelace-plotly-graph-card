@@ -1,6 +1,33 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "definitions": {
+    "With$fn<AutoPeriodConfig>": {
+      "properties": {
+        "0": {
+          "anyOf": [
+            {
+              "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
+              "type": "string"
+            },
+            {
+              "enum": [
+                "5minute",
+                "day",
+                "hour",
+                "month",
+                "week",
+                "year"
+              ],
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "required": [
+        "0"
+      ],
+      "type": "object"
+    },
     "With$fn<EntityName|undefined>": {
       "anyOf": [
         {
@@ -119,6 +146,9 @@
                     "$ref": "#/definitions/With$fn<{store_var:string;}>"
                   },
                   {
+                    "$ref": "#/definitions/With$fn<{align_timestamps:string|string[];}>"
+                  },
+                  {
                     "$ref": "#/definitions/With$fn<{trendline:\"linear\"|\"polynomial\"|\"power\"|\"exponential\"|\"theil_sen\"|\"robust_polynomial\"|\"fft\"|Partial<TrendlineParam>;}>"
                   },
                   {
@@ -202,7 +232,7 @@
               "type": "string"
             },
             {
-              "$ref": "#/definitions/With$fn<Partial<Record<TimeDurationStr,\"hour\"|\"5minute\"|\"day\"|\"week\"|\"month\"|\"year\">>>"
+              "$ref": "#/definitions/With$fn<AutoPeriodConfig>"
             },
             {
               "enum": [
@@ -215,6 +245,17 @@
                 "year"
               ],
               "type": "string"
+            }
+          ]
+        },
+        "show_extrema": {
+          "anyOf": [
+            {
+              "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
+              "type": "string"
+            },
+            {
+              "type": "boolean"
             }
           ]
         },
@@ -296,30 +337,6 @@
         },
         "unit_of_measurement": {
           "$ref": "#/definitions/With$fn<string|undefined>"
-        }
-      },
-      "type": "object"
-    },
-    "With$fn<Partial<Record<TimeDurationStr,\"hour\"|\"5minute\"|\"day\"|\"week\"|\"month\"|\"year\">>>": {
-      "properties": {
-        "0": {
-          "anyOf": [
-            {
-              "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
-              "type": "string"
-            },
-            {
-              "enum": [
-                "5minute",
-                "day",
-                "hour",
-                "month",
-                "week",
-                "year"
-              ],
-              "type": "string"
-            }
-          ]
         }
       },
       "type": "object"
@@ -464,6 +481,19 @@
       },
       "type": "object"
     },
+    "With$fn<string|string[]>": {
+      "anyOf": [
+        {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        {
+          "type": "string"
+        }
+      ]
+    },
     "With$fn<string|string[]|undefined>": {
       "anyOf": [
         {
@@ -496,6 +526,17 @@
       },
       "required": [
         "add"
+      ],
+      "type": "object"
+    },
+    "With$fn<{align_timestamps:string|string[];}>": {
+      "properties": {
+        "align_timestamps": {
+          "$ref": "#/definitions/With$fn<string|string[]>"
+        }
+      },
+      "required": [
+        "align_timestamps"
       ],
       "type": "object"
     },

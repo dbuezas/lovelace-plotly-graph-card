@@ -1,5 +1,4 @@
-jest.mock("../filters/filters", () => ({
-  __esModule: true,
+vi.mock("../filters/filters", () => ({
   default: {},
 }));
 
@@ -31,20 +30,25 @@ describe("ConfigParser history prefetch", () => {
   });
 
   afterEach(() => {
-    jest.useRealTimers();
+    vi.useRealTimers();
   });
 
   it.each(["current_day", "current_week", "future range"] as const)(
     "uses one batch for %s even when time advances during the request",
     async (window) => {
       const now = new Date("2025-01-08T12:00:00.000Z");
-      jest.useFakeTimers().setSystemTime(now);
+      vi.useFakeTimers().setSystemTime(now);
       const entityIds = ["sensor.one", "sensor.two", "sensor.three"];
-      const callWS = jest.fn().mockImplementation(({ entity_ids, end_time }) => {
-        jest.setSystemTime(Date.now() + 4);
-        return Promise.resolve(Object.fromEntries(entity_ids.map((id) => [
-          id, [{ s: "5", lu: Date.parse(end_time) / 1000 - 60 }],
-        ])));
+      const callWS = vi.fn().mockImplementation(({ entity_ids, end_time }) => {
+        vi.setSystemTime(Date.now() + 4);
+        return Promise.resolve(
+          Object.fromEntries(
+            entity_ids.map((id) => [
+              id,
+              [{ s: "5", lu: Date.parse(end_time) / 1000 - 60 }],
+            ]),
+          ),
+        );
       });
       const parser = new ConfigParser();
       const input: Parameters<ConfigParser["update"]>[0] = {
@@ -53,37 +57,46 @@ describe("ConfigParser history prefetch", () => {
           ...(window === "future range"
             ? { visible_range: [+now - 3600000, +now + 3600000] }
             : { hours_to_show: window }),
-          entities: entityIds.map((entity) => ({ entity, extend_to_present: false })),
+          entities: entityIds.map((entity) => ({
+            entity,
+            extend_to_present: false,
+          })),
         },
         hass: {
           callWS,
-          states: Object.fromEntries(entityIds.map((id) => [id, state(id, "5")])),
+          states: Object.fromEntries(
+            entityIds.map((id) => [id, state(id, "5")]),
+          ),
           locale: { language: "en", first_weekday: "monday" },
         } as unknown as HomeAssistant,
         css_vars: {} as HATheme,
       };
       expect((await parser.update(input)).errors).toEqual([]);
       expect(callWS).toHaveBeenCalledTimes(1);
-      expect(callWS.mock.calls[0][0]).toEqual(expect.objectContaining({
-        entity_ids: entityIds,
-        end_time: now.toISOString(),
-      }));
+      expect(callWS.mock.calls[0][0]).toEqual(
+        expect.objectContaining({
+          entity_ids: entityIds,
+          end_time: now.toISOString(),
+        }),
+      );
 
       // A later refresh must still fetch the new tail, once for all entities.
-      jest.setSystemTime(+now + 300000);
+      vi.setSystemTime(+now + 300000);
       expect((await parser.update(input)).errors).toEqual([]);
       expect(callWS).toHaveBeenCalledTimes(2);
-      expect(callWS.mock.calls[1][0]).toEqual(expect.objectContaining({
-        entity_ids: entityIds,
-        end_time: new Date(+now + 300000).toISOString(),
-      }));
+      expect(callWS.mock.calls[1][0]).toEqual(
+        expect.objectContaining({
+          entity_ids: entityIds,
+          end_time: new Date(+now + 300000).toISOString(),
+        }),
+      );
     },
   );
 
   async function parse(entities: any[], fetch_mask: boolean[] = []) {
     const start = Date.parse("2025-01-01T00:00:00.000Z");
     const end = start + 86400000;
-    const callWS = jest.fn().mockImplementation((request) => {
+    const callWS = vi.fn().mockImplementation((request) => {
       const ids = request.entity_ids || request.statistic_ids;
       return Promise.resolve(
         Object.fromEntries(
@@ -209,7 +222,10 @@ describe("ConfigParser history prefetch", () => {
       }),
     ]);
     expect(result.parsed.entities.map(yValues)).toEqual([
-      ["5"], [42], ["5"], [42],
+      ["5"],
+      [42],
+      ["5"],
+      [42],
     ]);
     expect((await parser.update(input)).errors).toEqual([]);
     expect(callWS).toHaveBeenCalledTimes(2);
@@ -222,14 +238,16 @@ describe("ConfigParser history prefetch", () => {
     ]);
     parser.cache.clearCache();
     callWS.mockClear().mockRejectedValueOnce(new Error("Disconnected"));
-    const error = jest.spyOn(console, "error").mockImplementation();
-    const warn = jest.spyOn(console, "warn").mockImplementation();
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     try {
       const result = await parser.update(input);
       expect(result.errors).toEqual([]);
       expect(result.parsed.entities.map(yValues)).toEqual([["5"], ["5"]]);
       expect(callWS.mock.calls.map(([request]) => request.entity_ids)).toEqual([
-        ["sensor.one", "sensor.two"], ["sensor.one"], ["sensor.two"],
+        ["sensor.one", "sensor.two"],
+        ["sensor.one"],
+        ["sensor.two"],
       ]);
     } finally {
       error.mockRestore();
@@ -245,8 +263,8 @@ describe("ConfigParser history prefetch", () => {
     const successful = callWS.getMockImplementation()!;
     parser.cache.clearCache();
     callWS.mockClear().mockRejectedValue(new Error("Disconnected"));
-    const error = jest.spyOn(console, "error").mockImplementation();
-    const warn = jest.spyOn(console, "warn").mockImplementation();
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     try {
       expect((await parser.update(input)).errors.length).toBeGreaterThan(0);
       expect(callWS).toHaveBeenCalledTimes(3);
@@ -306,7 +324,7 @@ describe("ConfigParser history prefetch", () => {
       "sensor.three",
       "sensor.four",
     ];
-    const callWS = jest.fn().mockImplementation(({ entity_ids }) => {
+    const callWS = vi.fn().mockImplementation(({ entity_ids }) => {
       return Promise.resolve(
         Object.fromEntries(
           entity_ids.map((entityId, index) => [

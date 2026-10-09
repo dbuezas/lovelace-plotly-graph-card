@@ -14,20 +14,23 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
-          cache: npm
-      - run: npm ci
-      - run: npm run tsc
-      - run: npm run build
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bun run tsc
+      - name: Lint and format check
+        run: |
+          bun run lint:check || {
+            echo "::error::Run 'bun run lint:fix' and commit the result. Fix by hand what it can't."
+            exit 1
+          }
+      - run: bun run build
       - name: Unit tests
-        run: npm test -- --ci
-      - run: npx playwright install --with-deps chromium
-      - run: npm run test:browser
-      - run: npm run test:autorange
-      - run: npm run test:resize
-      - run: npm run test:card-lifecycle
-      - run: npm run test:loading
-      - run: npm run test:touch
-      - run: npm run test:split
+        run: bun run test
+      - run: bunx playwright install --with-deps chromium
+      - run: bun run test:browser
+      - run: bun run test:autorange
+      - run: bun run test:resize
+      - run: bun run test:card-lifecycle
+      - run: bun run test:loading
+      - run: bun run test:touch
+      - run: bun run test:split

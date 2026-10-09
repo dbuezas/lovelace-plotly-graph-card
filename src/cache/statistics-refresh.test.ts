@@ -1,3 +1,4 @@
+import type { MockInstance } from "vitest";
 import type { HomeAssistant } from "custom-card-helpers";
 import type { StatisticPeriod } from "../recorder-types";
 import type { EntityIdStatisticsConfig, TimestampRange } from "../types";
@@ -17,7 +18,7 @@ const row = (start: number, end: number, mean: number) => ({
   mean,
 });
 function mockHass(rows: ReturnType<typeof row>[]) {
-  const callWS = jest.fn(async ({ statistic_ids }) =>
+  const callWS = vi.fn(async ({ statistic_ids }) =>
     Object.fromEntries(statistic_ids.map((id: string) => [id, rows])),
   );
   const startTimes = () =>
@@ -26,11 +27,11 @@ function mockHass(rows: ReturnType<typeof row>[]) {
 }
 
 describe("refreshing live statistics in the cache", () => {
-  let now: jest.SpyInstance;
+  let now: MockInstance;
   beforeEach(() => {
-    now = jest.spyOn(Date, "now").mockReturnValue(start + 12 * hour);
+    now = vi.spyOn(Date, "now").mockReturnValue(start + 12 * hour);
   });
-  afterEach(() => jest.restoreAllMocks());
+  afterEach(() => vi.restoreAllMocks());
   const advance = (ms: number) => now.mockReturnValue(Date.now() + ms);
 
   it.each(["single", "batched"])(
@@ -123,7 +124,7 @@ describe("refreshing live statistics in the cache", () => {
     await cache.fetch(range, config, hass);
     advance(hour);
     await cache.refreshStatistics(Date.now());
-    jest.spyOn(console, "error").mockImplementation(() => {});
+    vi.spyOn(console, "error").mockImplementation(() => {});
     callWS.mockRejectedValueOnce(new Error("offline"));
     await expect(cache.fetch(range, config, hass)).rejects.toThrow("offline");
     expect(cache.getData(config).ys).toEqual([1]);

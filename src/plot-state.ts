@@ -2,9 +2,9 @@ type TraceVisibility = boolean | "legendonly";
 
 export function getFetchMask(
   data: { visible?: TraceVisibility }[] | undefined,
-  shouldFetch: boolean
+  shouldFetch: boolean,
 ): boolean[] {
   return (data || []).map(
-    ({ visible }) => shouldFetch && visible !== "legendonly"
+    ({ visible }) => shouldFetch && visible !== "legendonly",
   );
 }

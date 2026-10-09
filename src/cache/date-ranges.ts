@@ -2,7 +2,7 @@ import { TimestampRange } from "../types";
 
 const subtract_single_single = (
   [a_start, a_end]: TimestampRange,
-  [b_start, b_end]: TimestampRange
+  [b_start, b_end]: TimestampRange,
 ): TimestampRange[] => {
   // no intersection
   if (a_end < b_start) return [[a_start, a_end]];
@@ -25,7 +25,7 @@ const subtract_single_single = (
     throw new Error(
       `Error computing range subtraction. Please report an issue in the repo of this card and share this:` +
         JSON.stringify([a_start, a_end]) +
-        JSON.stringify([b_start, b_end])
+        JSON.stringify([b_start, b_end]),
     );
   }
 };
@@ -44,10 +44,7 @@ export const compactRanges = (ranges: TimestampRange[]) =>
       if (acc.length === 0) return [next];
       const prev = acc[acc.length - 1];
       if (prev[1] + 1 >= next[0]) {
-        const merged: TimestampRange = [
-          prev[0],
-          Math.max(prev[1], next[1]),
-        ];
+        const merged: TimestampRange = [prev[0], Math.max(prev[1], next[1])];
         return [...acc.slice(0, -1), merged];
       }
       return [...acc, next];
