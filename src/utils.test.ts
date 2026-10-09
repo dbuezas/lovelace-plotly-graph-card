@@ -196,18 +196,18 @@ describe("debounce", () => {
 
   it("shares one wall-clock snapshot per frame and advances on the next frame", async () => {
     const callbacks: FrameRequestCallback[] = [];
-    global.requestAnimationFrame = jest.fn((callback) => {
+    global.requestAnimationFrame = vi.fn((callback) => {
       callbacks.push(callback);
       return callbacks.length;
     });
-    const first = jest.fn(async (_now: number) => {});
-    const second = jest.fn(async (_now: number) => {});
+    const first = vi.fn(async (_now: number) => {});
+    const second = vi.fn(async (_now: number) => {});
     const update = debounce(first);
     const calls = [update(), debounce(second)()];
     await advance(0);
     const start = Date.now();
     callbacks[0](501);
-    jest.advanceTimersByTime(4);
+    vi.advanceTimersByTime(4);
     callbacks[1](501);
     await Promise.all(calls);
     expect(first.mock.calls).toEqual([[start]]);
@@ -215,7 +215,7 @@ describe("debounce", () => {
 
     const next = update();
     await advance(0);
-    jest.advanceTimersByTime(12);
+    vi.advanceTimersByTime(12);
     callbacks[2](517);
     await next;
     expect(first.mock.calls).toEqual([[start], [start + 16]]);

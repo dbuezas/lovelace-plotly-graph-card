@@ -109,7 +109,7 @@ describe("statistics request batching", () => {
 
   it("keeps calendar ranges and fetch cutoffs on the supplied snapshot across midnight", async () => {
     const snapshot = Date.parse("2025-01-02T23:59:59.998Z");
-    jest.spyOn(Date, "now").mockReturnValue(snapshot + 4);
+    vi.spyOn(Date, "now").mockReturnValue(snapshot + 4);
     const callWS = successfulCallWS();
     const result = await update(
       new ConfigParser(),

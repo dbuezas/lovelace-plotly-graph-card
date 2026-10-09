@@ -1,3 +1,4 @@
+import type { Mock } from "vitest";
 import type { HomeAssistant } from "custom-card-helpers";
 import {
   requestCardData,
@@ -25,13 +26,13 @@ const statistics = (ids = ["sensor.one"]): StatisticsRequest => ({
   statistic_ids: ids,
   period: "hour",
 });
-const hass = (callWS: jest.Mock, connection: object = {}): HomeAssistant =>
+const hass = (callWS: Mock, connection: object = {}): HomeAssistant =>
   ({ callWS, connection }) as unknown as HomeAssistant;
 const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 describe("shared card requests", () => {
   it("batches entity sets across HA state snapshots on the same connection", async () => {
-    const callWS = jest.fn().mockResolvedValue({});
+    const callWS = vi.fn().mockResolvedValue({});
     const connection = {};
     const a = requestCardData(
       hass(callWS, connection),
@@ -54,7 +55,7 @@ describe("shared card requests", () => {
 
   it("reuses an in-flight entity superset only for the same history window", async () => {
     let finish!: (data: unknown) => void;
-    const callWS = jest.fn(
+    const callWS = vi.fn(
       () =>
         new Promise((resolve) => {
           finish = resolve;
@@ -74,7 +75,7 @@ describe("shared card requests", () => {
 
   it("does not reuse uncovered entities or later end times after dispatch", async () => {
     let finish!: (data: unknown) => void;
-    const callWS = jest
+    const callWS = vi
       .fn()
       .mockImplementationOnce(
         () =>
@@ -95,7 +96,7 @@ describe("shared card requests", () => {
   });
 
   it("keeps even millisecond range differences and history options separate", async () => {
-    const callWS = jest.fn().mockResolvedValue({});
+    const callWS = vi.fn().mockResolvedValue({});
     const ha = hass(callWS);
     await Promise.all([
       requestCardData(ha, history()),
@@ -115,7 +116,7 @@ describe("shared card requests", () => {
   });
 
   it("keeps connections isolated even when they use the same transport function", async () => {
-    const callWS = jest.fn().mockResolvedValue({});
+    const callWS = vi.fn().mockResolvedValue({});
     await Promise.all([
       requestCardData(hass(callWS), history()),
       requestCardData(hass(callWS), history()),
@@ -125,7 +126,7 @@ describe("shared card requests", () => {
 
   it("does not share mutable rows or nested attributes between cards", async () => {
     const original = { s: "1", lu: start / 1000, a: { nested: { value: 1 } } };
-    const callWS = jest.fn().mockResolvedValue({ "sensor.one": [original] });
+    const callWS = vi.fn().mockResolvedValue({ "sensor.one": [original] });
     const ha = hass(callWS);
     const [a, b] = await Promise.all([
       requestCardData(ha, history()),
@@ -143,7 +144,7 @@ describe("shared card requests", () => {
   });
 
   it("does not retain completed responses", async () => {
-    const callWS = jest.fn().mockResolvedValue({});
+    const callWS = vi.fn().mockResolvedValue({});
     const ha = hass(callWS);
     await requestCardData(ha, history());
     await requestCardData(ha, history());
@@ -153,7 +154,7 @@ describe("shared card requests", () => {
   it("retries an invalid-entity batch per card so healthy cards still load", async () => {
     const error = { code: "invalid_entity_ids", message: "Invalid entity_ids" };
     const rows = [{ s: "1", lu: start / 1000 }];
-    const callWS = jest.fn(async ({ entity_ids }: HistoryRequest) => {
+    const callWS = vi.fn(async ({ entity_ids }: HistoryRequest) => {
       if (entity_ids.includes("sensor.my-typo")) throw error;
       return { "sensor.ok": rows };
     });
@@ -175,7 +176,7 @@ describe("shared card requests", () => {
 
   it("rejects transport failures without extra retries and accepts the next request", async () => {
     const error = new Error("offline");
-    const callWS = jest.fn().mockRejectedValueOnce(error).mockResolvedValue({});
+    const callWS = vi.fn().mockRejectedValueOnce(error).mockResolvedValue({});
     const ha = hass(callWS);
     const settled = await Promise.allSettled([
       requestCardData(ha, history()),
@@ -190,7 +191,7 @@ describe("shared card requests", () => {
   });
 
   it("does not strand queued groups when the transport throws synchronously", async () => {
-    const callWS = jest
+    const callWS = vi
       .fn()
       .mockImplementationOnce(() => {
         throw Error("offline");
@@ -209,7 +210,7 @@ describe("shared card requests", () => {
   });
 
   it("batches the statistics fetch path but keeps periods and exact ranges separate", async () => {
-    const callWS = jest.fn().mockResolvedValue({});
+    const callWS = vi.fn().mockResolvedValue({});
     const ha = hass(callWS);
     await Promise.all([
       fetchStatistics(
