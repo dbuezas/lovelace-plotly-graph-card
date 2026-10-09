@@ -401,6 +401,22 @@ describe("filters", () => {
           ).toEqual([NaN, 695, 1]);
         });
 
+        it("resets on January 1st, not a fixed 365 days from today", () => {
+          vi.setSystemTime(new Date("2024-06-15T12:00:00+02:00"));
+          expect(
+            run(
+              [
+                "2023-12-31T23:30:00+01:00",
+                "2024-01-01T00:30:00+01:00",
+                "2024-06-14T12:00:00+02:00",
+                "2024-06-15T12:00:00+02:00",
+              ],
+              "Europe/Zurich",
+              { unit: "h", reset_every: "1y" },
+            ),
+          ).toEqual([NaN, 0.5, 3971, 3995]);
+        });
+
         it("keeps fractional day resets as fixed durations", () => {
           vi.setSystemTime(new Date("2024-03-30T12:00:00+01:00"));
           expect(
@@ -416,7 +432,7 @@ describe("filters", () => {
           ).toEqual([NaN, 0, 1]);
         });
 
-        it.each(["2d", "1w", "1M"] as const)(
+        it.each(["2d", "1w", "1M", "1y"] as const)(
           "reuses each %s calendar period for dense samples",
           (reset_every) => {
             const interval = calendar.calendarInterval(

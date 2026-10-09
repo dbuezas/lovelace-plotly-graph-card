@@ -1468,7 +1468,8 @@ This also applies to the boundaries of `hours_to_show: current_day` and friends,
 For `integrate`, whole-day resets such as `reset_every: 1d` and `2d` use the same
 calendar grid as `resample`, including 23- and 25-hour days. Whole-week resets
 (`1w`, `2w`, etc.) use the first weekday configured in Home Assistant. Whole-month
-resets (`1M`, `2M`, etc.) start on the first of a calendar month. Multi-period
+resets (`1M`, `2M`, etc.) start on the first of a calendar month, and whole-year
+resets (`1y`, `2y`, etc.) on January 1st. Multi-period
 groups use a stable 1970 calendar anchor, so reloading does not move the reset.
 
 `reset_every: 24h`, fractional intervals and other units keep their fixed
