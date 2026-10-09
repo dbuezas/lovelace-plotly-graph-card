@@ -30,6 +30,7 @@ jobs:
       - run: bun run test:browser
       - run: bun run test:autorange
       - run: bun run test:resize
+      - run: bun run test:zero-alignment
       - run: bun run test:card-lifecycle
       - run: bun run test:loading
       - run: bun run test:touch

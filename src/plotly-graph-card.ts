@@ -32,6 +32,10 @@ import { HistoryUpdates } from "./history-updates";
 import { getEntityKey } from "./cache/Cache";
 import { mapStates } from "./cache/fetch-states";
 import type { StatisticsUpdatePeriod } from "./cache/statistics-refresh";
+import {
+  getZeroAlignmentProtectedAxes,
+  getZeroAlignmentRelayout,
+} from "./zero-alignment";
 
 const componentName = isProduction ? "plotly-graph" : "plotly-graph-dev";
 
@@ -45,6 +49,8 @@ export class PlotlyGraph extends HTMLElement {
   contentEl: Plotly.PlotlyHTMLElement & {
     data: (Plotly.Data & { entity: string })[];
     layout: Plotly.Layout;
+    _fullLayout: Plotly.Layout;
+    _fullData: { yaxis?: string; visible?: unknown; y?: readonly unknown[] }[];
   };
   errorMsgEl: HTMLElement;
   plotlyStyleEl: HTMLStyleElement;
@@ -728,15 +734,18 @@ export class PlotlyGraph extends HTMLElement {
       copyPlotlyStyles(this.plotlyStyleEl);
       this.touchController.Fx = (Plotly as any).Fx;
       await this.withoutRelayout(async () => {
+        const autorangeMainAxis =
+          autorange_after_scroll &&
+          !this.parsed_config.editor_y_axis?.log_fit_bounds;
+        const protectedAxes = this.parsed_config.align_zero
+          ? getZeroAlignmentProtectedAxes(layout, autorangeMainAxis)
+          : undefined;
         const drawnEntities = prepareHistoryLineGaps(
           entities,
           this.parsed_config.raw_plotly_config,
         );
         await Plotly.react(this.contentEl, drawnEntities, layout, config);
-        if (
-          autorange_after_scroll &&
-          !this.parsed_config.editor_y_axis?.log_fit_bounds
-        ) {
+        if (autorangeMainAxis) {
           const update = {
             "yaxis.autorange": true,
           };
@@ -751,6 +760,14 @@ export class PlotlyGraph extends HTMLElement {
           this.contentEl.layout.yaxis?.range,
         );
         if (editorUpdate) await Plotly.relayout(this.contentEl, editorUpdate);
+        if (protectedAxes) {
+          const alignment = getZeroAlignmentRelayout(
+            this.contentEl._fullLayout,
+            this.contentEl._fullData,
+            protectedAxes,
+          );
+          if (alignment) await Plotly.relayout(this.contentEl, alignment);
+        }
         this.contentEl.style.visibility = "";
       });
       if (this.isConnected) this.connectPlotlyListeners();
