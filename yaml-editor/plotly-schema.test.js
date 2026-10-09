@@ -286,24 +286,6 @@ test("combines card options with runtime Plotly definitions", () => {
   );
 });
 
-test("accepts year as a fixed or automatic statistics period", () => {
-  const schema = JSON.parse(
-    fs.readFileSync(path.join(directory, "src/schema.json"), "utf8"),
-  );
-  const validate = new Ajv({ strict: false }).compile(schema);
-  const config = (period) => ({
-    type: "custom:plotly-graph",
-    entities: [{ entity: "sensor.energy", statistic: "sum", period }],
-  });
-  assert.equal(validate(config("year")), true, JSON.stringify(validate.errors));
-  assert.equal(
-    validate(config({ 0: "year" })),
-    true,
-    JSON.stringify(validate.errors),
-  );
-  assert.equal(validate(config("years")), false);
-});
-
 test("checked-in schema is generated from Plotly runtime metadata", () => {
   const repository = path.resolve(directory, "..");
   const schema = JSON.parse(

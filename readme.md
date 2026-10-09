@@ -271,6 +271,10 @@ entities:
     attribute: temperature
 ```
 
+### Shared data requests
+
+Cards on the same Home Assistant connection share pending or in-flight history/statistics requests only when their time ranges and options match, while keeping their caches and response data independent.
+
 ### Statistics support
 
 Fetch and plot long-term statistics of an entity
@@ -401,9 +405,6 @@ entities:
 ```
 
 Note that `5minute` period statistics are limited in time as normal recorder history is, contrary to other periods which keep data for years.
-
-`period: year` requests yearly aggregates directly from Home Assistant, just like
-`day`, `week`, and `month`. The card does not aggregate monthly data itself.
 
 ## show_extrema:
 

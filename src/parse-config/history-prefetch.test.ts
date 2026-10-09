@@ -37,7 +37,9 @@ describe("ConfigParser history prefetch", () => {
     "uses one batch for %s even when time advances during the request",
     async (window) => {
       const now = new Date("2025-01-08T12:00:00.000Z");
-      vi.useFakeTimers().setSystemTime(now);
+      vi.useFakeTimers({
+        toNotFake: ["setTimeout", "clearTimeout"],
+      }).setSystemTime(now);
       const entityIds = ["sensor.one", "sensor.two", "sensor.three"];
       const callWS = vi.fn().mockImplementation(({ entity_ids, end_time }) => {
         vi.setSystemTime(Date.now() + 4);

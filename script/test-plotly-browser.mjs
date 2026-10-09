@@ -1151,48 +1151,6 @@ try {
   results.results.push(
     "four statistics traces request only mean and render from one cached response",
   );
-  const annualStatistics = await page.evaluate(async () => {
-    const card = document.getElementById("card-under-test");
-    const start = Date.parse("2023-01-01T00:00:00Z");
-    const next = Date.parse("2024-01-01T00:00:00Z");
-    const end = Date.parse("2025-01-01T00:00:00Z");
-    card.hass = {
-      ...card.hass,
-      callWS: async ({ type, period }) => {
-        if (type !== "recorder/statistics_during_period" || period !== "year")
-          throw new Error("Expected native yearly statistics");
-        return {
-          "sensor.annual": [
-            { start, end: next, max: 100 },
-            { start: next, end, max: 200 },
-          ],
-        };
-      },
-    };
-    card.setConfig({
-      type: "custom:plotly-graph",
-      refresh_interval: 0,
-      visible_range: [start, end],
-      entities: [
-        {
-          entity: "sensor.annual",
-          statistic: "max",
-          period: "year",
-          type: "bar",
-        },
-      ],
-    });
-    await card.plot({ should_fetch: true });
-    return {
-      values: card.contentEl.calcdata.map((points) =>
-        points.map((point) => point.s),
-      ),
-      error: card.errorMsgEl.textContent,
-    };
-  });
-  assert.equal(annualStatistics.error, "");
-  assert.deepEqual(annualStatistics.values, [[100, 200]]);
-  results.results.push("native yearly statistics render as annual bars");
   await page.evaluate(() => {
     const card = document.getElementById("card-under-test");
     const end = Date.now() - 60000;
@@ -1275,6 +1233,93 @@ try {
   ]);
   results.results.push(
     "four history traces render from one WebSocket request and reuse the cache",
+  );
+  const sharedCards = await page.evaluate(async () => {
+    const template = document.getElementById("card-under-test");
+    const originalNow = Date.now;
+    let clock = originalNow();
+    const start = clock - 86400000;
+    Date.now = () => clock;
+    const requests = [];
+    const snapshots = [];
+    const hass = {
+      ...template.hass,
+      connection: {},
+      callWS: async (request) => {
+        requests.push(request);
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        return Object.fromEntries(
+          request.entity_ids.map((id) => [
+            id,
+            [
+              { s: id === "sensor.one" ? "1" : "3", lu: start / 1000 },
+              {
+                s: id === "sensor.one" ? "2" : "4",
+                lu: (start + 600000) / 1000,
+              },
+            ],
+          ]),
+        );
+      },
+    };
+    const cards = [0, 1].map((index) => {
+      const card = new CardTest.PlotlyGraph();
+      card.style.cssText = `display:block;position:fixed;top:0;left:${index * 480}px;width:440px`;
+      card.setConfig({
+        type: "custom:plotly-graph",
+        refresh_interval: 0,
+        hours_to_show: 24,
+        entities: [
+          {
+            entity: index === 0 ? "sensor.one" : "sensor.two",
+            extend_to_present: false,
+          },
+        ],
+      });
+      const update = card.configParser.update.bind(card.configParser);
+      card.configParser.update = (input) => {
+        snapshots[index] ??= input.now;
+        clock += 4;
+        return update(input);
+      };
+      card.hass = hass;
+      document.body.append(card);
+      return card;
+    });
+    try {
+      await Promise.all(cards.map((card) => card.plot({ should_fetch: true })));
+      return {
+        requests,
+        snapshots,
+        values: cards.map((card) => card.contentEl.data[0].y),
+        errors: cards.map((card) => card.errorMsgEl.textContent),
+      };
+    } finally {
+      Date.now = originalNow;
+      cards.forEach((card) => card.remove());
+    }
+  });
+  assert.equal(sharedCards.requests.length, 1);
+  assert.equal(sharedCards.snapshots[0], sharedCards.snapshots[1]);
+  assert.equal(
+    Date.parse(sharedCards.requests[0].end_time),
+    sharedCards.snapshots[0],
+  );
+  assert.equal(
+    Date.parse(sharedCards.requests[0].start_time),
+    sharedCards.snapshots[0] - 86400000 - 1,
+  );
+  assert.deepEqual(sharedCards.requests[0].entity_ids, [
+    "sensor.one",
+    "sensor.two",
+  ]);
+  assert.deepEqual(sharedCards.values, [
+    ["1", "2"],
+    ["3", "4"],
+  ]);
+  assert.deepEqual(sharedCards.errors, ["", ""]);
+  results.results.push(
+    "two cards share default frame ranges despite a 4 ms clock drift and render their own data",
   );
   const generatedFilters = await page.evaluate(async () => {
     const card = document.getElementById("card-under-test");

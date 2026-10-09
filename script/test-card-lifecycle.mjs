@@ -230,13 +230,15 @@ try {
     checkListeners(1);
     results.push("later render failure preserves working listeners");
 
+    const queuedRender = card._plot(50);
     card.remove();
+    await queuedRender;
     checkListeners(0);
     document.body.append(card);
     await card._plot();
     checkListeners(1);
     checkInteractions();
-    results.push("disconnect and reconnect do not duplicate listeners");
+    results.push("removed cards skip queued renders and reconnect normally");
 
     Plotly.react = async (...args) => {
       const result = await realReact(...args);
@@ -258,6 +260,38 @@ try {
     card.remove();
     Plotly.purge(card.contentEl);
     Plotly.newPlot = realNewPlot;
+    const waitingCard = new PlotlyGraph();
+    waitingCard.plot = async () => {};
+    document.body.append(waitingCard);
+    const waitingRender = waitingCard._plot();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await new Promise(requestAnimationFrame);
+    waitingCard.remove();
+    await waitingRender;
+    check(
+      !waitingCard.parsed_config,
+      "Removed card kept waiting for its initial configuration",
+    );
+    check(
+      waitingCard.cardEl.getAttribute("aria-busy") === "true",
+      "Removing a card prematurely finished its loading state",
+    );
+    waitingCard.hass = { states: {}, locale: { language: "en" } };
+    await waitingCard.setConfig({
+      type: "custom:plotly-graph",
+      refresh_interval: 0,
+      entities: [],
+    });
+    document.body.append(waitingCard);
+    await waitingCard._plot();
+    check(
+      waitingCard.parsed_config &&
+        waitingCard.cardEl.getAttribute("aria-busy") === "false",
+      "Reconnected card could not finish loading",
+    );
+    waitingCard.remove();
+    Plotly.purge(waitingCard.contentEl);
+    results.push("removing a card ends its initial wait and permits recovery");
     return results;
   });
   await page.evaluate(async () => {
