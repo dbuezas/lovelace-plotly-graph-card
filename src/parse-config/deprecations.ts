@@ -15,7 +15,7 @@ function _getDeprecationError(path: string, value: any) {
     try {
       parseTimeDuration(value);
       return 'renamed to time_offset in v3.0.0 to avoid conflicts with <a href="https://plotly.com/javascript/reference/bar/#bar-offset">bar-offsets</a>.';
-    } catch (e) {
+    } catch {
       // bar-offsets are numbers without time unit
     }
   }

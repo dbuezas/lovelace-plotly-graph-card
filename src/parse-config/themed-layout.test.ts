@@ -5,14 +5,18 @@ import getThemedLayout, {
 
 describe("Home Assistant theme colors", () => {
   it("reads every supported color from CSS rather than hardcoded defaults", () => {
-    const getPropertyValue = jest.fn((name: string) => `  ${name}-value  `);
+    const getPropertyValue = vi.fn((name: string) => `  ${name}-value  `);
     const colors = readThemeColors({ getPropertyValue });
     expect(HA_THEME_VARIABLES).toHaveLength(35);
     expect(new Set(HA_THEME_VARIABLES).size).toBe(35);
     expect(HA_THEME_VARIABLES).toEqual(
       expect.arrayContaining([
-        "accent-color", "error-color", "warning-color", "success-color",
-        "info-color", "divider-color",
+        "accent-color",
+        "error-color",
+        "warning-color",
+        "success-color",
+        "info-color",
+        "divider-color",
       ]),
     );
     for (const name of HA_THEME_VARIABLES) {

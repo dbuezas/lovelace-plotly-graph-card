@@ -1,0 +1,3 @@
+# `bun run` also runs the scripts and their tools (vitest, node ...) with bun
+[run]
+bun = true

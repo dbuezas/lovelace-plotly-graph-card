@@ -145,6 +145,9 @@
                     "$ref": "#/definitions/With$fn<{store_var:string;}>"
                   },
                   {
+                    "$ref": "#/definitions/With$fn<{align_timestamps:string|string[];}>"
+                  },
+                  {
                     "$ref": "#/definitions/With$fn<{trendline:\"linear\"|\"polynomial\"|\"power\"|\"exponential\"|\"theil_sen\"|\"robust_polynomial\"|\"fft\"|Partial<TrendlineParam>;}>"
                   },
                   {
@@ -240,6 +243,17 @@
                 "week"
               ],
               "type": "string"
+            }
+          ]
+        },
+        "show_extrema": {
+          "anyOf": [
+            {
+              "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
+              "type": "string"
+            },
+            {
+              "type": "boolean"
             }
           ]
         },
@@ -465,6 +479,19 @@
       },
       "type": "object"
     },
+    "With$fn<string|string[]>": {
+      "anyOf": [
+        {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        {
+          "type": "string"
+        }
+      ]
+    },
     "With$fn<string|string[]|undefined>": {
       "anyOf": [
         {
@@ -497,6 +524,17 @@
       },
       "required": [
         "add"
+      ],
+      "type": "object"
+    },
+    "With$fn<{align_timestamps:string|string[];}>": {
+      "properties": {
+        "align_timestamps": {
+          "$ref": "#/definitions/With$fn<string|string[]>"
+        }
+      },
+      "required": [
+        "align_timestamps"
       ],
       "type": "object"
     },

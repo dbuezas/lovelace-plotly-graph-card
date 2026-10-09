@@ -303,6 +303,8 @@ entities:
 
 Fetch and plot long-term statistics of an entity
 
+The card requests only the statistic fields used by its traces. Traces with the same sensor, period and time range still share one response, including min/max/mean bands. Entity expressions, filters and presets keep the full statistics response, since custom code can read other fields through `statistics`. Functions used only for time ranges or layout do not disable this optimization.
+
 #### for entities with state_class=measurement (normal sensors, like temperature)
 
 ```yaml
@@ -425,6 +427,24 @@ entities:
 ```
 
 Note that `5minute` period statistics are limited in time as normal recorder history is, contrary to other periods which keep data for years.
+
+## show_extrema:
+
+Labels the minimum and maximum of `scatter`, `scattergl` and vertical `bar`
+series after filters, within the visible time window for time series.
+Non-numeric/unavailable values are ignored; ties use the first occurrence and
+constant series get one label. Labels toggle with the series in the legend.
+
+```yaml
+type: custom:plotly-graph
+entities:
+  - entity: sensor.temperature
+    show_extrema: true
+```
+
+Labels use the series color and unit. Set `texttemplate: '%{y:.1f} °C'` to change
+the format. On a `bar` trace, this also prints text on every bar, since Plotly
+applies the same `texttemplate` to the bars themselves.
 
 ## show_value:
 
@@ -608,6 +628,7 @@ entities:
     filters:
       - store_var: myVar # stores the datapoints inside `vars.myVar`
       - load_var: myVar # loads the datapoints from `vars.myVar`
+      - align_timestamps: myVar # matches its timestamps to the current trace, available as `vars.aligned.myVar`
 
       # The filters below will only be applied to numeric values. Missing (unavailable) and non-numerics will be left untouched
       - add: 5 # adds 5 to each datapoint
@@ -624,7 +645,7 @@ entities:
       - integrate: h # computes area under the curve in a specific unit of time using Right hand riemann integration. Same units as the derivative
       - integrate:
           unit: h # defaults to h
-          reset_every: 1h # Defaults to 0 (never reset). Any duration unit (ms, s, m, h, d, w, M, y).
+          reset_every: 1h # Defaults to 0 (never reset). Any duration unit; see time_zone below for calendar resets.
           offset: 30m # defaults to 0. Resets happen 30m later
 
       - map_y_numbers: Math.sqrt(y + 10*100) # map the y coordinate of each datapoint. Same available variables as for `map_y`
@@ -662,13 +683,24 @@ entities:
               meta: { unit_of_measurement: "delta" }
             };
           },
-      - resample: 5m # Rebuilds data so that the timestamps in xs are exact multiples of the specified interval, and without gaps. The parameter is the length of the interval and defaults to 5 minutes (see #duration for the format). This is useful when combining data from multiple entities, as the index of each datapoint will correspond to the same instant of time across them.
+      - resample: 5m # Rebuilds data at regular intervals without gaps. Defaults to 5 minutes (see #duration for the format). Useful when combining data from multiple entities, as matching indexes correspond to the same instant across them.
       - resample:
           interval: 5m # defaults to 5m
           interpolate: true # defaults to false (each new point holds the last known value). When true, values are linearly interpolated between the surrounding datapoints. Only numbers are interpolated, so use it after force_numeric (or map_y_numbers)
       - filter: y !== null && +y > 0 && x > new Date(Date.now()-1000*60*60) # filter out datapoints for which this returns false. Also filters from xs, states and statistics. Same variables as map_y are in scope
       - force_numeric # converts number-lookinig-strings to actual js numbers and removes the rest. Any filters used after this one will receive numbers, not strings or nulls. Also removes respective elements from xs, states and statistics parameters
 ```
+
+See [time_zone](#time_zone) for the calendar rules used by `integrate.reset_every`.
+
+`resample: 1d` uses midnight in the card's [time_zone](#time_zone), following
+the Home Assistant profile setting by default. Whole-day intervals such as
+`2d` follow the local calendar, anchored at January 1, 1970. A day can therefore
+be 23 or 25 hours long when daylight saving time changes.
+
+Other intervals keep their fixed duration and alignment to the Unix epoch.
+Use `24h` instead of `1d` for the previous fixed 24-hour behavior; fractional
+days such as `1.5d` remain fixed durations too. Intervals must be positive.
 
 #### Examples
 
@@ -808,6 +840,33 @@ This can also be used to fetch data by calling a HA service. As this is a call t
 
 ##### Using vars
 
+Use `align_timestamps: name` (or `align_timestamps: [name1, name2]`) to match a
+previously stored series to the current trace's exact timestamps under
+`vars.aligned`, without changing either original series; missing matches become
+`null`. Each call replaces `vars.aligned` with the requested series.
+Place it directly before the `map_y` that uses it: intervening filters that drop
+or move points, such as `filter` or `resample`, break alignment with `i` again.
+
+```yaml
+type: custom:plotly-graph
+entities:
+  - entity: sensor.outdoor_temperature
+    statistic: mean
+    period: 5minute
+    internal: true
+    filters:
+      - store_var: outdoor
+  - entity: sensor.indoor_temperature
+    statistic: mean
+    period: 5minute
+    name: Temperature difference
+    filters:
+      - align_timestamps: outdoor
+      - map_y: >-
+          y == null || vars.aligned.outdoor.ys[i] == null
+            ? null : y - vars.aligned.outdoor.ys[i]
+```
+
 Compute absolute humidity
 
 ```yaml
@@ -816,7 +875,7 @@ entities:
   - entity: sensor.wintergarten_clima_humidity
     internal: true
     filters:
-      - resample: 5m # important so the datapoints align in the x axis
+      - resample: 5m # put irregular history on a regular grid
       - map_y: parseFloat(y)
       - store_var: relative_humidity
   - entity: sensor.wintergarten_clima_temperature
@@ -826,7 +885,10 @@ entities:
     filters:
       - resample: 5m
       - map_y: parseFloat(y)
-      - map_y: (6.112 * Math.exp((17.67 * y)/(y+243.5)) * +vars.relative_humidity.ys[i] * 2.1674)/(273.15+y);
+      - align_timestamps: relative_humidity
+      - map_y: >-
+          vars.aligned.relative_humidity.ys[i] == null ? null :
+          (6.112 * Math.exp((17.67 * y)/(y+243.5)) * +vars.aligned.relative_humidity.ys[i] * 2.1674)/(273.15+y);
 ```
 
 Compute dew point
@@ -836,7 +898,7 @@ type: custom:plotly-graph
 entities:
   - entity: sensor.openweathermap_humidity
     internal: true
-    period: 5minute # important so the datapoints align in the x axis. Alternative to the resample filter using statistics
+    period: 5minute
     filters:
       - map_y: parseFloat(y)
       - store_var: relative_humidity
@@ -845,13 +907,15 @@ entities:
     name: Dew point
     filters:
       - map_y: parseFloat(y)
+      - align_timestamps: relative_humidity
       - map_y: >-
           {
             // https://www.omnicalculator.com/physics/dew-point
             const a = 17.625;
             const b = 243.04;
             const T = y;
-            const RH = vars.relative_humidity.ys[i];
+            const RH = vars.aligned.relative_humidity.ys[i];
+            if (RH == null) return null;
             const α = Math.log(RH/100) + a*T/(b+T);
             const Ts = (b * α) / (a - α);
             return Ts; 
@@ -877,7 +941,8 @@ entities:
     name: sum of temperatures
     filters:
       - map_y: parseFloat(y)
-      - map_y: y + vars.temp1.ys[i]
+      - align_timestamps: temp1
+      - map_y: vars.aligned.temp1.ys[i] == null ? null : y + vars.aligned.temp1.ys[i]
 ```
 
 ### Entity click handlers
@@ -1025,7 +1090,11 @@ Remember you can add a `console.log(the_object_you_want_to_inspect)` and see its
 - Functions are allowed for those properties (`entity`, `attribute`, ...) but they do not receive entity data as parameters. You can still use the `hass` parameter to get the last state of an entity if you need to.
 - Functions cannot return functions for performance reasons. (feature request if you need this)
 - Defaults are not applied to the subelements returned by a function. (feature request if you need this)
-- You can get other values from the yaml with the `getFromConfig` parameter, but if they are functions they need to be defined before.
+- You can get other values from the yaml with the `getFromConfig` parameter,
+  but user-defined functions need to be defined before their callers.
+  Built-in defaults (`name`, `unit_of_measurement`, `hovertemplate`, `yaxis`,
+  `line.color`) can be read from anywhere in the same entity. Values that a
+  filter changes are only up to date below that filter.
 - Any function which uses the result of a filter, needs to be placed in the YAML below the filter. For instance, `name: $ex ys.at(-1)` where the filter is modifying `ys`.
 - The same is true of consecutive filters - order matters. This is due to the fact that filters are translated internally to function calls, executed in the order they are parsed.
 
@@ -1094,6 +1163,59 @@ entities:
       <extra></extra>
 hours_to_show: current_day
 ```
+
+#### Linked tooltips in stacked subplots
+
+To show tooltips in all stacked subplots when hovering over one of them, use
+Plotly's native [`hoversubplots: axis`](https://plotly.com/javascript/reference/layout/#layout-hoversubplots)
+with `hovermode: x`. The traces must share the **same X axis** (`x`), which is
+the default, not just matching ranges on separate axes.
+
+This example places temperature and humidity in separate vertical panels. Replace
+the entity IDs with sensors that provide mean statistics. Using the same period
+gives both traces matching timestamps.
+
+```yaml
+type: custom:plotly-graph
+hours_to_show: 24h
+entities:
+  - entity: sensor.garden_temperature
+    name: Temperature
+    statistic: mean
+    period: hour
+  - entity: sensor.garden_humidity
+    name: Humidity
+    statistic: mean
+    period: hour
+    yaxis: y2
+layout:
+  height: 360
+  hovermode: x
+  hoversubplots: axis
+  margin:
+    l: 60
+    r: 20
+    t: 10
+    b: 50
+  xaxis:
+    anchor: y2
+  yaxis:
+    domain: [0.55, 1]
+    anchor: x
+  yaxis2:
+    domain: [0, 0.45]
+    anchor: x
+    overlaying: false
+    side: left
+```
+
+`overlaying: false` overrides the card's default secondary-axis overlay, so the
+second trace occupies its own panel. `side: left` keeps its Y axis on the left,
+and `xaxis.anchor: y2` places the date ticks below the lower panel; neither is
+required for linked hover. This works within one card; it does **not**
+synchronize hover between separate Home Assistant cards or expose `on_hover`
+callbacks. See [#398](https://github.com/dbuezas/lovelace-plotly-graph-card/issues/398)
+for that remaining request.
 
 #### disabling hover text
 
@@ -1287,6 +1409,13 @@ autorange_after_scroll: true
 
 Update data every `refresh_interval` seconds.
 
+With `auto`, live state history uses Home Assistant's history stream. Unlike
+frontend state snapshots, the stream includes intermediate changes in a burst
+and catches up with states that Recorder has not committed yet. Entities with
+the same history start time share a stream, so a quiet entity does not make a
+busy entity replay older history. Streams close when the card is removed or
+automatic refresh is disabled.
+
 With `auto`, live statistics also refresh when Home Assistant publishes new
 5-minute or hourly statistics, even if the entity's state has not changed.
 Each event refreshes only its matching resolution: daily, weekly and monthly
@@ -1295,6 +1424,8 @@ Entity state changes can still update the display without refetching statistics.
 Zooming, panning and toggling traces only fetch missing ranges; they do not
 invalidate cached statistics. Resetting the view also refreshes recent values.
 An explicit refresh interval continues to poll at the configured interval.
+The unconfirmed tail after the last recorded state is checked again, so delayed
+Recorder writes are not permanently hidden behind a cached request boundary.
 
 Examples:
 
@@ -1329,7 +1460,15 @@ time_zone: Europe/Rome # any IANA timezone
 
 This also applies to the boundaries of `hours_to_show: current_day` and friends, and to `integrate`'s `reset_every`.
 
-For `integrate`, `reset_every: 1d` resets at calendar midnight in the selected time zone, including 23- and 25-hour days. `reset_every: 24h` and other intervals remain fixed durations. `offset` shifts the reset by the specified elapsed duration after midnight, not by wall-clock hours.
+For `integrate`, whole-day resets such as `reset_every: 1d` and `2d` use the same
+calendar grid as `resample`, including 23- and 25-hour days. Whole-week resets
+(`1w`, `2w`, etc.) use the first weekday configured in Home Assistant. Whole-month
+resets (`1M`, `2M`, etc.) start on the first of a calendar month. Multi-period
+groups use a stable 1970 calendar anchor, so reloading does not move the reset.
+
+`reset_every: 24h`, fractional intervals and other units keep their fixed
+durations. `offset` shifts a reset by the specified elapsed duration after its
+calendar boundary, not by wall-clock hours.
 
 An invalid `time_zone` is reported as an error and the browser's timezone is used instead.
 
@@ -1597,38 +1736,39 @@ the first time a card needs them.
 
 # Development
 
-- Use Node.js 22 or newer (required by Plotly.js 4).
+- Install [Bun](https://bun.sh)
 - Clone the repo
-- run `npm i`
-- run `npm start`
+- run `bun install`
+- run `bun run start`
 - From a dashboard in edit mode, go to `Manage resources` and add `http://127.0.0.1:8000/plotly-graph-card.js` as url with resource type JavaScript Module
 - ATTENTION: The development card is `type: custom:plotly-graph-dev` (mind the extra `-dev`)
 - Either use Safari or Enable [chrome://flags/#unsafely-treat-insecure-origin-as-secure](chrome://flags/#unsafely-treat-insecure-origin-as-secure) and add your HA address (e.g http://homeassistant.local:8123): Chrome doesn't allow public network resources from requesting private-network resources - unless the public-network resource is secure (HTTPS) and the private-network resource provides appropriate (yet-undefined) CORS headers. More [here](https://stackoverflow.com/questions/66534759/chrome-cors-error-on-request-to-localhost-dev-server-from-remote-site)
 
 # Build
 
-`npm run build`
+`bun run build`
 
 ## Upgrade checks
 
-Run `npm run tsc` and `npm test -- src/parse-config/defaults.test.ts` for
+Run `bun run tsc` and `bun run test src/parse-config/defaults.test.ts` for
 the compatibility checks. For rendering checks, install Chromium with
-`npx playwright install chromium` and run `npm run test:browser`.
+`bunx playwright install chromium` (or set `CHROME=/path/to/chrome`)
+and run `bun run test:browser`.
 The browser test covers every registered trace type, tank shapes and labels,
 axis defaults, cloud-upload opt-in, and a card with a mock Home Assistant state.
-Run `npm run test:loading` to check the initial loading height, delayed data,
+Run `bun run test:loading` to check the initial loading height, delayed data,
 rendering failures, recovery and reduced-motion support in Chromium.
-`npm test` includes history batching, compressed WebSocket responses, cache reuse,
+`bun run test` includes history batching, compressed WebSocket responses, cache reuse,
 attributes, time offsets and request failure recovery.
 The five additional trace types are also validated and rendered through the card.
-Run `npm run test:card-lifecycle` to check initial rendering, recovery from
+Run `bun run test:card-lifecycle` to check initial rendering, recovery from
 render failures, event suppression, listener cleanup on reconnect, and mouse
 interactions with data points, legend toggles and the reset button.
-Run `npm run test:statistics` for statistics batching, cache reuse, period and
+Run `bun run test:statistics` for statistics batching, cache reuse, period and
 time-offset separation, dynamic settings and fallback after failed requests.
-Run `npm run test:resize` for unchanged-size callbacks, hidden cards and normal
+Run `bun run test:resize` for unchanged-size callbacks, hidden cards and normal
 width changes. These tests do not run Home Assistant's view components.
-Run `npm run test:cache` for rolling-window retention, boundary values,
+Run `bun run test:cache` for rolling-window retention, boundary values,
 time offsets, browsing, refetching pruned history and in-flight live updates.
 
 # Release

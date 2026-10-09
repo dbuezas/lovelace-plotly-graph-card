@@ -31,7 +31,10 @@ const supportsEntityNames = (hass: HomeAssistant | undefined): boolean => {
 };
 
 type HassWithEntityNames = HomeAssistant & {
-  formatEntityName: (stateObj: HassEntity, name: EntityName | undefined) => string;
+  formatEntityName: (
+    stateObj: HassEntity,
+    name: EntityName | undefined,
+  ) => string;
 };
 
 /**
@@ -42,7 +45,7 @@ type HassWithEntityNames = HomeAssistant & {
 export const computeEntityName = (
   hass: HomeAssistant | undefined,
   stateObj: HassEntity | undefined,
-  name: EntityName | undefined
+  name: EntityName | undefined,
 ): string | undefined => {
   // A configured empty name has always meant "use Home Assistant's name", but
   // formatEntityName returns any string verbatim - including the empty one, which
@@ -53,7 +56,10 @@ export const computeEntityName = (
   if (typeof name === "string") return name;
   if (!stateObj) return undefined;
   if (hass && supportsEntityNames(hass)) {
-    return (hass as HassWithEntityNames).formatEntityName(stateObj, name) || undefined;
+    return (
+      (hass as HassWithEntityNames).formatEntityName(stateObj, name) ||
+      undefined
+    );
   }
   // A structured name cannot be resolved here, so fall back to the friendly name.
   return stateObj.attributes?.friendly_name;
