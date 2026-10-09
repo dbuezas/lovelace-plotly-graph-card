@@ -8,9 +8,11 @@ import { getEntityKey } from "../cache/Cache";
 
 vi.mock("../filters/filters", () => ({
   default: {
-    multiply: (factor: number) => ({ ys }: { ys: number[] }) => ({
-      ys: ys.map((value) => value * factor),
-    }),
+    multiply:
+      (factor: number) =>
+      ({ ys }: { ys: number[] }) => ({
+        ys: ys.map((value) => value * factor),
+      }),
   },
 }));
 
@@ -127,10 +129,15 @@ describe("statistics request batching", () => {
 
   it("draws dates in the configured timezone", async () => {
     const callWS = successfulCallWS();
-    const result = await update(new ConfigParser(), callWS, compatibleEntities, {
-      time_zone: "Pacific/Chatham",
-      hours_to_show: "1h",
-    });
+    const result = await update(
+      new ConfigParser(),
+      callWS,
+      compatibleEntities,
+      {
+        time_zone: "Pacific/Chatham",
+        hours_to_show: "1h",
+      },
+    );
 
     expect(result.errors).toEqual([]);
     // NOW is 12:00Z, i.e. 01:45 next day in Chatham (UTC+13:45)
@@ -145,10 +152,15 @@ describe("statistics request batching", () => {
 
   it("falls back to the browser's timezone for an invalid time_zone", async () => {
     const callWS = successfulCallWS();
-    const result = await update(new ConfigParser(), callWS, compatibleEntities, {
-      time_zone: "Mars/Olympus",
-      hours_to_show: "current_day",
-    });
+    const result = await update(
+      new ConfigParser(),
+      callWS,
+      compatibleEntities,
+      {
+        time_zone: "Mars/Olympus",
+        hours_to_show: "current_day",
+      },
+    );
 
     expect(result.errors.map((e) => e.message)).toEqual([
       "time_zone: unknown timezone 'Mars/Olympus'",
@@ -190,9 +202,10 @@ describe("statistics request batching", () => {
         statistic_ids.map((id: string) => [
           id,
           samples
-            .filter(({ timestamp }) =>
-              timestamp >= Date.parse(start_time) &&
-              timestamp <= Date.parse(end_time),
+            .filter(
+              ({ timestamp }) =>
+                timestamp >= Date.parse(start_time) &&
+                timestamp <= Date.parse(end_time),
             )
             .map(({ timestamp, value }) => ({
               ...statistic(id, value),
@@ -213,7 +226,8 @@ describe("statistics request batching", () => {
       expect(result.errors).toEqual([]);
       expect(callWS).toHaveBeenCalledTimes(elapsed + 1);
       expect(callWS.mock.calls[elapsed][0].statistic_ids).toEqual([
-        "sensor.east", "sensor.west",
+        "sensor.east",
+        "sensor.west",
       ]);
       const expected = [21, 22, 23, 24].map((value) => value + elapsed);
       expect(result.parsed.entities.map(yValues)).toEqual([expected, expected]);
@@ -235,10 +249,15 @@ describe("statistics request batching", () => {
     expect(result.errors).toEqual([]);
     expect(callWS).toHaveBeenCalledTimes(8);
     expect(callWS.mock.calls[7][0].statistic_ids).toEqual([
-      "sensor.east", "sensor.west",
+      "sensor.east",
+      "sensor.west",
     ]);
-    expect(result.parsed.entities.map((trace) => yValues(trace)?.slice(0, 4)))
-      .toEqual([[21, 22, 23, 24], [21, 22, 23, 24]]);
+    expect(
+      result.parsed.entities.map((trace) => yValues(trace)?.slice(0, 4)),
+    ).toEqual([
+      [21, 22, 23, 24],
+      [21, 22, 23, 24],
+    ]);
   });
 
   it("keeps incompatible statistics periods in separate requests", async () => {
@@ -340,7 +359,9 @@ describe("statistics request batching", () => {
     const result = await update(new ConfigParser(), callWS, [
       { entity: "sensor.east", statistic: "min", period: "hour" },
       {
-        entity: "sensor.east", statistic: "max", period: "hour",
+        entity: "sensor.east",
+        statistic: "max",
+        period: "hour",
         fill: "tonexty",
       },
       { entity: "sensor.east", statistic: "mean", period: "hour" },
@@ -372,11 +393,9 @@ describe("statistics request batching", () => {
   it("includes statistics supplied by entity defaults", async () => {
     const callWS = successfulCallWS();
     const result = await update(
-      new ConfigParser(), callWS,
-      [
-        { entity: "sensor.east" },
-        { entity: "sensor.west", statistic: "max" },
-      ],
+      new ConfigParser(),
+      callWS,
+      [{ entity: "sensor.east" }, { entity: "sensor.west", statistic: "max" }],
       {
         defaults: { entity: { period: "hour", statistic: "min" } },
       } as unknown as Partial<InputConfig>,
@@ -433,17 +452,20 @@ describe("statistics request batching", () => {
     { filters: [{ multiply: 2 }] },
     { name: (() => "Temperature") as any },
     { statistic: "$ex 'mean'" as any },
-  ])("keeps full statistics for user filters or functions: %p", async (extra) => {
-    const callWS = successfulCallWS();
-    const result = await update(new ConfigParser(), callWS, [
-      { ...compatibleEntities[0], ...extra },
-    ]);
-    expect(result.errors).toEqual([]);
-    expect(result.parsed.entities.map(yValues)).toEqual([
-      ["filters" in extra ? 2 : 1],
-    ]);
-    expect(callWS.mock.calls[0][0]).not.toHaveProperty("types");
-  });
+  ])(
+    "keeps full statistics for user filters or functions: %p",
+    async (extra) => {
+      const callWS = successfulCallWS();
+      const result = await update(new ConfigParser(), callWS, [
+        { ...compatibleEntities[0], ...extra },
+      ]);
+      expect(result.errors).toEqual([]);
+      expect(result.parsed.entities.map(yValues)).toEqual([
+        ["filters" in extra ? 2 : 1],
+      ]);
+      expect(callWS.mock.calls[0][0]).not.toHaveProperty("types");
+    },
+  );
 
   it("keeps full statistics for filters supplied by defaults or presets", async () => {
     const callWS = successfulCallWS();
@@ -452,7 +474,9 @@ describe("statistics request batching", () => {
       { preset: "custom" },
     ]) {
       const result = await update(
-        new ConfigParser(), callWS, compatibleEntities,
+        new ConfigParser(),
+        callWS,
+        compatibleEntities,
         config as unknown as Partial<InputConfig>,
       );
       expect(result.errors).toEqual([]);

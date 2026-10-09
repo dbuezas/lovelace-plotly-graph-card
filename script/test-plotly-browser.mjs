@@ -230,7 +230,7 @@ try {
     // Trace types are loaded on demand, the same way the card does it
     await PlotlyTest.loadPlotlyModules(
       Object.keys(fixtures).map((type) => ({ type })),
-      {}
+      {},
     );
     for (const [type, data] of Object.entries(fixtures)) {
       const div = document.createElement("div");
@@ -1078,11 +1078,31 @@ try {
           request.statistic_ids.map((id, index) => [
             id,
             [
-              { start, end: start + 300000, mean: index + 1, min: index, max: index + 3 },
-              { start: start + 300000, end: start + 600000, mean: index + 2, min: index + 1, max: index + 4 },
-            ].map((row) => Object.fromEntries(Object.entries(row).filter(([key]) =>
-              !request.types || key === "start" || key === "end" || request.types.includes(key)
-            ))),
+              {
+                start,
+                end: start + 300000,
+                mean: index + 1,
+                min: index,
+                max: index + 3,
+              },
+              {
+                start: start + 300000,
+                end: start + 600000,
+                mean: index + 2,
+                min: index + 1,
+                max: index + 4,
+              },
+            ].map((row) =>
+              Object.fromEntries(
+                Object.entries(row).filter(
+                  ([key]) =>
+                    !request.types ||
+                    key === "start" ||
+                    key === "end" ||
+                    request.types.includes(key),
+                ),
+              ),
+            ),
           ]),
         );
       },

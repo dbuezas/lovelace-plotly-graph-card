@@ -41,9 +41,14 @@ describe("ConfigParser history prefetch", () => {
       const entityIds = ["sensor.one", "sensor.two", "sensor.three"];
       const callWS = vi.fn().mockImplementation(({ entity_ids, end_time }) => {
         vi.setSystemTime(Date.now() + 4);
-        return Promise.resolve(Object.fromEntries(entity_ids.map((id) => [
-          id, [{ s: "5", lu: Date.parse(end_time) / 1000 - 60 }],
-        ])));
+        return Promise.resolve(
+          Object.fromEntries(
+            entity_ids.map((id) => [
+              id,
+              [{ s: "5", lu: Date.parse(end_time) / 1000 - 60 }],
+            ]),
+          ),
+        );
       });
       const parser = new ConfigParser();
       const input: Parameters<ConfigParser["update"]>[0] = {
@@ -52,30 +57,39 @@ describe("ConfigParser history prefetch", () => {
           ...(window === "future range"
             ? { visible_range: [+now - 3600000, +now + 3600000] }
             : { hours_to_show: window }),
-          entities: entityIds.map((entity) => ({ entity, extend_to_present: false })),
+          entities: entityIds.map((entity) => ({
+            entity,
+            extend_to_present: false,
+          })),
         },
         hass: {
           callWS,
-          states: Object.fromEntries(entityIds.map((id) => [id, state(id, "5")])),
+          states: Object.fromEntries(
+            entityIds.map((id) => [id, state(id, "5")]),
+          ),
           locale: { language: "en", first_weekday: "monday" },
         } as unknown as HomeAssistant,
         css_vars: {} as HATheme,
       };
       expect((await parser.update(input)).errors).toEqual([]);
       expect(callWS).toHaveBeenCalledTimes(1);
-      expect(callWS.mock.calls[0][0]).toEqual(expect.objectContaining({
-        entity_ids: entityIds,
-        end_time: now.toISOString(),
-      }));
+      expect(callWS.mock.calls[0][0]).toEqual(
+        expect.objectContaining({
+          entity_ids: entityIds,
+          end_time: now.toISOString(),
+        }),
+      );
 
       // A later refresh must still fetch the new tail, once for all entities.
       vi.setSystemTime(+now + 300000);
       expect((await parser.update(input)).errors).toEqual([]);
       expect(callWS).toHaveBeenCalledTimes(2);
-      expect(callWS.mock.calls[1][0]).toEqual(expect.objectContaining({
-        entity_ids: entityIds,
-        end_time: new Date(+now + 300000).toISOString(),
-      }));
+      expect(callWS.mock.calls[1][0]).toEqual(
+        expect.objectContaining({
+          entity_ids: entityIds,
+          end_time: new Date(+now + 300000).toISOString(),
+        }),
+      );
     },
   );
 
@@ -208,7 +222,10 @@ describe("ConfigParser history prefetch", () => {
       }),
     ]);
     expect(result.parsed.entities.map(yValues)).toEqual([
-      ["5"], [42], ["5"], [42],
+      ["5"],
+      [42],
+      ["5"],
+      [42],
     ]);
     expect((await parser.update(input)).errors).toEqual([]);
     expect(callWS).toHaveBeenCalledTimes(2);
@@ -228,7 +245,9 @@ describe("ConfigParser history prefetch", () => {
       expect(result.errors).toEqual([]);
       expect(result.parsed.entities.map(yValues)).toEqual([["5"], ["5"]]);
       expect(callWS.mock.calls.map(([request]) => request.entity_ids)).toEqual([
-        ["sensor.one", "sensor.two"], ["sensor.one"], ["sensor.two"],
+        ["sensor.one", "sensor.two"],
+        ["sensor.one"],
+        ["sensor.two"],
       ]);
     } finally {
       error.mockRestore();
