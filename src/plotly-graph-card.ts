@@ -35,7 +35,7 @@ const componentName = isProduction ? "plotly-graph" : "plotly-graph-dev";
 console.info(
   `%c ${componentName.toUpperCase()} %c ${version} ${process.env.NODE_ENV}`,
   "color: orange; font-weight: bold; background: black",
-  "color: white; font-weight: bold; background: dimgray"
+  "color: white; font-weight: bold; background: dimgray",
 );
 
 export class PlotlyGraph extends HTMLElement {
@@ -258,7 +258,8 @@ export class PlotlyGraph extends HTMLElement {
       if (
         this.size.width === nextSize.width &&
         this.size.height === nextSize.height
-      ) return;
+      )
+        return;
       this.size = nextSize;
       void this.plot({ should_fetch: false });
     };
@@ -294,36 +295,36 @@ export class PlotlyGraph extends HTMLElement {
     if (this.plotlyListenersConnected) return;
     this.handles.relayoutListener = this.contentEl.on(
       "plotly_relayout",
-      this.onRelayout
+      this.onRelayout,
     )!;
     this.handles.restyleListener = this.contentEl.on(
       "plotly_restyle",
-      this.onRestyle
+      this.onRestyle,
     )!;
     this.handles.legendItemClick = this.contentEl.on(
       "plotly_legendclick",
-      this.onLegendItemClick
+      this.onLegendItemClick,
     )!;
     this.handles.legendItemDoubleclick = this.contentEl.on(
       "plotly_legenddoubleclick",
-      this.onLegendItemDoubleclick
+      this.onLegendItemDoubleclick,
     )!;
     this.handles.dataClick = this.contentEl.on(
       "plotly_click",
-      this.onDataClick
+      this.onDataClick,
     )!;
     this.handles.doubleclick = this.contentEl.on(
       "plotly_doubleclick",
-      this.onDoubleclick
+      this.onDoubleclick,
     )!;
     this.handles.annotationClick = this.contentEl.on(
       "plotly_clickannotation",
-      this.onAnnotationClick
+      this.onAnnotationClick,
     )!;
     this.handles.buttonClick = this.contentEl.on(
       // @ts-ignore Not properly typed in @types/plotly.js
       "plotly_buttonclicked",
-      this.onButtonClick
+      this.onButtonClick,
     )!;
     this.plotlyListenersConnected = true;
   }
@@ -334,17 +335,17 @@ export class PlotlyGraph extends HTMLElement {
     this.handles.restyleListener?.off("plotly_restyle", this.onRestyle);
     this.handles.legendItemClick?.off(
       "plotly_legendclick",
-      this.onLegendItemClick
+      this.onLegendItemClick,
     );
     this.handles.legendItemDoubleclick?.off(
       "plotly_legenddoubleclick",
-      this.onLegendItemDoubleclick
+      this.onLegendItemDoubleclick,
     );
     this.handles.dataClick?.off("plotly_click", this.onDataClick);
     this.handles.doubleclick?.off("plotly_doubleclick", this.onDoubleclick);
     this.handles.annotationClick?.off(
       "plotly_clickannotation",
-      this.onAnnotationClick
+      this.onAnnotationClick,
     );
     this.handles.buttonClick?.off("plotly_buttonclicked", this.onButtonClick);
     this.plotlyListenersConnected = false;
@@ -372,7 +373,7 @@ export class PlotlyGraph extends HTMLElement {
             this.configParser.cache.add(
               entity,
               [{ state, x: new Date(end), y: null }],
-              range
+              range,
             );
           }
         }
@@ -509,25 +510,28 @@ export class PlotlyGraph extends HTMLElement {
         cssVar(
           "--ha-font-family-body",
           "--paper-font-body1_-_font-family",
-          "--mdc-typography-body1-font-family"
+          "--mdc-typography-body1-font-family",
         ) || styles.fontFamily,
       "font-size": cssVar("--ha-font-size-s") || "12px",
       "font-weight":
         cssVar(
           "--ha-font-weight-normal",
           "--paper-font-body1_-_font-weight",
-          "--mdc-typography-body1-font-weight"
+          "--mdc-typography-body1-font-weight",
         ) || "400",
     };
   }
   fetchScheduled = false;
   private statisticsRefreshScheduled = false;
   plot = async (
-    { should_fetch, refresh_statistics = false }: {
+    {
+      should_fetch,
+      refresh_statistics = false,
+    }: {
       should_fetch: boolean;
       refresh_statistics?: boolean;
     },
-    delay?: Delay
+    delay?: Delay,
   ) => {
     if (should_fetch || refresh_statistics) this.fetchScheduled = true;
     if (refresh_statistics) this.statisticsRefreshScheduled = true;
@@ -599,16 +603,17 @@ export class PlotlyGraph extends HTMLElement {
         },
         visible_range ? { visible_range } : {},
 
-        this.config
+        this.config,
       );
       const { errors, parsed } = await this.configParser.update({
         now,
         yaml,
         hass: this.hass,
         css_vars: this.getCSSVars(),
-        statisticsUpdates: !should_fetch && statisticsUpdates.size > 0
-          ? statisticsUpdates
-          : undefined,
+        statisticsUpdates:
+          !should_fetch && statisticsUpdates.size > 0
+            ? statisticsUpdates
+            : undefined,
       });
       // The user moved the plot while the data loaded. That move started a
       // new render, so don't draw the old range over it.
@@ -621,7 +626,7 @@ export class PlotlyGraph extends HTMLElement {
       this.parsed_config = parsed;
       const touch = parsed.disable_pinch_to_zoom
         ? false
-        : parsed.extended_touch_support ?? true;
+        : (parsed.extended_touch_support ?? true);
       const enabled = (gesture: keyof TouchGestures) =>
         typeof touch === "object" ? touch[gesture] !== false : touch;
       this.touchController.enabled = {
@@ -642,7 +647,7 @@ export class PlotlyGraph extends HTMLElement {
       if (refresh_interval !== "auto" && refresh_interval > 0) {
         this.handles.refreshTimeout = window.setTimeout(
           () => this.plot({ should_fetch: true, refresh_statistics: true }),
-          refresh_interval * 1000
+          refresh_interval * 1000,
         );
       }
       this.titleEl.innerText = this.parsed_config.title || "";
@@ -656,7 +661,7 @@ export class PlotlyGraph extends HTMLElement {
         const locale = await plotly.loadPlotlyModules(
           entities,
           layout,
-          config.locale
+          config.locale,
         );
         if (locale) config.locale = locale;
         Plotly = plotly.default;
@@ -665,7 +670,7 @@ export class PlotlyGraph extends HTMLElement {
         this.errorMsgEl.style.display = "block";
         this.errorMsgEl.innerText = `Some files of the card didn't load (${e?.message}). If reloading doesn't help, reinstall the card (for a manual install, copy all files of the release). `;
         const reload = this.errorMsgEl.appendChild(
-          document.createElement("button")
+          document.createElement("button"),
         );
         reload.textContent = "Reload";
         reload.onclick = () => location.reload();
@@ -687,7 +692,10 @@ export class PlotlyGraph extends HTMLElement {
             "yaxis.autorange": true,
           };
           // Plotly accepts attribute paths, but its public types only list nested keys.
-          await Plotly.relayout(this.contentEl, update as Partial<Plotly.Layout>);
+          await Plotly.relayout(
+            this.contentEl,
+            update as Partial<Plotly.Layout>,
+          );
         }
         const editorUpdate = getEditorYAxisRelayout(
           this.parsed_config,

@@ -17,7 +17,7 @@ export interface Statistics {
   [statisticId: string]: StatisticValue[];
 }
 export const STATISTIC_TYPES = ["state", "sum", "min", "max", "mean"] as const;
-export type StatisticType = typeof STATISTIC_TYPES[number];
+export type StatisticType = (typeof STATISTIC_TYPES)[number];
 
 export const STATISTIC_PERIODS = [
   "5minute",
@@ -26,5 +26,5 @@ export const STATISTIC_PERIODS = [
   "week",
   "month",
 ] as const;
-export type StatisticPeriod = typeof STATISTIC_PERIODS[number];
+export type StatisticPeriod = (typeof STATISTIC_PERIODS)[number];
 export type AutoPeriodConfig = Record<TimeDurationStr, StatisticPeriod>;

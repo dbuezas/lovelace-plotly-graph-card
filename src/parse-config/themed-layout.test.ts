@@ -11,8 +11,12 @@ describe("Home Assistant theme colors", () => {
     expect(new Set(HA_THEME_VARIABLES).size).toBe(35);
     expect(HA_THEME_VARIABLES).toEqual(
       expect.arrayContaining([
-        "accent-color", "error-color", "warning-color", "success-color",
-        "info-color", "divider-color",
+        "accent-color",
+        "error-color",
+        "warning-color",
+        "success-color",
+        "info-color",
+        "divider-color",
       ]),
     );
     for (const name of HA_THEME_VARIABLES) {

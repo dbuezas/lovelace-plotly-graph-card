@@ -230,7 +230,7 @@ try {
     // Trace types are loaded on demand, the same way the card does it
     await PlotlyTest.loadPlotlyModules(
       Object.keys(fixtures).map((type) => ({ type })),
-      {}
+      {},
     );
     for (const [type, data] of Object.entries(fixtures)) {
       const div = document.createElement("div");
@@ -1230,7 +1230,10 @@ try {
             id,
             [
               { s: id === "sensor.one" ? "1" : "3", lu: start / 1000 },
-              { s: id === "sensor.one" ? "2" : "4", lu: (start + 600000) / 1000 },
+              {
+                s: id === "sensor.one" ? "2" : "4",
+                lu: (start + 600000) / 1000,
+              },
             ],
           ]),
         );
