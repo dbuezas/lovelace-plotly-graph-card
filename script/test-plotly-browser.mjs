@@ -1078,9 +1078,31 @@ try {
           request.statistic_ids.map((id, index) => [
             id,
             [
-              { start, end: start + 300000, mean: index + 1 },
-              { start: start + 300000, end: start + 600000, mean: index + 2 },
-            ],
+              {
+                start,
+                end: start + 300000,
+                mean: index + 1,
+                min: index,
+                max: index + 3,
+              },
+              {
+                start: start + 300000,
+                end: start + 600000,
+                mean: index + 2,
+                min: index + 1,
+                max: index + 4,
+              },
+            ].map((row) =>
+              Object.fromEntries(
+                Object.entries(row).filter(
+                  ([key]) =>
+                    !request.types ||
+                    key === "start" ||
+                    key === "end" ||
+                    request.types.includes(key),
+                ),
+              ),
+            ),
           ]),
         );
       },
@@ -1119,6 +1141,7 @@ try {
     "sensor.south",
   ]);
   assert.equal(statisticsState.requests[0].period, "5minute");
+  assert.deepEqual(statisticsState.requests[0].types, ["mean"]);
   assert.deepEqual(statisticsState.values, [
     [1, 2],
     [2, 3],
@@ -1126,7 +1149,7 @@ try {
     [4, 5],
   ]);
   results.results.push(
-    "four statistics traces render from one request and reuse the cache",
+    "four statistics traces request only mean and render from one cached response",
   );
   await page.evaluate(() => {
     const card = document.getElementById("card-under-test");

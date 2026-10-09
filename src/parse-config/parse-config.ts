@@ -23,15 +23,20 @@ import {
   setDateFnDefaultOptions,
 } from "../duration/duration";
 import { parseStatistics } from "./parse-statistics";
+import { canSelectStatisticsTypes } from "./statistics-types";
 import { HomeAssistant } from "custom-card-helpers";
 import filters from "../filters/filters";
 import bounds from "binary-search-bounds";
 import has from "lodash/has";
-import { StatisticPeriod, StatisticValue } from "../recorder-types";
+import {
+  StatisticPeriod,
+  StatisticType,
+  StatisticValue,
+} from "../recorder-types";
 import {
   Config,
   EntityData,
-  EntityIdStatisticsConfig,
+  StatisticsFetchConfig,
   HassEntity,
   InputConfig,
   TimestampRange,
@@ -57,6 +62,8 @@ class ConfigParser {
   private preserveObservedRange = false;
   private retainedCacheRanges: Record<string, TimestampRange[]> = {};
   private failedFetches = new Map<string, unknown>();
+  private statisticsTypes?: StatisticType[];
+  private canSelectStatisticsTypes = false;
   /** IANA timezone the plot is drawn in, undefined for the browser's */
   public timeZone?: string;
   public resetObservedRange() {
@@ -104,6 +111,8 @@ class ConfigParser {
       Array.isArray(inputRange) && !inputRange.some(is$fn);
     this.retainedCacheRanges = {};
     this.yaml_with_defaults = addPreParsingDefaults(input_yaml, css_vars, hass);
+    this.statisticsTypes = undefined;
+    this.canSelectStatisticsTypes = canSelectStatisticsTypes(input_yaml);
     setDateFnDefaultOptions(hass);
 
     this.fnParam = {
@@ -392,10 +401,9 @@ class ConfigParser {
       return;
     }
 
-    const fetch_mask: boolean[] =
-      this.fnParam.getFromConfig("fetch_mask") || [];
     const requests: {
-      entity: EntityIdStatisticsConfig;
+      index: number;
+      entity: StatisticsFetchConfig;
       range: TimestampRange;
     }[] = [];
     entities.forEach((entity, i) => {
@@ -405,11 +413,7 @@ class ConfigParser {
         period,
         time_offset: timeOffset,
       } = entity;
-      if (
-        fetch_mask[i] === false ||
-        !entityId ||
-        [entityId, statistic, period, timeOffset].some(is$fn)
-      ) {
+      if (!entityId || [entityId, statistic, period, timeOffset].some(is$fn)) {
         return;
       }
 
@@ -420,10 +424,13 @@ class ConfigParser {
           period,
         );
         if (!statisticsParams) return;
-        if (!this.shouldFetch(i, statisticsParams.period)) return;
         const offset = parseTimeDuration(timeOffset);
         requests.push({
-          entity: { entity: entityId, ...statisticsParams },
+          index: i,
+          entity: {
+            entity: entityId,
+            ...statisticsParams,
+          },
           range: [
             visible_range[0] - offset,
             Math.min(visible_range[1] - offset, this.fetchTime),
@@ -435,8 +442,18 @@ class ConfigParser {
       }
     });
 
-    if (requests.length < 2) return;
-    await this.cache.prefetchStatistics(requests, this.hass!);
+    // Use normalized requests so parseStatistics remains the only source of
+    // defaults. Include masked traces to keep cache coverage stable on refresh.
+    this.statisticsTypes =
+      this.canSelectStatisticsTypes && requests.length
+        ? [...new Set(requests.map(({ entity }) => entity.statistic))].sort()
+        : undefined;
+    const fetchRequests = requests.filter(({ index, entity }) =>
+      this.shouldFetch(index, entity.period),
+    );
+    for (const request of requests) request.entity.types = this.statisticsTypes;
+    if (fetchRequests.length < 2) return;
+    await this.cache.prefetchStatistics(fetchRequests, this.hass!);
   }
 
   private async fetchDataForEntity(path: string) {
@@ -455,7 +472,11 @@ class ConfigParser {
     const attribute = this.fnParam.getFromConfig(path + ".attribute");
     const fetchConfig = {
       entity: this.fnParam.getFromConfig(path + ".entity"),
-      ...(statisticsParams ? statisticsParams : attribute ? { attribute } : {}),
+      ...(statisticsParams
+        ? { ...statisticsParams, types: this.statisticsTypes }
+        : attribute
+          ? { attribute }
+          : {}),
     };
     const offset = parseTimeDuration(
       this.fnParam.getFromConfig(path + ".time_offset"),
