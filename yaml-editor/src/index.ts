@@ -10,20 +10,20 @@ import * as monaco from "monaco-editor";
 import { ILanguageFeaturesService } from "monaco-editor/esm/vs/editor/common/services/languageFeatures.js";
 import { OutlineModel } from "monaco-editor/esm/vs/editor/contrib/documentSymbols/browser/outlineModel.js";
 import { StandaloneServices } from "monaco-editor/esm/vs/editor/standalone/browser/standaloneServices.js";
+import EditorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
 import { configureMonacoYaml, type SchemasSettings } from "monaco-yaml";
 
 import "./index.css";
 import schema from "./schema.json";
+import YamlWorker from "./yaml.worker.js?worker";
 
 window.MonacoEnvironment = {
   getWorker(moduleId, label) {
     switch (label) {
       case "editorWorkerService":
-        return new Worker(
-          new URL("monaco-editor/esm/vs/editor/editor.worker", import.meta.url),
-        );
+        return new EditorWorker();
       case "yaml":
-        return new Worker(new URL("monaco-yaml/yaml.worker", import.meta.url));
+        return new YamlWorker();
       default:
         throw new Error(`Unknown label ${label}`);
     }
@@ -36,7 +36,7 @@ const defaultSchema: SchemasSettings = {
   fileMatch: ["plotly-graph.yaml"],
 };
 
-const monacoYaml = configureMonacoYaml(monaco, {
+configureMonacoYaml(monaco, {
   schemas: [defaultSchema],
   completion: true,
   format: true,

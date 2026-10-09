@@ -1,5 +1,7 @@
 import filters, { FilterInput } from "./filters";
 
+// Type checks only: these lines must (or must not) compile
+/* oxlint-disable no-unused-vars */
 const RIGHT_1 = { integrate: { offset: "2d" } } satisfies FilterInput;
 const RIGHT_11 = { integrate: "d" } satisfies FilterInput;
 const RIGHT_2 = "integrate" satisfies FilterInput;
@@ -13,6 +15,7 @@ const RIGHT_7 = { resample: "5m" } satisfies FilterInput;
 const WRONG_1 = "add" satisfies FilterInput;
 //@ts-expect-error
 const WRONG_2 = { integrate: 3 } satisfies FilterInput;
+/* oxlint-enable no-unused-vars */
 
 const date = (s: string) => new Date(`2022-12-20T18:07:${s}Z`);
 
@@ -99,7 +102,7 @@ describe("filters", () => {
   });
 
   describe("integrate", () => {
-    afterEach(() => jest.useRealTimers());
+    afterEach(() => vi.useRealTimers());
 
     it("skips non numeric values", () => {
       const data = input();
@@ -137,7 +140,7 @@ describe("filters", () => {
       // Resets are aligned to local midnight of the current day. The clock has
       // nonzero milliseconds, which must not shift the reset boundaries.
       beforeEach(() => {
-        jest.useFakeTimers({ now: new Date(2022, 11, 21, 12, 34, 56, 789) });
+        vi.useFakeTimers({ now: new Date(2022, 11, 21, 12, 34, 56, 789) });
       });
       // local time on December <day> 2022
       const at = (day: number, hours: number, minutes = 0) =>
@@ -245,7 +248,7 @@ describe("filters", () => {
         ])(
           "uses each sample's day, not today's UTC offset (%s)",
           (now, ...timestamps) => {
-            jest.setSystemTime(new Date(now));
+            vi.setSystemTime(new Date(now));
             expect(run(timestamps)).toEqual([NaN, 1, 0.5]);
           },
         );
@@ -278,7 +281,7 @@ describe("filters", () => {
         );
 
         it("preserves fixed 24-hour intervals", () => {
-          jest.setSystemTime(new Date("2026-03-29T12:00Z"));
+          vi.setSystemTime(new Date("2026-03-29T12:00Z"));
           expect(
             run(
               [

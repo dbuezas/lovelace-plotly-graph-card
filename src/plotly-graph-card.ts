@@ -61,9 +61,10 @@ export class PlotlyGraph extends HTMLElement {
   private statisticsFetchPeriods = new Set<StatisticsUpdatePeriod>();
   statisticsUpdates = new StatisticsUpdates((period) => {
     this.statisticsFetchPeriods.add(period);
-    this.plot({ should_fetch: false }, 500);
+    void this.plot({ should_fetch: false }, 500);
   });
   pausedRendering = false;
+  filesFailed = false; // the browser remembers failed imports until a reload
   handles: {
     resizeObserver?: ResizeObserver;
     intersectionObserver?: IntersectionObserver;
@@ -205,6 +206,10 @@ export class PlotlyGraph extends HTMLElement {
               overflow-wrap: break-word;
               display: none;
             }
+            /* No chart (e.g. files didn't load): don't overlay, take space */
+            ha-card:not(:has(.plot-container)) > #error-msg {
+              position: static;
+            }
             #error-msg a{
               color: mediumturquoise;
             }
@@ -230,7 +235,7 @@ export class PlotlyGraph extends HTMLElement {
       },
       onZoomEnd: () => {
         this.pausedRendering = false;
-        if (this.isConnected) this.plot({ should_fetch: true });
+        if (this.isConnected) void this.plot({ should_fetch: true });
       },
     });
   }
@@ -255,7 +260,7 @@ export class PlotlyGraph extends HTMLElement {
         this.size.height === nextSize.height
       ) return;
       this.size = nextSize;
-      this.plot({ should_fetch: false });
+      void this.plot({ should_fetch: false });
     };
     this.handles.intersectionObserver = new IntersectionObserver(([entry]) => {
       this.onScreen = entry.isIntersecting;
@@ -271,7 +276,7 @@ export class PlotlyGraph extends HTMLElement {
     this.updateStatisticsSubscriptions();
     // Start downloading Plotly while the data is fetched (errors show on render)
     import("./plotly").catch(() => {});
-    this.plot({ should_fetch: true, refresh_statistics: true });
+    void this.plot({ should_fetch: true, refresh_statistics: true });
   }
 
   disconnectedCallback() {
@@ -373,7 +378,7 @@ export class PlotlyGraph extends HTMLElement {
         }
       }
       if (shouldPlot) {
-        this.plot({ should_fetch: false }, this.liveThrottle.change());
+        void this.plot({ should_fetch: false }, this.liveThrottle.change());
       }
     }
     this._hass = hass;
@@ -434,7 +439,7 @@ export class PlotlyGraph extends HTMLElement {
   exitBrowsingMode = async () => {
     this.isBrowsing = false;
     this.resetButtonEl.classList.add("hidden");
-    this.withoutRelayout(async () => {
+    void this.withoutRelayout(async () => {
       this.configParser.resetObservedRange();
       await this.plot({ should_fetch: true, refresh_statistics: true });
     });
@@ -488,10 +493,9 @@ export class PlotlyGraph extends HTMLElement {
   // The user supplied configuration. Throw an exception and Lovelace will
   // render an error card.
   async setConfig(config: InputConfig) {
-    const was = this.config;
     this.config = config;
     setInitialLoadingHeight(this.cardEl, config.layout);
-    this.exitBrowsingMode();
+    void this.exitBrowsingMode();
   }
   getCSSVars() {
     const styles = window.getComputedStyle(this.contentEl);
@@ -537,11 +541,11 @@ export class PlotlyGraph extends HTMLElement {
     clearTimeout(this.handles.offScreenTimeout);
     if (!this.renderDeferred) return;
     this.renderDeferred = false;
-    this.plot({ should_fetch: false });
+    void this.plot({ should_fetch: false });
   };
   _plot = debounce(async (now) => {
     this.liveThrottle.renderStarted();
-    if (this.pausedRendering) return;
+    if (this.pausedRendering || this.filesFailed) return;
     // Off-screen cards update every 30 s, and catch up once scrolled into
     // view. They still update, for full-page screenshots.
     const wait = this.lastRender + 30_000 - performance.now();
@@ -589,7 +593,7 @@ export class PlotlyGraph extends HTMLElement {
         {
           layout: {
             ...this.size,
-            ...{ uirevision },
+            uirevision,
           },
           fetch_mask,
         },
@@ -657,8 +661,14 @@ export class PlotlyGraph extends HTMLElement {
         if (locale) config.locale = locale;
         Plotly = plotly.default;
       } catch (e: any) {
+        this.filesFailed = true;
         this.errorMsgEl.style.display = "block";
-        this.errorMsgEl.innerText = `Some files of the card didn't load (${e?.message}). Reload the page. If it keeps happening, reinstall the card (for a manual install, copy all files of the release).`;
+        this.errorMsgEl.innerText = `Some files of the card didn't load (${e?.message}). If reloading doesn't help, reinstall the card (for a manual install, copy all files of the release). `;
+        const reload = this.errorMsgEl.appendChild(
+          document.createElement("button")
+        );
+        reload.textContent = "Reload";
+        reload.onclick = () => location.reload();
         return;
       }
       copyPlotlyStyles(this.plotlyStyleEl);

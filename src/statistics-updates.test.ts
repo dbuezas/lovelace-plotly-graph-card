@@ -1,3 +1,4 @@
+import type { Mock } from "vitest";
 import type { HomeAssistant } from "custom-card-helpers";
 import type { StatisticPeriod } from "./recorder-types";
 import { StatisticsUpdates } from "./statistics-updates";
@@ -12,11 +13,11 @@ const flush = async () => {
 
 function mockConnection() {
   const callbacks = new Map<string, () => void>();
-  const unsubscribes = new Map<string, jest.Mock>();
-  const subscribeEvents = jest.fn(
+  const unsubscribes = new Map<string, Mock>();
+  const subscribeEvents = vi.fn(
     async (callback: () => void, event: string) => {
       callbacks.set(event, callback);
-      const unsubscribe = jest.fn();
+      const unsubscribe = vi.fn();
       unsubscribes.set(event, unsubscribe);
       return unsubscribe;
     },
@@ -41,7 +42,7 @@ describe("statistics update subscriptions", () => {
     "%j subscribes to %j and reports %j",
     async (live, events, reported) => {
       const mock = mockConnection();
-      const update = jest.fn();
+      const update = vi.fn();
       new StatisticsUpdates(update).update(mock.connection, periods(...live));
       await flush();
       expect([...mock.callbacks.keys()]).toEqual(events);
@@ -52,7 +53,7 @@ describe("statistics update subscriptions", () => {
 
   it("does not duplicate subscriptions on repeated renders", async () => {
     const mock = mockConnection();
-    const subscriptions = new StatisticsUpdates(jest.fn());
+    const subscriptions = new StatisticsUpdates(vi.fn());
     subscriptions.update(mock.connection, periods("5minute", "hour"));
     subscriptions.update(mock.connection, periods("5minute", "day"));
     await flush();
@@ -61,7 +62,7 @@ describe("statistics update subscriptions", () => {
 
   it("unsubscribes from periods that are no longer shown", async () => {
     const mock = mockConnection();
-    const update = jest.fn();
+    const update = vi.fn();
     const subscriptions = new StatisticsUpdates(update);
     subscriptions.update(mock.connection, periods("5minute"));
     await flush();
@@ -73,7 +74,7 @@ describe("statistics update subscriptions", () => {
 
   it("unsubscribes if the card disconnects before subscribing completes", async () => {
     const mock = mockConnection();
-    const update = jest.fn();
+    const update = vi.fn();
     const subscriptions = new StatisticsUpdates(update);
     subscriptions.update(mock.connection, periods("5minute"));
     subscriptions.disconnect();
@@ -86,7 +87,7 @@ describe("statistics update subscriptions", () => {
   it("moves subscriptions to a new HA connection", async () => {
     const first = mockConnection();
     const second = mockConnection();
-    const update = jest.fn();
+    const update = vi.fn();
     const subscriptions = new StatisticsUpdates(update);
     subscriptions.update(first.connection, periods("hour"));
     subscriptions.update(second.connection, periods("hour"));
@@ -98,10 +99,10 @@ describe("statistics update subscriptions", () => {
   });
 
   it("warns instead of throwing when subscribing fails", async () => {
-    const warning = jest.spyOn(console, "warn").mockImplementation(() => {});
+    const warning = vi.spyOn(console, "warn").mockImplementation(() => {});
     const mock = mockConnection();
     mock.subscribeEvents.mockRejectedValue(new Error("offline"));
-    new StatisticsUpdates(jest.fn()).update(mock.connection, periods("hour"));
+    new StatisticsUpdates(vi.fn()).update(mock.connection, periods("hour"));
     await flush();
     expect(warning).toHaveBeenCalledTimes(1);
     warning.mockRestore();
