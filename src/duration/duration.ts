@@ -61,7 +61,7 @@ export const isTimeDuration = (str: any) => {
   try {
     parseTimeDuration(str);
     return true;
-  } catch (e) {
+  } catch {
     return false;
   }
 };
@@ -125,7 +125,7 @@ export const isRelativeTime = (str: any) => {
   try {
     parseRelativeTime(str);
     return true;
-  } catch (e) {
+  } catch {
     return false;
   }
 };

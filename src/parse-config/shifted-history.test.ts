@@ -15,7 +15,7 @@ function createHass(): HomeAssistant {
   return {
     locale: { language: "en", first_weekday: "monday" },
     states: {},
-    callWS: jest.fn(async ({ entity_ids, start_time, end_time }) => {
+    callWS: vi.fn(async ({ entity_ids, start_time, end_time }) => {
       const start = Date.parse(start_time) / 1000;
       const end = Date.parse(end_time) / 1000;
       const preceding = samples.filter(({ lu }) => lu < start).slice(-1);
@@ -30,11 +30,11 @@ function createHass(): HomeAssistant {
 describe("shifted history extension", () => {
   beforeEach(() => {
     Object.assign(global, { window: { eval } });
-    jest.spyOn(Date, "now").mockReturnValue(NOW);
+    vi.spyOn(Date, "now").mockReturnValue(NOW);
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
     Reflect.deleteProperty(global, "window");
   });
 
@@ -93,7 +93,7 @@ describe("shifted history extension", () => {
     const parser = new ConfigParser();
     const hass = createHass();
     Object.assign(hass, {
-      callWS: jest.fn(async () => ({
+      callWS: vi.fn(async () => ({
         [entity]: [{ s: "42", lu: NOW / 1000 }],
       })),
     });
@@ -116,7 +116,7 @@ describe("shifted history extension", () => {
     Object.assign(hass, {
       callWS: async (request: Parameters<HomeAssistant["callWS"]>[0]) => {
         const response = await callWS(request);
-        jest.mocked(Date.now).mockReturnValue(NOW + 60000);
+        vi.mocked(Date.now).mockReturnValue(NOW + 60000);
         return response;
       },
     });

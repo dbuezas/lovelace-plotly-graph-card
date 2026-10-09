@@ -1,4 +1,4 @@
-import maplibreCss from "maplibre-gl/dist/maplibre-gl.css" with { type: "text" };
+import maplibreCss from "maplibre-gl/dist/maplibre-gl.css?raw";
 
 // Add MapLibre's CSS like a Plotly style, so cards copy it into their shadow DOM
 const style = document.head.appendChild(document.createElement("style"));
