@@ -8,9 +8,12 @@ import { chromium } from "playwright";
 const [{ code: js }] = await bundleInMemory({ name: "CardTest" });
 const server = createServer((req, res) => {
   const isJs = req.url.endsWith(".js");
-  res.setHeader("Content-Type", isJs ? "text/javascript; charset=utf-8" : "text/html");
+  res.setHeader(
+    "Content-Type",
+    isJs ? "text/javascript; charset=utf-8" : "text/html",
+  );
   res.end(
-    isJs ? js : `<!doctype html><body><script src="/card.js"></script></body>`
+    isJs ? js : `<!doctype html><body><script src="/card.js"></script></body>`,
   );
 });
 await new Promise((r) => server.listen(0, "127.0.0.1", r));
@@ -21,7 +24,7 @@ const browser = await chromium.launch({
 const results = [];
 const check = (ok, msg, extra = "") =>
   results.push(
-    `${ok ? "PASS" : "FAIL"}  ${msg}${extra === "" ? "" : `  (${extra})`}`
+    `${ok ? "PASS" : "FAIL"}  ${msg}${extra === "" ? "" : `  (${extra})`}`,
   );
 const info = (msg) => results.push(`INFO  ${msg}`);
 
@@ -62,7 +65,7 @@ try {
       from.map(([x, y], j) => [
         x + ((to[j][0] - x) * i) / n,
         y + ((to[j][1] - y) * i) / n,
-      ])
+      ]),
     );
 
   const mount = (config) =>
@@ -74,7 +77,7 @@ try {
             connectedCallback() {
               this.style.display = "block";
             }
-          }
+          },
         );
       document.getElementById("c")?.remove();
       const card = new CardTest.PlotlyGraph();
@@ -162,14 +165,14 @@ try {
     check(
       s1.events.click === 1,
       `${tag} tap emits plotly_click`,
-      s1.events.click
+      s1.events.click,
     );
     check(
       (s1.hover === "") === extended_touch_support,
       `${tag} tap ${
         extended_touch_support ? "doesn't show" : "shows"
       } the tooltip`,
-      s1.hover
+      s1.hover,
     );
     await wait(400);
 
@@ -182,7 +185,7 @@ try {
     check(
       s1.events.doubleclick === 1,
       `${tag} double tap reaches Plotly (reset)`,
-      `doubleclick=${s1.events.doubleclick}`
+      `doubleclick=${s1.events.doubleclick}`,
     );
 
     await mount(config);
@@ -195,7 +198,7 @@ try {
     check(
       s1.events.legenddoubleclick === 1,
       `${tag} legend double tap reaches Plotly`,
-      `legenddoubleclick=${s1.events.legenddoubleclick}`
+      `legenddoubleclick=${s1.events.legenddoubleclick}`,
     );
 
     await mount(config);
@@ -206,7 +209,7 @@ try {
     await wait(300);
     check(
       Math.abs((await xAt(cx - 100)) - x0) < tol(s0.span),
-      `${tag} one-finger drag pans with the finger`
+      `${tag} one-finger drag pans with the finger`,
     );
   }
 
@@ -224,8 +227,8 @@ try {
       [
         [cx - 120, cy],
         [cx + 80, cy],
-      ]
-    )
+      ],
+    ),
   );
   let mid = await state();
   check(mid.paused, "pinch pauses rendering while zooming");
@@ -235,17 +238,17 @@ try {
   check(
     s1.span < s0.span * 0.6,
     "pinch apart zooms in",
-    `${(s0.span / hour).toFixed(1)}h -> ${(s1.span / hour).toFixed(1)}h`
+    `${(s0.span / hour).toFixed(1)}h -> ${(s1.span / hour).toFixed(1)}h`,
   );
   check(
     Math.abs((await xAt(cx - 120)) - a) < tol(s1.span) &&
       Math.abs((await xAt(cx + 80)) - b) < tol(s1.span),
-    "the data under each finger stays under it"
+    "the data under each finger stays under it",
   );
   check(
     !s1.paused && s1.events.click === 0 && s1.events.doubleclick === 0,
     "after pinch: rendering resumes, no stray click",
-    JSON.stringify(s1.events)
+    JSON.stringify(s1.events),
   );
 
   await mount({});
@@ -260,8 +263,8 @@ try {
       [
         [cx + 60, cy],
         [cx + 140, cy],
-      ]
-    )
+      ],
+    ),
   );
   await touch("touchEnd");
   await wait(300);
@@ -269,7 +272,7 @@ try {
   check(
     Math.abs((await xAt(cx + 100)) - a) < tol(s1.span) &&
       Math.abs(s1.span - s0.span) < tol(s0.span),
-    "two fingers moving together pan without zooming"
+    "two fingers moving together pan without zooming",
   );
 
   await mount({});
@@ -285,7 +288,7 @@ try {
   s1 = await state();
   check(
     Math.abs((await xAt(cx + 50)) - a) < tol(s1.span),
-    "after lifting one finger, the other keeps panning"
+    "after lifting one finger, the other keeps panning",
   );
 
   await mount({});
@@ -305,8 +308,8 @@ try {
       [
         [cx - 60, cy],
         [cx + 110, cy],
-      ]
-    ).slice(1)
+      ],
+    ).slice(1),
   );
   await touch("touchEnd");
   await wait(300);
@@ -314,7 +317,7 @@ try {
   check(
     Math.abs((await xAt(cx - 60)) - a) < tol(s1.span),
     "pan, then second finger: the started pan is kept (no jump)",
-    `${(((await xAt(cx - 60)) - a) / 60000).toFixed(1)} min off`
+    `${(((await xAt(cx - 60)) - a) / 60000).toFixed(1)} min off`,
   );
 
   await mount({});
@@ -328,8 +331,8 @@ try {
         [cx - 100, cy],
         [cx + 100, cy],
       ],
-      4
-    )
+      4,
+    ),
   );
   await touch("touchCancel");
   await wait(300);
@@ -354,11 +357,11 @@ try {
   check(
     s1.span < s0.span * 0.8 && mid.paused,
     "double tap + drag down zooms in",
-    `${(s0.span / hour).toFixed(1)}h -> ${(s1.span / hour).toFixed(1)}h`
+    `${(s0.span / hour).toFixed(1)}h -> ${(s1.span / hour).toFixed(1)}h`,
   );
   check(
     s1.events.doubleclick === 0 && !s1.paused,
-    "no Plotly double click (reset) after double-tap-drag"
+    "no Plotly double click (reset) after double-tap-drag",
   );
 
   await mount({});
@@ -373,7 +376,7 @@ try {
   check(
     Math.abs((await xAt(cx - 100)) - a) < tol(s1.span) &&
       Math.abs(s1.span - s0.span) < tol(s0.span),
-    "double tap + drag sideways pans with the finger, without zooming"
+    "double tap + drag sideways pans with the finger, without zooming",
   );
 
   await mount({});
@@ -388,7 +391,7 @@ try {
   check(
     Math.abs((await xAt(cx - 60)) - a) < tol(s1.span) &&
       s1.span < s0.span * 0.8,
-    "double tap + diagonal drag zooms and keeps the data under the finger"
+    "double tap + diagonal drag zooms and keeps the data under the finger",
   );
 
   await mount({});
@@ -402,7 +405,7 @@ try {
   check(
     s1.events.doubleclick === 1,
     "double tap with a 4 px wobble is still a double tap",
-    `doubleclick=${s1.events.doubleclick}`
+    `doubleclick=${s1.events.doubleclick}`,
   );
 
   // --- Scan (press and hold)
@@ -421,7 +424,7 @@ try {
   check(
     sMid.hover !== sHold.hover && sEnd.hover !== sMid.hover,
     "sliding moves the tooltip",
-    `${sMid.hover} -> ${sEnd.hover}`
+    `${sMid.hover} -> ${sEnd.hover}`,
   );
   check(sEnd.range === s0.range, "the graph does not pan while scanning");
   await touch("touchEnd");
@@ -431,7 +434,7 @@ try {
   check(
     s1.events.click === 0,
     "no stray plotly_click after a scan",
-    s1.events.click
+    s1.events.click,
   );
   await tap(l + w * 0.2, cy);
   await wait(300);
@@ -439,7 +442,7 @@ try {
   check(
     sTap.hover === "" && sTap.events.click === 1,
     "a tap afterwards clears the tooltip and still clicks",
-    sTap.hover
+    sTap.hover,
   );
   await drag(steps([[cx, cy]], [[cx - 100, cy]]));
   await touch("touchEnd");
@@ -447,7 +450,7 @@ try {
   s1 = await state();
   check(
     s1.hover === "" && s1.range !== s0.range,
-    "a pan afterwards clears the tooltip and pans"
+    "a pan afterwards clears the tooltip and pans",
   );
 
   await mount({});
@@ -467,15 +470,15 @@ try {
       [
         [cx - 100, cy],
         [cx + 100, cy],
-      ]
-    ).slice(1)
+      ],
+    ).slice(1),
   );
   await touch("touchEnd");
   await wait(300);
   s1 = await state();
   check(
     s1.span < s0.span * 0.6 && s1.hover === "",
-    "scan, then a second finger: pinch zooms and the tooltip goes away"
+    "scan, then a second finger: pinch zooms and the tooltip goes away",
   );
 
   await mount({});
@@ -490,7 +493,7 @@ try {
   await wait(300);
   check(
     s1.hover !== "" && (await state()).span === s0.span,
-    "double tap + hold scans (no zoom)"
+    "double tap + hold scans (no zoom)",
   );
 
   await mount({ layout: { hovermode: false } });
@@ -503,7 +506,7 @@ try {
   s1 = await state();
   check(
     s1.hover === "" && s1.range !== s0.range,
-    "hovermode: false turns scan off (hold + slide pans)"
+    "hovermode: false turns scan off (hold + slide pans)",
   );
 
   await mount({ extended_touch_support: { hold_to_scan: false } });
@@ -516,7 +519,7 @@ try {
   s1 = await state();
   check(
     s1.hover === "" && s1.range !== s0.range,
-    "hold_to_scan: false: hold + slide pans"
+    "hold_to_scan: false: hold + slide pans",
   );
 
   await mount({ disable_pinch_to_zoom: true });
@@ -530,14 +533,14 @@ try {
       [
         [cx - 120, cy],
         [cx + 120, cy],
-      ]
-    )
+      ],
+    ),
   );
   await touch("touchEnd");
   await wait(300);
   check(
     Math.abs((await state()).span - s0.span) < tol(s0.span),
-    "disable_pinch_to_zoom turns pinch off"
+    "disable_pinch_to_zoom turns pinch off",
   );
 
   // --- Each gesture can be turned off alone
@@ -552,8 +555,8 @@ try {
         [
           [cx - 120, cy],
           [cx + 120, cy],
-        ]
-      )
+        ],
+      ),
     );
     await touch("touchEnd");
     await wait(300);
@@ -573,21 +576,21 @@ try {
   await mount({ extended_touch_support: { pinch_to_zoom: false } });
   check(
     !p && (await doubleTapDragIn()),
-    "pinch_to_zoom: false: no pinch, double-tap-drag still zooms"
+    "pinch_to_zoom: false: no pinch, double-tap-drag still zooms",
   );
   await mount({ extended_touch_support: { double_tap_drag_to_zoom: false } });
   p = await pinchOut();
   await mount({ extended_touch_support: { double_tap_drag_to_zoom: false } });
   check(
     p && !(await doubleTapDragIn()),
-    "double_tap_drag_to_zoom: false: no double-tap-drag, pinch still zooms"
+    "double_tap_drag_to_zoom: false: no double-tap-drag, pinch still zooms",
   );
   await mount({ extended_touch_support: { hold_to_scan: false } });
   await tap(cx, cy);
   await wait(100);
   check(
     (await state()).hover !== "",
-    "hold_to_scan: false: a tap shows the tooltip again"
+    "hold_to_scan: false: a tap shows the tooltip again",
   );
 
   // --- scrollZoom: false only turns off the mouse wheel
@@ -599,7 +602,7 @@ try {
   await wait(300);
   check(
     (await state()).range === s0.range,
-    "scrollZoom: false: the mouse wheel doesn't zoom"
+    "scrollZoom: false: the mouse wheel doesn't zoom",
   );
 
   // --- Two quick swipes are pans, not a double-tap-drag
@@ -614,7 +617,7 @@ try {
   check(
     Math.abs(s1.span - s0.span) < tol(s0.span) && s1.range !== s0.range,
     "two quick swipes pan without zooming",
-    `${(s0.span / hour).toFixed(1)}h -> ${(s1.span / hour).toFixed(1)}h`
+    `${(s0.span / hour).toFixed(1)}h -> ${(s1.span / hour).toFixed(1)}h`,
   );
 
   // --- A pan while the data loads is not undone when the data arrives
@@ -638,7 +641,7 @@ try {
   check(
     Math.abs((await xAt(cx)) - a) < tol(s1.span),
     "a pan while the data loads stays",
-    `${(((await xAt(cx)) - a) / hour).toFixed(1)}h off`
+    `${(((await xAt(cx)) - a) / hour).toFixed(1)}h off`,
   );
 
   // --- Lifecycle
@@ -657,9 +660,9 @@ try {
     await page.evaluate(
       () =>
         window.oldHovers === 0 &&
-        !window.old.contentEl.querySelector(".hoverlayer .hovertext")
+        !window.old.contentEl.querySelector(".hoverlayer .hovertext"),
     ),
-    "card removed while holding: no tooltip afterwards"
+    "card removed while holding: no tooltip afterwards",
   );
 
   await mount({});
@@ -673,8 +676,8 @@ try {
         [cx - 100, cy],
         [cx + 100, cy],
       ],
-      4
-    )
+      4,
+    ),
   );
   await page.evaluate(() => {
     window.old = document.getElementById("c");
@@ -683,7 +686,7 @@ try {
   await touch("touchEnd");
   check(
     await page.evaluate(() => !window.old.pausedRendering),
-    "card removed in the middle of a pinch: rendering is not left paused"
+    "card removed in the middle of a pinch: rendering is not left paused",
   );
   await mount({});
   s0 = await state();
@@ -696,8 +699,8 @@ try {
       [
         [cx - 100, cy],
         [cx + 100, cy],
-      ]
-    )
+      ],
+    ),
   );
   await touch("touchEnd");
   await wait(300);
@@ -706,7 +709,7 @@ try {
   check(
     Math.abs(ratio - 2) < 0.1,
     "pinch 100 px -> 200 px zooms exactly 2x (fingers keep their data)",
-    ratio.toFixed(2)
+    ratio.toFixed(2),
   );
 
   check(errors.length === 0, "no page errors", errors.join("; "));
@@ -726,7 +729,7 @@ try {
           [cx - 130, cy],
           [cx + 130, cy],
         ],
-        40
+        40,
       ),
     ],
   ]) {
