@@ -354,7 +354,7 @@ describe("statistics request batching", () => {
   });
 
   it("includes the default mean for period-only traces alongside max", async () => {
-    const callWS = jest.fn(async ({ types }: Record<string, any>) => ({
+    const callWS = vi.fn(async ({ types }: Record<string, any>) => ({
       "sensor.east": [
         selectFields({ ...statistic("sensor.east", 4), max: 8 }, types),
       ],
@@ -405,7 +405,7 @@ describe("statistics request batching", () => {
 
   it("does not reuse a partial response when the configured statistic changes", async () => {
     const parser = new ConfigParser();
-    const callWS = jest.fn(async ({ types }: Record<string, any>) => ({
+    const callWS = vi.fn(async ({ types }: Record<string, any>) => ({
       "sensor.east": [
         selectFields({ ...statistic("sensor.east", 4), max: 8 }, types),
       ],
