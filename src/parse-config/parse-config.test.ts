@@ -1,3 +1,4 @@
+import type { Mock } from "vitest";
 import { HomeAssistant } from "custom-card-helpers";
 import { STATISTIC_TYPES, Statistics, StatisticValue } from "../recorder-types";
 import { EntityConfig, InputConfig } from "../types";
@@ -5,8 +6,7 @@ import { ConfigParser } from "./parse-config";
 import { HATheme, readThemeColors } from "./themed-layout";
 import { getEntityKey } from "../cache/Cache";
 
-jest.mock("../filters/filters", () => ({
-  __esModule: true,
+vi.mock("../filters/filters", () => ({
   default: {
     multiply: (factor: number) => ({ ys }: { ys: number[] }) => ({
       ys: ys.map((value) => value * factor),
@@ -55,7 +55,7 @@ function statistic(statisticId: string, mean: number): StatisticValue {
 }
 
 function successfulCallWS() {
-  return jest.fn(async ({ statistic_ids, types }) =>
+  return vi.fn(async ({ statistic_ids, types }) =>
     Object.fromEntries(
       statistic_ids.map((entityId: string, i: number) => [
         entityId,
@@ -79,7 +79,7 @@ function selectFields(row: StatisticValue, types?: string[]) {
 }
 
 function createHass(
-  callWS: jest.Mock<Promise<Statistics>, [Record<string, any>]>,
+  callWS: Mock<(params: Record<string, any>) => Promise<Statistics>>,
 ): HomeAssistant {
   return {
     callWS,
@@ -93,7 +93,7 @@ function createHass(
 
 function update(
   parser: ConfigParser,
-  callWS: jest.Mock<Promise<Statistics>, [Record<string, any>]>,
+  callWS: Mock<(params: Record<string, any>) => Promise<Statistics>>,
   entities = compatibleEntities,
   config: Partial<InputConfig> & {
     visible_range?: [number, number];
@@ -118,11 +118,11 @@ describe("statistics request batching", () => {
   });
 
   beforeEach(() => {
-    jest.spyOn(Date, "now").mockReturnValue(NOW);
+    vi.spyOn(Date, "now").mockReturnValue(NOW);
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   it("draws dates in the configured timezone", async () => {
@@ -185,7 +185,7 @@ describe("statistics request batching", () => {
       timestamp: NOW + (i - 24) * hour,
       value: i,
     }));
-    const callWS = jest.fn(async ({ statistic_ids, start_time, end_time }) =>
+    const callWS = vi.fn(async ({ statistic_ids, start_time, end_time }) =>
       Object.fromEntries(
         statistic_ids.map((id: string) => [
           id,
@@ -206,7 +206,7 @@ describe("statistics request batching", () => {
 
     for (let elapsed = 0; elapsed <= 6; elapsed++) {
       const now = NOW + elapsed * hour;
-      jest.mocked(Date.now).mockReturnValue(now);
+      vi.mocked(Date.now).mockReturnValue(now);
       const result = await update(parser, callWS, compatibleEntities, {
         hours_to_show: 3,
       });
@@ -287,8 +287,8 @@ describe("statistics request batching", () => {
     const callWS = successfulCallWS();
     const parser = new ConfigParser();
     callWS.mockRejectedValueOnce(new Error("batch failed"));
-    jest.spyOn(console, "error").mockImplementation();
-    jest.spyOn(console, "warn").mockImplementation();
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.spyOn(console, "warn").mockImplementation(() => {});
 
     const result = await update(parser, callWS);
 
@@ -332,7 +332,7 @@ describe("statistics request batching", () => {
   });
 
   it("shares a response between different statistics for the same entity", async () => {
-    const callWS = jest.fn(async ({ types }: Record<string, any>) => ({
+    const callWS = vi.fn(async ({ types }: Record<string, any>) => ({
       "sensor.east": [
         selectFields({ ...statistic("sensor.east", 4), min: 2, max: 8 }, types),
       ],
@@ -533,7 +533,7 @@ describe("statistics request batching", () => {
 
   it("does not prefetch an unevaluated dynamic time range", async () => {
     const callWS = successfulCallWS();
-    jest.spyOn(console, "warn").mockImplementation();
+    vi.spyOn(console, "warn").mockImplementation(() => {});
     const result = await new ConfigParser().update({
       yaml: {
         type: "custom:plotly-graph",
@@ -553,8 +553,8 @@ describe("statistics request batching", () => {
 
   it("skips batching an invalid time range without a batching warning", async () => {
     const callWS = successfulCallWS();
-    const warn = jest.spyOn(console, "warn").mockImplementation();
-    jest.spyOn(console, "error").mockImplementation();
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.spyOn(console, "error").mockImplementation(() => {});
     const result = await new ConfigParser().update({
       yaml: {
         type: "custom:plotly-graph",
@@ -600,10 +600,10 @@ describe("statistics request batching", () => {
   });
 
   it("reports errors when both the batch and individual requests fail", async () => {
-    const callWS = jest.fn().mockRejectedValue(new Error("offline"));
+    const callWS = vi.fn().mockRejectedValue(new Error("offline"));
     const parser = new ConfigParser();
-    jest.spyOn(console, "error").mockImplementation();
-    jest.spyOn(console, "warn").mockImplementation();
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.spyOn(console, "warn").mockImplementation(() => {});
     const result = await update(parser, callWS);
     expect(result.errors.length).toBeGreaterThan(0);
     expect(callWS).toHaveBeenCalledTimes(3);
@@ -617,10 +617,10 @@ describe("statistics request batching", () => {
   it.each([undefined, "temperature"])(
     "reuses history failures for attribute %s and retries on the next update",
     async (attribute) => {
-      const callWS = jest.fn().mockRejectedValue(new Error("offline"));
+      const callWS = vi.fn().mockRejectedValue(new Error("offline"));
       const parser = new ConfigParser();
-      jest.spyOn(console, "error").mockImplementation();
-      jest.spyOn(console, "warn").mockImplementation();
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      vi.spyOn(console, "warn").mockImplementation(() => {});
       const input = {
         yaml: {
           type: "custom:plotly-graph" as const,
@@ -655,9 +655,9 @@ describe("statistics request batching", () => {
   );
 
   it("keeps failures separate for state, attribute, statistics and time ranges", async () => {
-    const callWS = jest.fn().mockRejectedValue(new Error("offline"));
-    jest.spyOn(console, "error").mockImplementation();
-    jest.spyOn(console, "warn").mockImplementation();
+    const callWS = vi.fn().mockRejectedValue(new Error("offline"));
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.spyOn(console, "warn").mockImplementation(() => {});
     await new ConfigParser().update({
       yaml: {
         type: "custom:plotly-graph",
