@@ -1,4 +1,5 @@
 import { HomeAssistant } from "custom-card-helpers";
+import { requestCardData } from "./shared-requests";
 import {
   CachedStateEntity,
   EntityIdAttrConfig,
@@ -14,7 +15,7 @@ type CompressedHistoryState = {
   lu: number;
 };
 
-type HistoryState = HassEntity | CompressedHistoryState;
+export type HistoryState = HassEntity | CompressedHistoryState;
 export type HistoryResponse = Record<string, HistoryState[]>;
 
 function expandState(entityId: string, state: HistoryState): HassEntity {
@@ -57,7 +58,7 @@ export async function fetchStatesBatch(
   let history: HistoryResponse;
   try {
     history =
-      (await hass.callWS<HistoryResponse>({
+      (await requestCardData(hass, {
         type: "history/history_during_period",
         start_time: start.toISOString(),
         end_time: end.toISOString(),

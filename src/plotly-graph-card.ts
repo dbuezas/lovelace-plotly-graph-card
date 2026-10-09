@@ -82,6 +82,8 @@ export class PlotlyGraph extends HTMLElement {
       void this.plot({ should_fetch: false }, this.liveThrottle.change());
   });
   pausedRendering = false;
+  // Initial setup may run before attachment; only removal cancels it.
+  private disconnected = false;
   filesFailed = false; // the browser remembers failed imports until a reload
   handles: {
     resizeObserver?: ResizeObserver;
@@ -259,6 +261,7 @@ export class PlotlyGraph extends HTMLElement {
   }
 
   connectedCallback() {
+    this.disconnected = false;
     const updateCardSize = () => {
       const width = this.cardEl.offsetWidth;
       if (width <= 0) return;
@@ -299,6 +302,7 @@ export class PlotlyGraph extends HTMLElement {
   }
 
   disconnectedCallback() {
+    this.disconnected = true;
     this.handles.resizeObserver?.disconnect();
     this.handles.intersectionObserver?.disconnect();
     this.disconnectPlotlyListeners();
@@ -590,9 +594,9 @@ export class PlotlyGraph extends HTMLElement {
     this.renderDeferred = false;
     void this.plot({ should_fetch: false });
   };
-  _plot = debounce(async () => {
+  _plot = debounce(async (now) => {
     this.liveThrottle.renderStarted();
-    if (this.pausedRendering || this.filesFailed) return;
+    if (this.pausedRendering || this.filesFailed || this.disconnected) return;
     // Off-screen cards update every 30 s, and catch up once scrolled into
     // view. They still update, for full-page screenshots.
     const wait = this.lastRender + 30_000 - performance.now();
@@ -612,12 +616,13 @@ export class PlotlyGraph extends HTMLElement {
       this.statisticsFetchPeriods = new Set();
       let i = 0;
       while (!(this.config && this.hass && this.isConnected)) {
+        if (this.disconnected) return;
         if (i++ > 50) throw new Error("Card didn't load");
         console.log("waiting for loading");
         await sleep(100);
+        now = Date.now();
       }
       // Invalidate between parses, not while an older fetch is still running.
-      const now = Date.now();
       if (refresh_statistics) {
         await this.configParser.cache.refreshStatistics(now);
       } else {
@@ -649,6 +654,7 @@ export class PlotlyGraph extends HTMLElement {
         this.config,
       );
       const { errors, parsed } = await this.configParser.update({
+        now,
         yaml,
         hass: this.hass,
         css_vars: this.getCSSVars(),
@@ -657,6 +663,7 @@ export class PlotlyGraph extends HTMLElement {
             ? statisticsUpdates
             : undefined,
       });
+      if (this.disconnected) return;
       // The user moved the plot while the data loaded. That move started a
       // new render, so don't draw the old range over it.
       if (visible_range && `${this.getVisibleRange()}` !== `${visible_range}`)
@@ -748,7 +755,7 @@ export class PlotlyGraph extends HTMLElement {
       });
       if (this.isConnected) this.connectPlotlyListeners();
     } finally {
-      finishInitialLoading(this.cardEl, this.loadingEl);
+      if (!this.disconnected) finishInitialLoading(this.cardEl, this.loadingEl);
       this.liveThrottle.renderEnded();
     }
   });

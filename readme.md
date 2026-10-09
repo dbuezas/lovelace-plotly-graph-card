@@ -271,6 +271,10 @@ entities:
     attribute: temperature
 ```
 
+### Shared data requests
+
+Cards on the same Home Assistant connection share pending or in-flight history/statistics requests only when their time ranges and options match, while keeping their caches and response data independent.
+
 ### Statistics support
 
 Fetch and plot long-term statistics of an entity

@@ -72,7 +72,10 @@ describe("ConfigParser cache retention", () => {
     (global as any).window = {};
   });
   beforeEach(() => {
-    vi.useFakeTimers({ now: BASE + 24 * HOUR });
+    vi.useFakeTimers({
+      now: BASE + 24 * HOUR,
+      toNotFake: ["setTimeout", "clearTimeout"],
+    });
   });
   afterEach(() => {
     vi.useRealTimers();
