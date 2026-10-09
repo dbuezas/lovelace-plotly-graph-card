@@ -2,7 +2,10 @@
   "name": "plotly-graph-card",
   "version": "to-be-set-on-release",
   "engines": {
-    "node": ">=22.12.0"
+    "node": ">=22.12.0",
+    "npm": "please use bun install",
+    "pnpm": "please use bun install",
+    "yarn": "please use bun install"
   },
   "scripts": {
     "start": "(node ./script/hot-reload.mjs & node build.mjs --watch)",
