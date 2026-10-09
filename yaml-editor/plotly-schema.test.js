@@ -372,10 +372,13 @@ test("checked-in schema is generated from Plotly runtime metadata", () => {
   });
 
   assert.equal(valid, true, JSON.stringify(validate.errors, null, 2));
-  assert.equal(validate({
-    type: "custom:plotly-graph",
-    entities: [{ entity: "sensor.east", show_extrema: 1 }],
-  }), false);
+  assert.equal(
+    validate({
+      type: "custom:plotly-graph",
+      entities: [{ entity: "sensor.east", show_extrema: 1 }],
+    }),
+    false,
+  );
 });
 
 test("Plotly 4 schema removes legacy options and validates object titles", () => {

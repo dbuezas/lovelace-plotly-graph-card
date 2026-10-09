@@ -35,7 +35,7 @@ describe("data-ranges", () => {
       compactRanges([
         [0, 10],
         [2, 5],
-      ])
+      ]),
     ).toEqual([[0, 10]]);
   });
 });
