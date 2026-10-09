@@ -1,32 +1,33 @@
+import type { Mock } from "vitest";
 import type { HomeAssistant } from "custom-card-helpers";
 import { HistoryUpdates } from "./history-updates";
 
 function fixture() {
   const callbacks: ((message: any) => void)[] = [];
   const ready = new Set<() => void>();
-  const unsubscribes: jest.Mock[] = [];
-  const subscribeMessage = jest.fn(
+  const unsubscribes: Mock[] = [];
+  const subscribeMessage = vi.fn(
     async (
       callback: (message: any) => void,
       _request: unknown,
       _options?: unknown,
     ) => {
       callbacks.push(callback);
-      const unsubscribe = jest.fn();
+      const unsubscribe = vi.fn();
       unsubscribes.push(unsubscribe);
       return unsubscribe;
     },
   );
   const connection = {
     subscribeMessage,
-    addEventListener: jest.fn((_: string, callback: () => void) =>
+    addEventListener: vi.fn((_: string, callback: () => void) =>
       ready.add(callback),
     ),
-    removeEventListener: jest.fn((_: string, callback: () => void) =>
+    removeEventListener: vi.fn((_: string, callback: () => void) =>
       ready.delete(callback),
     ),
   } as unknown as HomeAssistant["connection"];
-  const update = jest.fn();
+  const update = vi.fn();
   const stream = new HistoryUpdates(update);
   return {
     stream,
@@ -98,7 +99,7 @@ describe("history update streams", () => {
   it("does not replay a busy entity's whole window because another entity is quiet", async () => {
     const f = fixture();
     const now = 100000000;
-    const clock = jest.spyOn(Date, "now").mockReturnValue(now);
+    const clock = vi.spyOn(Date, "now").mockReturnValue(now);
     try {
       f.stream.update(
         f.connection,
@@ -126,8 +127,8 @@ describe("history update streams", () => {
 
   it("does not unsubscribe a pending old-socket stream after reconnect", async () => {
     const f = fixture();
-    const unsubscribe = jest.fn();
-    let resolve!: (value: jest.Mock) => void;
+    const unsubscribe = vi.fn();
+    let resolve!: (value: Mock) => void;
     f.subscribeMessage.mockImplementationOnce(
       () =>
         new Promise((done) => {
@@ -164,7 +165,7 @@ describe("history update streams", () => {
 
   it("falls back after a failed stream and retries only when the connection is ready", async () => {
     const f = fixture();
-    const warning = jest.spyOn(console, "warn").mockImplementation(() => {});
+    const warning = vi.spyOn(console, "warn").mockImplementation(() => {});
     try {
       f.subscribeMessage.mockRejectedValueOnce(new Error("offline"));
       f.stream.update(f.connection, ["sensor.a"], false, () => 10000);

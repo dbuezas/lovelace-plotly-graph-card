@@ -11,7 +11,7 @@ function recorder() {
     { s: "1", lu: (start - second) / 1000 },
     { s: "2", lu: (start + 3 * second) / 1000 },
   ];
-  const callWS = jest.fn(async ({ start_time, end_time, entity_ids }) => {
+  const callWS = vi.fn(async ({ start_time, end_time, entity_ids }) => {
     const first = Date.parse(start_time) / 1000;
     const last = Date.parse(end_time) / 1000;
     const preceding = rows.filter(({ lu }) => lu < first).at(-1);
@@ -25,10 +25,10 @@ function recorder() {
 }
 
 describe("late recorder history", () => {
-  afterEach(() => jest.restoreAllMocks());
+  afterEach(() => vi.restoreAllMocks());
 
   it("does not mark frontend fallback samples as complete history", async () => {
-    const clock = jest.spyOn(Date, "now").mockReturnValue(start + 10 * second);
+    const clock = vi.spyOn(Date, "now").mockReturnValue(start + 10 * second);
     const cache = new Cache();
     const { rows, hass } = recorder();
     await cache.fetch([start, Date.now()], entity, hass);
@@ -53,7 +53,7 @@ describe("late recorder history", () => {
     async (path) => {
       const cache = new Cache();
       const { rows, hass } = recorder();
-      const clock = jest
+      const clock = vi
         .spyOn(Date, "now")
         .mockReturnValue(start + 10 * second);
       const fetch = () =>
@@ -72,7 +72,7 @@ describe("late recorder history", () => {
   );
 
   it("does not fetch the same live tail twice within one parse", async () => {
-    jest.spyOn(Date, "now").mockReturnValue(start + 10 * second);
+    vi.spyOn(Date, "now").mockReturnValue(start + 10 * second);
     const cache = new Cache();
     const { hass, callWS } = recorder();
     const range: [number, number] = [start, Date.now()];
@@ -82,7 +82,7 @@ describe("late recorder history", () => {
   });
 
   it("keeps historical ranges cached and only revisits the unconfirmed live tail", async () => {
-    const clock = jest.spyOn(Date, "now").mockReturnValue(start + 10 * second);
+    const clock = vi.spyOn(Date, "now").mockReturnValue(start + 10 * second);
     const cache = new Cache();
     const { hass, callWS } = recorder();
     await cache.fetch([start, Date.now()], entity, hass);
@@ -96,7 +96,7 @@ describe("late recorder history", () => {
   });
 
   it("recovers after an initially empty live response", async () => {
-    const clock = jest.spyOn(Date, "now").mockReturnValue(start + 10 * second);
+    const clock = vi.spyOn(Date, "now").mockReturnValue(start + 10 * second);
     const cache = new Cache();
     const { rows, hass } = recorder();
     rows.length = 0;
@@ -108,13 +108,13 @@ describe("late recorder history", () => {
   });
 
   it("retains visible data after a failed retry and tries the missing tail again", async () => {
-    const clock = jest.spyOn(Date, "now").mockReturnValue(start + 10 * second);
+    const clock = vi.spyOn(Date, "now").mockReturnValue(start + 10 * second);
     const cache = new Cache();
     const { rows, hass, callWS } = recorder();
     await cache.fetch([start, Date.now()], entity, hass);
     rows.push({ s: "3", lu: (start + 8 * second) / 1000 });
     clock.mockReturnValue(start + 20 * second);
-    const error = jest.spyOn(console, "error").mockImplementation(() => {});
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
     callWS.mockRejectedValueOnce(new Error("offline"));
     await expect(
       cache.fetch([start, Date.now()], entity, hass),

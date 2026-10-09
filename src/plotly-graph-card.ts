@@ -78,7 +78,7 @@ export class PlotlyGraph extends HTMLElement {
       ]);
       changed = true;
     }
-    if (changed) this.plot({ should_fetch: false }, this.liveThrottle.change());
+    if (changed) void this.plot({ should_fetch: false }, this.liveThrottle.change());
   });
   pausedRendering = false;
   filesFailed = false; // the browser remembers failed imports until a reload
