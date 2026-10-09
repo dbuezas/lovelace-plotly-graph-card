@@ -6,7 +6,19 @@ export function getIsPureObject(val: any) {
 
 // A delay function is called once the previous run has finished
 export type Delay = number | (() => number);
-export function debounce(func: () => Promise<void>) {
+let lastFrame: number | undefined;
+let frameTime = 0;
+
+function getFrameTime(frame: number) {
+  // RAF callbacks in one frame share a timestamp even when Date.now() advances.
+  if (frame !== lastFrame) {
+    lastFrame = frame;
+    frameTime = Date.now();
+  }
+  return frameTime;
+}
+
+export function debounce(func: (now: number) => Promise<void>) {
   let lastRunningPromise = Promise.resolve();
   let cancelWaiting = () => {};
   return (delay?: Delay) => {
@@ -32,19 +44,19 @@ export function debounce(func: () => Promise<void>) {
           });
         }
         if (cancelled) return;
-        await new Promise<void>((resolve) => {
-          const frame = requestAnimationFrame(() => {
+        const now = await new Promise<number | undefined>((resolve) => {
+          const frame = requestAnimationFrame((timestamp) => {
             cancelWait = () => {};
-            resolve();
+            resolve(getFrameTime(timestamp));
           });
           cancelWait = () => {
             cancelAnimationFrame(frame);
-            resolve();
+            resolve(undefined);
           };
         });
-        if (cancelled) return;
+        if (cancelled || now === undefined) return;
         // Only waiting work is cancelled; an active render must finish first.
-        await func();
+        await func(now);
       });
     lastRunningPromise = result;
     return result;

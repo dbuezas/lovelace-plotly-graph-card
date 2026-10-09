@@ -499,14 +499,12 @@ const filters = {
       if (p.show_formula) extras.push(regression.toString(2));
       return {
         ...rest,
-        // Keep original coordinates: converting numeric X values to Date truncates decimals.
-        xs: xs_numbers.map((x, i) =>
-          i < xs.length
-            ? xs[i]
-            : xs[0] instanceof Date
-              ? new Date(x + t0)
-              : x + t0,
-        ),
+        xs: [
+          ...xs,
+          ...xs_numbers
+            .slice(xs.length)
+            .map((x) => (xs[0] instanceof Date ? new Date(x + t0) : x + t0)),
+        ],
         ys: ys_out,
         meta: {
           ...meta,

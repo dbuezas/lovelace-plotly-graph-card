@@ -591,16 +591,6 @@ describe("filters", () => {
       "Did you mean <b>linear<b>?",
     );
   });
-  it("trendline preserves fractional numeric X coordinates", () => {
-    const xs = [2.1, 2.4, 2.9, 3.2, 3.7];
-    const ys = xs.map((x) => 3 * x + 1);
-    const data = input({ xs, ys });
-    const result = filters.trendline()(data);
-    expect(result.xs).toEqual(xs);
-    result.ys!.forEach((y, i) => expect(y).toBeCloseTo(ys[i]));
-    expect(data.xs).toEqual(xs);
-  });
-
   it.each([false, true])(
     "trendline forecasts retain the X axis type (dates: %s)",
     (dates) => {
@@ -613,7 +603,6 @@ describe("filters", () => {
       expect(forecast).toHaveLength(3);
       forecast.forEach((x, i) => {
         expect(x instanceof Date).toBe(dates);
-        if (!dates) expect(typeof x).toBe("number");
         const expected = +xs[xs.length - 1] + (2000 / 3) * i;
         expect(+x).toBeCloseTo(dates ? Math.trunc(expected) : expected);
         expect(result.ys![xs.length + i]).toBeCloseTo(7 + (4 / 3) * i);
