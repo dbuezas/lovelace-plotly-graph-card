@@ -173,7 +173,7 @@ const usesCalendar = (obj: object, deep: boolean): boolean =>
   Object.entries(obj).some(
     ([key, value]) =>
       key.endsWith("calendar") ||
-      (deep && value?.constructor === Object && usesCalendar(value, deep))
+      (deep && value?.constructor === Object && usesCalendar(value, deep)),
   );
 
 // Loads what the plot needs and returns the locale name to give Plotly
@@ -181,7 +181,7 @@ const usesCalendar = (obj: object, deep: boolean): boolean =>
 export const loadPlotlyModules = async (
   data: { type?: string }[],
   layout: object,
-  language = ""
+  language = "",
 ) => {
   const key = language ? localeKey(language) : undefined;
   const base = key?.split("-")[0];

@@ -19,13 +19,10 @@ import {
   CachedStateEntity,
   EntityData,
   EntityIdStatisticsConfig,
+  StatisticsFetchConfig,
 } from "../types";
 export type FetchConfig =
-  | {
-      statistic: "state" | "sum" | "min" | "max" | "mean";
-      period: "5minute" | "hour" | "day" | "week" | "month";
-      entity: string;
-    }
+  | StatisticsFetchConfig
   | {
       attribute: string;
       entity: string;
@@ -43,7 +40,7 @@ export type HistoryFetchRequest = {
 };
 export function mapValues<T, S>(
   o: Record<string, T>,
-  fn: (value: T, key: string) => S
+  fn: (value: T, key: string) => S,
 ) {
   return Object.fromEntries(Object.entries(o).map(([k, v]) => [k, fn(v, k)]));
 }
@@ -61,7 +58,7 @@ function getFetchRange([startT, endT]: number[], now = Date.now()) {
 async function fetchSingleRange(
   hass: HomeAssistant,
   entity: FetchConfig,
-  [startT, endT]: number[]
+  [startT, endT]: number[],
 ): Promise<{
   range: [number, number];
   history: CachedEntity[];
@@ -113,7 +110,7 @@ async function fetchSingleRange(
     history = (await fetchStatistics(hass, [entity], dates))[entity.entity];
   } else {
     history = await fetchStates(hass, entity, dates);
-    if (history.length) {
+    if (history.length && +history[0].x <= +dates[0]) {
       history[0].fake_boundary_datapoint = true;
     }
   }
@@ -129,7 +126,11 @@ export function getEntityKey(entity: FetchConfig) {
   if (isEntityIdAttrConfig(entity)) {
     return `${entity.entity}::attribute:`;
   } else if (isEntityIdStatisticsConfig(entity)) {
-    return `${entity.entity}::statistics::${entity.period}`;
+    const types =
+      "types" in entity && entity.types?.length
+        ? `::types:${entity.types.join(",")}`
+        : "";
+    return `${entity.entity}::statistics::${entity.period}${types}`;
   } else if (isEntityIdStateConfig(entity)) {
     return `${entity.entity}`;
   }
@@ -151,7 +152,7 @@ function upperBound(history: CachedEntity[], timestamp: number) {
 
 function selectHistory(
   history: CachedEntity[],
-  ranges: TimestampRange[]
+  ranges: TimestampRange[],
 ): CachedEntity[] {
   const selected: CachedEntity[] = [];
   let next = 0; // cached timestamps are unique, so skip by index
@@ -171,7 +172,7 @@ function selectHistory(
 
 function intersectRanges(
   cachedRanges: TimestampRange[],
-  retainedRanges: TimestampRange[]
+  retainedRanges: TimestampRange[],
 ) {
   return compactRanges(
     cachedRanges.flatMap(([cachedStart, cachedEnd]) =>
@@ -179,8 +180,8 @@ function intersectRanges(
         const start = Math.max(cachedStart, retainedStart);
         const end = Math.min(cachedEnd, retainedEnd);
         return start <= end ? [[start, end]] : [];
-      })
-    )
+      }),
+    ),
   );
 }
 
@@ -192,6 +193,37 @@ export default class Cache {
     string,
     { from: number; fetchedAt: number; period: StatisticPeriod }
   > = {};
+  private mutableHistory: Record<string, { from: number; fetchedAt: number }> =
+    {};
+
+  private refreshHistory(entity: HistoryFetchConfig, now: number) {
+    const key = getEntityKey(entity);
+    const mutable = this.mutableHistory[key];
+    if (!mutable || mutable.fetchedAt >= now) return;
+    this.ranges[key] = subtractRanges(this.ranges[key] || [], [
+      [mutable.from, Number.POSITIVE_INFINITY],
+    ]);
+    delete this.mutableHistory[key];
+  }
+
+  private trackMutableHistory(
+    entity: HistoryFetchConfig,
+    history: CachedEntity[],
+    range: TimestampRange,
+    fetchedAt: number,
+  ) {
+    if (range[1] < fetchedAt) return;
+    const latest = history.at(-1);
+    // Recorder may still be committing states behind the request's end time.
+    // Only the last real row confirms coverage; a synthetic boundary does not.
+    this.mutableHistory[getEntityKey(entity)] = {
+      from:
+        latest && !latest.fake_boundary_datapoint
+          ? Math.max(range[0], +latest.x + 1)
+          : range[0],
+      fetchedAt,
+    };
+  }
 
   refreshStatistics(now: number, period?: StatisticsUpdatePeriod) {
     if (Object.keys(this.mutableStatistics).length === 0) return;
@@ -200,10 +232,9 @@ export default class Cache {
         if (period && getStatisticsUpdatePeriod(mutable.period) !== period)
           continue;
         if (mutable.fetchedAt >= now) continue;
-        this.ranges[key] = subtractRanges(
-          this.ranges[key] || [],
-          [[mutable.from, Number.POSITIVE_INFINITY]],
-        );
+        this.ranges[key] = subtractRanges(this.ranges[key] || [], [
+          [mutable.from, Number.POSITIVE_INFINITY],
+        ]);
         delete this.mutableStatistics[key];
       }
     });
@@ -218,7 +249,7 @@ export default class Cache {
     if (!isLiveStatisticsRange(range, entity.period, fetchedAt)) return;
     const latest = history.reduce<CachedStatisticsEntity | undefined>(
       (last, row) => (!last || +row.x > +last.x ? row : last),
-      undefined
+      undefined,
     );
     const end = latest ? +new Date(latest.statistics.end) : NaN;
     // Completed buckets are stable, but their missing successors are not.
@@ -243,7 +274,7 @@ export default class Cache {
     return result;
   }
 
-  add(entity: FetchConfig, states: CachedEntity[], range: [number, number]) {
+  add(entity: FetchConfig, states: CachedEntity[], range?: [number, number]) {
     const entityKey = getEntityKey(entity);
     let h = (this.histories[entityKey] ??= []);
     const isStatistics = isEntityIdStatisticsConfig(entity);
@@ -275,15 +306,19 @@ export default class Cache {
         : h.filter((_, i) => +h[i - 1]?.x !== +h[i].x);
       this.histories[entityKey] = h;
     }
-    this.ranges[entityKey] ??= [];
-    this.ranges[entityKey].push(range);
-    this.ranges[entityKey] = compactRanges(this.ranges[entityKey]);
+    // Frontend snapshots add a point, not evidence of complete history coverage.
+    if (range) {
+      this.ranges[entityKey] ??= [];
+      this.ranges[entityKey].push(range);
+      this.ranges[entityKey] = compactRanges(this.ranges[entityKey]);
+    }
   }
 
   clearCache() {
     this.ranges = {};
     this.histories = {};
     this.mutableStatistics = {};
+    this.mutableHistory = {};
   }
 
   getData(entity: FetchConfig, ranges?: TimestampRange[]): EntityData {
@@ -309,12 +344,12 @@ export default class Cache {
         data.xs.push(x);
         data.states.push(state);
         data.ys.push(
-          clean(attribute === null ? state.state : state.attributes[attribute])
+          clean(attribute === null ? state.state : state.attributes[attribute]),
         );
       }
     } else
       throw new Error(
-        `Unrecognised fetch type for ${(entity as EntityConfig).entity}`
+        `Unrecognised fetch type for ${(entity as EntityConfig).entity}`,
       );
     return data;
   }
@@ -322,6 +357,7 @@ export default class Cache {
   async prefetchHistory(
     requests: HistoryFetchRequest[],
     hass: HomeAssistant,
+    fetchTime = Date.now(),
   ): Promise<void> {
     await this.enqueue(async () => {
       const jobs = new Map<
@@ -336,6 +372,7 @@ export default class Cache {
           Math.max(MIN_SAFE_TIMESTAMP, n),
         ) as [number, number];
         const entityKey = getEntityKey(request.entity);
+        this.refreshHistory(request.entity, fetchTime);
         this.ranges[entityKey] ??= [];
         for (const missingRange of subtractRanges(
           [range],
@@ -382,11 +419,13 @@ export default class Cache {
         );
         for (const { entity, range } of group.jobs) {
           const history = statesByEntity[entity.entity] ?? [];
-          if (history.length) history[0].fake_boundary_datapoint = true;
+          if (history.length && +history[0].x <= +group.dates[0])
+            history[0].fake_boundary_datapoint = true;
           this.add(entity, history, [
             range[0],
             Math.min(range[1], group.range[1]),
           ]);
+          this.trackMutableHistory(entity, history, group.range, fetchTime);
         }
       }
     });
@@ -401,6 +440,7 @@ export default class Cache {
       const ranges = compactRanges(retainedRanges[key] || []);
       if (ranges.length === 0) {
         delete this.mutableStatistics[key];
+        delete this.mutableHistory[key];
         delete this.histories[key];
         delete this.ranges[key];
         continue;
@@ -413,9 +453,9 @@ export default class Cache {
   async prefetchStatistics(
     requests: {
       range: TimestampRange;
-      entity: EntityIdStatisticsConfig;
+      entity: StatisticsFetchConfig;
     }[],
-    hass: HomeAssistant
+    hass: HomeAssistant,
   ): Promise<void> {
     await this.enqueue(async () => {
       const now = Date.now();
@@ -424,7 +464,7 @@ export default class Cache {
         {
           dates: [Date, Date];
           range: [number, number];
-          entities: Map<string, EntityIdStatisticsConfig>;
+          entities: Map<string, StatisticsFetchConfig>;
         }
       >();
 
@@ -437,7 +477,7 @@ export default class Cache {
         for (const missingRange of rangesToFetch) {
           const { dates, range: fetchedRange } = getFetchRange(
             missingRange,
-            now
+            now,
           );
           const groupKey = JSON.stringify([
             request.entity.period,
@@ -463,7 +503,10 @@ export default class Cache {
         for (const entity of entities) {
           this.add(entity, histories[entity.entity], group.range);
           this.trackMutableStatistics(
-            entity, histories[entity.entity], group.range, now
+            entity,
+            histories[entity.entity],
+            group.range,
+            now,
           );
         }
       }
@@ -474,12 +517,15 @@ export default class Cache {
     range: TimestampRange,
     entity: FetchConfig,
     hass: HomeAssistant,
-    dataRanges: TimestampRange[] = [range]
+    dataRanges: TimestampRange[] = [range],
+    fetchTime = Date.now(),
   ) {
     return this.enqueue(async () => {
       range = range.map((n) => Math.max(MIN_SAFE_TIMESTAMP, n)); // HA API can't handle negative years
       if (entity.entity) {
         const entityKey = getEntityKey(entity);
+        if (!isEntityIdStatisticsConfig(entity))
+          this.refreshHistory(entity, fetchTime);
         this.ranges[entityKey] ??= [];
         const rangesToFetch = subtractRanges([range], this.ranges[entityKey]);
         for (const aRange of rangesToFetch) {
@@ -491,6 +537,13 @@ export default class Cache {
               fetchedHistory.history as CachedStatisticsEntity[],
               fetchedHistory.range,
               fetchedHistory.fetchedAt,
+            );
+          } else {
+            this.trackMutableHistory(
+              entity,
+              fetchedHistory.history,
+              fetchedHistory.range,
+              fetchTime,
             );
           }
         }

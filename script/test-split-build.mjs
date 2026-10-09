@@ -1,27 +1,12 @@
 // The production build splits Plotly into files that load on demand. This
 // serves that build like HACS does and checks what each page downloads.
-// Usage: npm run test:split (CHROME=/path/to/chrome to use another Chrome)
+// Usage: bun run test:split (CHROME=/path/to/chrome to use another Chrome)
 import { createServer } from "node:http";
-import { basename } from "node:path";
-import { build } from "esbuild";
+import { bundleInMemory } from "../build.mjs";
 import { chromium } from "playwright";
 
-const { outputFiles } = await build({
-  entryPoints: ["src/plotly-graph-card.ts"],
-  bundle: true,
-  minify: true,
-  splitting: true,
-  format: "esm",
-  chunkNames: "[name]-[hash]",
-  loader: { ".css": "empty" },
-  inject: ["src/process-shim.ts"],
-  outdir: "dist",
-  write: false,
-});
 const files = new Map(
-  outputFiles
-    .filter((f) => f.path.endsWith(".js"))
-    .map((f) => [basename(f.path), f.text])
+  (await bundleInMemory({ split: true })).map((f) => [f.fileName, f.code]),
 );
 const BASE = "/hacsfiles/lovelace-plotly-graph-card/";
 const blocked = new Set();
@@ -32,7 +17,7 @@ const server = createServer((req, res) => {
   if (url.pathname.startsWith(BASE) && files.has(name)) {
     requests.push(name);
     if (blocked.has(name)) return res.writeHead(404).end();
-    res.setHeader("Content-Type", "text/javascript");
+    res.setHeader("Content-Type", "text/javascript; charset=utf-8");
     return res.end(files.get(name));
   }
   res.setHeader("Content-Type", "text/html");
@@ -50,12 +35,10 @@ const browser = await chromium.launch({
 const results = [];
 const check = (ok, msg, extra = "") =>
   results.push(
-    `${ok ? "PASS" : "FAIL"}  ${msg}${extra === "" ? "" : `  (${extra})`}`
+    `${ok ? "PASS" : "FAIL"}  ${msg}${extra === "" ? "" : `  (${extra})`}`,
   );
 const fileOf = (name) =>
-  [...files.keys()].find((n) =>
-    new RegExp(`^${name}-[A-Z0-9]{8}\\.js$`).test(n)
-  );
+  [...files.keys()].find((n) => new RegExp(`^${name}-[\\w-]{8}\\.js$`).test(n));
 const take = () => requests.splice(0);
 
 try {
@@ -112,7 +95,7 @@ try {
     }, cards);
   const removeAll = () =>
     page.evaluate(() =>
-      document.querySelectorAll("plotly-graph").forEach((c) => c.remove())
+      document.querySelectorAll("plotly-graph").forEach((c) => c.remove()),
     );
 
   const startup = take();
@@ -120,18 +103,18 @@ try {
     startup.includes("plotly-graph-card.js") &&
       !startup.includes(fileOf("plotly")),
     "a page without graphs doesn't download Plotly",
-    `${startup.length} files`
+    `${startup.length} files`,
   );
 
   // Plotly starts downloading as soon as a card is on the page, while the
   // card still waits for its data (here: no hass yet)
   await page.evaluate(() =>
-    document.body.append(document.createElement("plotly-graph"))
+    document.body.append(document.createElement("plotly-graph")),
   );
   await page.waitForTimeout(500);
   check(
     take().includes(fileOf("plotly")),
-    "Plotly downloads while the card still waits for data"
+    "Plotly downloads while the card still waits for data",
   );
   await removeAll();
 
@@ -147,7 +130,7 @@ try {
   check(
     out[0].types.join() === "scatter,bar,box" && !out[0].error,
     "a chart that mixes line, bar and box renders",
-    out[0].types.join()
+    out[0].types.join(),
   );
   check(out[1].types.join() === "pie" && !out[1].error, "a pie chart renders");
   check(
@@ -157,17 +140,17 @@ try {
         .contentEl.querySelector(".modebar");
       return getComputedStyle(modebar).position === "absolute";
     }),
-    "Plotly's styles reach the card (modebar is positioned)"
+    "Plotly's styles reach the card (modebar is positioned)",
   );
   check(
     got.filter((n) => n === fileOf("charts2d")).length === 1 &&
       got.includes(fileOf("pie")),
-    "two cards that need the same group download it once"
+    "two cards that need the same group download it once",
   );
   check(
     new Set(got).size === got.length,
     "no file is downloaded twice",
-    `${got.length} files`
+    `${got.length} files`,
   );
 
   await removeAll();
@@ -179,7 +162,7 @@ try {
   check(
     out.every((c) => !c.error && c.types.length) && got.length === 0,
     "switching dashboard view downloads nothing again",
-    got.join(" ")
+    got.join(" "),
   );
 
   out = await mount([{ id: "de", language: "de", traces: [{}] }]);
@@ -187,7 +170,7 @@ try {
   check(
     got.join() === fileOf("de") && !out[0].error,
     "a German user downloads only the German locale",
-    got.join(" ")
+    got.join(" "),
   );
   // Each language on a fresh page, so no other locale is loaded already.
   // HA codes that Plotly names differently, and a regional locale whose
@@ -207,12 +190,12 @@ try {
         !!document
           .getElementById("l")
           .contentEl.querySelector(`[data-title="${pan}"]`),
-      pan
+      pan,
     );
     check(
       title && !out[0].error && files.every((f) => got.includes(fileOf(f))),
       `${language}: the modebar is translated`,
-      files.map(fileOf).join(" ")
+      files.map(fileOf).join(" "),
     );
   }
 
@@ -280,7 +263,7 @@ try {
     check(
       out[i].types.join() === type && !out[i].error,
       `${type} renders`,
-      out[i].error
+      out[i].error,
     );
   check(
     await page.evaluate(() => {
@@ -289,7 +272,7 @@ try {
         .contentEl.querySelector(".maplibregl-canvas");
       return !!canvas && getComputedStyle(canvas).position === "absolute";
     }),
-    "MapLibre's styles reach the card"
+    "MapLibre's styles reach the card",
   );
 
   blocked.add(fileOf("geo"));
@@ -297,9 +280,19 @@ try {
     { id: "geo", traces: [{ type: "scattergeo", lat: [47], lon: [8] }] },
   ]);
   check(
-    out[0].error.includes("didn't load"),
+    out[0].error.includes("didn't load") &&
+      (await page.evaluate(() => {
+        const msg = document
+          .getElementById("geo")
+          .shadowRoot.querySelector("#error-msg");
+        // fully visible (not clipped by the card) and offers a reload
+        return (
+          msg.querySelector("button")?.textContent === "Reload" &&
+          msg.closest("ha-card").offsetHeight >= msg.offsetHeight
+        );
+      })),
     "a missing file shows a clear error",
-    out[0].error.slice(0, 60)
+    out[0].error.slice(0, 60),
   );
   blocked.clear();
   await page.reload();
@@ -309,7 +302,7 @@ try {
   ]);
   check(
     out[0].types.join() === "scattergeo" && !out[0].error,
-    "after the file is back, a reload fixes it"
+    "after the file is back, a reload fixes it",
   );
 
   check(errors.length === 0, "no page errors", errors.join("; "));

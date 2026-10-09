@@ -7,7 +7,7 @@ const range: [number, number] = [
 ];
 
 function createHass() {
-  const callWS = jest.fn().mockImplementation(({ entity_ids }) => {
+  const callWS = vi.fn().mockImplementation(({ entity_ids }) => {
     return Promise.resolve(
       Object.fromEntries(
         entity_ids.map((entity_id, index) => [
@@ -112,7 +112,7 @@ describe("Cache.prefetchHistory", () => {
   });
 
   it("retries after a failed batch without marking its range cached", async () => {
-    const log = jest.spyOn(console, "error").mockImplementation(() => {});
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
     try {
       const cache = new Cache();
       const { hass, callWS } = createHass();

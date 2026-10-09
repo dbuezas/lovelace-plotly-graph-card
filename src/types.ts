@@ -14,10 +14,8 @@ import {
 
 import { HassEntity } from "home-assistant-js-websocket";
 import { FilterFn, FilterInput } from "./filters/filters";
-import type filters from "./filters/filters";
-import internal from "stream";
 
-export { HassEntity } from "home-assistant-js-websocket";
+export type { HassEntity } from "home-assistant-js-websocket";
 
 export type YValue = number | string | null;
 
@@ -30,6 +28,7 @@ export type InputEntityOptions = {
   period?: StatisticPeriod | "auto" | AutoPeriodConfig;
   unit_of_measurement?: string;
   internal?: boolean;
+  show_extrema?: boolean;
   show_value?:
     | boolean
     | {
@@ -101,12 +100,13 @@ export type InputConfig = {
    * (Home Assistant's), or an IANA name like "Europe/Rome".
    * Defaults to the Home Assistant user profile setting.
    */
-  time_zone?: "local" | "server" | string;
+  time_zone?: string;
 };
 
 export type EntityConfig = EntityIdConfig & {
   unit_of_measurement?: string;
   internal: boolean;
+  show_extrema?: boolean;
   show_value:
     | boolean
     | {
@@ -145,7 +145,7 @@ export type Config = {
   visible_range: [number, number];
   on_dblclick: Function;
   autorange_after_scroll: boolean;
-  time_zone?: "local" | "server" | string;
+  time_zone?: string; // "local", "server" or an IANA name
 };
 export type EntityIdStateConfig = {
   entity: string;
@@ -158,6 +158,10 @@ export type EntityIdStatisticsConfig = {
   entity: string;
   statistic: StatisticType;
   period: StatisticPeriod;
+};
+export type StatisticsFetchConfig = EntityIdStatisticsConfig & {
+  // One sorted, unique field selection shared by every trace in a parser update.
+  types?: StatisticType[];
 };
 export type EntityIdConfig =
   | EntityIdStateConfig
@@ -192,6 +196,7 @@ export type CachedBaseEntity = {
 };
 export type CachedStateEntity = CachedBaseEntity & {
   state: HassEntity;
+  unconfirmed?: true;
 };
 export type CachedStatisticsEntity = CachedBaseEntity & {
   statistics: StatisticValue;

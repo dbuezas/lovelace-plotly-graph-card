@@ -39,7 +39,7 @@ const formatEntityName = (_stateObj: unknown, name: unknown) => {
 
 function createHass(overrides: Partial<HomeAssistant> = {}): HomeAssistant {
   return {
-    callWS: jest.fn(),
+    callWS: vi.fn(),
     locale: { language: "en", first_weekday: "monday" },
     config: { version: "2026.4.0" },
     states: { [STATE.entity_id]: STATE },
@@ -73,10 +73,10 @@ describe("entity names", () => {
     (global as any).window = {};
   });
   beforeEach(() => {
-    jest.spyOn(Date, "now").mockReturnValue(NOW);
+    vi.spyOn(Date, "now").mockReturnValue(NOW);
   });
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   it("composes the default name from the registry context", async () => {

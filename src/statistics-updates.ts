@@ -47,7 +47,7 @@ export class StatisticsUpdates {
         }, event)
         .then((unsubscribe) => {
           if (subscription.active) subscription.unsubscribe = unsubscribe;
-          else unsubscribe();
+          else void unsubscribe();
         })
         .catch((error) => {
           if (!subscription.active) return;

@@ -1,21 +1,15 @@
 import assert from "node:assert/strict";
-import { build } from "esbuild";
+import { bundleInMemory } from "../build.mjs";
 import { chromium } from "playwright";
 
-const bundle = await build({
-  stdin: {
-    contents: `export { default as Plotly } from './src/plotly';
+const [bundle] = await bundleInMemory({
+  code: `export { default as Plotly } from './src/plotly';
       export { PlotlyGraph } from './src/plotly-graph-card';`,
-    resolveDir: process.cwd(),
-    loader: "ts",
-  },
-  bundle: true,
-  write: false,
-  format: "iife",
-  globalName: "ResizeTest",
-  outdir: "dist",
+  name: "ResizeTest",
 });
-const browser = await chromium.launch();
+const browser = await chromium.launch({
+  executablePath: process.env.CHROME || undefined,
+});
 try {
   const page = await browser.newPage();
   const errors = [];
@@ -23,7 +17,7 @@ try {
   await page.clock.install(); // time runs normally until fastForward
   await page.setContent("<!doctype html><body></body>");
   await page.addScriptTag({
-    content: bundle.outputFiles.find((file) => file.path.endsWith(".js")).text,
+    content: bundle.code,
   });
   const results = await page.evaluate(async () => {
     const { Plotly, PlotlyGraph } = ResizeTest;
@@ -42,20 +36,37 @@ try {
     const NativeObserver = window.ResizeObserver;
     window.ResizeObserver = class extends NativeObserver {
       constructor(callback) {
-        super((...args) => { notifications++; callback(...args); });
+        super((...args) => {
+          notifications++;
+          callback(...args);
+        });
       }
     };
-    customElements.define("ha-card", class extends HTMLElement {
-      connectedCallback() { this.style.display = "block"; }
-    });
+    customElements.define(
+      "ha-card",
+      class extends HTMLElement {
+        connectedCallback() {
+          this.style.display = "block";
+        }
+      },
+    );
     const card = new PlotlyGraph();
     card.style.cssText = "display:block;width:480px";
-    card.hass = { states: {}, locale: { language: "en", first_weekday: "monday" } };
+    card.hass = {
+      states: {},
+      locale: { language: "en", first_weekday: "monday" },
+    };
     const counts = { parse: 0, react: 0 };
     const update = card.configParser.update.bind(card.configParser);
-    card.configParser.update = (...args) => { counts.parse++; return update(...args); };
+    card.configParser.update = (...args) => {
+      counts.parse++;
+      return update(...args);
+    };
     const react = Plotly.react;
-    Plotly.react = (...args) => { counts.react++; return react(...args); };
+    Plotly.react = (...args) => {
+      counts.react++;
+      return react(...args);
+    };
     await card.setConfig({
       type: "custom:plotly-graph",
       refresh_interval: 0,
@@ -72,16 +83,20 @@ try {
       card.handles.resizeObserver.observe(card.cardEl);
       await wait(() => notifications > observed);
       await settle();
-      check(counts.parse === before.parse && counts.react === before.react,
-        "Unchanged size triggered parsing or rendering");
+      check(
+        counts.parse === before.parse && counts.react === before.react,
+        "Unchanged size triggered parsing or rendering",
+      );
       results.push("unchanged-size callbacks do not render");
 
       observed = notifications;
       card.style.display = "none";
       await wait(() => notifications > observed);
       await settle();
-      check(counts.parse === before.parse && counts.react === before.react,
-        "Hidden card triggered parsing or rendering");
+      check(
+        counts.parse === before.parse && counts.react === before.react,
+        "Hidden card triggered parsing or rendering",
+      );
       card.style.width = "540px";
       card.style.display = "block";
       await wait(() => card.contentEl._fullLayout.width === 540);
@@ -92,8 +107,10 @@ try {
       card.style.width = "620px";
       await wait(() => card.contentEl._fullLayout.width === 620);
       await settle();
-      check(counts.parse > before.parse && counts.react > before.react,
-        "Width change skipped the normal parse/render path");
+      check(
+        counts.parse > before.parse && counts.react > before.react,
+        "Width change skipped the normal parse/render path",
+      );
       check(!card.errorMsgEl.textContent.trim(), card.errorMsgEl.textContent);
       results.push("normal width changes parse and render");
       return results;
@@ -169,7 +186,9 @@ try {
     `${results.length} resize browser checks passed:\n${results.join("\n")}`,
   );
   assert.deepEqual(errors, []);
-  console.log(`${results.length} resize browser checks passed:\n${results.join("\n")}`);
+  console.log(
+    `${results.length} resize browser checks passed:\n${results.join("\n")}`,
+  );
 } finally {
   await browser.close();
 }

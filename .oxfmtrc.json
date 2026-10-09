@@ -1,0 +1,14 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "semi": true,
+  "singleQuote": false,
+  "printWidth": 80,
+  "tabWidth": 2,
+  "sortPackageJson": false,
+  "ignorePatterns": [
+    "dist",
+    "yaml-editor/dist",
+    "yaml-editor/src/schema.json",
+    "*.md"
+  ]
+}

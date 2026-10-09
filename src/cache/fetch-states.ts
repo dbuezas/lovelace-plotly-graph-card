@@ -15,7 +15,7 @@ type CompressedHistoryState = {
 };
 
 type HistoryState = HassEntity | CompressedHistoryState;
-type HistoryResponse = Record<string, HistoryState[]>;
+export type HistoryResponse = Record<string, HistoryState[]>;
 
 function expandState(entityId: string, state: HistoryState): HassEntity {
   if (!("s" in state)) return state;
@@ -30,7 +30,7 @@ function expandState(entityId: string, state: HistoryState): HassEntity {
   };
 }
 
-function mapStates(
+export function mapStates(
   entityId: string,
   list: HistoryState[] | undefined,
 ): CachedStateEntity[] {
