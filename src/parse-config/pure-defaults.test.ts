@@ -6,7 +6,7 @@ import { HATheme } from "./themed-layout";
 const NOW = Date.parse("2025-01-02T12:00:00Z");
 
 function fixture(entities: unknown[]) {
-  const callWS = jest.fn(async ({ entity_ids }) =>
+  const callWS = vi.fn(async ({ entity_ids }) =>
     Object.fromEntries(
       entity_ids.map((entity: string) => [
         entity,
@@ -44,15 +44,15 @@ function fixture(entities: unknown[]) {
 describe("on-demand internal defaults", () => {
   beforeEach(() => {
     (global as any).window = { eval };
-    jest.spyOn(Date, "now").mockReturnValue(NOW);
+    vi.spyOn(Date, "now").mockReturnValue(NOW);
   });
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
     delete (global as any).window;
   });
 
   it("refreshes resolved defaults when the next update changes the entity name", async () => {
-    const formatEntityName = jest.fn(() => "Formatted first");
+    const formatEntityName = vi.fn(() => "Formatted first");
     const input = fixture([
       {
         entity: "sensor.first",
@@ -91,7 +91,7 @@ describe("on-demand internal defaults", () => {
 
   it("does not run user functions ahead of their YAML position", async () => {
     const order: string[] = [];
-    jest.spyOn(console, "warn").mockImplementation();
+    vi.spyOn(console, "warn").mockImplementation(() => {});
     const input = fixture([
       {
         entity: "sensor.first",
@@ -115,7 +115,7 @@ describe("on-demand internal defaults", () => {
   });
 
   it("never uses the current entity's metadata for a future entity default", async () => {
-    jest.spyOn(console, "warn").mockImplementation();
+    vi.spyOn(console, "warn").mockImplementation(() => {});
     const input = fixture([
       {
         entity: "sensor.first",
@@ -133,7 +133,7 @@ describe("on-demand internal defaults", () => {
   });
 
   it("keeps the ordering error for fetch settings that request metadata before fetching", async () => {
-    jest.spyOn(console, "warn").mockImplementation();
+    vi.spyOn(console, "warn").mockImplementation(() => {});
     const input = fixture([
       {
         entity: "sensor.first",
@@ -150,7 +150,7 @@ describe("on-demand internal defaults", () => {
   });
 
   it("does not cache pre-filter metadata or change the resulting axis grouping", async () => {
-    jest.spyOn(console, "warn").mockImplementation();
+    vi.spyOn(console, "warn").mockImplementation(() => {});
     const input = fixture([
       {
         entity: "sensor.first",
