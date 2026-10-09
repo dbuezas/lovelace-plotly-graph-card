@@ -10,7 +10,7 @@ const entity = (
   period: "5minute" | "hour" = "hour",
 ): EntityIdStatisticsConfig => ({ entity: id, statistic: "mean", period });
 function mockHass() {
-  const callWS = jest.fn(async ({ statistic_ids }) =>
+  const callWS = vi.fn(async ({ statistic_ids }) =>
     Object.fromEntries(
       statistic_ids.map((id) => [id, [{ start: range[0], mean: 4, max: 8 }]]),
     ),
@@ -78,7 +78,7 @@ describe("Cache.prefetchStatistics", () => {
   });
 
   it("keeps successfully fetched groups when a later group fails", async () => {
-    const log = jest.spyOn(console, "error").mockImplementation(() => {});
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
     try {
       const cache = new Cache();
       const { hass, callWS } = mockHass();

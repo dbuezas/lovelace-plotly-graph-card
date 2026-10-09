@@ -10,8 +10,7 @@ The card's YAML editor uses Monaco and a generated configuration schema.
 
 ## Prerequisites
 
-- Node.js 22 or newer; CI uses Node.js 24.
-- npm
+- [Bun](https://bun.sh)
 
 ## Setup
 
@@ -20,8 +19,8 @@ To run the project locally, clone the repository and set it up:
 ```sh
 git clone https://github.com/dbuezas/lovelace-plotly-graph-card
 cd lovelace-plotly-graph-card
-npm ci
-npm ci --prefix yaml-editor
+bun install
+bun install --cwd yaml-editor
 ```
 
 ## Running
@@ -29,7 +28,7 @@ npm ci --prefix yaml-editor
 To start it, simply run:
 
 ```sh
-npm start --prefix yaml-editor
+bun run --cwd yaml-editor start
 ```
 
 ## Schema generation
@@ -44,13 +43,13 @@ Regenerate the schema after changing either Plotly or the trace registrations.
 From the repository root, install both lockfiles and run:
 
 ```sh
-npm ci
-npm ci --prefix yaml-editor
-npm run schema --prefix yaml-editor
-npm test --prefix yaml-editor
+bun install
+bun install --cwd yaml-editor
+bun run --cwd yaml-editor schema
+bun run --cwd yaml-editor test
 ```
 
-`npm run build --prefix yaml-editor` regenerates the schema before building the editor. CI also
+`bun run --cwd yaml-editor build` regenerates the schema before building the editor. CI also
 checks that the generated file is reproducible and committed.
 
 The development editor opens in your browser when started.
