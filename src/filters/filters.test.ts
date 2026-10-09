@@ -400,7 +400,7 @@ describe("filters", () => {
         });
 
         it("keeps fractional day resets as fixed durations", () => {
-          jest.setSystemTime(new Date("2024-03-30T12:00:00+01:00"));
+          vi.setSystemTime(new Date("2024-03-30T12:00:00+01:00"));
           expect(
             run(
               [
@@ -425,9 +425,9 @@ describe("filters", () => {
               Date.parse("2024-03-30T12:00:00+01:00"),
             );
             const end = interval.next(start);
-            const floor = jest.spyOn(interval, "floor");
-            const next = jest.spyOn(interval, "next");
-            jest.spyOn(calendar, "calendarInterval").mockReturnValue(interval);
+            const floor = vi.spyOn(interval, "floor");
+            const next = vi.spyOn(interval, "next");
+            vi.spyOn(calendar, "calendarInterval").mockReturnValue(interval);
             try {
               const xs = Array.from(
                 { length: 100 },
@@ -448,7 +448,7 @@ describe("filters", () => {
               expect(floor).toHaveBeenCalledTimes(2);
               expect(next).toHaveBeenCalledTimes(2);
             } finally {
-              jest.restoreAllMocks();
+              vi.restoreAllMocks();
             }
           },
         );

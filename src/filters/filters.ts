@@ -388,7 +388,9 @@ const filters = {
       const x0 =
         calendar?.floor(ms(xs[0])) ??
         Math.floor(ms(xs[0]) / interval) * interval;
-      const next = calendar?.next ?? ((x: number) => x + interval);
+      const next = calendar
+        ? (x: number) => calendar.next(x)
+        : (x: number) => x + interval;
       const x1 = ms(xs[xs.length - 1]);
       let i = 0;
       for (let x = x0; x < x1; x = next(x)) {
