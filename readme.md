@@ -617,7 +617,7 @@ entities:
       - integrate: h # computes area under the curve in a specific unit of time using Right hand riemann integration. Same units as the derivative
       - integrate:
           unit: h # defaults to h
-          reset_every: 1h # Defaults to 0 (never reset). Any duration unit (ms, s, m, h, d, w, M, y).
+          reset_every: 1h # Defaults to 0 (never reset). Any duration unit; see time_zone below for calendar resets.
           offset: 30m # defaults to 0. Resets happen 30m later
 
       - map_y_numbers: Math.sqrt(y + 10*100) # map the y coordinate of each datapoint. Same available variables as for `map_y`
@@ -655,13 +655,24 @@ entities:
               meta: { unit_of_measurement: "delta" }
             };
           },
-      - resample: 5m # Rebuilds data so that the timestamps in xs are exact multiples of the specified interval, and without gaps. The parameter is the length of the interval and defaults to 5 minutes (see #duration for the format). This is useful when combining data from multiple entities, as the index of each datapoint will correspond to the same instant of time across them.
+      - resample: 5m # Rebuilds data at regular intervals without gaps. Defaults to 5 minutes (see #duration for the format). Useful when combining data from multiple entities, as matching indexes correspond to the same instant across them.
       - resample:
           interval: 5m # defaults to 5m
           interpolate: true # defaults to false (each new point holds the last known value). When true, values are linearly interpolated between the surrounding datapoints. Only numbers are interpolated, so use it after force_numeric (or map_y_numbers)
       - filter: y !== null && +y > 0 && x > new Date(Date.now()-1000*60*60) # filter out datapoints for which this returns false. Also filters from xs, states and statistics. Same variables as map_y are in scope
       - force_numeric # converts number-lookinig-strings to actual js numbers and removes the rest. Any filters used after this one will receive numbers, not strings or nulls. Also removes respective elements from xs, states and statistics parameters
 ```
+
+See [time_zone](#time_zone) for the calendar rules used by `integrate.reset_every`.
+
+`resample: 1d` uses midnight in the card's [time_zone](#time_zone), following
+the Home Assistant profile setting by default. Whole-day intervals such as
+`2d` follow the local calendar, anchored at January 1, 1970. A day can therefore
+be 23 or 25 hours long when daylight saving time changes.
+
+Other intervals keep their fixed duration and alignment to the Unix epoch.
+Use `24h` instead of `1d` for the previous fixed 24-hour behavior; fractional
+days such as `1.5d` remain fixed durations too. Intervals must be positive.
 
 #### Examples
 
@@ -1417,7 +1428,15 @@ time_zone: Europe/Rome # any IANA timezone
 
 This also applies to the boundaries of `hours_to_show: current_day` and friends, and to `integrate`'s `reset_every`.
 
-For `integrate`, `reset_every: 1d` resets at calendar midnight in the selected time zone, including 23- and 25-hour days. `reset_every: 24h` and other intervals remain fixed durations. `offset` shifts the reset by the specified elapsed duration after midnight, not by wall-clock hours.
+For `integrate`, whole-day resets such as `reset_every: 1d` and `2d` use the same
+calendar grid as `resample`, including 23- and 25-hour days. Whole-week resets
+(`1w`, `2w`, etc.) use the first weekday configured in Home Assistant. Whole-month
+resets (`1M`, `2M`, etc.) start on the first of a calendar month. Multi-period
+groups use a stable 1970 calendar anchor, so reloading does not move the reset.
+
+`reset_every: 24h`, fractional intervals and other units keep their fixed
+durations. `offset` shifts a reset by the specified elapsed duration after its
+calendar boundary, not by wall-clock hours.
 
 An invalid `time_zone` is reported as an error and the browser's timezone is used instead.
 

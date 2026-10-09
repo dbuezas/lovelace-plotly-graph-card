@@ -1,4 +1,6 @@
 import filters, { FilterInput } from "./filters";
+import { setDefaultOptions } from "date-fns";
+import * as calendar from "../duration/calendar";
 
 // Type checks only: these lines must (or must not) compile
 /* oxlint-disable no-unused-vars */
@@ -191,7 +193,8 @@ describe("filters", () => {
         expect(integrate(daily, [at(21, 8), at(21, 10)])).toEqual([NaN, 2]);
       });
 
-      describe("calendar days in the configured time zone", () => {
+      describe("calendar resets in the configured time zone", () => {
+        afterEach(() => setDefaultOptions({ weekStartsOn: undefined }));
         const run = (
           timestamps: string[],
           timeZone = "Europe/Zurich",
@@ -322,6 +325,135 @@ describe("filters", () => {
             ),
           ).toEqual([NaN, 22, 0, 1]);
         });
+
+        it("shares the stable two-day grid across DST", () => {
+          expect(
+            run(
+              [
+                "2024-03-30T00:00:00+01:00",
+                "2024-03-31T23:00:00+02:00",
+                "2024-04-01T00:00:00+02:00",
+                "2024-04-01T01:00:00+02:00",
+              ],
+              "Europe/Zurich",
+              { unit: "h", reset_every: "2d" },
+            ),
+          ).toEqual([NaN, 46, 0, 1]);
+        });
+
+        it("preserves offsets after a multi-day reset", () => {
+          expect(
+            run(
+              [
+                "2024-03-31T23:00:00+02:00",
+                "2024-04-01T05:00:00+02:00",
+                "2024-04-01T07:00:00+02:00",
+              ],
+              "Europe/Zurich",
+              { unit: "h", reset_every: "2d", offset: "6h" },
+            ),
+          ).toEqual([NaN, 6, 1]);
+        });
+
+        it.each([
+          [1, "2024-04-01T00:30:00+02:00"],
+          [0, "2024-03-31T00:30:00+01:00"],
+        ] as const)(
+          "resets at the configured first weekday (%s)",
+          (weekStartsOn, after) => {
+            setDefaultOptions({ weekStartsOn });
+            const before = new Date(Date.parse(after) - 3600000).toISOString();
+            expect(
+              run([before, after], "Europe/Zurich", {
+                unit: "h",
+                reset_every: "1w",
+              }),
+            ).toEqual([NaN, 0.5]);
+          },
+        );
+
+        it("resets at the first of the month, including leap February", () => {
+          expect(
+            run(
+              [
+                "2024-01-31T23:30:00+01:00",
+                "2024-02-01T00:30:00+01:00",
+                "2024-02-29T23:30:00+01:00",
+                "2024-03-01T00:30:00+01:00",
+              ],
+              "Europe/Zurich",
+              { unit: "h", reset_every: "1M" },
+            ),
+          ).toEqual([NaN, 0.5, 695.5, 0.5]);
+        });
+
+        it("groups whole months rather than fixed 30-day periods", () => {
+          expect(
+            run(
+              [
+                "2024-02-01T00:00:00+01:00",
+                "2024-02-29T23:00:00+01:00",
+                "2024-03-01T01:00:00+01:00",
+              ],
+              "Europe/Zurich",
+              { unit: "h", reset_every: "2M" },
+            ),
+          ).toEqual([NaN, 695, 1]);
+        });
+
+        it("keeps fractional day resets as fixed durations", () => {
+          vi.setSystemTime(new Date("2024-03-30T12:00:00+01:00"));
+          expect(
+            run(
+              [
+                "2024-03-30T00:00:00+01:00",
+                "2024-03-31T13:00:00+02:00",
+                "2024-03-31T14:00:00+02:00",
+              ],
+              "Europe/Zurich",
+              { unit: "h", reset_every: "1.5d" },
+            ),
+          ).toEqual([NaN, 0, 1]);
+        });
+
+        it.each(["2d", "1w", "1M"] as const)(
+          "reuses each %s calendar period for dense samples",
+          (reset_every) => {
+            const interval = calendar.calendarInterval(
+              reset_every,
+              "Europe/Zurich",
+            )!;
+            const start = interval.floor(
+              Date.parse("2024-03-30T12:00:00+01:00"),
+            );
+            const end = interval.next(start);
+            const floor = vi.spyOn(interval, "floor");
+            const next = vi.spyOn(interval, "next");
+            vi.spyOn(calendar, "calendarInterval").mockReturnValue(interval);
+            try {
+              const xs = Array.from(
+                { length: 100 },
+                (_, i) => start + i * 60000,
+              );
+              const result = run(
+                [...xs, end, end + 3600000].map((x) =>
+                  new Date(x).toISOString(),
+                ),
+                "Europe/Zurich",
+                { unit: "h", reset_every },
+              )!;
+              expect(result[0]).toBeNaN();
+              result
+                .slice(1, 100)
+                .forEach((y, i) => expect(y).toBeCloseTo((i + 1) / 60));
+              expect(result.slice(-2)).toEqual([0, 1]);
+              expect(floor).toHaveBeenCalledTimes(2);
+              expect(next).toHaveBeenCalledTimes(2);
+            } finally {
+              vi.restoreAllMocks();
+            }
+          },
+        );
       });
     });
   });

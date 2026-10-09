@@ -9,6 +9,7 @@ import { StatisticValue } from "../recorder-types";
 import { HassEntity, YValue } from "../types";
 import { inTimeZone } from "../timezone";
 import { startOfDay } from "date-fns";
+import { calendarInterval } from "../duration/calendar";
 
 import BaseRegression from "ml-regression-base";
 import LinearRegression from "ml-regression-simple-linear";
@@ -181,11 +182,19 @@ const filters = {
     const offset = parseTimeDuration(param.offset ?? "0s");
     checkTimeUnits(unit);
     return ({ xs, ys, meta, timeZone }) => {
+      const calendar = calendarInterval(param.reset_every ?? "0s", timeZone);
       const t0 = +startOfDay(Date.now(), inTimeZone(timeZone)) + offset;
-      const resetAt = (x: number) =>
-        param.reset_every === "1d"
-          ? +startOfDay(x - offset, inTimeZone(timeZone)) + offset
-          : t0 + Math.floor((x - t0) / reset_every) * reset_every;
+      let start = NaN,
+        end = NaN;
+      const resetAt = (x: number) => {
+        if (!calendar)
+          return t0 + Math.floor((x - t0) / reset_every) * reset_every;
+        if (!(x >= start && x < end)) {
+          start = calendar.floor(x - offset) + offset;
+          end = calendar.next(start - offset) + offset;
+        }
+        return start;
+      };
       let yAcc = 0;
       let last = {
         x: NaN,
@@ -350,13 +359,17 @@ const filters = {
       typeof intervalOrObject == "string"
         ? { interval: intervalOrObject }
         : intervalOrObject;
-    return ({ xs, ys, states, statistics }) => {
+    const interval = parseTimeDuration(intervalStr);
+    if (!Number.isFinite(interval) || interval <= 0)
+      throw new Error("resample: interval must be greater than zero");
+    return ({ xs, ys, states, statistics, timeZone }) => {
       const data = {
         xs: [] as Date[],
         ys: [] as YValue[],
         states: [] as HassEntity[],
         statistics: [] as StatisticValue[],
       };
+      if (!xs.length) return data;
       // Linear interpolation between neighbours, or hold the last value
       const lerp = (x: number, i: number) => {
         const [xa, xb, ya, yb] = [ms(xs[i]), ms(xs[i + 1]), ys[i], ys[i + 1]];
@@ -369,11 +382,18 @@ const filters = {
           return ys[i];
         return ya + ((yb - ya) * (x - xa)) / (xb - xa);
       };
-      const interval = parseTimeDuration(intervalStr);
-      const x0 = Math.floor(ms(xs[0]) / interval) * interval;
+      const calendar = intervalStr.endsWith("d")
+        ? calendarInterval(intervalStr, timeZone)
+        : undefined;
+      const x0 =
+        calendar?.floor(ms(xs[0])) ??
+        Math.floor(ms(xs[0]) / interval) * interval;
+      const next = calendar
+        ? (x: number) => calendar.next(x)
+        : (x: number) => x + interval;
       const x1 = ms(xs[xs.length - 1]);
       let i = 0;
-      for (let x = x0; x < x1; x += interval) {
+      for (let x = x0; x < x1; x = next(x)) {
         while (ms(xs[i + 1]) <= x && i < xs.length - 1) {
           i++;
         }
