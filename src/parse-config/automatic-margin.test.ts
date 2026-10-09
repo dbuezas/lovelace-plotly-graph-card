@@ -52,7 +52,10 @@ describe("automatic right margin", () => {
     delete (global as any).window;
   });
 
-  test.each([{ layout, entities }, { entities, layout }])(
+  test.each([
+    { layout, entities },
+    { entities, layout },
+  ])(
     "reserves space for the second axis regardless of YAML order: %j",
     async (config) => {
       const { parsed, errors } = await parse(config);
