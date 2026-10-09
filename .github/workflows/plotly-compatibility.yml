@@ -17,7 +17,12 @@ jobs:
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
       - run: bun run tsc
-      - run: bun run lint
+      - name: Lint
+        run: |
+          bun run lint:check || {
+            echo "::error::Run 'bun run lint:fix' and commit the result. Fix by hand what it can't."
+            exit 1
+          }
       - run: bun run build
       - name: Unit tests
         run: bun run test
