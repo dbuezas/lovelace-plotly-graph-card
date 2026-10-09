@@ -23,15 +23,21 @@ import {
   setDateFnDefaultOptions,
 } from "../duration/duration";
 import { parseStatistics } from "./parse-statistics";
+import { canSelectStatisticsTypes } from "./statistics-types";
 import { HomeAssistant } from "custom-card-helpers";
 import filters from "../filters/filters";
 import bounds from "binary-search-bounds";
 import has from "lodash/has";
-import { StatisticPeriod, StatisticValue } from "../recorder-types";
+import set from "lodash/set";
+import {
+  StatisticPeriod,
+  StatisticType,
+  StatisticValue,
+} from "../recorder-types";
 import {
   Config,
   EntityData,
-  EntityIdStatisticsConfig,
+  StatisticsFetchConfig,
   HassEntity,
   InputConfig,
   TimestampRange,
@@ -39,6 +45,8 @@ import {
 } from "../types";
 import getDeprecationError from "./deprecations";
 import { resolveTimeZone, toPlotlyTimeZone } from "../timezone";
+import { isPureDefault } from "./pure-default";
+import { getExtremaTrace } from "./extrema";
 
 class ConfigParser {
   private yaml: Partial<Config> = {};
@@ -57,8 +65,14 @@ class ConfigParser {
   private preserveObservedRange = false;
   private retainedCacheRanges: Record<string, TimestampRange[]> = {};
   private failedFetches = new Map<string, unknown>();
+  private evaluatedDefaults = new Map<string, unknown>();
+  private evaluatedFilters = new Set<string>();
+  private statisticsTypes?: StatisticType[];
+  private canSelectStatisticsTypes = false;
   /** IANA timezone the plot is drawn in, undefined for the browser's */
   public timeZone?: string;
+  historyEntities: HistoryFetchConfig[] = [];
+  private nextHistoryEntities = new Map<string, HistoryFetchConfig>();
   public resetObservedRange() {
     this.observed_range = [Date.now(), Date.now()];
   }
@@ -94,11 +108,14 @@ class ConfigParser {
     this.yaml = {};
     this.errors = [];
     this.failedFetches.clear();
+    this.evaluatedDefaults.clear();
+    this.evaluatedFilters.clear();
     this.hass = hass;
     this.historyPrefetched = false;
     // All fetch paths in this update share one cutoff, even after slow requests.
     this.fetchTime = now;
     this.nextStatisticsPeriods = new Set();
+    this.nextHistoryEntities = new Map();
     this.statisticsUpdates = statisticsUpdates;
     // Dynamic ranges advance on refresh; concrete ranges can come from browsing.
     const inputRange =
@@ -107,6 +124,8 @@ class ConfigParser {
       Array.isArray(inputRange) && !inputRange.some(is$fn);
     this.retainedCacheRanges = {};
     this.yaml_with_defaults = addPreParsingDefaults(input_yaml, css_vars, hass);
+    this.statisticsTypes = undefined;
+    this.canSelectStatisticsTypes = canSelectStatisticsTypes(input_yaml);
     setDateFnDefaultOptions(hass);
 
     this.fnParam = {
@@ -137,6 +156,7 @@ class ConfigParser {
     this.yaml = toPlotlyTimeZone(this.yaml as Config, this.timeZone);
     // Publish one complete snapshot; HA updates can arrive while fetching.
     this.statisticsPeriods = this.nextStatisticsPeriods;
+    this.historyEntities = [...this.nextHistoryEntities.values()];
 
     return { errors: this.errors, parsed: this.yaml as Config };
   }
@@ -197,7 +217,9 @@ class ConfigParser {
     const isFunction = typeof value === "function";
     const isFilterList = isFunction && /^entities\.\d+\.filters$/.test(path);
     if (isFunction) {
-      parent[key] = value = value(this.fnParam);
+      parent[key] = value = isPureDefault(value)
+        ? this.evalDefault(value, path)
+        : value(this.fnParam);
       if (isFilterList && !Array.isArray(value)) {
         throw new Error("filters must evaluate to an array");
       }
@@ -231,6 +253,7 @@ class ConfigParser {
     if (path.match(/^entities\.\d+\.filters\.\d+$/)) {
       await this.evalFilter({ parent, path, key, value });
     }
+    if (path.match(/^entities\.\d+\.filters$/)) this.evaluatedFilters.add(path);
     if (
       path.match(/^entities\.\d+\.filters$/) &&
       this.fnParam.getFromConfig("autorange_after_scroll") &&
@@ -316,6 +339,14 @@ class ConfigParser {
             y: trace.y.slice(-1),
           });
         }
+        if (trace.show_extrema) {
+          const extrema = getExtremaTrace(trace, this.getVisibleRange());
+          if (extrema) {
+            trace.legendgroup ??= "group" + i;
+            extrema.legendgroup = trace.legendgroup;
+            entities.push(extrema);
+          }
+        }
       }
     }
   }
@@ -399,10 +430,9 @@ class ConfigParser {
       return;
     }
 
-    const fetch_mask: boolean[] =
-      this.fnParam.getFromConfig("fetch_mask") || [];
     const requests: {
-      entity: EntityIdStatisticsConfig;
+      index: number;
+      entity: StatisticsFetchConfig;
       range: TimestampRange;
     }[] = [];
     entities.forEach((entity, i) => {
@@ -412,11 +442,7 @@ class ConfigParser {
         period,
         time_offset: timeOffset,
       } = entity;
-      if (
-        fetch_mask[i] === false ||
-        !entityId ||
-        [entityId, statistic, period, timeOffset].some(is$fn)
-      ) {
+      if (!entityId || [entityId, statistic, period, timeOffset].some(is$fn)) {
         return;
       }
 
@@ -427,10 +453,13 @@ class ConfigParser {
           period,
         );
         if (!statisticsParams) return;
-        if (!this.shouldFetch(i, statisticsParams.period)) return;
         const offset = parseTimeDuration(timeOffset);
         requests.push({
-          entity: { entity: entityId, ...statisticsParams },
+          index: i,
+          entity: {
+            entity: entityId,
+            ...statisticsParams,
+          },
           range: [
             visible_range[0] - offset,
             Math.min(visible_range[1] - offset, this.fetchTime),
@@ -442,8 +471,18 @@ class ConfigParser {
       }
     });
 
-    if (requests.length < 2) return;
-    await this.cache.prefetchStatistics(requests, this.hass!);
+    // Use normalized requests so parseStatistics remains the only source of
+    // defaults. Include masked traces to keep cache coverage stable on refresh.
+    this.statisticsTypes =
+      this.canSelectStatisticsTypes && requests.length
+        ? [...new Set(requests.map(({ entity }) => entity.statistic))].sort()
+        : undefined;
+    const fetchRequests = requests.filter(({ index, entity }) =>
+      this.shouldFetch(index, entity.period),
+    );
+    for (const request of requests) request.entity.types = this.statisticsTypes;
+    if (fetchRequests.length < 2) return;
+    await this.cache.prefetchStatistics(fetchRequests, this.hass!);
   }
 
   private async fetchDataForEntity(path: string) {
@@ -462,7 +501,11 @@ class ConfigParser {
     const attribute = this.fnParam.getFromConfig(path + ".attribute");
     const fetchConfig = {
       entity: this.fnParam.getFromConfig(path + ".entity"),
-      ...(statisticsParams ? statisticsParams : attribute ? { attribute } : {}),
+      ...(statisticsParams
+        ? { ...statisticsParams, types: this.statisticsTypes }
+        : attribute
+          ? { attribute }
+          : {}),
     };
     const offset = parseTimeDuration(
       this.fnParam.getFromConfig(path + ".time_offset"),
@@ -490,6 +533,13 @@ class ConfigParser {
         : Number.POSITIVE_INFINITY,
     ] as [number, number];
     const entityKey = getEntityKey(fetchConfig);
+    if (
+      !statisticsParams &&
+      fetchConfig.entity &&
+      range_to_fetch[1] >= this.fetchTime
+    ) {
+      this.nextHistoryEntities.set(entityKey, fetchConfig);
+    }
     (this.retainedCacheRanges[entityKey] ??= []).push(range_to_retain);
     const fetch_mask: boolean[] =
       this.fnParam.getFromConfig("fetch_mask") || [];
@@ -514,9 +564,13 @@ class ConfigParser {
         throw this.failedFetches.get(requestKey);
       }
       try {
-        data = await this.cache.fetch(range_to_fetch, fetchConfig, this.hass!, [
-          range_to_retain,
-        ]);
+        data = await this.cache.fetch(
+          range_to_fetch,
+          fetchConfig,
+          this.hass!,
+          [range_to_retain],
+          this.fetchTime,
+        );
       } catch (error) {
         this.failedFetches.set(requestKey, error);
         throw error;
@@ -588,7 +642,7 @@ class ConfigParser {
       }
     }
     if (requests.length < 2) return;
-    await this.cache.prefetchHistory(requests, this.hass!);
+    await this.cache.prefetchHistory(requests, this.hass!, this.fetchTime);
   }
 
   private getEvaledPath(path: string, callingPath: string) {
@@ -601,15 +655,47 @@ class ConfigParser {
     if (has(this.yaml, path)) return get(this.yaml, path);
 
     let value = this.yaml_with_defaults;
-    for (const key of path.split(".")) {
+    const keys = path.split(".");
+    for (const [index, key] of keys.entries()) {
       if (value === undefined) return undefined;
       value = value[key];
       if (is$fn(value)) {
+        const entityPath = path.match(/^entities\.\d+\./)?.[0];
+        const entityFilters =
+          entityPath && get(this.yaml_with_defaults, `${entityPath}filters`);
+        // Entity defaults depend on the currently fetched/filtered metadata.
+        // Do not evaluate a future entity using the current entity's context.
+        if (
+          index === keys.length - 1 &&
+          isPureDefault(value) &&
+          (!entityPath ||
+            (callingPath.startsWith(entityPath) &&
+              this.fnParam.meta !== undefined &&
+              (this.evaluatedFilters.has(`${entityPath}filters`) ||
+                entityFilters === undefined ||
+                (Array.isArray(entityFilters) && entityFilters.length === 0))))
+        ) {
+          return this.evalDefault(value, path);
+        }
         throw new Error(
           `Since [${path}] is a $fn, it has to be defined before [${callingPath}]`,
         );
       }
     }
+    return value;
+  }
+  private evalDefault(fn: Function, path: string) {
+    if (this.evaluatedDefaults.has(path))
+      return this.evaluatedDefaults.get(path);
+    const getFromConfig = (query: string) => this.getEvaledPath(query, path);
+    const value = fn({
+      ...this.fnParam,
+      path,
+      getFromConfig,
+      get: getFromConfig,
+    });
+    this.evaluatedDefaults.set(path, value);
+    set(this.yaml, path, value);
     return value;
   }
   private async evalFilter(input: {

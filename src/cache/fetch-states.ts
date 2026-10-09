@@ -31,7 +31,7 @@ function expandState(entityId: string, state: HistoryState): HassEntity {
   };
 }
 
-function mapStates(
+export function mapStates(
   entityId: string,
   list: HistoryState[] | undefined,
 ): CachedStateEntity[] {
