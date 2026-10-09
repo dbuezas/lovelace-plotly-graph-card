@@ -424,7 +424,10 @@ const filters = {
         throw new Error(
           "align_timestamps: 'aligned' is reserved for aligned series, rename that stored var",
         );
-      const timestamps = xs.map(ms);
+      // Only dates and numbers are instants; anything else never matches.
+      const instant = (x: unknown) =>
+        x instanceof Date || typeof x === "number" ? ms(x) : NaN;
+      const timestamps = xs.map(instant);
       const aligned: Record<string, unknown> = {};
       alignedVars.add(aligned);
       for (const name of typeof names === "string" ? [names] : names) {
@@ -434,8 +437,8 @@ const filters = {
         // Match exact instants without changing the stored series' time grid.
         const byTime = new Map<number, number>();
         // Skip x values that are not instants: every NaN would be the same key.
-        source.xs.forEach((x: Date, index: number) => {
-          const time = ms(x);
+        source.xs.forEach((x: unknown, index: number) => {
+          const time = instant(x);
           if (Number.isFinite(time)) byTime.set(time, index);
         });
         const indices = timestamps.map((time) => byTime.get(time));
