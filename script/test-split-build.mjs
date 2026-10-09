@@ -1,6 +1,6 @@
 // The production build splits Plotly into files that load on demand. This
 // serves that build like HACS does and checks what each page downloads.
-// Usage: npm run test:split (CHROME=/path/to/chrome to use another Chrome)
+// Usage: bun run test:split (CHROME=/path/to/chrome to use another Chrome)
 import { createServer } from "node:http";
 import { bundleInMemory } from "../build.mjs";
 import { chromium } from "playwright";

@@ -8,7 +8,7 @@ on:
       - "src/**"
       - "yaml-editor/**"
       - "package.json"
-      - "package-lock.json"
+      - "bun.lock"
       - "tsconfig.json"
       - ".github/workflows/yaml-editor.yaml"
 
@@ -22,21 +22,15 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
-          cache: npm
-          cache-dependency-path: |
-            package-lock.json
-            yaml-editor/package-lock.json
+      - uses: oven-sh/setup-bun@v2
 
-      - run: npm ci
-      - run: npm ci
+      - run: bun install --frozen-lockfile
+      - run: bun install --frozen-lockfile
         working-directory: yaml-editor
-      - run: npm run tsc
-      - run: npm run lint:yaml-editor
-      - run: npm test
+      - run: bun run tsc
+      - run: bun run lint:yaml-editor
+      - run: bun run test
         working-directory: yaml-editor
-      - run: npm run build
+      - run: bun run build
         working-directory: yaml-editor
       - run: git diff --exit-code -- yaml-editor/src/schema.json

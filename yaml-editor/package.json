@@ -1,14 +1,13 @@
 {
-  "name": "demo",
-  "version": "1.0.0",
+  "name": "plotly-graph-card-yaml-editor",
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "npm run schema && vite --open",
-    "build": "npm run schema && vite build",
+    "start": "bun run schema && vite --open",
+    "build": "bun run schema && vite build",
     "schema": "node generate-schema.js",
     "test": "node --test plotly-schema.test.js",
-    "deploy": "pnpm run build && npx --yes gh-pages -d dist"
+    "deploy": "bun run build && bunx gh-pages -d dist"
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^6.0.0",

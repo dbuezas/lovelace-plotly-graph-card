@@ -12,7 +12,6 @@
     "noImplicitAny": false,
     "skipLibCheck": true,
     "resolveJsonModule": true,
-    "experimentalDecorators": true,
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
     "types": ["node", "vitest/globals"]

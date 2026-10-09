@@ -1,6 +1,6 @@
 // Builds the card with Rolldown.
 //   node build.mjs          production build into dist/
-//   node build.mjs --watch  development build on every change (npm start)
+//   node build.mjs --watch  development build on every change (bun run start)
 // The browser tests import cardInputOptions to bundle the same way.
 import { existsSync, readFileSync, rmSync } from "node:fs";
 import { createServer } from "node:http";

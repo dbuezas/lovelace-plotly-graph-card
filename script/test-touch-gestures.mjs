@@ -1,5 +1,5 @@
 // Touch gestures with real (CDP) touch events in Chrome.
-// Usage: npm run test:touch
+// Usage: bun run test:touch
 // Uses Playwright's Chromium, or another Chrome with CHROME=/path/to/chrome
 import { createServer } from "node:http";
 import { bundleInMemory } from "../build.mjs";

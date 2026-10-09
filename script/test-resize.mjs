@@ -7,7 +7,9 @@ const [bundle] = await bundleInMemory({
       export { PlotlyGraph } from './src/plotly-graph-card';`,
   name: "ResizeTest",
 });
-const browser = await chromium.launch();
+const browser = await chromium.launch({
+  executablePath: process.env.CHROME || undefined,
+});
 try {
   const page = await browser.newPage();
   const errors = [];
