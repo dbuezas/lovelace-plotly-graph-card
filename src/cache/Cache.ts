@@ -43,7 +43,7 @@ export type HistoryFetchRequest = {
 };
 export function mapValues<T, S>(
   o: Record<string, T>,
-  fn: (value: T, key: string) => S
+  fn: (value: T, key: string) => S,
 ) {
   return Object.fromEntries(Object.entries(o).map(([k, v]) => [k, fn(v, k)]));
 }
@@ -61,7 +61,7 @@ function getFetchRange([startT, endT]: number[], now = Date.now()) {
 async function fetchSingleRange(
   hass: HomeAssistant,
   entity: FetchConfig,
-  [startT, endT]: number[]
+  [startT, endT]: number[],
 ): Promise<{
   range: [number, number];
   history: CachedEntity[];
@@ -151,7 +151,7 @@ function upperBound(history: CachedEntity[], timestamp: number) {
 
 function selectHistory(
   history: CachedEntity[],
-  ranges: TimestampRange[]
+  ranges: TimestampRange[],
 ): CachedEntity[] {
   const selected: CachedEntity[] = [];
   let next = 0; // cached timestamps are unique, so skip by index
@@ -171,7 +171,7 @@ function selectHistory(
 
 function intersectRanges(
   cachedRanges: TimestampRange[],
-  retainedRanges: TimestampRange[]
+  retainedRanges: TimestampRange[],
 ) {
   return compactRanges(
     cachedRanges.flatMap(([cachedStart, cachedEnd]) =>
@@ -179,8 +179,8 @@ function intersectRanges(
         const start = Math.max(cachedStart, retainedStart);
         const end = Math.min(cachedEnd, retainedEnd);
         return start <= end ? [[start, end]] : [];
-      })
-    )
+      }),
+    ),
   );
 }
 
@@ -200,10 +200,9 @@ export default class Cache {
         if (period && getStatisticsUpdatePeriod(mutable.period) !== period)
           continue;
         if (mutable.fetchedAt >= now) continue;
-        this.ranges[key] = subtractRanges(
-          this.ranges[key] || [],
-          [[mutable.from, Number.POSITIVE_INFINITY]],
-        );
+        this.ranges[key] = subtractRanges(this.ranges[key] || [], [
+          [mutable.from, Number.POSITIVE_INFINITY],
+        ]);
         delete this.mutableStatistics[key];
       }
     });
@@ -218,7 +217,7 @@ export default class Cache {
     if (!isLiveStatisticsRange(range, entity.period, fetchedAt)) return;
     const latest = history.reduce<CachedStatisticsEntity | undefined>(
       (last, row) => (!last || +row.x > +last.x ? row : last),
-      undefined
+      undefined,
     );
     const end = latest ? +new Date(latest.statistics.end) : NaN;
     // Completed buckets are stable, but their missing successors are not.
@@ -309,12 +308,12 @@ export default class Cache {
         data.xs.push(x);
         data.states.push(state);
         data.ys.push(
-          clean(attribute === null ? state.state : state.attributes[attribute])
+          clean(attribute === null ? state.state : state.attributes[attribute]),
         );
       }
     } else
       throw new Error(
-        `Unrecognised fetch type for ${(entity as EntityConfig).entity}`
+        `Unrecognised fetch type for ${(entity as EntityConfig).entity}`,
       );
     return data;
   }
@@ -415,7 +414,7 @@ export default class Cache {
       range: TimestampRange;
       entity: EntityIdStatisticsConfig;
     }[],
-    hass: HomeAssistant
+    hass: HomeAssistant,
   ): Promise<void> {
     await this.enqueue(async () => {
       const now = Date.now();
@@ -437,7 +436,7 @@ export default class Cache {
         for (const missingRange of rangesToFetch) {
           const { dates, range: fetchedRange } = getFetchRange(
             missingRange,
-            now
+            now,
           );
           const groupKey = JSON.stringify([
             request.entity.period,
@@ -463,7 +462,10 @@ export default class Cache {
         for (const entity of entities) {
           this.add(entity, histories[entity.entity], group.range);
           this.trackMutableStatistics(
-            entity, histories[entity.entity], group.range, now
+            entity,
+            histories[entity.entity],
+            group.range,
+            now,
           );
         }
       }
@@ -474,7 +476,7 @@ export default class Cache {
     range: TimestampRange,
     entity: FetchConfig,
     hass: HomeAssistant,
-    dataRanges: TimestampRange[] = [range]
+    dataRanges: TimestampRange[] = [range],
   ) {
     return this.enqueue(async () => {
       range = range.map((n) => Math.max(MIN_SAFE_TIMESTAMP, n)); // HA API can't handle negative years

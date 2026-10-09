@@ -79,16 +79,16 @@ main {
 
 #breadcrumbs::before,
 .breadcrumb:not(:last-child)::after {
-  content: '›';
+  content: "›";
   margin: 0 0.2rem;
 }
 
 .breadcrumb.array::before {
-  content: '[]';
+  content: "[]";
 }
 
 .breadcrumb.object::before {
-  content: '{}';
+  content: "{}";
 }
 
 #editor {

@@ -14,14 +14,12 @@ const flush = async () => {
 function mockConnection() {
   const callbacks = new Map<string, () => void>();
   const unsubscribes = new Map<string, Mock>();
-  const subscribeEvents = vi.fn(
-    async (callback: () => void, event: string) => {
-      callbacks.set(event, callback);
-      const unsubscribe = vi.fn();
-      unsubscribes.set(event, unsubscribe);
-      return unsubscribe;
-    },
-  );
+  const subscribeEvents = vi.fn(async (callback: () => void, event: string) => {
+    callbacks.set(event, callback);
+    const unsubscribe = vi.fn();
+    unsubscribes.set(event, unsubscribe);
+    return unsubscribe;
+  });
   const connection = {
     subscribeEvents,
   } as unknown as HomeAssistant["connection"];
