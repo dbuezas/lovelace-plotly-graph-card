@@ -8,7 +8,7 @@
     "start": "(node ./script/hot-reload.mjs & node build.mjs --watch)",
     "build": "node build.mjs",
     "tsc": "tsc",
-    "lint:check": "oxlint --type-aware --type-check --deny-warnings --ignore-pattern=yaml-editor",
+    "lint:check": "oxfmt --check && oxlint --type-aware --type-check --deny-warnings --ignore-pattern=yaml-editor",
     "lint:fix": "oxfmt && oxlint --type-aware --type-check --deny-warnings --ignore-pattern=yaml-editor --fix",
     "lint:yaml-editor": "oxlint --type-aware --type-check --deny-warnings yaml-editor",
     "test": "vitest run",
