@@ -1,22 +1,14 @@
 // Touch gestures with real (CDP) touch events in Chrome.
-// Usage: npm run test:touch
+// Usage: bun run test:touch
 // Uses Playwright's Chromium, or another Chrome with CHROME=/path/to/chrome
 import { createServer } from "node:http";
-import { build } from "esbuild";
+import { bundleInMemory } from "../build.mjs";
 import { chromium } from "playwright";
 
-const { outputFiles } = await build({
-  entryPoints: ["src/plotly-graph-card.ts"],
-  bundle: true,
-  write: false,
-  format: "iife",
-  globalName: "CardTest",
-  outdir: "dist",
-});
-const js = outputFiles.find((f) => f.path.endsWith(".js")).text;
+const [{ code: js }] = await bundleInMemory({ name: "CardTest" });
 const server = createServer((req, res) => {
   const isJs = req.url.endsWith(".js");
-  res.setHeader("Content-Type", isJs ? "text/javascript" : "text/html");
+  res.setHeader("Content-Type", isJs ? "text/javascript; charset=utf-8" : "text/html");
   res.end(
     isJs ? js : `<!doctype html><body><script src="/card.js"></script></body>`
   );

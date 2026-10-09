@@ -104,14 +104,14 @@ describe("relative times", () => {
     ["current_year", "2024-01-01 00:00:00.000", "2024-12-31 23:59:59.999"],
   ] as const)("computes %s boundaries", (str, from, to) => {
     // Thursday 2024-02-29 23:30 in Kolkata
-    jest.spyOn(Date, "now").mockReturnValue(Date.UTC(2024, 1, 29, 18));
+    vi.spyOn(Date, "now").mockReturnValue(Date.UTC(2024, 1, 29, 18));
     setDefaultOptions({ weekStartsOn: 1 });
     const tz = "Asia/Kolkata";
     const [start, end] = parseRelativeTime(str, tz);
     expect(toPlotlyDateString(start, tz)).toBe(from);
     expect(toPlotlyDateString(end, tz)).toBe(to);
     setDefaultOptions({});
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 });
 
