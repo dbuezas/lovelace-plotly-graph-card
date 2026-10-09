@@ -72,14 +72,27 @@ describe("wall clock conversion", () => {
   });
   // Can fail when the machine's own timezone has DST gaps (e.g. TZ=Australia/Lord_Howe):
   // https://github.com/date-fns/tz/pull/79
-  it("round trips timestamps", () => {
-    for (const tz of ["Europe/Rome", "America/New_York", "Australia/Lord_Howe"])
-      for (let t = Date.UTC(2024, 0, 1); t < Date.UTC(2025, 0, 1); t += 3.7e6) {
-        const str = toPlotlyDateString(t, tz);
-        const back = +parseISO(str, { in: inZone(tz) });
-        // ambiguous wall times (DST fall back) may resolve to either instant
-        expect(toPlotlyDateString(back, tz)).toBe(str);
-      }
+  it("round trips timestamps around DST changes", () => {
+    const day = 24 * 3600e3;
+    for (const tz of [
+      "Europe/Rome",
+      "America/New_York",
+      "Australia/Lord_Howe",
+    ]) {
+      // an ordinary day, plus the two days of 2024 where the offset changes
+      const days = [Date.UTC(2024, 0, 15)];
+      for (let t = Date.UTC(2024, 0, 1); t < Date.UTC(2025, 0, 1); t += day)
+        if (tzOffset(tz, new Date(t)) !== tzOffset(tz, new Date(t + day)))
+          days.push(t);
+      expect(days).toHaveLength(3);
+      for (const start of days)
+        for (let t = start; t < start + day; t += 13 * 60e3) {
+          const str = toPlotlyDateString(t, tz);
+          const back = +parseISO(str, { in: inZone(tz) });
+          // ambiguous wall times (DST fall back) may resolve to either instant
+          expect(toPlotlyDateString(back, tz)).toBe(str);
+        }
+    }
   });
 });
 

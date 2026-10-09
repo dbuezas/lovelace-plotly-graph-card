@@ -143,6 +143,7 @@ describe("refreshing live statistics in the cache", () => {
         "day",
         "week",
         "month",
+        "year",
       ];
       const range: TimestampRange = [start, Date.now()];
       const { hass, callWS } = mockHass([

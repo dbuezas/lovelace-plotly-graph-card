@@ -34,35 +34,67 @@ try {
     const plot = card.plot.bind(card);
     card.plot = async () => {};
     card.style.cssText = "display:block;width:480px";
+    const end = Date.now() - 60000;
+    const start = end - 120000;
+    const values = {
+      "sensor.power": ["-10", "0", "100"],
+      "sensor.price": ["10", "20", "40"],
+    };
     card.hass = {
-      states: {},
+      states: Object.fromEntries(
+        Object.entries(values).map(([entity_id, ys]) => [
+          entity_id,
+          {
+            entity_id,
+            state: ys.at(-1),
+            attributes: {
+              unit_of_measurement:
+                entity_id === "sensor.power" ? "W" : "ct/kWh",
+            },
+            last_updated: new Date(end).toISOString(),
+            last_changed: new Date(end).toISOString(),
+          },
+        ]),
+      ),
       locale: { language: "en", first_weekday: "monday" },
+      config: { time_zone: "UTC" },
+      connection: {},
+      callWS: async ({ type, entity_ids }) => {
+        if (type !== "history/history_during_period")
+          throw new Error(`Unexpected request: ${type}`);
+        return Object.fromEntries(
+          entity_ids.map((id) => [
+            id,
+            values[id].map((s, index) => ({
+              s,
+              lu: (start + index * 60000) / 1000,
+            })),
+          ]),
+        );
+      },
     };
     const config = {
       type: "custom:plotly-graph",
       refresh_interval: 0,
-      raw_plotly_config: true,
+      visible_range: [start, end],
       entities: [
         {
-          entity: "",
+          entity: "sensor.power",
           type: "scatter",
           name: "Power",
-          x: [0, 1, 2],
-          y: [-10, 0, 100],
+          extend_to_present: false,
           yaxis: "y",
         },
         {
-          entity: "",
+          entity: "sensor.price",
           type: "scatter",
           name: "Price",
-          x: [0, 1, 2],
-          y: [10, 20, 40],
+          extend_to_present: false,
           yaxis: "y2",
         },
       ],
       layout: {
         height: 320,
-        xaxis: { type: "linear", range: [0, 2] },
         yaxis: { type: "linear" },
         yaxis2: { type: "linear", overlaying: "y", side: "right" },
       },
@@ -83,7 +115,7 @@ try {
     };
     const draw = async (overrides = {}) => {
       await card.setConfig({ ...config, ...overrides });
-      await plot({ should_fetch: false });
+      await plot({ should_fetch: true });
       const deadline = performance.now() + 5000;
       while (
         !card.contentEl._fullLayout ||

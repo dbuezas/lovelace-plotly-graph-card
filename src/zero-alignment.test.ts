@@ -4,8 +4,8 @@ import {
 } from "./zero-alignment";
 
 const traces = [
-  { yaxis: "y", y: [-10, 100] },
-  { yaxis: "y2", y: [0, 40] },
+  { yaxis: "y", y: ["-10", "100"] },
+  { yaxis: "y2", y: ["0", "40"] },
 ];
 function layout(ranges: number[][]): Partial<Plotly.Layout> {
   const result: Partial<Plotly.Layout> = {};
@@ -39,6 +39,8 @@ describe("zero alignment from Plotly ranges", () => {
       [-10, 100],
       [0, 40],
     ]);
+    input.yaxis!.fixedrange = true;
+    input.yaxis2!.fixedrange = true;
     const update = getZeroAlignmentRelayout(input, traces, new Set());
     expect(expanded(input, update, "yaxis")[0]).toBeCloseTo(-10);
     expect(expanded(input, update, "yaxis")[1]).toBeCloseTo(110);
@@ -208,7 +210,7 @@ describe("zero alignment from Plotly ranges", () => {
     }
   });
 
-  test("does not expand another axis to match an all-null series", () => {
+  test("does not expand another axis to match a series without numeric values", () => {
     const input = layout([
       [1.8, 108],
       [-1, 4],
@@ -218,7 +220,29 @@ describe("zero alignment from Plotly ranges", () => {
         input,
         [
           { yaxis: "y", y: [10, 50, 100] },
-          { yaxis: "y2", y: [null, null, null] },
+          {
+            yaxis: "y2",
+            y: [null, "", " ", "unavailable", "unknown", NaN, Infinity],
+          },
+        ],
+        new Set(),
+      ),
+    ).toBeUndefined();
+  });
+
+  test("leaves hidden helper axes and the sole visible axis unchanged", () => {
+    const input = layout([
+      [19.7, 25.3],
+      [-0.05, 1.05],
+    ]);
+    input.yaxis9 = { ...input.yaxis2, visible: false };
+    delete input.yaxis2;
+    expect(
+      getZeroAlignmentRelayout(
+        input,
+        [
+          { yaxis: "y", y: [20, 25] },
+          { yaxis: "y9", y: [0, 1] },
         ],
         new Set(),
       ),

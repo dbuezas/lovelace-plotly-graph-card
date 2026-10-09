@@ -64,7 +64,12 @@ export function getZeroAlignmentRelayout(
         (trace) =>
           trace.visible !== false &&
           trace.visible !== "legendonly" &&
-          trace.y?.some(Number.isFinite),
+          trace.y?.some(
+            (value) =>
+              (typeof value === "number" ||
+                (typeof value === "string" && value.trim() !== "")) &&
+              Number.isFinite(+value),
+          ),
       )
       .flatMap((trace) => (trace.yaxis ? [axisName(trace.yaxis)] : [])),
   );
@@ -83,6 +88,7 @@ export function getZeroAlignmentRelayout(
       !key.startsWith("y") ||
       !usedAxes.has(key) ||
       protectedAxes.has(key) ||
+      axis.visible === false ||
       axis.type !== "linear" ||
       axis.autorange !== true ||
       hasLimits(axis) ||

@@ -26,7 +26,7 @@ const ms = (x: any): number => (x instanceof Date ? x.getTime() : +x);
 const myEval = typeof window != "undefined" ? window.eval : global.eval;
 
 type FilterData = {
-  xs: Date[];
+  xs: (Date | number)[];
   ys: YValue[];
   states: HassEntity[];
   statistics: StatisticValue[];
@@ -242,7 +242,7 @@ const filters = {
     (params) => {
       const { xs, ys, ...rest } = force_numeric(params);
       const ys2: number[] = [];
-      const xs2: Date[] = [];
+      const xs2: FilterData["xs"] = [];
       let acc = {
         y: 0,
         count: 0,
@@ -276,7 +276,7 @@ const filters = {
     (params) => {
       const { xs, ys, ...rest } = force_numeric(params);
       const ys2: number[] = [];
-      const xs2: Date[] = [];
+      const xs2: FilterData["xs"] = [];
       let acc = {
         ys: [] as number[],
         x: 0,
@@ -499,7 +499,12 @@ const filters = {
       if (p.show_formula) extras.push(regression.toString(2));
       return {
         ...rest,
-        xs: xs_numbers.map((x) => new Date(x + t0)),
+        xs: [
+          ...xs,
+          ...xs_numbers
+            .slice(xs.length)
+            .map((x) => (xs[0] instanceof Date ? new Date(x + t0) : x + t0)),
+        ],
         ys: ys_out,
         meta: {
           ...meta,
