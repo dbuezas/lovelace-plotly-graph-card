@@ -600,6 +600,7 @@ entities:
     filters:
       - store_var: myVar # stores the datapoints inside `vars.myVar`
       - load_var: myVar # loads the datapoints from `vars.myVar`
+      - align_timestamps: myVar # matches its timestamps to the current trace, available as `vars.aligned.myVar`
 
       # The filters below will only be applied to numeric values. Missing (unavailable) and non-numerics will be left untouched
       - add: 5 # adds 5 to each datapoint
@@ -800,6 +801,33 @@ This can also be used to fetch data by calling a HA service. As this is a call t
 
 ##### Using vars
 
+Use `align_timestamps: name` (or `align_timestamps: [name1, name2]`) to match a
+previously stored series to the current trace's exact timestamps under
+`vars.aligned`, without changing either original series; missing matches become
+`null`. Each call replaces `vars.aligned` with the requested series.
+Place it directly before the `map_y` that uses it: intervening filters that drop
+or move points, such as `filter` or `resample`, break alignment with `i` again.
+
+```yaml
+type: custom:plotly-graph
+entities:
+  - entity: sensor.outdoor_temperature
+    statistic: mean
+    period: 5minute
+    internal: true
+    filters:
+      - store_var: outdoor
+  - entity: sensor.indoor_temperature
+    statistic: mean
+    period: 5minute
+    name: Temperature difference
+    filters:
+      - align_timestamps: outdoor
+      - map_y: >-
+          y == null || vars.aligned.outdoor.ys[i] == null
+            ? null : y - vars.aligned.outdoor.ys[i]
+```
+
 Compute absolute humidity
 
 ```yaml
@@ -808,7 +836,7 @@ entities:
   - entity: sensor.wintergarten_clima_humidity
     internal: true
     filters:
-      - resample: 5m # important so the datapoints align in the x axis
+      - resample: 5m # put irregular history on a regular grid
       - map_y: parseFloat(y)
       - store_var: relative_humidity
   - entity: sensor.wintergarten_clima_temperature
@@ -818,7 +846,10 @@ entities:
     filters:
       - resample: 5m
       - map_y: parseFloat(y)
-      - map_y: (6.112 * Math.exp((17.67 * y)/(y+243.5)) * +vars.relative_humidity.ys[i] * 2.1674)/(273.15+y);
+      - align_timestamps: relative_humidity
+      - map_y: >-
+          vars.aligned.relative_humidity.ys[i] == null ? null :
+          (6.112 * Math.exp((17.67 * y)/(y+243.5)) * +vars.aligned.relative_humidity.ys[i] * 2.1674)/(273.15+y);
 ```
 
 Compute dew point
@@ -828,7 +859,7 @@ type: custom:plotly-graph
 entities:
   - entity: sensor.openweathermap_humidity
     internal: true
-    period: 5minute # important so the datapoints align in the x axis. Alternative to the resample filter using statistics
+    period: 5minute
     filters:
       - map_y: parseFloat(y)
       - store_var: relative_humidity
@@ -837,13 +868,15 @@ entities:
     name: Dew point
     filters:
       - map_y: parseFloat(y)
+      - align_timestamps: relative_humidity
       - map_y: >-
           {
             // https://www.omnicalculator.com/physics/dew-point
             const a = 17.625;
             const b = 243.04;
             const T = y;
-            const RH = vars.relative_humidity.ys[i];
+            const RH = vars.aligned.relative_humidity.ys[i];
+            if (RH == null) return null;
             const α = Math.log(RH/100) + a*T/(b+T);
             const Ts = (b * α) / (a - α);
             return Ts; 
@@ -869,7 +902,8 @@ entities:
     name: sum of temperatures
     filters:
       - map_y: parseFloat(y)
-      - map_y: y + vars.temp1.ys[i]
+      - align_timestamps: temp1
+      - map_y: vars.aligned.temp1.ys[i] == null ? null : y + vars.aligned.temp1.ys[i]
 ```
 
 ### Entity click handlers

@@ -10,6 +10,8 @@ const RIGHT_4 = "deduplicate_adjacent" satisfies FilterInput;
 const RIGHT_5 = "force_numeric" satisfies FilterInput;
 const RIGHT_6 = "resample" satisfies FilterInput;
 const RIGHT_7 = { resample: "5m" } satisfies FilterInput;
+const RIGHT_8 = { align_timestamps: "stored" } satisfies FilterInput;
+const RIGHT_9 = { align_timestamps: ["one", "two"] } satisfies FilterInput;
 
 //@ts-expect-error
 const WRONG_1 = "add" satisfies FilterInput;
@@ -491,5 +493,72 @@ describe("resample", () => {
       series([0, null, 40]),
     );
     expect(result.ys).toEqual([0, 0, null, null]);
+  });
+});
+
+describe("align_timestamps", () => {
+  const at = (...minutes: number[]) =>
+    minutes.map((minute) => new Date(Date.UTC(2025, 0, 1, 0, minute)));
+  const saved = (minutes: number[], ys: any[]) => ({
+    xs: at(...minutes),
+    ys,
+    states: ys.map((_, i) => ({ state: `state ${i}` })),
+    statistics: ys.map((_, i) => ({ mean: i })),
+    meta: { unit_of_measurement: "Wh" },
+  });
+
+  it("matches periods rather than indexes and preserves the original series", () => {
+    const source = saved([5, 15, 20], [0, 30, 40]);
+    const original = structuredClone(source);
+    const data = input({
+      xs: at(0, 5, 10, 15),
+      ys: [10, 20, 30, 40],
+      vars: { source, unrelated: "keep" },
+    });
+    const { vars } = filters.align_timestamps("source")(data);
+    expect(vars!.aligned.source).toEqual({
+      xs: data.xs,
+      ys: [null, 0, null, 30],
+      states: [null, source.states[0], null, source.states[1]],
+      statistics: [null, source.statistics[0], null, source.statistics[1]],
+      meta: source.meta,
+    });
+    expect(vars!.source).toBe(source);
+    expect(vars!.unrelated).toBe("keep");
+    expect(source).toEqual(original);
+    expect(data.vars).not.toHaveProperty("aligned");
+    expect(data.xs).toEqual(at(0, 5, 10, 15));
+    expect(data.ys).toEqual([10, 20, 30, 40]);
+  });
+
+  it("supports multiple series and can align them again to a different trace", () => {
+    const a = saved([0, 5, 10], [1, 2, 3]);
+    const b = saved([5, 10, 15], [4, 5, 6]);
+    const first = filters.align_timestamps(["a", "b"])(
+      input({
+        xs: at(0, 5, 10),
+        vars: { a, b },
+      }),
+    );
+    expect(first.vars!.aligned.a.ys).toEqual([1, 2, 3]);
+    expect(first.vars!.aligned.b.ys).toEqual([null, 4, 5]);
+    const second = filters.align_timestamps("b")(
+      input({ xs: at(10, 15), vars: first.vars }),
+    );
+    expect(second.vars!.aligned.b.ys).toEqual([5, 6]);
+    expect(second.vars!.aligned).not.toHaveProperty("a");
+    expect(first.vars!.aligned.b.ys).toEqual([null, 4, 5]);
+    expect(b.xs).toEqual(at(5, 10, 15));
+  });
+
+  it("does not interpolate, round timestamps or replace explicit gaps with zero", () => {
+    const source = saved([0, 5, 10], [0, null, "unavailable"]);
+    const data = input({
+      xs: [...at(0), new Date(+at(5)[0] + 1), ...at(5, 10)],
+      vars: { source },
+    });
+    expect(
+      filters.align_timestamps("source")(data).vars!.aligned.source.ys,
+    ).toEqual([0, null, null, "unavailable"]);
   });
 });
