@@ -15,7 +15,8 @@
                 "day",
                 "hour",
                 "month",
-                "week"
+                "week",
+                "year"
               ],
               "type": "string"
             }
@@ -240,7 +241,8 @@
                 "day",
                 "hour",
                 "month",
-                "week"
+                "week",
+                "year"
               ],
               "type": "string"
             }

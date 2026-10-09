@@ -25,6 +25,7 @@ export const STATISTIC_PERIODS = [
   "day",
   "week",
   "month",
+  "year",
 ] as const;
 export type StatisticPeriod = (typeof STATISTIC_PERIODS)[number];
 export type AutoPeriodConfig = Record<TimeDurationStr, StatisticPeriod>;

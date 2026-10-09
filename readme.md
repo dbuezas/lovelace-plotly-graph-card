@@ -288,7 +288,7 @@ type: custom:plotly-graph
 entities:
   - entity: sensor.temperature
     statistic: max # `min`, `mean` of `max`
-    period: 5minute # `5minute`, `hour`, `day`, `week`, `month`, `auto` # `auto` varies the period depending on the zoom level
+    period: 5minute # `5minute`, `hour`, `day`, `week`, `month`, `year`, `auto` # `auto` varies the period depending on the zoom level
 ```
 
 #### Mean line with a min/max band
@@ -357,7 +357,7 @@ type: custom:plotly-graph
 entities:
   - entity: sensor.temperature
     statistic: state # `state` or `sum`
-    period: 5minute # `5minute`, `hour`, `day`, `week`, `month`, `auto` # `auto` varies the period depending on the zoom level
+    period: 5minute # `5minute`, `hour`, `day`, `week`, `month`, `year`, `auto` # `auto` varies the period depending on the zoom level
 ```
 
 #### automatic period
@@ -385,6 +385,7 @@ entities:
       100d: day
       100w: week
       100M: month # note uppercase M for month. Lowercase are minutes
+      100y: year
 ```
 
 #### step function for auto period
@@ -399,7 +400,8 @@ entities:
       24h: hour # when the visible range is ≥ 1 day, use the `hour` period
       7d: day # from 7 days on, use `day`
       6M: week # from 6 months on, use weeks. Note Uppercase M! (lower case m means minutes)
-      1y: month # from 1 year on, use `month
+      1y: month # from 1 year on, use months
+      10y: year # from 10 years on, use years
 ```
 
 Note that `5minute` period statistics are limited in time as normal recorder history is, contrary to other periods which keep data for years.
@@ -1394,7 +1396,7 @@ automatic refresh is disabled.
 
 With `auto`, live statistics also refresh when Home Assistant publishes new
 5-minute or hourly statistics, even if the entity's state has not changed.
-Each event refreshes only its matching resolution: daily, weekly and monthly
+Each event refreshes only its matching resolution: daily, weekly, monthly and yearly
 aggregates refresh with the hourly statistics, not the 5-minute statistics.
 Entity state changes can still update the display without refetching statistics.
 Zooming, panning and toggling traces only fetch missing ranges; they do not
