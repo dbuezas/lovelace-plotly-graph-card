@@ -19,6 +19,7 @@ import ExponentialRegression from "ml-regression-exponential";
 import TheilSenRegression from "ml-regression-theil-sen";
 import { RobustPolynomialRegression } from "ml-regression-robust-polynomial";
 import FFTRegression from "./fft-regression";
+import { minMaxIndices } from "./min-max";
 
 const castFloat = (y: any) => parseFloat(y);
 // `+date` is much slower than getTime() in V8
@@ -35,6 +36,7 @@ type FilterData = {
   hass: HomeAssistant;
   /** IANA timezone the plot is drawn in, undefined for the browser's */
   timeZone?: string;
+  get?: (path: string) => unknown;
 };
 export type FilterFn = (p: FilterData) => Partial<FilterData>;
 
@@ -86,6 +88,17 @@ const force_numeric: (p: FilterData) => { ys: number[] } & FilterData = ({
 
 const filters = {
   force_numeric: () => force_numeric,
+  min_max:
+    (max_points: number = 1000): FilterFn =>
+    ({ xs, ys, states, statistics, get }) => {
+      const indices = minMaxIndices(xs, ys, max_points, get?.("visible_range"));
+      return {
+        xs: indices.map((i) => xs[i]),
+        ys: indices.map((i) => ys[i]),
+        states: states.length ? indices.map((i) => states[i]) : [],
+        statistics: statistics.length ? indices.map((i) => statistics[i]) : [],
+      };
+    },
   add:
     (val: number) =>
     ({ ys }) => ({

@@ -709,6 +709,29 @@ days such as `1.5d` remain fixed durations too. Intervals must be positive.
 
 #### Examples
 
+##### Adaptive min/max downsampling
+
+Use `min_max` to reduce dense numeric time series while keeping each bucket's minimum
+and maximum at their original timestamps. The number is a point target (at
+least 4), defaulting to 1000:
+
+```yaml
+type: custom:plotly-graph
+hours_to_show: 24
+entities:
+  - entity: sensor.power
+    filters:
+      - min_max: 1000
+```
+
+Zooming reselects points from the original data in the visible time range.
+Small windows below the target keep all measurements. Endpoints and gaps are
+preserved; gap boundaries can increase the output beyond the target. Put this
+filter after any calculations that need every measurement, such as `integrate`.
+
+This reduces plotting work, not Home Assistant history requests or download size.
+Use [statistics](#statistics-support) instead when fetching history is the bottleneck.
+
 ##### Trendline on a numeric X-axis
 
 Supply custom `xs` and `ys` inside a filter so `trendline` can use them:

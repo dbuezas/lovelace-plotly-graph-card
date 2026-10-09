@@ -98,6 +98,9 @@
                     "$ref": "#/definitions/With$fn<{force_numeric:never;}>"
                   },
                   {
+                    "$ref": "#/definitions/With$fn<{min_max:number;}>"
+                  },
+                  {
                     "$ref": "#/definitions/With$fn<{add:number;}>"
                   },
                   {
@@ -163,6 +166,7 @@
                       "force_numeric",
                       "integrate",
                       "median",
+                      "min_max",
                       "resample",
                       "sliding_window_moving_average",
                       "trendline"
@@ -837,6 +841,25 @@
       },
       "required": [
         "median"
+      ],
+      "type": "object"
+    },
+    "With$fn<{min_max:number;}>": {
+      "properties": {
+        "min_max": {
+          "anyOf": [
+            {
+              "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
+              "type": "string"
+            },
+            {
+              "type": "number"
+            }
+          ]
+        }
+      },
+      "required": [
+        "min_max"
       ],
       "type": "object"
     },

@@ -383,6 +383,7 @@ test("checked-in schema is generated from Plotly runtime metadata", () => {
         marker: { color: "#007bff" },
         offset: -7_200_000,
         type: "bar",
+        filters: [{ min_max: 1000 }, "min_max"],
         show_extrema: false,
       },
     ],
