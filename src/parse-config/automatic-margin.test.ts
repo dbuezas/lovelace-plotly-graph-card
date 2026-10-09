@@ -45,10 +45,10 @@ async function parse(config: Record<string, unknown>) {
 describe("automatic right margin", () => {
   beforeEach(() => {
     (global as any).window = { eval };
-    jest.spyOn(Date, "now").mockReturnValue(NOW);
+    vi.spyOn(Date, "now").mockReturnValue(NOW);
   });
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
     delete (global as any).window;
   });
 
