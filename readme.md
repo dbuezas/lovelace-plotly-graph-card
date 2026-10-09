@@ -1069,6 +1069,59 @@ entities:
 hours_to_show: current_day
 ```
 
+#### Linked tooltips in stacked subplots
+
+To show tooltips in all stacked subplots when hovering over one of them, use
+Plotly's native [`hoversubplots: axis`](https://plotly.com/javascript/reference/layout/#layout-hoversubplots)
+with `hovermode: x`. The traces must share the **same X axis** (`x`), which is
+the default, not just matching ranges on separate axes.
+
+This example places temperature and humidity in separate vertical panels. Replace
+the entity IDs with sensors that provide mean statistics. Using the same period
+gives both traces matching timestamps.
+
+```yaml
+type: custom:plotly-graph
+hours_to_show: 24h
+entities:
+  - entity: sensor.garden_temperature
+    name: Temperature
+    statistic: mean
+    period: hour
+  - entity: sensor.garden_humidity
+    name: Humidity
+    statistic: mean
+    period: hour
+    yaxis: y2
+layout:
+  height: 360
+  hovermode: x
+  hoversubplots: axis
+  margin:
+    l: 60
+    r: 20
+    t: 10
+    b: 50
+  xaxis:
+    anchor: y2
+  yaxis:
+    domain: [0.55, 1]
+    anchor: x
+  yaxis2:
+    domain: [0, 0.45]
+    anchor: x
+    overlaying: false
+    side: left
+```
+
+`overlaying: false` overrides the card's default secondary-axis overlay, so the
+second trace occupies its own panel. `side: left` keeps its Y axis on the left,
+and `xaxis.anchor: y2` places the date ticks below the lower panel; neither is
+required for linked hover. This works within one card; it does **not**
+synchronize hover between separate Home Assistant cards or expose `on_hover`
+callbacks. See [#398](https://github.com/dbuezas/lovelace-plotly-graph-card/issues/398)
+for that remaining request.
+
 #### disabling hover text
 
 can be achieved by setting inside entities:
