@@ -1277,6 +1277,38 @@ try {
   results.results.push(
     "generated and reused filter lists render through the card",
   );
+  const defaultHover = await page.evaluate(async () => {
+    const card = document.getElementById("card-under-test");
+    const end = Date.now() - 60000;
+    card.setConfig({
+      type: "custom:plotly-graph",
+      refresh_interval: 0,
+      visible_range: [end - 86400000, end],
+      entities: [
+        {
+          entity: "sensor.one",
+          hovertemplate:
+            '$ex `${get(".name")}: %{y} ${get(".unit_of_measurement")}<extra></extra>`',
+          extend_to_present: false,
+        },
+      ],
+    });
+    await card.plot({ should_fetch: true });
+    PlotlyTest.default.Fx.hover(card.contentEl, [
+      { curveNumber: 0, pointNumber: 0 },
+    ]);
+    return {
+      error: card.errorMsgEl.textContent,
+      template: card.contentEl._fullData[0].hovertemplate,
+      text: card.contentEl.querySelector(".hoverlayer").textContent,
+    };
+  });
+  assert.equal(defaultHover.error, "");
+  assert.equal(defaultHover.template, "sensor.one: %{y} W<extra></extra>");
+  assert.match(defaultHover.text, /sensor\.one: 1 W/);
+  results.results.push(
+    "custom hover templates render with on-demand default names and units",
+  );
   const alignedStatistics = await page.evaluate(async () => {
     const card = document.getElementById("card-under-test");
     const start = Date.UTC(2025, 0, 1);

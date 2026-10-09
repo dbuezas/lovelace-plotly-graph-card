@@ -6,6 +6,7 @@ import { parseColorScheme } from "./parse-color-scheme";
 import { getEntityIndex } from "./parse-config";
 import getThemedLayout, { HATheme } from "./themed-layout";
 import { DEFAULT_PLOT_HEIGHT } from "../loading-state";
+import { pureDefault } from "./pure-default";
 declare const window: Window & {
   PlotlyGraphCardPresets?: Record<string, InputConfig>;
 };
@@ -25,14 +26,16 @@ const defaultEntityOptional = {
   line: {
     width: 1,
     shape: "hv",
-    color: ({ getFromConfig, path }) => {
+    color: pureDefault(({ getFromConfig, path }) => {
       const color_scheme = parseColorScheme(getFromConfig("color_scheme"));
       return color_scheme[getEntityIndex(path) % color_scheme.length];
-    },
+    }),
   },
   // extend_to_present: true unless using statistics. Defined inside parse-config.ts to avoid forward depndency
-  unit_of_measurement: ({ meta }) => meta.unit_of_measurement || "",
-  name: ({ hass, meta, getFromConfig }) => {
+  unit_of_measurement: pureDefault(
+    ({ meta }) => meta.unit_of_measurement || "",
+  ),
+  name: pureDefault(({ hass, meta, getFromConfig }) => {
     const entityId = getFromConfig(`.entity`);
     const stateObj = hass?.states[entityId];
     // A filter (trendline, or any fn) renames its trace by rewriting
@@ -51,12 +54,14 @@ const defaultEntityOptional = {
     const attribute = getFromConfig(`.attribute`);
     if (attribute) name += ` (${attribute}) `;
     return name;
-  },
-  hovertemplate: ({ getFromConfig }) =>
-    `<b>${getFromConfig(".name")}</b><br><i>%{x}</i><br>%{y} ${getFromConfig(
-      ".unit_of_measurement",
-    )}<extra></extra>`,
-  yaxis: ({ getFromConfig, path }) => {
+  }),
+  hovertemplate: pureDefault(
+    ({ getFromConfig }) =>
+      `<b>${getFromConfig(".name")}</b><br><i>%{x}</i><br>%{y} ${getFromConfig(
+        ".unit_of_measurement",
+      )}<extra></extra>`,
+  ),
+  yaxis: pureDefault(({ getFromConfig, path }) => {
     const units: string[] = [];
     for (let i = 0; i <= getEntityIndex(path); i++) {
       const unit = getFromConfig(`entities.${i}.unit_of_measurement`);
@@ -65,7 +70,7 @@ const defaultEntityOptional = {
     }
     const yaxis_idx = units.indexOf(getFromConfig(`.unit_of_measurement`)) + 1;
     return "y" + (yaxis_idx === 1 ? "" : yaxis_idx);
-  },
+  }),
 };
 
 const defaultYamlRequired = {
@@ -119,7 +124,7 @@ const defaultYamlOptional: {
     scrollZoom: true,
     modeBarButtonsToRemove: ["resetScale2d", "toImage", "lasso2d", "select2d"],
     // @ts-expect-error expects a string, not a function
-    locale: ({ hass }) => hass.locale?.language,
+    locale: pureDefault(({ hass }) => hass.locale?.language),
   },
   layout: {
     height: DEFAULT_PLOT_HEIGHT,
