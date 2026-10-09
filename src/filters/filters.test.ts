@@ -1,4 +1,6 @@
 import filters, { FilterInput } from "./filters";
+import { setDefaultOptions } from "date-fns";
+import * as calendar from "../duration/calendar";
 
 // Type checks only: these lines must (or must not) compile
 /* oxlint-disable no-unused-vars */
@@ -10,6 +12,8 @@ const RIGHT_4 = "deduplicate_adjacent" satisfies FilterInput;
 const RIGHT_5 = "force_numeric" satisfies FilterInput;
 const RIGHT_6 = "resample" satisfies FilterInput;
 const RIGHT_7 = { resample: "5m" } satisfies FilterInput;
+const RIGHT_8 = { align_timestamps: "stored" } satisfies FilterInput;
+const RIGHT_9 = { align_timestamps: ["one", "two"] } satisfies FilterInput;
 
 //@ts-expect-error
 const WRONG_1 = "add" satisfies FilterInput;
@@ -189,7 +193,8 @@ describe("filters", () => {
         expect(integrate(daily, [at(21, 8), at(21, 10)])).toEqual([NaN, 2]);
       });
 
-      describe("calendar days in the configured time zone", () => {
+      describe("calendar resets in the configured time zone", () => {
+        afterEach(() => setDefaultOptions({ weekStartsOn: undefined }));
         const run = (
           timestamps: string[],
           timeZone = "Europe/Zurich",
@@ -320,6 +325,135 @@ describe("filters", () => {
             ),
           ).toEqual([NaN, 22, 0, 1]);
         });
+
+        it("shares the stable two-day grid across DST", () => {
+          expect(
+            run(
+              [
+                "2024-03-30T00:00:00+01:00",
+                "2024-03-31T23:00:00+02:00",
+                "2024-04-01T00:00:00+02:00",
+                "2024-04-01T01:00:00+02:00",
+              ],
+              "Europe/Zurich",
+              { unit: "h", reset_every: "2d" },
+            ),
+          ).toEqual([NaN, 46, 0, 1]);
+        });
+
+        it("preserves offsets after a multi-day reset", () => {
+          expect(
+            run(
+              [
+                "2024-03-31T23:00:00+02:00",
+                "2024-04-01T05:00:00+02:00",
+                "2024-04-01T07:00:00+02:00",
+              ],
+              "Europe/Zurich",
+              { unit: "h", reset_every: "2d", offset: "6h" },
+            ),
+          ).toEqual([NaN, 6, 1]);
+        });
+
+        it.each([
+          [1, "2024-04-01T00:30:00+02:00"],
+          [0, "2024-03-31T00:30:00+01:00"],
+        ] as const)(
+          "resets at the configured first weekday (%s)",
+          (weekStartsOn, after) => {
+            setDefaultOptions({ weekStartsOn });
+            const before = new Date(Date.parse(after) - 3600000).toISOString();
+            expect(
+              run([before, after], "Europe/Zurich", {
+                unit: "h",
+                reset_every: "1w",
+              }),
+            ).toEqual([NaN, 0.5]);
+          },
+        );
+
+        it("resets at the first of the month, including leap February", () => {
+          expect(
+            run(
+              [
+                "2024-01-31T23:30:00+01:00",
+                "2024-02-01T00:30:00+01:00",
+                "2024-02-29T23:30:00+01:00",
+                "2024-03-01T00:30:00+01:00",
+              ],
+              "Europe/Zurich",
+              { unit: "h", reset_every: "1M" },
+            ),
+          ).toEqual([NaN, 0.5, 695.5, 0.5]);
+        });
+
+        it("groups whole months rather than fixed 30-day periods", () => {
+          expect(
+            run(
+              [
+                "2024-02-01T00:00:00+01:00",
+                "2024-02-29T23:00:00+01:00",
+                "2024-03-01T01:00:00+01:00",
+              ],
+              "Europe/Zurich",
+              { unit: "h", reset_every: "2M" },
+            ),
+          ).toEqual([NaN, 695, 1]);
+        });
+
+        it("keeps fractional day resets as fixed durations", () => {
+          vi.setSystemTime(new Date("2024-03-30T12:00:00+01:00"));
+          expect(
+            run(
+              [
+                "2024-03-30T00:00:00+01:00",
+                "2024-03-31T13:00:00+02:00",
+                "2024-03-31T14:00:00+02:00",
+              ],
+              "Europe/Zurich",
+              { unit: "h", reset_every: "1.5d" },
+            ),
+          ).toEqual([NaN, 0, 1]);
+        });
+
+        it.each(["2d", "1w", "1M"] as const)(
+          "reuses each %s calendar period for dense samples",
+          (reset_every) => {
+            const interval = calendar.calendarInterval(
+              reset_every,
+              "Europe/Zurich",
+            )!;
+            const start = interval.floor(
+              Date.parse("2024-03-30T12:00:00+01:00"),
+            );
+            const end = interval.next(start);
+            const floor = vi.spyOn(interval, "floor");
+            const next = vi.spyOn(interval, "next");
+            vi.spyOn(calendar, "calendarInterval").mockReturnValue(interval);
+            try {
+              const xs = Array.from(
+                { length: 100 },
+                (_, i) => start + i * 60000,
+              );
+              const result = run(
+                [...xs, end, end + 3600000].map((x) =>
+                  new Date(x).toISOString(),
+                ),
+                "Europe/Zurich",
+                { unit: "h", reset_every },
+              )!;
+              expect(result[0]).toBeNaN();
+              result
+                .slice(1, 100)
+                .forEach((y, i) => expect(y).toBeCloseTo((i + 1) / 60));
+              expect(result.slice(-2)).toEqual([0, 1]);
+              expect(floor).toHaveBeenCalledTimes(2);
+              expect(next).toHaveBeenCalledTimes(2);
+            } finally {
+              vi.restoreAllMocks();
+            }
+          },
+        );
       });
     });
   });
@@ -491,5 +625,72 @@ describe("resample", () => {
       series([0, null, 40]),
     );
     expect(result.ys).toEqual([0, 0, null, null]);
+  });
+});
+
+describe("align_timestamps", () => {
+  const at = (...minutes: number[]) =>
+    minutes.map((minute) => new Date(Date.UTC(2025, 0, 1, 0, minute)));
+  const saved = (minutes: number[], ys: any[]) => ({
+    xs: at(...minutes),
+    ys,
+    states: ys.map((_, i) => ({ state: `state ${i}` })),
+    statistics: ys.map((_, i) => ({ mean: i })),
+    meta: { unit_of_measurement: "Wh" },
+  });
+
+  it("matches periods rather than indexes and preserves the original series", () => {
+    const source = saved([5, 15, 20], [0, 30, 40]);
+    const original = structuredClone(source);
+    const data = input({
+      xs: at(0, 5, 10, 15),
+      ys: [10, 20, 30, 40],
+      vars: { source, unrelated: "keep" },
+    });
+    const { vars } = filters.align_timestamps("source")(data);
+    expect(vars!.aligned.source).toEqual({
+      xs: data.xs,
+      ys: [null, 0, null, 30],
+      states: [null, source.states[0], null, source.states[1]],
+      statistics: [null, source.statistics[0], null, source.statistics[1]],
+      meta: source.meta,
+    });
+    expect(vars!.source).toBe(source);
+    expect(vars!.unrelated).toBe("keep");
+    expect(source).toEqual(original);
+    expect(data.vars).not.toHaveProperty("aligned");
+    expect(data.xs).toEqual(at(0, 5, 10, 15));
+    expect(data.ys).toEqual([10, 20, 30, 40]);
+  });
+
+  it("supports multiple series and can align them again to a different trace", () => {
+    const a = saved([0, 5, 10], [1, 2, 3]);
+    const b = saved([5, 10, 15], [4, 5, 6]);
+    const first = filters.align_timestamps(["a", "b"])(
+      input({
+        xs: at(0, 5, 10),
+        vars: { a, b },
+      }),
+    );
+    expect(first.vars!.aligned.a.ys).toEqual([1, 2, 3]);
+    expect(first.vars!.aligned.b.ys).toEqual([null, 4, 5]);
+    const second = filters.align_timestamps("b")(
+      input({ xs: at(10, 15), vars: first.vars }),
+    );
+    expect(second.vars!.aligned.b.ys).toEqual([5, 6]);
+    expect(second.vars!.aligned).not.toHaveProperty("a");
+    expect(first.vars!.aligned.b.ys).toEqual([null, 4, 5]);
+    expect(b.xs).toEqual(at(5, 10, 15));
+  });
+
+  it("does not interpolate, round timestamps or replace explicit gaps with zero", () => {
+    const source = saved([0, 5, 10], [0, null, "unavailable"]);
+    const data = input({
+      xs: [...at(0), new Date(+at(5)[0] + 1), ...at(5, 10)],
+      vars: { source },
+    });
+    expect(
+      filters.align_timestamps("source")(data).vars!.aligned.source.ys,
+    ).toEqual([0, null, null, "unavailable"]);
   });
 });
