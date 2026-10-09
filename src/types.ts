@@ -28,6 +28,7 @@ export type InputEntityOptions = {
   period?: StatisticPeriod | "auto" | AutoPeriodConfig;
   unit_of_measurement?: string;
   internal?: boolean;
+  show_extrema?: boolean;
   show_value?:
     | boolean
     | {
@@ -105,6 +106,7 @@ export type InputConfig = {
 export type EntityConfig = EntityIdConfig & {
   unit_of_measurement?: string;
   internal: boolean;
+  show_extrema?: boolean;
   show_value:
     | boolean
     | {
@@ -157,6 +159,10 @@ export type EntityIdStatisticsConfig = {
   statistic: StatisticType;
   period: StatisticPeriod;
 };
+export type StatisticsFetchConfig = EntityIdStatisticsConfig & {
+  // One sorted, unique field selection shared by every trace in a parser update.
+  types?: StatisticType[];
+};
 export type EntityIdConfig =
   | EntityIdStateConfig
   | EntityIdAttrConfig
@@ -190,6 +196,7 @@ export type CachedBaseEntity = {
 };
 export type CachedStateEntity = CachedBaseEntity & {
   state: HassEntity;
+  unconfirmed?: true;
 };
 export type CachedStatisticsEntity = CachedBaseEntity & {
   statistics: StatisticValue;

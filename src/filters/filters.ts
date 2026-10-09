@@ -414,6 +414,37 @@ const filters = {
     ({ vars, xs, ys, states, statistics, meta }) => ({
       vars: { ...vars, [var_name]: { xs, ys, states, statistics, meta } },
     }),
+  align_timestamps:
+    (names: string | string[]): FilterFn =>
+    ({ xs, vars }) => {
+      const timestamps = xs.map(ms);
+      const aligned: Record<string, unknown> = {};
+      for (const name of typeof names === "string" ? [names] : names) {
+        const source = vars[name];
+        if (!Array.isArray(source?.xs) || !Array.isArray(source?.ys))
+          throw new Error(`align_timestamps: '${name}' is not a stored series`);
+        // Match exact instants without changing the stored series' time grid.
+        const byTime = new Map<number, number>();
+        source.xs.forEach((x: Date, index: number) => byTime.set(ms(x), index));
+        const indices = timestamps.map((time) => byTime.get(time));
+        const project = (values: unknown[]) =>
+          values?.length
+            ? indices.map((index) =>
+                index === undefined ? null : (values[index] ?? null),
+              )
+            : [];
+        aligned[name] = {
+          ...source,
+          xs,
+          ys: indices.map((index) =>
+            index === undefined ? null : (source.ys[index] ?? null),
+          ),
+          states: project(source.states),
+          statistics: project(source.statistics),
+        };
+      }
+      return { vars: { ...vars, aligned } };
+    },
   trendline: (p3: TrendlineType | Partial<TrendlineParam> = "linear") => {
     let p2: Partial<TrendlineParam> = {};
     if (typeof p3 == "string") {

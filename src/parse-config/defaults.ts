@@ -13,6 +13,7 @@ const noop$fn = () => () => {};
 const defaultEntityRequired = {
   entity: "",
   show_value: false,
+  show_extrema: false,
   internal: false,
   time_offset: "0s",
   on_legend_click: noop$fn,
@@ -169,13 +170,6 @@ const defaultYamlOptional: {
       b: 50,
       t: 0,
       l: 60,
-      // @ts-expect-error functions are not a plotly thing, only this card
-      r: ({ getFromConfig }) => {
-        const entities = getFromConfig(`entities`);
-        const usesRightAxis = entities.some(({ yaxis }) => yaxis === "y2");
-        const usesShowValue = entities.some(({ show_value }) => show_value);
-        return usesRightAxis | usesShowValue ? 60 : 30;
-      },
     },
   },
 };
@@ -299,6 +293,15 @@ export function addPostParsingDefaults(
       : {
           xaxis: {
             range: yaml.visible_range,
+          },
+          margin: {
+            r: yaml.entities.some(
+              (entity) =>
+                ("yaxis" in entity && entity.yaxis === "y2") ||
+                entity.show_value,
+            )
+              ? 60
+              : 30,
           },
         },
     yaml.raw_plotly_config ? {} : yAxisTitles,

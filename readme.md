@@ -275,6 +275,8 @@ entities:
 
 Fetch and plot long-term statistics of an entity
 
+The card requests only the statistic fields used by its traces. Traces with the same sensor, period and time range still share one response, including min/max/mean bands. Entity expressions, filters and presets keep the full statistics response, since custom code can read other fields through `statistics`. Functions used only for time ranges or layout do not disable this optimization.
+
 #### for entities with state_class=measurement (normal sensors, like temperature)
 
 ```yaml
@@ -397,6 +399,24 @@ entities:
 ```
 
 Note that `5minute` period statistics are limited in time as normal recorder history is, contrary to other periods which keep data for years.
+
+## show_extrema:
+
+Labels the minimum and maximum of `scatter`, `scattergl` and vertical `bar`
+series after filters, within the visible time window for time series.
+Non-numeric/unavailable values are ignored; ties use the first occurrence and
+constant series get one label. Labels toggle with the series in the legend.
+
+```yaml
+type: custom:plotly-graph
+entities:
+  - entity: sensor.temperature
+    show_extrema: true
+```
+
+Labels use the series color and unit. Set `texttemplate: '%{y:.1f} °C'` to change
+the format. On a `bar` trace, this also prints text on every bar, since Plotly
+applies the same `texttemplate` to the bars themselves.
 
 ## show_value:
 
@@ -580,6 +600,7 @@ entities:
     filters:
       - store_var: myVar # stores the datapoints inside `vars.myVar`
       - load_var: myVar # loads the datapoints from `vars.myVar`
+      - align_timestamps: myVar # matches its timestamps to the current trace, available as `vars.aligned.myVar`
 
       # The filters below will only be applied to numeric values. Missing (unavailable) and non-numerics will be left untouched
       - add: 5 # adds 5 to each datapoint
@@ -791,6 +812,33 @@ This can also be used to fetch data by calling a HA service. As this is a call t
 
 ##### Using vars
 
+Use `align_timestamps: name` (or `align_timestamps: [name1, name2]`) to match a
+previously stored series to the current trace's exact timestamps under
+`vars.aligned`, without changing either original series; missing matches become
+`null`. Each call replaces `vars.aligned` with the requested series.
+Place it directly before the `map_y` that uses it: intervening filters that drop
+or move points, such as `filter` or `resample`, break alignment with `i` again.
+
+```yaml
+type: custom:plotly-graph
+entities:
+  - entity: sensor.outdoor_temperature
+    statistic: mean
+    period: 5minute
+    internal: true
+    filters:
+      - store_var: outdoor
+  - entity: sensor.indoor_temperature
+    statistic: mean
+    period: 5minute
+    name: Temperature difference
+    filters:
+      - align_timestamps: outdoor
+      - map_y: >-
+          y == null || vars.aligned.outdoor.ys[i] == null
+            ? null : y - vars.aligned.outdoor.ys[i]
+```
+
 Compute absolute humidity
 
 ```yaml
@@ -799,7 +847,7 @@ entities:
   - entity: sensor.wintergarten_clima_humidity
     internal: true
     filters:
-      - resample: 5m # important so the datapoints align in the x axis
+      - resample: 5m # put irregular history on a regular grid
       - map_y: parseFloat(y)
       - store_var: relative_humidity
   - entity: sensor.wintergarten_clima_temperature
@@ -809,7 +857,10 @@ entities:
     filters:
       - resample: 5m
       - map_y: parseFloat(y)
-      - map_y: (6.112 * Math.exp((17.67 * y)/(y+243.5)) * +vars.relative_humidity.ys[i] * 2.1674)/(273.15+y);
+      - align_timestamps: relative_humidity
+      - map_y: >-
+          vars.aligned.relative_humidity.ys[i] == null ? null :
+          (6.112 * Math.exp((17.67 * y)/(y+243.5)) * +vars.aligned.relative_humidity.ys[i] * 2.1674)/(273.15+y);
 ```
 
 Compute dew point
@@ -819,7 +870,7 @@ type: custom:plotly-graph
 entities:
   - entity: sensor.openweathermap_humidity
     internal: true
-    period: 5minute # important so the datapoints align in the x axis. Alternative to the resample filter using statistics
+    period: 5minute
     filters:
       - map_y: parseFloat(y)
       - store_var: relative_humidity
@@ -828,13 +879,15 @@ entities:
     name: Dew point
     filters:
       - map_y: parseFloat(y)
+      - align_timestamps: relative_humidity
       - map_y: >-
           {
             // https://www.omnicalculator.com/physics/dew-point
             const a = 17.625;
             const b = 243.04;
             const T = y;
-            const RH = vars.relative_humidity.ys[i];
+            const RH = vars.aligned.relative_humidity.ys[i];
+            if (RH == null) return null;
             const α = Math.log(RH/100) + a*T/(b+T);
             const Ts = (b * α) / (a - α);
             return Ts; 
@@ -860,7 +913,8 @@ entities:
     name: sum of temperatures
     filters:
       - map_y: parseFloat(y)
-      - map_y: y + vars.temp1.ys[i]
+      - align_timestamps: temp1
+      - map_y: vars.aligned.temp1.ys[i] == null ? null : y + vars.aligned.temp1.ys[i]
 ```
 
 ### Entity click handlers
@@ -1078,6 +1132,59 @@ entities:
 hours_to_show: current_day
 ```
 
+#### Linked tooltips in stacked subplots
+
+To show tooltips in all stacked subplots when hovering over one of them, use
+Plotly's native [`hoversubplots: axis`](https://plotly.com/javascript/reference/layout/#layout-hoversubplots)
+with `hovermode: x`. The traces must share the **same X axis** (`x`), which is
+the default, not just matching ranges on separate axes.
+
+This example places temperature and humidity in separate vertical panels. Replace
+the entity IDs with sensors that provide mean statistics. Using the same period
+gives both traces matching timestamps.
+
+```yaml
+type: custom:plotly-graph
+hours_to_show: 24h
+entities:
+  - entity: sensor.garden_temperature
+    name: Temperature
+    statistic: mean
+    period: hour
+  - entity: sensor.garden_humidity
+    name: Humidity
+    statistic: mean
+    period: hour
+    yaxis: y2
+layout:
+  height: 360
+  hovermode: x
+  hoversubplots: axis
+  margin:
+    l: 60
+    r: 20
+    t: 10
+    b: 50
+  xaxis:
+    anchor: y2
+  yaxis:
+    domain: [0.55, 1]
+    anchor: x
+  yaxis2:
+    domain: [0, 0.45]
+    anchor: x
+    overlaying: false
+    side: left
+```
+
+`overlaying: false` overrides the card's default secondary-axis overlay, so the
+second trace occupies its own panel. `side: left` keeps its Y axis on the left,
+and `xaxis.anchor: y2` places the date ticks below the lower panel; neither is
+required for linked hover. This works within one card; it does **not**
+synchronize hover between separate Home Assistant cards or expose `on_hover`
+callbacks. See [#398](https://github.com/dbuezas/lovelace-plotly-graph-card/issues/398)
+for that remaining request.
+
 #### disabling hover text
 
 can be achieved by setting inside entities:
@@ -1270,6 +1377,13 @@ autorange_after_scroll: true
 
 Update data every `refresh_interval` seconds.
 
+With `auto`, live state history uses Home Assistant's history stream. Unlike
+frontend state snapshots, the stream includes intermediate changes in a burst
+and catches up with states that Recorder has not committed yet. Entities with
+the same history start time share a stream, so a quiet entity does not make a
+busy entity replay older history. Streams close when the card is removed or
+automatic refresh is disabled.
+
 With `auto`, live statistics also refresh when Home Assistant publishes new
 5-minute or hourly statistics, even if the entity's state has not changed.
 Each event refreshes only its matching resolution: daily, weekly and monthly
@@ -1278,6 +1392,8 @@ Entity state changes can still update the display without refetching statistics.
 Zooming, panning and toggling traces only fetch missing ranges; they do not
 invalidate cached statistics. Resetting the view also refreshes recent values.
 An explicit refresh interval continues to poll at the configured interval.
+The unconfirmed tail after the last recorded state is checked again, so delayed
+Recorder writes are not permanently hidden behind a cached request boundary.
 
 Examples:
 
