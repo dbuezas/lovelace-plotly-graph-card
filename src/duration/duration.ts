@@ -112,11 +112,11 @@ const relativeTimes = {
 export const parseRelativeTime = (
   str: RelativeTimeStr,
   timeZone?: string,
+  now = Date.now(),
 ): [number, number] => {
   if (!Object.prototype.hasOwnProperty.call(relativeTimes, str))
     throw new Error(`${str} is not a dynamic relative time`);
   const [startOf, endOf] = relativeTimes[str];
-  const now = Date.now();
   const options = inTimeZone(timeZone);
   return [+startOf(now, options), +endOf(now, options)];
 };

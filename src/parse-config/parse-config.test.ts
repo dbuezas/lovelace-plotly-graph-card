@@ -101,6 +101,7 @@ function update(
     visible_range?: [number, number];
     fetch_mask?: boolean[];
   } = {},
+  now?: number,
 ) {
   return parser.update({
     yaml: {
@@ -111,6 +112,7 @@ function update(
     },
     hass: createHass(callWS),
     css_vars: cssVars,
+    now,
   });
 }
 
@@ -125,6 +127,46 @@ describe("statistics request batching", () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  it("keeps calendar ranges and fetch cutoffs on the supplied snapshot across midnight", async () => {
+    const snapshot = Date.parse("2025-01-02T23:59:59.998Z");
+    vi.spyOn(Date, "now").mockReturnValue(snapshot + 4);
+    const callWS = successfulCallWS();
+    const result = await update(
+      new ConfigParser(),
+      callWS,
+      compatibleEntities,
+      { hours_to_show: "current_day", time_zone: "UTC" },
+      snapshot,
+    );
+    expect(result.errors).toEqual([]);
+    expect(result.parsed.visible_range).toEqual([
+      Date.parse("2025-01-02T00:00:00.000Z"),
+      Date.parse("2025-01-02T23:59:59.999Z"),
+    ]);
+    expect(callWS.mock.calls[0][0].end_time).toBe(
+      new Date(snapshot).toISOString(),
+    );
+  });
+
+  it("leaves a user-defined range function on its own clock", async () => {
+    const yaml = {
+      type: "custom:plotly-graph" as const,
+      visible_range: (): [number, number] => [
+        Date.now() - 3600000,
+        Date.now() - 60000,
+      ],
+      entities: compatibleEntities,
+    };
+    const result = await new ConfigParser().update({
+      yaml,
+      hass: createHass(successfulCallWS()),
+      css_vars: cssVars,
+      now: NOW - 50000,
+    });
+    expect(result.errors).toEqual([]);
+    expect(result.parsed.visible_range).toEqual([NOW - 3600000, NOW - 60000]);
   });
 
   it("draws dates in the configured timezone", async () => {

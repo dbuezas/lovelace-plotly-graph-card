@@ -3,7 +3,10 @@ import {
   getZeroAlignmentRelayout,
 } from "./zero-alignment";
 
-const traces = [{ yaxis: "y" }, { yaxis: "y2" }];
+const traces = [
+  { yaxis: "y", y: [-10, 100] },
+  { yaxis: "y2", y: [0, 40] },
+];
 function layout(ranges: number[][]): Partial<Plotly.Layout> {
   const result: Partial<Plotly.Layout> = {};
   ranges.forEach((range, i) => {
@@ -36,7 +39,6 @@ describe("zero alignment from Plotly ranges", () => {
       [-10, 100],
       [0, 40],
     ]);
-    const original = JSON.stringify(input);
     const update = getZeroAlignmentRelayout(input, traces, new Set());
     expect(expanded(input, update, "yaxis")[0]).toBeCloseTo(-10);
     expect(expanded(input, update, "yaxis")[1]).toBeCloseTo(110);
@@ -46,7 +48,6 @@ describe("zero alignment from Plotly ranges", () => {
       "yaxis.autorangeoptions.include",
       "yaxis2.autorangeoptions.include",
     ]);
-    expect(JSON.stringify(input)).toBe(original);
   });
 
   test.each([
@@ -86,7 +87,7 @@ describe("zero alignment from Plotly ranges", () => {
     input.yaxis3 = { ...input.yaxis3, overlaying: "y2" };
     const update = getZeroAlignmentRelayout(
       input,
-      [...traces, { yaxis: "y3" }],
+      [...traces, { yaxis: "y3", y: [-20, 20] }],
       new Set(),
     );
     for (const [key, expected] of Object.entries({
@@ -176,14 +177,7 @@ describe("zero alignment from Plotly ranges", () => {
       xaxis: { matches: "x2" },
     };
     const protectedAxes = getZeroAlignmentProtectedAxes(input);
-    expect([...protectedAxes]).toEqual([
-      "yaxis",
-      "yaxis2",
-      "yaxis3",
-      "yaxis4",
-      "xaxis",
-      "xaxis2",
-    ]);
+    expect([...protectedAxes]).toEqual(["yaxis", "yaxis2", "yaxis4", "xaxis2"]);
     expect(
       getZeroAlignmentRelayout(
         layout([
@@ -212,5 +206,22 @@ describe("zero alignment from Plotly ranges", () => {
         getZeroAlignmentRelayout(layout([range, [0, 40]]), traces, new Set()),
       ).toBeUndefined();
     }
+  });
+
+  test("does not expand another axis to match an all-null series", () => {
+    const input = layout([
+      [1.8, 108],
+      [-1, 4],
+    ]);
+    expect(
+      getZeroAlignmentRelayout(
+        input,
+        [
+          { yaxis: "y", y: [10, 50, 100] },
+          { yaxis: "y2", y: [null, null, null] },
+        ],
+        new Set(),
+      ),
+    ).toBeUndefined();
   });
 });

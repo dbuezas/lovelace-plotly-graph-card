@@ -1,5 +1,5 @@
 type Axis = Partial<Plotly.LayoutAxis>;
-type Trace = { yaxis?: string; visible?: unknown };
+type Trace = { yaxis?: string; visible?: unknown; y?: readonly unknown[] };
 type Relayout = Partial<Plotly.Layout> & Record<string, unknown>;
 
 function axesIn(layout: Partial<Plotly.Layout>): Record<string, Axis> {
@@ -25,8 +25,11 @@ function hasLimits(axis: Axis) {
   );
 }
 
-// Capture explicit settings before Plotly writes its calculated ranges into layout.
-export function getZeroAlignmentProtectedAxes(layout: Partial<Plotly.Layout>) {
+// Capture explicit ranges before Plotly writes its calculated ranges into layout.
+export function getZeroAlignmentProtectedAxes(
+  layout: Partial<Plotly.Layout>,
+  autorangeMainAxis = false,
+) {
   const template =
     typeof layout.template === "object" && layout.template !== null
       ? (layout.template.layout ?? {})
@@ -37,16 +40,11 @@ export function getZeroAlignmentProtectedAxes(layout: Partial<Plotly.Layout>) {
   }
   const protectedAxes = new Set<string>();
   for (const [key, axis] of Object.entries(axes)) {
-    if (
-      axis.range !== undefined ||
-      hasLimits(axis) ||
-      axis.rangemode === "nonnegative"
-    ) {
+    if (axis.range !== undefined && !(key === "yaxis" && autorangeMainAxis)) {
       protectedAxes.add(key);
     }
     for (const link of [axis.matches, axis.scaleanchor]) {
       if (typeof link === "string") {
-        protectedAxes.add(key);
         protectedAxes.add(axisName(link));
       }
     }
@@ -63,7 +61,10 @@ export function getZeroAlignmentRelayout(
   const usedAxes = new Set(
     traces
       .filter(
-        (trace) => trace.visible !== false && trace.visible !== "legendonly",
+        (trace) =>
+          trace.visible !== false &&
+          trace.visible !== "legendonly" &&
+          trace.y?.some(Number.isFinite),
       )
       .flatMap((trace) => (trace.yaxis ? [axisName(trace.yaxis)] : [])),
   );

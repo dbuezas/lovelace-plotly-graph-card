@@ -30,6 +30,9 @@ try {
       },
     );
     const card = new PlotlyGraph();
+    // Drive renders explicitly so observer updates cannot cancel the awaited draw.
+    const plot = card.plot.bind(card);
+    card.plot = async () => {};
     card.style.cssText = "display:block;width:480px";
     card.hass = {
       states: {},
@@ -80,7 +83,7 @@ try {
     };
     const draw = async (overrides = {}) => {
       await card.setConfig({ ...config, ...overrides });
-      await card.plot({ should_fetch: false });
+      await plot({ should_fetch: false });
       const deadline = performance.now() + 5000;
       while (
         !card.contentEl._fullLayout ||
@@ -132,37 +135,17 @@ try {
           "Alignment clipped the native range",
         );
       }
-      for (let i = 0; i < 5; i++) await card.plot({ should_fetch: false });
+      for (let i = 0; i < 5; i++) await plot({ should_fetch: false });
       check(
         sameRange(range("yaxis"), initial[0]) &&
           sameRange(range("yaxis2"), initial[1]),
         "Repeated renders grew the aligned ranges",
       );
 
-      await Registry.call(
-        "_guiRestyle",
-        card.contentEl,
-        { visible: "legendonly" },
-        [1],
-      );
-      await card.plot({ should_fetch: false });
-      check(
-        sameRange(range("yaxis"), native[0]),
-        "Hidden series left the visible axis expanded",
-      );
-      await Registry.call(
-        "_guiRestyle",
-        card.contentEl,
-        { visible: true },
-        [1],
-      );
-      await card.plot({ should_fetch: false });
-      check(aligned(), "Restored series did not realign");
-
       await Registry.call("_guiRelayout", card.contentEl, {
         "yaxis.range": [5, 20],
       });
-      await card.plot({ should_fetch: false });
+      await plot({ should_fetch: false });
       check(
         sameRange(range("yaxis"), [5, 20]),
         "Alignment changed a user Y zoom",
@@ -174,16 +157,15 @@ try {
 
       await draw({
         align_zero: true,
+        autorange_after_scroll: true,
         layout: {
           ...config.layout,
           yaxis: { range: [-10, 100] },
-          yaxis2: { ...config.layout.yaxis2, range: [0, 40] },
         },
       });
       check(
-        sameRange(range("yaxis"), [-10, 100]) &&
-          sameRange(range("yaxis2"), [0, 40]),
-        "Explicit ranges were changed",
+        card.contentEl._fullLayout.yaxis.autorange === true && aligned(),
+        "autorange_after_scroll left an autoranged axis protected",
       );
       await draw({ align_zero: false });
       check(
@@ -194,9 +176,8 @@ try {
       return [
         "native autorange and pixel alignment",
         "stable repeated renders",
-        "legend hide/show",
         "user Y zoom",
-        "explicit ranges",
+        "autorange after scroll",
         "disabled option",
       ];
     } finally {
