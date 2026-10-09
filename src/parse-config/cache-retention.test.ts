@@ -2,7 +2,7 @@ import { ConfigParser } from "./parse-config";
 import { getEntityKey } from "../cache/Cache";
 import type { EntityConfig } from "../types";
 
-jest.mock("../filters/filters", () => ({ __esModule: true, default: {} }));
+vi.mock("../filters/filters", () => ({ default: {} }));
 
 const HOUR = 3600000;
 const BASE = Date.parse("2025-01-01T00:00:00Z");
@@ -21,7 +21,7 @@ function state(timestamp: number, value = String((timestamp - BASE) / HOUR)) {
 }
 function setup() {
   const samples = Array.from({ length: 200 }, (_, i) => state(BASE + i * HOUR));
-  const callWS = jest.fn(async (request) => {
+  const callWS = vi.fn(async (request) => {
     expect(request.type).toBe("history/history_during_period");
     const start = Date.parse(request.start_time);
     const end = Date.parse(request.end_time);
@@ -69,10 +69,10 @@ describe("ConfigParser cache retention", () => {
     (global as any).window = {};
   });
   beforeEach(() => {
-    jest.useFakeTimers({ now: BASE + 24 * HOUR });
+    vi.useFakeTimers({ now: BASE + 24 * HOUR });
   });
   afterEach(() => {
-    jest.useRealTimers();
+    vi.useRealTimers();
   });
 
   it("rejects concurrent updates until the pending history request completes", async () => {
@@ -124,7 +124,7 @@ describe("ConfigParser cache retention", () => {
   ])("bounds rolling updates using %s", async (_name, config) => {
     const { parser, update } = setup();
     for (let hour = 24; hour < 84; hour++) {
-      jest.setSystemTime(BASE + hour * HOUR);
+      vi.setSystemTime(BASE + hour * HOUR);
       const result = await update(config as object);
       expect(result.errors).toEqual([]);
       expect(ys(result.parsed.entities[0])).toEqual(
@@ -156,7 +156,7 @@ describe("ConfigParser cache retention", () => {
     const { parser, callWS, update } = setup();
     const entities = [sensor, { entity: "sensor.two" }];
     for (let hour = 24; hour < 30; hour++) {
-      jest.setSystemTime(BASE + hour * HOUR);
+      vi.setSystemTime(BASE + hour * HOUR);
       const result = await update({}, entities);
       expect(result.errors).toEqual([]);
       expect(callWS).toHaveBeenCalledTimes(hour - 23);
@@ -203,7 +203,7 @@ describe("ConfigParser cache retention", () => {
   it("refetches pruned history when scrolling back", async () => {
     const { callWS, update } = setup();
     await update();
-    jest.setSystemTime(BASE + 30 * HOUR);
+    vi.setSystemTime(BASE + 30 * HOUR);
     await update();
     const before = callWS.mock.calls.length;
     const result = await update({

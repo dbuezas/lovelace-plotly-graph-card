@@ -8,7 +8,7 @@ const entity = "sensor.test";
 const yValues = (trace: EntityConfig) => ("y" in trace ? trace.y : undefined);
 
 function createInput(filters: unknown) {
-  const callWS = jest.fn(async () => ({
+  const callWS = vi.fn(async () => ({
     [entity]: [
       { s: "1", lu: NOW / 1000 - 120 },
       { s: "2", lu: NOW / 1000 - 60 },
@@ -33,11 +33,11 @@ function createInput(filters: unknown) {
 describe("generated filter lists", () => {
   beforeEach(() => {
     (global as any).window = { eval };
-    jest.spyOn(Date, "now").mockReturnValue(NOW);
+    vi.spyOn(Date, "now").mockReturnValue(NOW);
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
     delete (global as any).window;
   });
 
@@ -89,7 +89,7 @@ describe("generated filter lists", () => {
       },
       { multiply: 2 },
     ];
-    const generate = jest.fn(() => list);
+    const generate = vi.fn(() => list);
     const { input } = createInput(generate);
     Object.assign(input.yaml.entities[0], { customdata: "$ex [vars.calls]" });
     const parser = new ConfigParser();
@@ -145,7 +145,7 @@ describe("generated filter lists", () => {
   });
 
   it("reports invalid filters at their list index", async () => {
-    jest.spyOn(console, "warn").mockImplementation(() => {});
+    vi.spyOn(console, "warn").mockImplementation(() => {});
     const { input } = createInput("$ex [{ not_a_filter: 1 }]");
     const { errors } = await new ConfigParser().update(input);
     expect(errors).toHaveLength(1);
@@ -156,7 +156,7 @@ describe("generated filter lists", () => {
   it.each(["null", "{}", "42"])(
     "reports a generated non-array list: %s",
     async (value) => {
-      jest.spyOn(console, "warn").mockImplementation(() => {});
+      vi.spyOn(console, "warn").mockImplementation(() => {});
       const { input } = createInput(`$ex ${value}`);
       const { errors } = await new ConfigParser().update(input);
       expect(errors).toHaveLength(1);
@@ -169,7 +169,7 @@ describe("generated filter lists", () => {
     const values = Array.from({ length: 100_000 }, (_, i) => i);
     const { input } = createInput("$ex []");
     Object.assign(input.yaml.entities[0], { y: () => values });
-    const entries = jest.spyOn(Object, "entries");
+    const entries = vi.spyOn(Object, "entries");
     const { parsed, errors } = await new ConfigParser().update(input);
     expect(errors).toEqual([]);
     expect(yValues(parsed.entities[0])).toBe(values);
@@ -180,8 +180,9 @@ describe("generated filter lists", () => {
     "only checks filter-list paths for functions (generated: %s)",
     async (generated) => {
       const checks: string[] = [];
+      // oxlint-disable-next-line typescript/unbound-method -- called with .call(this)
       const test = RegExp.prototype.test;
-      jest.spyOn(RegExp.prototype, "test").mockImplementation(function (
+      vi.spyOn(RegExp.prototype, "test").mockImplementation(function (
         this: RegExp,
         path: string,
       ) {

@@ -28,9 +28,9 @@ async function hotReload() {
       sendToClients({ action: "update-app" });
     } catch (e) {
       console.error(e);
-      sendToClients({ action: "error", payload: e.message });
+      sendToClients({ action: "error", payload: String(e) });
     }
   });
 }
 
-hotReload();
+void hotReload();

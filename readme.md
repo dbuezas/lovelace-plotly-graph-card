@@ -1578,38 +1578,39 @@ the first time a card needs them.
 
 # Development
 
-- Use Node.js 22 or newer (required by Plotly.js 4).
+- Install [Bun](https://bun.sh)
 - Clone the repo
-- run `npm i`
-- run `npm start`
+- run `bun install`
+- run `bun run start`
 - From a dashboard in edit mode, go to `Manage resources` and add `http://127.0.0.1:8000/plotly-graph-card.js` as url with resource type JavaScript Module
 - ATTENTION: The development card is `type: custom:plotly-graph-dev` (mind the extra `-dev`)
 - Either use Safari or Enable [chrome://flags/#unsafely-treat-insecure-origin-as-secure](chrome://flags/#unsafely-treat-insecure-origin-as-secure) and add your HA address (e.g http://homeassistant.local:8123): Chrome doesn't allow public network resources from requesting private-network resources - unless the public-network resource is secure (HTTPS) and the private-network resource provides appropriate (yet-undefined) CORS headers. More [here](https://stackoverflow.com/questions/66534759/chrome-cors-error-on-request-to-localhost-dev-server-from-remote-site)
 
 # Build
 
-`npm run build`
+`bun run build`
 
 ## Upgrade checks
 
-Run `npm run tsc` and `npm test -- src/parse-config/defaults.test.ts` for
+Run `bun run tsc` and `bun run test src/parse-config/defaults.test.ts` for
 the compatibility checks. For rendering checks, install Chromium with
-`npx playwright install chromium` and run `npm run test:browser`.
+`bunx playwright install chromium` (or set `CHROME=/path/to/chrome`)
+and run `bun run test:browser`.
 The browser test covers every registered trace type, tank shapes and labels,
 axis defaults, cloud-upload opt-in, and a card with a mock Home Assistant state.
-Run `npm run test:loading` to check the initial loading height, delayed data,
+Run `bun run test:loading` to check the initial loading height, delayed data,
 rendering failures, recovery and reduced-motion support in Chromium.
-`npm test` includes history batching, compressed WebSocket responses, cache reuse,
+`bun run test` includes history batching, compressed WebSocket responses, cache reuse,
 attributes, time offsets and request failure recovery.
 The five additional trace types are also validated and rendered through the card.
-Run `npm run test:card-lifecycle` to check initial rendering, recovery from
+Run `bun run test:card-lifecycle` to check initial rendering, recovery from
 render failures, event suppression, listener cleanup on reconnect, and mouse
 interactions with data points, legend toggles and the reset button.
-Run `npm run test:statistics` for statistics batching, cache reuse, period and
+Run `bun run test:statistics` for statistics batching, cache reuse, period and
 time-offset separation, dynamic settings and fallback after failed requests.
-Run `npm run test:resize` for unchanged-size callbacks, hidden cards and normal
+Run `bun run test:resize` for unchanged-size callbacks, hidden cards and normal
 width changes. These tests do not run Home Assistant's view components.
-Run `npm run test:cache` for rolling-window retention, boundary values,
+Run `bun run test:cache` for rolling-window retention, boundary values,
 time offsets, browsing, refetching pruned history and in-flight live updates.
 
 # Release

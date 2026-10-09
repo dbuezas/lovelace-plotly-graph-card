@@ -34,11 +34,11 @@ async function parse(overrides: Partial<InputConfig> = {}) {
 describe("bar color schemes", () => {
   beforeEach(() => {
     Object.assign(global, { window: { eval } });
-    jest.spyOn(Date, "now").mockReturnValue(NOW);
+    vi.spyOn(Date, "now").mockReturnValue(NOW);
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
     Reflect.deleteProperty(global, "window");
   });
 
