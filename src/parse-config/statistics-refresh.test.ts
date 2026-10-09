@@ -12,7 +12,7 @@ const css_vars = {
   "font-weight": "400",
 };
 const values = (entity: EntityConfig) => ("y" in entity ? entity.y : undefined);
-const callWS = jest.fn(async (request) =>
+const callWS = vi.fn(async (request) =>
   Object.fromEntries(
     (request.statistic_ids || request.entity_ids).map((id: string) => [
       id,
@@ -34,9 +34,9 @@ describe("parsing after Home Assistant publishes statistics", () => {
   });
   beforeEach(() => {
     callWS.mockClear();
-    jest.spyOn(Date, "now").mockReturnValue(start + 12 * hour);
+    vi.spyOn(Date, "now").mockReturnValue(start + 12 * hour);
   });
-  afterEach(() => jest.restoreAllMocks());
+  afterEach(() => vi.restoreAllMocks());
 
   it("fetches only the published resolution, batched, and no history", async () => {
     const parser = new ConfigParser();
@@ -56,7 +56,7 @@ describe("parsing after Home Assistant publishes statistics", () => {
       fetch_mask?: boolean[],
     ) => {
       callWS.mockClear();
-      jest.spyOn(Date, "now").mockReturnValue(Date.now() + hour);
+      vi.spyOn(Date, "now").mockReturnValue(Date.now() + hour);
       await parser.cache.refreshStatistics(Date.now(), period);
       const result = await parser.update({
         yaml: { ...yaml, fetch_mask } as InputConfig,

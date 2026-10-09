@@ -1,5 +1,4 @@
-jest.mock("../filters/filters", () => ({
-  __esModule: true,
+vi.mock("../filters/filters", () => ({
   default: {},
 }));
 
@@ -31,17 +30,17 @@ describe("ConfigParser history prefetch", () => {
   });
 
   afterEach(() => {
-    jest.useRealTimers();
+    vi.useRealTimers();
   });
 
   it.each(["current_day", "current_week", "future range"] as const)(
     "uses one batch for %s even when time advances during the request",
     async (window) => {
       const now = new Date("2025-01-08T12:00:00.000Z");
-      jest.useFakeTimers().setSystemTime(now);
+      vi.useFakeTimers().setSystemTime(now);
       const entityIds = ["sensor.one", "sensor.two", "sensor.three"];
-      const callWS = jest.fn().mockImplementation(({ entity_ids, end_time }) => {
-        jest.setSystemTime(Date.now() + 4);
+      const callWS = vi.fn().mockImplementation(({ entity_ids, end_time }) => {
+        vi.setSystemTime(Date.now() + 4);
         return Promise.resolve(Object.fromEntries(entity_ids.map((id) => [
           id, [{ s: "5", lu: Date.parse(end_time) / 1000 - 60 }],
         ])));
@@ -70,7 +69,7 @@ describe("ConfigParser history prefetch", () => {
       }));
 
       // A later refresh must still fetch the new tail, once for all entities.
-      jest.setSystemTime(+now + 300000);
+      vi.setSystemTime(+now + 300000);
       expect((await parser.update(input)).errors).toEqual([]);
       expect(callWS).toHaveBeenCalledTimes(2);
       expect(callWS.mock.calls[1][0]).toEqual(expect.objectContaining({
@@ -83,7 +82,7 @@ describe("ConfigParser history prefetch", () => {
   async function parse(entities: any[], fetch_mask: boolean[] = []) {
     const start = Date.parse("2025-01-01T00:00:00.000Z");
     const end = start + 86400000;
-    const callWS = jest.fn().mockImplementation((request) => {
+    const callWS = vi.fn().mockImplementation((request) => {
       const ids = request.entity_ids || request.statistic_ids;
       return Promise.resolve(
         Object.fromEntries(
@@ -222,8 +221,8 @@ describe("ConfigParser history prefetch", () => {
     ]);
     parser.cache.clearCache();
     callWS.mockClear().mockRejectedValueOnce(new Error("Disconnected"));
-    const error = jest.spyOn(console, "error").mockImplementation();
-    const warn = jest.spyOn(console, "warn").mockImplementation();
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     try {
       const result = await parser.update(input);
       expect(result.errors).toEqual([]);
@@ -245,8 +244,8 @@ describe("ConfigParser history prefetch", () => {
     const successful = callWS.getMockImplementation()!;
     parser.cache.clearCache();
     callWS.mockClear().mockRejectedValue(new Error("Disconnected"));
-    const error = jest.spyOn(console, "error").mockImplementation();
-    const warn = jest.spyOn(console, "warn").mockImplementation();
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     try {
       expect((await parser.update(input)).errors.length).toBeGreaterThan(0);
       expect(callWS).toHaveBeenCalledTimes(3);
@@ -306,7 +305,7 @@ describe("ConfigParser history prefetch", () => {
       "sensor.three",
       "sensor.four",
     ];
-    const callWS = jest.fn().mockImplementation(({ entity_ids }) => {
+    const callWS = vi.fn().mockImplementation(({ entity_ids }) => {
       return Promise.resolve(
         Object.fromEntries(
           entity_ids.map((entityId, index) => [

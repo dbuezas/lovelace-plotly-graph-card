@@ -17,7 +17,7 @@ function state(entity_id: string, value: string) {
 
 describe("fetchStatesBatch", () => {
   it("does not request history for an empty entity list", async () => {
-    const callWS = jest.fn();
+    const callWS = vi.fn();
     expect(await fetchStatesBatch({ callWS } as any, [], [start, end])).toEqual(
       {},
     );
@@ -25,7 +25,7 @@ describe("fetchStatesBatch", () => {
   });
 
   it("deduplicates entity ids and retains attributes for mixed requests", async () => {
-    const callWS = jest.fn().mockResolvedValue({});
+    const callWS = vi.fn().mockResolvedValue({});
     await fetchStatesBatch(
       { callWS } as any,
       [
@@ -46,7 +46,7 @@ describe("fetchStatesBatch", () => {
   it.each([{}, null, undefined])(
     "handles an empty response: %p",
     async (response) => {
-      const callWS = jest.fn().mockResolvedValue(response);
+      const callWS = vi.fn().mockResolvedValue(response);
       expect(
         await fetchStatesBatch(
           { callWS } as any,
@@ -58,10 +58,10 @@ describe("fetchStatesBatch", () => {
   );
 
   it("uses the same WebSocket path for a single-entity fetch", async () => {
-    const callWS = jest.fn().mockResolvedValue({
+    const callWS = vi.fn().mockResolvedValue({
       "sensor.one": [{ s: "unknown", lu: +start / 1000 + 0.125 }],
     });
-    const callApi = jest.fn();
+    const callApi = vi.fn();
     const result = await fetchStates(
       { callWS, callApi } as any,
       { entity: "sensor.one" },
@@ -75,12 +75,10 @@ describe("fetchStatesBatch", () => {
   });
 
   it("reports a rejected WebSocket request without falling back to REST", async () => {
-    const log = jest.spyOn(console, "error").mockImplementation(() => {});
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
     try {
-      const callWS = jest
-        .fn()
-        .mockRejectedValue({ message: "Connection lost" });
-      const callApi = jest.fn();
+      const callWS = vi.fn().mockRejectedValue({ message: "Connection lost" });
+      const callApi = vi.fn();
       await expect(
         fetchStatesBatch(
           { callWS, callApi } as any,
@@ -96,7 +94,7 @@ describe("fetchStatesBatch", () => {
     }
   });
   it("fetches multiple state entities with one minimal websocket request", async () => {
-    const callWS = jest.fn().mockResolvedValue({
+    const callWS = vi.fn().mockResolvedValue({
       "sensor.one": [{ s: "1", lu: start.getTime() / 1000 }],
       "sensor.two": [{ s: "2", lu: start.getTime() / 1000 }],
     });
@@ -124,7 +122,7 @@ describe("fetchStatesBatch", () => {
   });
 
   it("maps websocket results by entity id", async () => {
-    const callWS = jest.fn().mockResolvedValue({
+    const callWS = vi.fn().mockResolvedValue({
       "sensor.two": [state("sensor.two", "2")],
       "sensor.one": [state("sensor.one", "1")],
     });
@@ -147,7 +145,7 @@ describe("fetchStatesBatch", () => {
 
   it("keeps attributes when attribute histories are requested", async () => {
     const timestamp = start.getTime() / 1000;
-    const callWS = jest.fn().mockResolvedValue({
+    const callWS = vi.fn().mockResolvedValue({
       "sensor.one": [
         {
           s: "1",
@@ -183,7 +181,7 @@ describe("fetchStatesBatch", () => {
 
   it("accepts expanded history states for compatibility", async () => {
     const expanded = state("sensor.one", "1");
-    const callWS = jest.fn().mockResolvedValue({
+    const callWS = vi.fn().mockResolvedValue({
       "sensor.one": [expanded],
     });
     const hass = { callWS } as unknown as HomeAssistant;

@@ -16,7 +16,7 @@ function state(timestamp: number): CachedStateEntity {
 }
 
 describe("Cache merging", () => {
-  afterEach(() => jest.restoreAllMocks());
+  afterEach(() => vi.restoreAllMocks());
 
   const boundary = (timestamp: number): CachedStateEntity => ({
     ...state(timestamp),
@@ -26,7 +26,7 @@ describe("Cache merging", () => {
   it("appends a newer state without a full merge", () => {
     const cache = new Cache();
     cache.add(entity, [state(0), state(10)], [0, 10]);
-    const sort = jest.spyOn(cache.histories[key], "sort");
+    const sort = vi.spyOn(cache.histories[key], "sort");
 
     cache.add(entity, [state(20)], [11, 20]);
 
@@ -41,7 +41,7 @@ describe("Cache merging", () => {
     const humidity = { ...temperature, attribute: "humidity" };
     const attributeKey = getEntityKey(temperature);
     cache.add(temperature, [state(0)], [0, 0]);
-    const sort = jest.spyOn(cache.histories[attributeKey], "sort");
+    const sort = vi.spyOn(cache.histories[attributeKey], "sort");
 
     cache.add(temperature, [state(10)], [1, 10]);
     cache.add(humidity, [state(10)], [10, 20]);
