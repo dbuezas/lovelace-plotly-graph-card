@@ -105,6 +105,13 @@ try {
     "a page without graphs doesn't download Plotly",
     `${startup.length} files`,
   );
+  check(
+    startup
+      .filter((name) => name !== "plotly-graph-card.js")
+      .every((name) => files.get("plotly-graph-card.js").includes(name)),
+    "the card file imports every file it needs, so they download at once",
+    startup.join(", "),
+  );
 
   // Plotly starts downloading as soon as a card is on the page, while the
   // card still waits for its data (here: no hass yet)

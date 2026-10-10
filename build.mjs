@@ -43,12 +43,35 @@ const findPlotlyCore = {
   },
 };
 
+// A browser sees a file's imports only after it downloads that file. List
+// every file the card needs in the card file, so they download at the same
+// time (Rollup's hoistTransitiveImports, which Rolldown lacks).
+const hoistImports = {
+  name: "hoist-imports",
+  generateBundle(_, bundle) {
+    for (const chunk of Object.values(bundle)) {
+      if (chunk.type !== "chunk" || !chunk.isEntry) continue;
+      const needed = new Set();
+      const visit = (file) =>
+        bundle[file].imports.forEach((i) => {
+          if (!needed.has(i)) visit(i, needed.add(i));
+        });
+      visit(chunk.fileName);
+      chunk.code =
+        [...needed]
+          .filter((file) => !chunk.imports.includes(file))
+          .map((file) => `import"./${file}";`)
+          .join("") + chunk.code;
+    }
+  },
+};
+
 export const cardInputOptions = ({ production = true, input } = {}) => ({
   input: input ?? { "plotly-graph-card": "src/plotly-graph-card.ts" },
   platform: "browser",
   // Plotly imports MapLibre's CSS; the map group loads it as text instead
   moduleTypes: { ".css": "empty" },
-  plugins: [raw, findPlotlyCore],
+  plugins: [raw, findPlotlyCore, hoistImports],
   onLog(level, log, handler) {
     // bit-twiddle has a harmless typo: "use restrict"
     if (log.code !== "MODULE_LEVEL_DIRECTIVE") handler(level, log);
