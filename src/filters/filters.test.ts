@@ -727,4 +727,23 @@ describe("align_timestamps", () => {
       filters.align_timestamps("source")(data).vars!.aligned.source.ys,
     ).toEqual([0, null, null, "unavailable"]);
   });
+
+  it("leaves x values that are not instants unmatched", () => {
+    const source = { xs: ["a", "b", "0", null, 0], ys: [1, 2, 3, 4, 5] };
+    const data = input({
+      xs: ["x", "y", "0", null, 0] as any,
+      vars: { source },
+    });
+    expect(
+      filters.align_timestamps("source")(data).vars!.aligned.source.ys,
+    ).toEqual([null, null, null, null, 5]);
+  });
+
+  it("refuses to replace a stored var named aligned", () => {
+    const aligned = saved([0], [1]);
+    const data = input({ xs: at(0), vars: { aligned } });
+    expect(() => filters.align_timestamps("aligned")(data)).toThrow(
+      "'aligned' is reserved",
+    );
+  });
 });

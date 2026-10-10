@@ -875,9 +875,15 @@ This can also be used to fetch data by calling a HA service. As this is a call t
 Use `align_timestamps: name` (or `align_timestamps: [name1, name2]`) to match a
 previously stored series to the current trace's exact timestamps under
 `vars.aligned`, without changing either original series; missing matches become
-`null`. Each call replaces `vars.aligned` with the requested series.
+`null`. Each call replaces `vars.aligned` with the requested series, so don't
+use `aligned` as a `store_var` name.
 Place it directly before the `map_y` that uses it: intervening filters that drop
 or move points, such as `filter` or `resample`, break alignment with `i` again.
+
+Timestamps must match to the millisecond. Raw history of two different sensors
+almost never shares timestamps, so align series that are on the same grid:
+statistics with the same `period`, or history put through the same `resample`
+interval on both entities. x values that are not dates or numbers never match.
 
 ```yaml
 type: custom:plotly-graph

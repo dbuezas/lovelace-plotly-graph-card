@@ -23,6 +23,9 @@ import FFTRegression from "./fft-regression";
 const castFloat = (y: any) => parseFloat(y);
 // `+date` is much slower than getTime() in V8
 const ms = (x: any): number => (x instanceof Date ? x.getTime() : +x);
+// `vars.aligned` objects created by align_timestamps, so a stored var with
+// the same name is never silently replaced.
+const alignedVars = new WeakSet<object>();
 const myEval = typeof window != "undefined" ? window.eval : global.eval;
 
 type FilterData = {
@@ -417,15 +420,27 @@ const filters = {
   align_timestamps:
     (names: string | string[]): FilterFn =>
     ({ xs, vars }) => {
-      const timestamps = xs.map(ms);
+      if (vars.aligned !== undefined && !alignedVars.has(vars.aligned))
+        throw new Error(
+          "align_timestamps: 'aligned' is reserved for aligned series, rename that stored var",
+        );
+      // Only dates and numbers are instants; anything else never matches.
+      const instant = (x: unknown) =>
+        x instanceof Date || typeof x === "number" ? ms(x) : NaN;
+      const timestamps = xs.map(instant);
       const aligned: Record<string, unknown> = {};
+      alignedVars.add(aligned);
       for (const name of typeof names === "string" ? [names] : names) {
         const source = vars[name];
         if (!Array.isArray(source?.xs) || !Array.isArray(source?.ys))
           throw new Error(`align_timestamps: '${name}' is not a stored series`);
         // Match exact instants without changing the stored series' time grid.
         const byTime = new Map<number, number>();
-        source.xs.forEach((x: Date, index: number) => byTime.set(ms(x), index));
+        // Skip x values that are not instants: every NaN would be the same key.
+        source.xs.forEach((x: unknown, index: number) => {
+          const time = instant(x);
+          if (Number.isFinite(time)) byTime.set(time, index);
+        });
         const indices = timestamps.map((time) => byTime.get(time));
         const project = (values: unknown[]) =>
           values?.length
