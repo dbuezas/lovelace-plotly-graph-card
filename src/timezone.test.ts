@@ -53,6 +53,15 @@ describe("wall clock conversion", () => {
       "2024-06-01 17:30:00.000",
     );
   });
+  it("keeps milliseconds like Date, also with fractions and before 1970", () => {
+    const utc = "UTC";
+    expect(toPlotlyDateString(Date.UTC(2024, 0, 1, 0, 0, 7, 42.9), utc)).toBe(
+      "2024-01-01 00:00:07.042",
+    );
+    expect(toPlotlyDateString(Date.UTC(1969, 11, 31, 23, 59, 58, 5), utc)).toBe(
+      "1969-12-31 23:59:58.005",
+    );
+  });
   it("matches tzOffset exactly around transitions", () => {
     // Offsets are cached per hour; transitions must stay exact,
     // including Lord Howe's 30 minute DST.
