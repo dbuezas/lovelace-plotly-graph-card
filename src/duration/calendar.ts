@@ -12,10 +12,19 @@ import { inTimeZone } from "../timezone";
 import type { TimeDurationStr } from "./duration";
 
 export function calendarInterval(interval: TimeDurationStr, timeZone?: string) {
-  const unit = interval.slice(-1);
-  const count = Number(interval.slice(0, -1));
-  if (!Number.isInteger(count) || count <= 0 || !["d", "w", "M"].includes(unit))
+  let unit = interval.slice(-1);
+  let count = Number(interval.slice(0, -1));
+  if (
+    !Number.isInteger(count) ||
+    count <= 0 ||
+    !["d", "w", "M", "y"].includes(unit)
+  )
     return undefined;
+  // Whole years are groups of twelve months starting on January 1st.
+  if (unit === "y") {
+    unit = "M";
+    count *= 12;
+  }
 
   const options = inTimeZone(timeZone);
   const startOf =
