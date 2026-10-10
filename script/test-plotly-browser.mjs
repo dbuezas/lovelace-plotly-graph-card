@@ -1787,6 +1787,89 @@ try {
     return rendered;
   });
   results.results.push(...shiftedHistoryResults);
+  const downsampling = await page.evaluate(async () => {
+    const card = new CardTest.PlotlyGraph();
+    const plot = card.plot.bind(card);
+    card.plot = async () => {};
+    card.style.cssText = "display:block;width:480px";
+    const end = Date.now();
+    const start = end - 3600000;
+    const entity = "sensor.dense_history";
+    const history = Array.from({ length: 3601 }, (_, i) => ({
+      s: String(Math.sin(i / 20)),
+      lu: (start + i * 1000) / 1000,
+    }));
+    let requests = 0;
+    card.hass = {
+      locale: { language: "en", first_weekday: "monday", time_zone: "server" },
+      config: { time_zone: "UTC" },
+      states: {
+        [entity]: {
+          entity_id: entity,
+          state: history.at(-1).s,
+          attributes: {},
+          last_changed: new Date(end).toISOString(),
+          last_updated: new Date(end).toISOString(),
+        },
+      },
+      callWS: async () => {
+        requests++;
+        return { [entity]: history };
+      },
+    };
+    await card.setConfig({
+      type: "custom:plotly-graph",
+      hours_to_show: 1,
+      refresh_interval: 0,
+      entities: [
+        { entity, extend_to_present: false, filters: [{ min_max: 100 }] },
+      ],
+      layout: { width: 480, height: 320 },
+    });
+    document.body.append(card);
+    await plot({ should_fetch: true });
+    const overview = card.contentEl.data[0].x.length;
+    await PlotlyTest.default.relayout(card.contentEl, {
+      "xaxis.range": [
+        new Date(start + 600000).toISOString(),
+        new Date(start + 630000).toISOString(),
+      ],
+    });
+    await plot({ should_fetch: false });
+    const zoomXs = card.contentEl.data[0].x.map((x) =>
+      card.contentEl._fullLayout.xaxis.d2c(x),
+    );
+    const expected = history.filter(
+      ({ lu }) => lu * 1000 >= start + 600000 && lu * 1000 <= start + 630000,
+    );
+    const zoomYs = card.contentEl.data[0].y.filter(
+      (_, i) => zoomXs[i] >= start + 600000 && zoomXs[i] <= start + 630000,
+    );
+    const zoomMatches =
+      zoomYs.every((y, i) => y === expected[i]?.s) &&
+      zoomYs.length === expected.length;
+    const drawn = !!card.contentEl.querySelector(".scatterlayer .js-line");
+    await PlotlyTest.default.relayout(card.contentEl, {
+      "xaxis.range": [
+        new Date(start).toISOString(),
+        new Date(end).toISOString(),
+      ],
+    });
+    await plot({ should_fetch: false });
+    const restored = card.contentEl.data[0].x.length;
+    const error = card.errorMsgEl.textContent;
+    card.remove();
+    return { overview, restored, zoomMatches, drawn, requests, error };
+  });
+  assert.equal(downsampling.error, "");
+  assert.ok(downsampling.overview <= 100);
+  assert.ok(downsampling.restored <= 100);
+  assert.equal(downsampling.zoomMatches, true);
+  assert.equal(downsampling.drawn, true);
+  assert.equal(downsampling.requests, 1);
+  results.results.push(
+    "min_max restores original measurements on zoom without changing the cached history",
+  );
   const gapState = await page.evaluate(async () => {
     const card = document.getElementById("card-under-test");
     const end = Date.now() - 60000;
