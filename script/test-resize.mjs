@@ -154,6 +154,32 @@ try {
         "Non-panel card retains full panel height",
       );
       results.push("leaving panel mode restores the normal card height");
+
+      // Sections give hui-card an inline wrapper inside a fixed-height grid cell.
+      const wrapper = document.createElement("hui-card");
+      panel.append(wrapper);
+      wrapper.append(card);
+      card.layout = "grid";
+      await card.setConfig({
+        ...card.config,
+        grid_options: { columns: "full", rows: 8 },
+      });
+      panel.style.height = `${8 * 56 + 7 * 8}px`;
+      await wait(fitsPanel);
+      check(card.offsetHeight === 504, "Grid card ignores the allocated rows");
+      results.push("grid cards fill the height allocated by grid_options.rows");
+
+      panel.style.height = "";
+      await card.setConfig({
+        ...card.config,
+        grid_options: { columns: "full", rows: "auto" },
+      });
+      await wait(() => card.contentEl._fullLayout.height === 285);
+      check(
+        card.offsetHeight === 285 + card.titleEl.offsetHeight,
+        "Auto-height grid card stretches or collapses",
+      );
+      results.push("grid cards with automatic rows keep their normal height");
       panel.remove();
       return results;
     } finally {
