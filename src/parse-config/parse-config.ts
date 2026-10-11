@@ -47,6 +47,7 @@ import getDeprecationError from "./deprecations";
 import { resolveTimeZone, toPlotlyTimeZone } from "../timezone";
 import { isPureDefault } from "./pure-default";
 import { getExtremaTrace } from "./extrema";
+import { normalizeEntityId } from "../utils";
 
 class ConfigParser {
   private yaml: Partial<Config> = {};
@@ -223,6 +224,9 @@ class ConfigParser {
       if (isFilterList && !Array.isArray(value)) {
         throw new Error("filters must evaluate to an array");
       }
+    }
+    if (typeof value === "string" && /^entities\.\d+\.entity$/.test(path)) {
+      value = normalizeEntityId(value);
     }
     // Generated filters need the regular filter traversal, but other function
     // results (including large data arrays) must stay opaque.

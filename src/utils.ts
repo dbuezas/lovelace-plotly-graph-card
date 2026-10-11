@@ -1,5 +1,10 @@
 export const sleep = (ms: number) =>
   new Promise((resolve) => setTimeout(resolve, ms));
+
+// External statistic IDs and expressions are case-sensitive, unlike HA entity IDs.
+export const normalizeEntityId = (value: string) =>
+  /^\w+\.\w+$/.test(value) ? value.toLowerCase() : value;
+
 export function getIsPureObject(val: any) {
   return typeof val === "object" && val !== null && !Array.isArray(val);
 }
