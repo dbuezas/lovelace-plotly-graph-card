@@ -61,14 +61,6 @@ function getOffset(timestamp: number, timeZone: string) {
 }
 
 const MINUTE = 60 * 1000;
-// "00." to "59." and "000" to "999": most points need no number formatting
-const SECONDS = Array.from(
-  { length: 60 },
-  (_, i) => `${i}`.padStart(2, "0") + ".",
-);
-const MILLISECONDS = Array.from({ length: 1000 }, (_, i) =>
-  `${i}`.padStart(3, "0"),
-);
 // Traces are sorted, so most points share the minute of the point before
 let minute = { start: NaN, prefix: "" };
 
@@ -90,7 +82,10 @@ export function toPlotlyDateString(timestamp: number, timeZone: string) {
   }
   const rest = wallClock - start;
   return (
-    minute.prefix + SECONDS[Math.floor(rest / 1000)] + MILLISECONDS[rest % 1000]
+    minute.prefix +
+    String(Math.floor(rest / 1000)).padStart(2, "0") +
+    "." +
+    String(rest % 1000).padStart(3, "0")
   );
 }
 
