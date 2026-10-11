@@ -158,6 +158,57 @@ describe("ConfigParser history prefetch", () => {
     expect(yValues(result.parsed.entities[2])).toEqual([7]);
   });
 
+  it("normalizes HA entity IDs before batching and resolving metadata", async () => {
+    vi.useFakeTimers({
+      toNotFake: ["setTimeout", "clearTimeout"],
+    }).setSystemTime(new Date("2025-01-02T00:00:00.000Z"));
+    const { result, callWS, parser } = await parse([
+      { entity: "sensor.ONE" },
+      { entity: "sensor.TWO" },
+    ]);
+    expect(callWS.mock.calls[0][0].entity_ids).toEqual([
+      "sensor.one",
+      "sensor.two",
+    ]);
+    expect(result.parsed.entities[0]).toMatchObject({
+      entity: "sensor.one",
+      name: "sensor.one",
+      unit_of_measurement: "W",
+      y: ["5"],
+    });
+    expect(result.parsed.entities[1]).toMatchObject({
+      entity: "sensor.two",
+      y: ["5"],
+    });
+    expect(parser.historyEntities.map(({ entity }) => entity)).toEqual([
+      "sensor.one",
+      "sensor.two",
+    ]);
+  });
+
+  it("normalizes evaluated entity IDs without rewriting expressions", async () => {
+    const { result, callWS } = await parse([{ entity: '$ex "sensor.ONE"' }]);
+    expect(callWS.mock.calls[0][0].entity_ids).toEqual(["sensor.one"]);
+    expect(result.parsed.entities[0]).toMatchObject({
+      entity: "sensor.one",
+      unit_of_measurement: "W",
+      y: ["5"],
+    });
+  });
+
+  it("preserves external statistic IDs while normalizing HA statistic entities", async () => {
+    const { result, callWS } = await parse([
+      { entity: "sensor.STATS", statistic: "mean", period: "hour" },
+      { entity: "external:MixedCase", statistic: "mean", period: "hour" },
+    ]);
+    expect(callWS.mock.calls[0][0].statistic_ids).toEqual([
+      "sensor.stats",
+      "external:MixedCase",
+    ]);
+    expect(yValues(result.parsed.entities[0])).toEqual([42]);
+    expect(yValues(result.parsed.entities[1])).toEqual([42]);
+  });
+
   it("keeps statistics on the recorder API", async () => {
     const { callWS, result } = await parse([
       { entity: "sensor.one" },

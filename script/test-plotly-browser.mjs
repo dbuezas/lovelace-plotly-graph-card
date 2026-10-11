@@ -1198,8 +1198,8 @@ try {
       type: "custom:plotly-graph",
       refresh_interval: 0,
       visible_range: [start, end],
-      entities: entityIds.map((entity) => ({
-        entity,
+      entities: entityIds.map((entity, i) => ({
+        entity: i === 0 ? entity.toUpperCase() : entity,
         extend_to_present: false,
       })),
     });
@@ -1232,7 +1232,7 @@ try {
     ["4", "5"],
   ]);
   results.results.push(
-    "four history traces render from one WebSocket request and reuse the cache",
+    "four history traces normalize mixed-case entity IDs, render from one WebSocket request and reuse the cache",
   );
   const sharedCards = await page.evaluate(async () => {
     const template = document.getElementById("card-under-test");

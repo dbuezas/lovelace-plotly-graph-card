@@ -7,6 +7,7 @@ import { getEntityIndex } from "./parse-config";
 import getThemedLayout, { HATheme } from "./themed-layout";
 import { DEFAULT_PLOT_HEIGHT } from "../loading-state";
 import { pureDefault } from "./pure-default";
+import { normalizeEntityId } from "../utils";
 declare const window: Window & {
   PlotlyGraphCardPresets?: Record<string, InputConfig>;
 };
@@ -252,6 +253,7 @@ export function addPreParsingDefaults(
       yaml.defaults?.entity,
       entity,
     );
+    entity.entity = normalizeEntityId(entity.entity ?? "");
     // An entity's name list replaces the default one instead of being merged by index
     if (entityName !== undefined) entity.name = entityName;
     // A structured name has to become a string: the parser walks anything
