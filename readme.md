@@ -35,7 +35,7 @@ Created with this [quick and dirty script](./discussion-index.mjs)
 
 Find more advanced examples in [Show & Tell](https://github.com/dbuezas/lovelace-plotly-graph-card/discussions/categories/show-and-tell)
 
-## Yaml syntax validatoin
+## Yaml syntax validation
 
 Web app to assist you with syntax validation and autocomplete: [Plotly graph card yaml editor](https://dbuezas.github.io/lovelace-plotly-graph-card/)
 

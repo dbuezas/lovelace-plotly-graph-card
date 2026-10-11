@@ -38,3 +38,31 @@ jobs:
         uses: svenstaro/upload-release-action@v2
         with:
           file: main/plotly-graph-card.js
+
+  # Publish the YAML editor, so its schema matches the latest stable release.
+  yaml-editor:
+    if: ${{ !github.event.release.prerelease }}
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: oven-sh/setup-bun@v2
+
+      - run: bun install --frozen-lockfile
+      - run: bun install --frozen-lockfile
+        working-directory: yaml-editor
+      - run: bun run build
+        working-directory: yaml-editor
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: yaml-editor/dist
+
+      - id: deploy
+        uses: actions/deploy-pages@v5
