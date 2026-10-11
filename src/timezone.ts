@@ -60,14 +60,33 @@ function getOffset(timestamp: number, timeZone: string) {
   return offset;
 }
 
+const MINUTE = 60 * 1000;
+// Traces are sorted, so most points share the minute of the point before
+let minute = { start: NaN, prefix: "" };
+
 /** Naive date string Plotly draws as-is, e.g. "2024-03-31 02:30:00.000" */
 export function toPlotlyDateString(timestamp: number, timeZone: string) {
-  // Faster than date-fns' format, which matters for long traces
-  const offset = getOffset(timestamp, timeZone);
-  const iso = new Date(timestamp + offset).toISOString();
-  // "2024-03-31T02:30:00.000Z" -> "2024-03-31 02:30:00.000"
-  if (iso.length === 24) return iso.slice(0, 10) + " " + iso.slice(11, 23);
-  return iso.replace(/^\+/, "").replace("T", " ").slice(0, -1);
+  // Faster than date-fns' format, which matters for long traces.
+  // Math.trunc drops fractions of a millisecond like Date does.
+  const wallClock = Math.trunc(timestamp + getOffset(timestamp, timeZone));
+  const start = Math.floor(wallClock / MINUTE) * MINUTE;
+  if (minute.start !== start) {
+    const iso = new Date(start).toISOString();
+    // Years before 0 or after 9999 ("+010000-01-01T...")
+    if (iso.length !== 24) {
+      const full = new Date(wallClock).toISOString();
+      return full.replace(/^\+/, "").replace("T", " ").slice(0, -1);
+    }
+    // "2024-03-31T02:30:00.000Z" -> "2024-03-31 02:30:"
+    minute = { start, prefix: iso.slice(0, 10) + " " + iso.slice(11, 17) };
+  }
+  const rest = wallClock - start;
+  return (
+    minute.prefix +
+    String(Math.floor(rest / 1000)).padStart(2, "0") +
+    "." +
+    String(rest % 1000).padStart(3, "0")
+  );
 }
 
 function isPlainObject(value: any) {
@@ -79,7 +98,8 @@ function isPlainObject(value: any) {
 /** Deep copy replacing every Date with its wall clock string in `timeZone` */
 function convertDates(value: any, timeZone: string): any {
   if (value instanceof Date) {
-    return isNaN(+value) ? value : toPlotlyDateString(+value, timeZone);
+    const timestamp = value.getTime();
+    return isNaN(timestamp) ? value : toPlotlyDateString(timestamp, timeZone);
   }
   if (Array.isArray(value)) {
     // Big data arrays are either all dates or none
