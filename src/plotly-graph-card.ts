@@ -61,6 +61,14 @@ export class PlotlyGraph extends HTMLElement {
   config!: InputConfig;
   parsed_config!: Config;
   size: { width?: number; height?: number } = {};
+  // Home Assistant sets this property; reflect it for the panel height styles.
+  get layout() {
+    return this.getAttribute("layout") ?? undefined;
+  }
+  set layout(value: string | undefined) {
+    if (value === undefined) this.removeAttribute("layout");
+    else this.setAttribute("layout", value);
+  }
   _hass?: HomeAssistant;
   isBrowsing = false;
   isInternalRelayout = 0;
@@ -120,6 +128,9 @@ export class PlotlyGraph extends HTMLElement {
             :host {
               display: block;
             }
+            :host([layout="panel"]) {
+              height: 100%;
+            }
             ha-card{
               display: block;
               overflow: hidden;
@@ -136,6 +147,10 @@ export class PlotlyGraph extends HTMLElement {
               );
               height: auto;
               min-height: var(--plotly-loading-height, ${DEFAULT_PLOT_HEIGHT}px);
+            }
+            :host([layout="panel"]) ha-card.loading {
+              height: calc(100% - 5px);
+              min-height: 0;
             }
             ha-card > #plotly{
               width: 100px;
@@ -297,6 +312,7 @@ export class PlotlyGraph extends HTMLElement {
     this.handles.intersectionObserver.observe(this.cardEl);
     this.handles.resizeObserver = new ResizeObserver(updateCardSize);
     this.handles.resizeObserver.observe(this.cardEl);
+    this.handles.resizeObserver.observe(this.titleEl);
 
     updateCardSize();
     this.resetButtonEl.addEventListener("click", this.exitBrowsingMode);

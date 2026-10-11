@@ -163,6 +163,28 @@ try {
     results.push("configured height is reserved and preserved after rendering");
     destroy(custom.card);
 
+    const panel = document.createElement("div");
+    panel.style.cssText = "width:480px;height:700px";
+    document.body.append(panel);
+    const panelCard = await makeCard();
+    panelCard.card.layout = "panel";
+    panel.append(panelCard.card);
+    await frame();
+    check(
+      panelCard.card.offsetHeight === 700 &&
+        panelCard.card.cardEl.offsetHeight === 695,
+      "Panel loading state does not fill its parent",
+    );
+    await panelCard.card._plot();
+    checkFinished(panelCard.card);
+    check(
+      panelCard.card.cardEl.offsetHeight === 695,
+      "Panel height changed after initial loading",
+    );
+    results.push("panel height is preserved during and after initial loading");
+    destroy(panelCard.card);
+    panel.remove();
+
     for (const stage of ["parse", "render"]) {
       const { card, parsed } = await makeCard();
       const failure = new Error(`Injected ${stage} failure`);
