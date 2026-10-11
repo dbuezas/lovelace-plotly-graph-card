@@ -163,27 +163,30 @@ try {
     results.push("configured height is reserved and preserved after rendering");
     destroy(custom.card);
 
-    const panel = document.createElement("div");
-    panel.style.cssText = "width:480px;height:700px";
-    document.body.append(panel);
-    const panelCard = await makeCard();
-    panelCard.card.layout = "panel";
-    panel.append(panelCard.card);
-    await frame();
-    check(
-      panelCard.card.offsetHeight === 700 &&
-        panelCard.card.cardEl.offsetHeight === 695,
-      "Panel loading state does not fill its parent",
-    );
-    await panelCard.card._plot();
-    checkFinished(panelCard.card);
-    check(
-      panelCard.card.cardEl.offsetHeight === 695,
-      "Panel height changed after initial loading",
-    );
-    results.push("panel height is preserved during and after initial loading");
-    destroy(panelCard.card);
-    panel.remove();
+    for (const layout of ["panel", "grid"]) {
+      const container = document.createElement("div");
+      container.style.cssText = "width:480px;height:700px";
+      document.body.append(container);
+      const { card } = await makeCard();
+      card.layout = layout;
+      container.append(card);
+      await frame();
+      check(
+        card.offsetHeight === 700 && card.cardEl.offsetHeight === 695,
+        `${layout} loading state does not fill its parent`,
+      );
+      await card._plot();
+      checkFinished(card);
+      check(
+        card.cardEl.offsetHeight === 695,
+        `${layout} height changed after initial loading`,
+      );
+      results.push(
+        `${layout} height is preserved during and after initial loading`,
+      );
+      destroy(card);
+      container.remove();
+    }
 
     for (const stage of ["parse", "render"]) {
       const { card, parsed } = await makeCard();

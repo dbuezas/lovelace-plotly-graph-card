@@ -61,7 +61,7 @@ export class PlotlyGraph extends HTMLElement {
   config!: InputConfig;
   parsed_config!: Config;
   size: { width?: number; height?: number } = {};
-  // Home Assistant sets this property; reflect it for the panel height styles.
+  // Home Assistant sets this property; reflect it for the layout height styles.
   get layout() {
     return this.getAttribute("layout") ?? undefined;
   }
@@ -128,7 +128,8 @@ export class PlotlyGraph extends HTMLElement {
             :host {
               display: block;
             }
-            :host([layout="panel"]) {
+            :host([layout="panel"]),
+            :host([layout="grid"]) {
               height: 100%;
             }
             ha-card{
@@ -148,7 +149,8 @@ export class PlotlyGraph extends HTMLElement {
               height: auto;
               min-height: var(--plotly-loading-height, ${DEFAULT_PLOT_HEIGHT}px);
             }
-            :host([layout="panel"]) ha-card.loading {
+            :host([layout="panel"]) ha-card.loading,
+            :host([layout="grid"]) ha-card.loading {
               height: calc(100% - 5px);
               min-height: 0;
             }
@@ -281,40 +283,39 @@ export class PlotlyGraph extends HTMLElement {
     });
   }
 
+  updateCardSize = () => {
+    const width = this.cardEl.offsetWidth;
+    if (width <= 0) return;
+    this.contentEl.style.position = "absolute";
+    const height = this.cardEl.offsetHeight;
+    this.contentEl.style.position = "";
+    const nextSize: { width: number; height?: number } = { width };
+    if (height > 100) {
+      // Excluding the plot leaves the allocated height in panel/grid layouts,
+      // or only the title in auto-height layouts, which use the default height.
+      nextSize.height = height - this.titleEl.offsetHeight;
+    }
+    if (
+      this.size.width === nextSize.width &&
+      this.size.height === nextSize.height
+    )
+      return;
+    this.size = nextSize;
+    void this.plot({ should_fetch: false });
+  };
+
   connectedCallback() {
     this.disconnected = false;
-    const updateCardSize = () => {
-      const width = this.cardEl.offsetWidth;
-      if (width <= 0) return;
-      this.contentEl.style.position = "absolute";
-      const height = this.cardEl.offsetHeight;
-      this.contentEl.style.position = "";
-      const nextSize: { width: number; height?: number } = { width };
-      if (height > 100) {
-        // Panel view type has the cards covering 100% of the height of the window.
-        // Masonry lets the cards grow by themselves.
-        // if height > 100 ==> Panel ==> use available height
-        // else ==> Mansonry ==> let the height be determined by defaults
-        nextSize.height = height - this.titleEl.offsetHeight;
-      }
-      if (
-        this.size.width === nextSize.width &&
-        this.size.height === nextSize.height
-      )
-        return;
-      this.size = nextSize;
-      void this.plot({ should_fetch: false });
-    };
     this.handles.intersectionObserver = new IntersectionObserver(([entry]) => {
       this.onScreen = entry.isIntersecting;
       if (this.onScreen) this.catchUp();
     });
     this.handles.intersectionObserver.observe(this.cardEl);
-    this.handles.resizeObserver = new ResizeObserver(updateCardSize);
+    this.handles.resizeObserver = new ResizeObserver(this.updateCardSize);
     this.handles.resizeObserver.observe(this.cardEl);
     this.handles.resizeObserver.observe(this.titleEl);
 
-    updateCardSize();
+    this.updateCardSize();
     this.resetButtonEl.addEventListener("click", this.exitBrowsingMode);
     this.touchController.connect();
     this.updateStatisticsSubscriptions();
@@ -565,6 +566,7 @@ export class PlotlyGraph extends HTMLElement {
   async setConfig(config: InputConfig) {
     this.config = config;
     setInitialLoadingHeight(this.cardEl, config.layout);
+    if (this.isConnected) this.updateCardSize();
     void this.exitBrowsingMode();
   }
   getCSSVars() {
