@@ -113,6 +113,48 @@ try {
       );
       check(!card.errorMsgEl.textContent.trim(), card.errorMsgEl.textContent);
       results.push("normal width changes parse and render");
+
+      const panel = document.createElement("div");
+      panel.style.cssText = "width:700px;height:700px";
+      document.body.append(panel);
+      card.style.width = "";
+      card.layout = "panel";
+      panel.append(card);
+      const fitsPanel = () =>
+        Math.abs(
+          card.contentEl._fullLayout.height +
+            card.titleEl.offsetHeight -
+            (panel.clientHeight - 5),
+        ) < 1;
+      await wait(fitsPanel);
+      check(card.offsetHeight === 700, "Panel host does not fill its parent");
+      results.push("panel cards fill the available height");
+
+      await card.setConfig({
+        ...card.config,
+        title: "Panel title",
+      });
+      await wait(
+        () => card.titleEl.textContent === "Panel title" && fitsPanel(),
+      );
+      results.push("panel height accounts for title changes");
+
+      panel.style.cssText = "width:600px;height:600px";
+      await wait(() => card.contentEl._fullLayout.width === 600 && fitsPanel());
+      results.push("panel cards follow parent width and height changes");
+
+      await card.setConfig({ ...card.config, layout: { height: 420 } });
+      await wait(() => card.contentEl._fullLayout.height === 420);
+      results.push("explicit plot height takes precedence in panel views");
+      card.layout = undefined;
+      await card.setConfig({ ...card.config, layout: {} });
+      await wait(() => card.contentEl._fullLayout.height === 285);
+      check(
+        card.offsetHeight < 600,
+        "Non-panel card retains full panel height",
+      );
+      results.push("leaving panel mode restores the normal card height");
+      panel.remove();
       return results;
     } finally {
       card.remove();
