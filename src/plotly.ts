@@ -206,11 +206,11 @@ export const loadPlotlyModules = async (
 
 type GraphWithMargins = Plotly.PlotlyHTMLElement & {
   _fullLayout?: Partial<Plotly.Layout> & {
-    _size?: Record<"l" | "r" | "t" | "b", number>;
+    _size?: Record<"l" | "r" | "t" | "b" | "p" | "w" | "h", number>;
   };
 };
 
-export async function reactWithLegendFix(
+export async function reactWithMarginFix(
   graph: GraphWithMargins,
   data: Plotly.Data[],
   layout: Partial<Plotly.Layout>,
@@ -221,16 +221,12 @@ export async function reactWithLegendFix(
   };
   const result = await Plotly.react(graph, data, layout, config);
   const current = graph._fullLayout?._size;
-  // Plotly 4.1.2 can leave legends positioned at the old auto margins (#723).
-  // Use its own legend pass, not another data/axes render or custom positioning.
-  if (
-    previous &&
-    current &&
-    (["l", "r", "t", "b"] as const).some(
-      (side) => previous[side] !== current[side],
-    )
-  ) {
-    await require("plotly.js/src/plot_api/subroutines").doLegend(graph);
+  const plots = require("plotly.js/src/plots/plots");
+  // Plotly 4.1.2 can leave margin pushers positioned at the old margins (#723).
+  // Rerun its own positioning pass, not another data/axes render.
+  if (previous && current && plots.didMarginChange(previous, current)) {
+    require("plotly.js/src/plot_api/subroutines").drawMarginPushers(graph);
+    await plots.previousPromises(graph);
   }
   return result;
 }

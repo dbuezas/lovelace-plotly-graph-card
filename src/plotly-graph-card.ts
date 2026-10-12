@@ -729,16 +729,16 @@ export class PlotlyGraph extends HTMLElement {
       }
       // Plotly is only downloaded once a card is drawn
       let Plotly: typeof import("./plotly").default;
-      let plotly: typeof import("./plotly");
+      let plotlyModule: typeof import("./plotly");
       try {
-        plotly = await import("./plotly");
-        const locale = await plotly.loadPlotlyModules(
+        plotlyModule = await import("./plotly");
+        const locale = await plotlyModule.loadPlotlyModules(
           entities,
           layout,
           config.locale,
         );
         if (locale) config.locale = locale;
-        Plotly = plotly.default;
+        Plotly = plotlyModule.default;
       } catch (e: any) {
         this.filesFailed = true;
         this.errorMsgEl.style.display = "block";
@@ -763,7 +763,7 @@ export class PlotlyGraph extends HTMLElement {
           entities,
           this.parsed_config.raw_plotly_config,
         );
-        await plotly.reactWithLegendFix(
+        await plotlyModule.reactWithMarginFix(
           this.contentEl,
           drawnEntities,
           layout,
