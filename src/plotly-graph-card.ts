@@ -729,8 +729,9 @@ export class PlotlyGraph extends HTMLElement {
       }
       // Plotly is only downloaded once a card is drawn
       let Plotly: typeof import("./plotly").default;
+      let plotly: typeof import("./plotly");
       try {
-        const plotly = await import("./plotly");
+        plotly = await import("./plotly");
         const locale = await plotly.loadPlotlyModules(
           entities,
           layout,
@@ -762,7 +763,12 @@ export class PlotlyGraph extends HTMLElement {
           entities,
           this.parsed_config.raw_plotly_config,
         );
-        await Plotly.react(this.contentEl, drawnEntities, layout, config);
+        await plotly.reactWithLegendFix(
+          this.contentEl,
+          drawnEntities,
+          layout,
+          config,
+        );
         if (autorangeMainAxis) {
           const update = {
             "yaxis.autorange": true,

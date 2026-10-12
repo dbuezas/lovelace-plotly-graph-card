@@ -202,4 +202,35 @@ export const loadPlotlyModules = async (
     : language || undefined;
 };
 
+type GraphWithMargins = Plotly.PlotlyHTMLElement & {
+  _fullLayout?: Partial<Plotly.Layout> & {
+    _size?: Record<"l" | "r" | "t" | "b", number>;
+  };
+};
+
+export async function reactWithLegendFix(
+  graph: GraphWithMargins,
+  data: Plotly.Data[],
+  layout: Partial<Plotly.Layout>,
+  config: Partial<Plotly.Config>,
+) {
+  const previous = graph._fullLayout?._size && {
+    ...graph._fullLayout._size,
+  };
+  const result = await Plotly.react(graph, data, layout, config);
+  const current = graph._fullLayout?._size;
+  // Plotly 4.1.2 can leave legends positioned at the old auto margins (#723).
+  // Use its own legend pass, not another data/axes render or custom positioning.
+  if (
+    previous &&
+    current &&
+    (["l", "r", "t", "b"] as const).some(
+      (side) => previous[side] !== current[side],
+    )
+  ) {
+    await require("plotly.js/src/plot_api/subroutines").doLegend(graph);
+  }
+  return result;
+}
+
 export default Plotly;

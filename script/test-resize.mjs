@@ -114,6 +114,42 @@ try {
       check(!card.errorMsgEl.textContent.trim(), card.errorMsgEl.textContent);
       results.push("normal width changes parse and render");
 
+      await card.setConfig({
+        type: "custom:plotly-graph",
+        refresh_interval: 0,
+        entities: ["Battery", "Home", "Price"].map((name) => ({
+          entity: "",
+          name,
+          x: [1, 2],
+          y: [1, 2],
+        })),
+        layout: { height: 340, uirevision: "keep" },
+      });
+      card.style.width = "150px";
+      await wait(() => card.contentEl._fullLayout.width === 150);
+      await settle();
+      const topMargin = () => card.contentEl._fullLayout._size.t;
+      const wrappedMargin = topMargin();
+      before = { ...counts };
+      card.style.width = "629px";
+      await wait(() => card.contentEl._fullLayout.width === 629);
+      await settle();
+      const legend = card.contentEl.querySelector(".legend");
+      const plotTop = card.contentEl.getBoundingClientRect().top + topMargin();
+      check(topMargin() < wrappedMargin, "Legend did not unwrap on resize");
+      check(
+        Math.abs(legend.getBoundingClientRect().bottom - plotTop) < 1,
+        "Unwrapped legend overlaps the plot",
+      );
+      check(
+        counts.react === before.react + 1,
+        "Legend repair triggered another full render",
+      );
+      results.push(
+        "unwrapped legends stay above the plot without another react",
+      );
+      await card.setConfig({ ...card.config, layout: {} });
+
       const panel = document.createElement("div");
       panel.style.cssText = "width:700px;height:700px";
       document.body.append(panel);
