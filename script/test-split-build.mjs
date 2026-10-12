@@ -159,6 +159,10 @@ try {
     "no file is downloaded twice",
     `${got.length} files`,
   );
+  check(
+    !got.includes(fileOf("calendars")),
+    "ordinary 2D charts don't download calendars",
+  );
 
   await removeAll();
   out = await mount([
@@ -205,6 +209,40 @@ try {
       files.map(fileOf).join(" "),
     );
   }
+
+  out = await mount([
+    {
+      id: "surface",
+      traces: [
+        {
+          type: "surface",
+          x: ["0:00", "1:00", "2:00"],
+          y: ["2026-10-10", "2026-10-11", "2026-10-12"],
+          z: [
+            [1, 2, 3],
+            [3, 5, 4],
+            [4, 3, 6],
+          ],
+        },
+      ],
+    },
+  ]);
+  got = take();
+  check(
+    !out[0].error &&
+      got.includes(fileOf("calendars")) &&
+      (await page.evaluate(() => {
+        const scene =
+          document.getElementById("surface").contentEl._fullLayout.scene._scene;
+        return Object.values(scene.traces).some(
+          (trace) =>
+            trace.surface._vertexCount > 0 &&
+            trace.objectOffset.every(Number.isFinite),
+        );
+      })),
+    "a surface with category and date coordinates renders without explicit calendars",
+  );
+  await removeAll();
 
   const square = [
     [
