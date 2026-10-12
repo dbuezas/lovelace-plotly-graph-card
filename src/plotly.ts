@@ -193,7 +193,9 @@ export const loadPlotlyModules = async (
     // Regional locales (e.g. de-ch) only have formats, the texts are in the base
     base && base !== key && load(base, locales[base]),
     key && load(key, locales[key]),
-    (usesCalendar(layout, true) || data.some((t) => usesCalendar(t, false))) &&
+    // Surface uses calendar defaults to convert date and category coordinates.
+    (usesCalendar(layout, true) ||
+      data.some((t) => t.type === "surface" || usesCalendar(t, false))) &&
       load("calendars", calendars),
   ]);
   // Plotly finds locales by their registered name, e.g. "pt-BR"
