@@ -204,4 +204,31 @@ export const loadPlotlyModules = async (
     : language || undefined;
 };
 
+type GraphWithMargins = Plotly.PlotlyHTMLElement & {
+  _fullLayout?: Partial<Plotly.Layout> & {
+    _size?: Record<"l" | "r" | "t" | "b" | "p" | "w" | "h", number>;
+  };
+};
+
+export async function reactWithMarginFix(
+  graph: GraphWithMargins,
+  data: Plotly.Data[],
+  layout: Partial<Plotly.Layout>,
+  config: Partial<Plotly.Config>,
+) {
+  const previous = graph._fullLayout?._size && {
+    ...graph._fullLayout._size,
+  };
+  const result = await Plotly.react(graph, data, layout, config);
+  const current = graph._fullLayout?._size;
+  const plots = require("plotly.js/src/plots/plots");
+  // Plotly 4.1.2 can leave margin pushers positioned at the old margins (#723).
+  // Rerun its own positioning pass, not another data/axes render.
+  if (previous && current && plots.didMarginChange(previous, current)) {
+    require("plotly.js/src/plot_api/subroutines").drawMarginPushers(graph);
+    await plots.previousPromises(graph);
+  }
+  return result;
+}
+
 export default Plotly;
