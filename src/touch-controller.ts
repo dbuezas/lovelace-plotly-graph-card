@@ -282,10 +282,11 @@ type TouchEventName = "touchstart" | "touchmove" | "touchend" | "touchcancel";
 
 export class TouchController {
   cooperative = true;
-  private onCooperativeClick = (e: PointerEvent) => {
+  private onCooperativeClick = (e: MouseEvent) => {
     if (
       this.cooperative &&
       this.enabled.hold_to_scan &&
+      "pointerType" in e &&
       e.pointerType === "touch"
     )
       this.Fx?.unhover(this.el);
