@@ -36,8 +36,8 @@ const stop = (e: TouchEvent) => {
 };
 const moved = (t: Touch, from: { x: number; y: number }) =>
   Math.hypot(t.clientX - from.x, t.clientY - from.y) >= TAP_TOLERANCE_PX;
-const draggerOf = (el: PlotlyEl, touch?: Touch) => {
-  const dragger = (touch?.target as Element | null)?.closest?.(".nsewdrag");
+const draggerOf = (el: PlotlyEl, touch?: Touch, selector = ".nsewdrag") => {
+  const dragger = (touch?.target as Element | null)?.closest?.(selector);
   return dragger && el.contains(dragger) ? dragger : undefined;
 };
 
@@ -68,7 +68,7 @@ const wheel = (
   if (scrollZoom) scrollZoom.cartesian = true;
   try {
     dragger.dispatchEvent(
-      new WheelEvent("wheel", { clientX, clientY, deltaY }),
+      new WheelEvent("wheel", { clientX, clientY, deltaY, ctrlKey: true }),
     );
   } finally {
     if (scrollZoom) scrollZoom.cartesian = enabled;
@@ -124,7 +124,8 @@ const pinch: Gesture = (el, controller) => {
     },
     end: (e) => {
       if (!dragger) return;
-      if (e.touches.length) return void (last = measure(e.touches));
+      if (e.touches.length >= (controller.cooperative ? 2 : 1))
+        return void (last = measure(e.touches));
       dragger = undefined;
       controller.zoomEnd();
     },
@@ -153,7 +154,11 @@ const doubleTapDrag: Gesture = (el, controller) => {
       const dragger = draggerOf(el, t);
       if (e.timeStamp - lastTapTime >= DOUBLE_TAP_MS)
         return void (firstTap = { x: t.clientX, y: t.clientY });
-      if (controller.enabled.double_tap_drag_to_zoom && dragger)
+      if (
+        !controller.cooperative &&
+        controller.enabled.double_tap_drag_to_zoom &&
+        dragger
+      )
         tap = {
           dragger,
           x: t.clientX,
@@ -243,10 +248,16 @@ const scan: Gesture = (el, controller) => {
       const t = e.touches[0];
       if (e.touches.length !== 1 || (!hold.scanning && moved(t, hold)))
         return end(); // Plotly pans
+      if (controller.cooperative && !hold.scanning) return;
       stop(e); // while holding, small moves stay hidden from Plotly
       if (hold.scanning) hover(hold.dragger, t.clientX, t.clientY);
     },
-    end,
+    end: (e) => {
+      // A held touch must not turn into the browser's compatibility mouse click.
+      if (controller.cooperative && hold?.scanning && e.cancelable)
+        e.preventDefault();
+      end();
+    },
     cleanup: end,
   };
 };
@@ -258,7 +269,11 @@ const tapWithoutTooltip: Gesture = (el, controller) => ({
   move: () => {},
   end: (e) => {
     // _dragging is still set when Plotly owns the touch (no gesture took it)
-    if (controller.enabled.hold_to_scan && !e.touches.length && el._dragging)
+    if (
+      controller.enabled.hold_to_scan &&
+      !e.touches.length &&
+      (el._dragging || (controller.cooperative && !e.defaultPrevented))
+    )
       setTimeout(() => controller.Fx?.unhover(el)); // after Plotly's touchend
   },
 });
@@ -266,6 +281,26 @@ const tapWithoutTooltip: Gesture = (el, controller) => ({
 type TouchEventName = "touchstart" | "touchmove" | "touchend" | "touchcancel";
 
 export class TouchController {
+  cooperative = true;
+  private onCooperativeClick = (e: PointerEvent) => {
+    if (
+      this.cooperative &&
+      this.enabled.hold_to_scan &&
+      e.pointerType === "touch"
+    )
+      this.Fx?.unhover(this.el);
+  };
+  private onCooperativeInput = (e: TouchEvent | WheelEvent) => {
+    if (!this.cooperative) return;
+    const pageScroll =
+      "touches" in e
+        ? e.touches.length === 1 &&
+          !this.zooms &&
+          draggerOf(this.el, e.touches[0], ".drag")
+        : !e.ctrlKey && !e.metaKey;
+    // Leave browser scrolling intact, but don't let Plotly capture the input.
+    if (pageScroll) e.stopPropagation();
+  };
   enabled: TouchGestures = {
     pinch_to_zoom: true,
     double_tap_drag_to_zoom: true,
@@ -289,6 +324,15 @@ export class TouchController {
   }
   connect() {
     this.disconnect();
+    this.el.addEventListener("wheel", this.onCooperativeInput, {
+      capture: true,
+      passive: true,
+    });
+    this.el.addEventListener("touchstart", this.onCooperativeInput, {
+      capture: true,
+      passive: true,
+    });
+    this.el.addEventListener("click", this.onCooperativeClick, true);
     for (const gesture of [pinch, doubleTapDrag, scan, tapWithoutTooltip]) {
       const { start, move, end, cleanup } = gesture(this.el, this);
       if (cleanup) this.cleanups.push(cleanup);
@@ -303,6 +347,9 @@ export class TouchController {
       this.el.addEventListener(type, fn, { capture: true, passive: false });
   }
   disconnect() {
+    this.el.removeEventListener("wheel", this.onCooperativeInput, true);
+    this.el.removeEventListener("touchstart", this.onCooperativeInput, true);
+    this.el.removeEventListener("click", this.onCooperativeClick, true);
     for (const [type, fn] of this.listeners)
       this.el.removeEventListener(type, fn, { capture: true });
     this.listeners = [];

@@ -211467,6 +211467,18 @@
         }
       ]
     },
+    "cooperative_gestures": {
+      "anyOf": [
+        {
+          "pattern": "^[\\s]*\\$(ex|fn)\\s[\\s\\S]+$",
+          "type": "string"
+        },
+        {
+          "type": "boolean"
+        }
+      ],
+      "description": "Default true: scroll the page; use two fingers or Ctrl/Meta+wheel for the plot."
+    },
     "defaults": {
       "anyOf": [
         {

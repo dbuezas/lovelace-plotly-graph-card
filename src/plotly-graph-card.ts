@@ -697,6 +697,7 @@ export class PlotlyGraph extends HTMLElement {
         .map((e) => "<span>" + (e || "See devtools console") + "</span>")
         .join("\n<br />\n");
       this.parsed_config = parsed;
+      this.touchController.cooperative = parsed.cooperative_gestures !== false;
       const touch = parsed.disable_pinch_to_zoom
         ? false
         : (parsed.extended_touch_support ?? true);
