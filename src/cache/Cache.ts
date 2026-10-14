@@ -284,9 +284,9 @@ export default class Cache {
       h.length > 0 &&
       +states[0].x > +h[h.length - 1].x &&
       (!states[0].fake_boundary_datapoint || isStatistics);
-    // Shared attribute traces can add the same state twice. The merge keeps
-    // the existing history sample, but the fetched range still needs recording.
-    const canSkip =
+    // Shared attribute traces can add the same state twice, and Home Assistant
+    // can record two states in the same millisecond. The later one wins.
+    const canReplace =
       states.length === 1 &&
       h.length > 0 &&
       !isStatistics &&
@@ -294,16 +294,17 @@ export default class Cache {
       +states[0].x === +h[h.length - 1].x;
     if (canAppend) {
       h.push(states[0]);
-    } else if (!canSkip) {
+    } else if (canReplace) {
+      h[h.length - 1] = states[0];
+    } else {
       for (const state of states) h.push(state);
       h.sort((a, b) => +a.x - +b.x);
       if (!isStatistics) {
         h = h.filter((x, i) => i == 0 || !x.fake_boundary_datapoint);
       }
-      // Refetched aggregates can change without changing their bucket timestamp.
-      h = isStatistics
-        ? h.filter((_, i) => +h[i].x !== +h[i + 1]?.x)
-        : h.filter((_, i) => +h[i - 1]?.x !== +h[i].x);
+      // At equal timestamps keep the last sample: the later state of the same
+      // millisecond, or a refetched aggregate of the same bucket.
+      h = h.filter((_, i) => +h[i].x !== +h[i + 1]?.x);
       this.histories[entityKey] = h;
     }
     // Frontend snapshots add a point, not evidence of complete history coverage.

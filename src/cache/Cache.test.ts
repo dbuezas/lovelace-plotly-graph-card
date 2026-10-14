@@ -69,6 +69,25 @@ describe("Cache merging", () => {
     expect(cache.getData(entity).xs.map(Number)).toEqual(xs);
   });
 
+  it("keeps the later of two states recorded in the same millisecond", () => {
+    const cache = new Cache();
+    const reading = (timestamp: number, value: string) => {
+      const sample = state(timestamp);
+      sample.state.state = value;
+      return sample;
+    };
+    // A group sensor writes one state per changed member (#640)
+    cache.add(
+      entity,
+      [reading(0, "5.3"), reading(10, "1.97"), reading(10, "0.0")],
+      [0, 10],
+    );
+    cache.add(entity, [reading(20, "3.35")]);
+    cache.add(entity, [reading(20, "5.36")]);
+
+    expect(cache.getData(entity).ys).toEqual(["5.3", "0.0", "5.36"]);
+  });
+
   it("replaces statistics refetched at the same timestamp", () => {
     const cache = new Cache();
     const statistics = {
