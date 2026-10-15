@@ -135,7 +135,6 @@ const pinch: Gesture = (el, controller) => {
 // Double tap, then drag: up/down zooms, left/right pans. A plain double tap
 // stays Plotly's (reset), so the gesture only starts once the finger moves.
 const doubleTapDrag: Gesture = (el, controller) => {
-  let lastTapTime = -Infinity;
   let firstTap: { x: number; y: number } | undefined; // until it moves
   let tap:
     | { dragger: Element; x: number; y: number; lastX: number; lastY: number }
@@ -149,16 +148,13 @@ const doubleTapDrag: Gesture = (el, controller) => {
   return {
     start: (e) => {
       end(); // a second finger hands over to pinch
-      if (e.touches.length !== 1) return void (lastTapTime = -Infinity);
+      if (e.touches.length !== 1)
+        return void (controller.lastTapTime = -Infinity);
       const t = e.touches[0];
       const dragger = draggerOf(el, t);
-      if (e.timeStamp - lastTapTime >= DOUBLE_TAP_MS)
+      if (e.timeStamp - controller.lastTapTime >= DOUBLE_TAP_MS)
         return void (firstTap = { x: t.clientX, y: t.clientY });
-      if (
-        !controller.cooperative &&
-        controller.enabled.double_tap_drag_to_zoom &&
-        dragger
-      )
+      if (controller.enabled.double_tap_drag_to_zoom && dragger)
         tap = {
           dragger,
           x: t.clientX,
@@ -192,7 +188,8 @@ const doubleTapDrag: Gesture = (el, controller) => {
     },
     end: (e) => {
       // Only a tap that didn't move can start a double tap
-      lastTapTime = firstTap && !e.touches.length ? e.timeStamp : -Infinity;
+      controller.lastTapTime =
+        firstTap && !e.touches.length ? e.timeStamp : -Infinity;
       firstTap = undefined;
       end();
     },
@@ -282,6 +279,7 @@ type TouchEventName = "touchstart" | "touchmove" | "touchend" | "touchcancel";
 
 export class TouchController {
   cooperative = true;
+  lastTapTime = -Infinity; // a touch right after a tap is a gesture, not a scroll
   private onCooperativeClick = (e: MouseEvent) => {
     if (
       this.cooperative &&
@@ -297,6 +295,7 @@ export class TouchController {
       "touches" in e
         ? e.touches.length === 1 &&
           !this.zooms &&
+          e.timeStamp - this.lastTapTime >= DOUBLE_TAP_MS &&
           draggerOf(this.el, e.touches[0], ".drag")
         : !e.ctrlKey && !e.metaKey;
     // Leave browser scrolling intact, but don't let Plotly capture the input.

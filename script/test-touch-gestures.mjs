@@ -813,6 +813,39 @@ try {
   );
 
   await mountScrollable();
+  s0 = await state();
+  await tap(cx, cy);
+  await wait(80);
+  await drag(steps([[cx, cy]], [[cx, cy + 80]]));
+  await touch("touchEnd");
+  await wait(300);
+  s1 = await state();
+  check(
+    s1.span < s0.span * 0.8 && s1.scrollY === 0 && s1.events.doubleclick === 0,
+    "tap + drag zooms the plot, not the page",
+  );
+
+  await mountScrollable();
+  s0 = await state();
+  const [ax, ay] = await page.evaluate(() => {
+    const r = document
+      .getElementById("c")
+      .contentEl.querySelector(".ewdrag")
+      .getBoundingClientRect();
+    return [r.left + r.width / 2, r.top + r.height / 2];
+  });
+  await tap(ax, ay);
+  await wait(80);
+  await drag(steps([[ax, ay]], [[ax - 100, ay]]));
+  await touch("touchEnd");
+  await wait(300);
+  s1 = await state();
+  check(
+    s1.range !== s0.range && s1.scrollY === 0,
+    "tap + drag on an axis drags the axis, not the page",
+  );
+
+  await mountScrollable();
   p = await pinchOut();
   s1 = await state();
   check(
