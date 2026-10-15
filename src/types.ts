@@ -94,6 +94,8 @@ export type InputConfig = {
   significant_changes_only?: boolean; // defaults to false
   minimal_response?: boolean; // defaults to true
   extended_touch_support?: boolean | Partial<TouchGestures>; // defaults to true
+  /** Default true: scroll the page; use two fingers or Ctrl/Meta+wheel for the plot. */
+  cooperative_gestures?: boolean;
   disable_pinch_to_zoom?: boolean; // old, same as extended_touch_support: false
   autorange_after_scroll?: boolean; // defaults to false
   preset?: string | string[];
@@ -144,6 +146,7 @@ export type Config = {
   significant_changes_only: boolean;
   minimal_response: boolean;
   extended_touch_support?: boolean | Partial<TouchGestures>;
+  cooperative_gestures?: boolean;
   disable_pinch_to_zoom: boolean;
   visible_range: [number, number];
   on_dblclick: Function;

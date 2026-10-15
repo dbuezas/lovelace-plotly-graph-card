@@ -1407,17 +1407,36 @@ raw_plotly_config: true # defaults to false
 To define general configurations like enabling scroll to zoom, disabling the modebar, etc.
 Anything from https://plotly.com/javascript/configuration-options/.
 
+## cooperative_gestures
+
+Enabled by default so graphs do not interrupt dashboard scrolling:
+
+- Mouse or trackpad scrolling moves the page. Hold Ctrl or Cmd to zoom the graph.
+- On Cartesian plots, swipe with one finger to scroll the page; use two fingers to pan or zoom.
+- Mouse dragging, legend clicks, press-and-hold tooltips and tap + drag (on the plot or an axis) still work.
+
+Two-finger gestures require `pinch_to_zoom` in `extended_touch_support`.
+`config.scrollZoom: false` still disables mouse-wheel zoom, including Ctrl/Cmd.
+A two-finger interaction ends when either finger is lifted.
+
+To restore the previous scroll and touch behavior:
+
+```yaml
+cooperative_gestures: false
+```
+
 ## extended_touch_support
 
 Touch gestures on the plot area:
 
-- Drag with one finger: pan (Plotly).
+- Drag with one finger: scroll the page, or pan with `cooperative_gestures: false` (Plotly).
 - Tap: click (Plotly). Double tap: reset (Plotly).
-- `pinch_to_zoom`: pinch with two fingers to zoom at the fingers and pan with them, like a map. Lifting one finger keeps panning with the other.
+- `pinch_to_zoom`: pinch with two fingers to zoom at the fingers and pan with them, like a map. With `cooperative_gestures: false`, lifting one finger keeps panning with the other.
 - `double_tap_drag_to_zoom`: double tap, keep the finger down and drag up or down to zoom, left or right to pan.
 - `hold_to_scan`: press and hold for 300 ms, then slide. The tooltip follows the finger through the data and stays after lifting the finger, until the next touch. With `hovermode: closest` (Plotly's default) it follows the x position of the finger, like `hovermode: x`. It is off with `hovermode: false`. While it is on, a tap doesn't show the tooltip.
 
-All are on by default. Turn them all off, so only Plotly's own touch handling is left:
+All extra gestures are on by default. Turn them off below; page scrolling still
+follows `cooperative_gestures`:
 
 ```yaml
 extended_touch_support: false
