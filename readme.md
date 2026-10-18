@@ -1415,6 +1415,12 @@ Enabled by default so graphs do not interrupt dashboard scrolling:
 - On Cartesian plots, swipe with one finger to scroll the page; use two fingers to pan or zoom.
 - Mouse dragging, legend clicks, press-and-hold tooltips and tap + drag (on the plot or an axis) still work.
 
+Selecting Zoom, Pan or another drag tool in the modebar enables Plotly's native
+one-finger controls. The **Scroll page** button returns to dashboard scrolling.
+It also toggles between these two touch modes without changing the selected
+Plotly tool. The choice survives redraws, and Ctrl/Cmd + scroll is unchanged.
+The extra tap, hold and pinch gestures yield to Plotly while a drag tool is active.
+
 Two-finger gestures require `pinch_to_zoom` in `extended_touch_support`.
 `config.scrollZoom: false` still disables mouse-wheel zoom, including Ctrl/Cmd.
 A two-finger interaction ends when either finger is lifted.

@@ -812,6 +812,72 @@ try {
     "one-finger swipes over axis handles also scroll the page",
   );
 
+  const scrollButton = '.modebar-btn[data-attr="cooperative_gestures"]';
+  const selectTool = async (mode, target = page) => {
+    const button = target.locator(
+      `.modebar-btn[data-attr="dragmode"][data-val="${mode}"]`,
+    );
+    await button.tap();
+    await wait(300);
+  };
+
+  await mountScrollable({ config: { displayModeBar: true } });
+  await selectTool("zoom");
+  await page.evaluate(() =>
+    document.getElementById("c").plot({ should_fetch: false }),
+  );
+  s0 = await state();
+  await touch("touchStart", [[cx - 90, cy - 50]]);
+  await wait(450);
+  await moves(steps([[cx - 90, cy - 50]], [[cx + 90, cy + 50]]).slice(1));
+  await touch("touchEnd");
+  await wait(300);
+  s1 = await state();
+  check(
+    s1.span < s0.span * 0.8 && s1.scrollY === 0,
+    "modebar Zoom uses native one-finger box zoom, even after a redraw or a hold",
+  );
+
+  await mountScrollable({ config: { displayModeBar: true } });
+  // Pan is already Plotly's default: selecting it must still unlock touch.
+  await selectTool("pan");
+  s0 = await state();
+  await drag(steps([[cx + 60, cy]], [[cx - 60, cy]], 30));
+  await touch("touchEnd");
+  await wait(300);
+  s1 = await state();
+  check(
+    s1.range !== s0.range &&
+      Math.abs(s1.span - s0.span) < tol(s0.span) &&
+      s1.scrollY === 0,
+    "selecting the already-active Pan tool enables native one-finger panning",
+  );
+  await page.locator(scrollButton).tap();
+  await wait(300);
+  s0 = await state();
+  await drag(steps([[cx, cy + 60]], [[cx, cy - 60]], 30));
+  await touch("touchEnd");
+  await wait(300);
+  s1 = await state();
+  check(
+    s1.scrollY > 20 &&
+      s1.range === s0.range &&
+      (await page.locator(scrollButton).getAttribute("aria-pressed")) ===
+        "true",
+    "Scroll page restores one-finger dashboard scrolling",
+  );
+
+  await mountScrollable({
+    config: {
+      displayModeBar: true,
+      modeBarButtons: [["pan2d", "zoom2d"]],
+    },
+  });
+  check(
+    (await page.locator(scrollButton).count()) === 1,
+    "custom modebar layouts also include the Scroll page button",
+  );
+
   await mountScrollable();
   s0 = await state();
   await tap(cx, cy);

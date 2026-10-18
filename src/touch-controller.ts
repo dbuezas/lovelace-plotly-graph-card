@@ -2,6 +2,7 @@ import { TouchGestures } from "./types";
 
 type PlotlyEl = Plotly.PlotlyHTMLElement & {
   layout: Plotly.Layout;
+  _fullLayout?: Plotly.Layout;
   // Plotly keeps its drag state on the graph div "so that others can look at
   // and modify them" (plotly.js dragelement)
   _dragging?: boolean;
@@ -103,6 +104,7 @@ const pinch: Gesture = (el, controller) => {
   };
   return {
     start: (e) => {
+      if (controller.plotlyTouch) return;
       if (!dragger) {
         if (!controller.enabled.pinch_to_zoom || e.touches.length < 2) return;
         dragger = draggerOf(el, e.touches[0]) ?? draggerOf(el, e.touches[1]);
@@ -148,6 +150,8 @@ const doubleTapDrag: Gesture = (el, controller) => {
   return {
     start: (e) => {
       end(); // a second finger hands over to pinch
+      firstTap = undefined;
+      if (controller.plotlyTouch) return;
       if (e.touches.length !== 1)
         return void (controller.lastTapTime = -Infinity);
       const t = e.touches[0];
@@ -224,6 +228,7 @@ const scan: Gesture = (el, controller) => {
   return {
     start: (e) => {
       end();
+      if (controller.plotlyTouch) return;
       const t = e.touches[0];
       const dragger = e.touches.length === 1 && draggerOf(el, t);
       if (
@@ -265,6 +270,7 @@ const tapWithoutTooltip: Gesture = (el, controller) => ({
   start: () => {},
   move: () => {},
   end: (e) => {
+    if (controller.plotlyTouch) return;
     // _dragging is still set when Plotly owns the touch (no gesture took it)
     if (
       controller.enabled.hold_to_scan &&
@@ -279,10 +285,64 @@ type TouchEventName = "touchstart" | "touchmove" | "touchend" | "touchcancel";
 
 export class TouchController {
   cooperative = true;
+  private touchToolSelected = false;
+  get plotlyTouch() {
+    return this.cooperative && this.touchToolSelected;
+  }
+  selectTouchTool(selected: boolean) {
+    this.touchToolSelected = selected;
+    this.lastTapTime = -Infinity;
+    this.updateScrollButton();
+  }
+  private scrollPageButton: Plotly.ModeBarButton = {
+    name: "scrollPage",
+    title: "Scroll page",
+    attr: "cooperative_gestures",
+    toggle: true,
+    icon: {
+      width: 24,
+      height: 24,
+      path: "M11 5.83 7.41 9.41 6 8l6-6 6 6-1.41 1.41L13 5.83v12.34l3.59-3.58L18 16l-6 6-6-6 1.41-1.41L11 18.17Z",
+    },
+    click: () => {
+      this.selectTouchTool(!this.touchToolSelected);
+      // Plotly updates its toggle after the click handler returns.
+      queueMicrotask(() => this.updateScrollButton());
+    },
+  };
+  addScrollButton(config: Partial<Plotly.Config>) {
+    if (!this.cooperative || config.staticPlot) return;
+    if (Array.isArray(config.modeBarButtons))
+      config.modeBarButtons = [
+        ...config.modeBarButtons,
+        [this.scrollPageButton],
+      ];
+    else
+      config.modeBarButtonsToAdd = [
+        ...(config.modeBarButtonsToAdd ?? []),
+        this.scrollPageButton,
+      ];
+  }
+  updateScrollButton() {
+    const button = this.el.querySelector<HTMLButtonElement>(
+      '.modebar-btn[data-attr="cooperative_gestures"]',
+    );
+    if (!button) return;
+    const selected = !this.touchToolSelected;
+    button.classList.toggle("active", selected);
+    button.setAttribute("aria-pressed", String(selected));
+    const path = button.querySelector<SVGPathElement>(".icon path");
+    const style = this.el._fullLayout?.modebar;
+    if (path)
+      path.style.fill = String(
+        (selected ? style?.activecolor : style?.color) ?? "",
+      );
+  }
   lastTapTime = -Infinity; // a touch right after a tap is a gesture, not a scroll
   private onCooperativeClick = (e: MouseEvent) => {
     if (
       this.cooperative &&
+      !this.plotlyTouch &&
       this.enabled.hold_to_scan &&
       "pointerType" in e &&
       e.pointerType === "touch"
@@ -293,7 +353,8 @@ export class TouchController {
     if (!this.cooperative) return;
     const pageScroll =
       "touches" in e
-        ? e.touches.length === 1 &&
+        ? !this.plotlyTouch &&
+          e.touches.length === 1 &&
           !this.zooms &&
           e.timeStamp - this.lastTapTime >= DOUBLE_TAP_MS &&
           draggerOf(this.el, e.touches[0], ".drag")

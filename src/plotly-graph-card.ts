@@ -554,9 +554,11 @@ export class PlotlyGraph extends HTMLElement {
     this.enterBrowsingMode();
     await this.plot({ should_fetch: true });
   };
-  onRelayout = async () => {
+  onRelayout = async (update: Partial<Plotly.Layout>) => {
     // user panned/zoomed
     if (this.isInternalRelayout) return;
+    if (update.dragmode !== undefined)
+      this.touchController.selectTouchTool(true);
     this.enterBrowsingMode();
     await this.plot({ should_fetch: true });
   };
@@ -565,6 +567,7 @@ export class PlotlyGraph extends HTMLElement {
   // render an error card.
   async setConfig(config: InputConfig) {
     this.config = config;
+    this.touchController.selectTouchTool(false);
     setInitialLoadingHeight(this.cardEl, config.layout);
     if (this.isConnected) this.updateCardSize();
     void this.exitBrowsingMode();
@@ -753,6 +756,7 @@ export class PlotlyGraph extends HTMLElement {
       }
       copyPlotlyStyles(this.plotlyStyleEl);
       this.touchController.Fx = (Plotly as any).Fx;
+      this.touchController.addScrollButton(config);
       await this.withoutRelayout(async () => {
         const autorangeMainAxis =
           autorange_after_scroll &&
@@ -794,6 +798,7 @@ export class PlotlyGraph extends HTMLElement {
           if (alignment) await Plotly.relayout(this.contentEl, alignment);
         }
         this.contentEl.style.visibility = "";
+        this.touchController.updateScrollButton();
       });
       if (this.isConnected) this.connectPlotlyListeners();
     } finally {
