@@ -310,18 +310,21 @@ export class TouchController {
       queueMicrotask(() => this.updateScrollButton());
     },
   };
-  addScrollButton(config: Partial<Plotly.Config>) {
-    if (!this.cooperative || config.staticPlot) return;
-    if (Array.isArray(config.modeBarButtons))
-      config.modeBarButtons = [
-        ...config.modeBarButtons,
-        [this.scrollPageButton],
-      ];
-    else
-      config.modeBarButtonsToAdd = [
-        ...(config.modeBarButtonsToAdd ?? []),
-        this.scrollPageButton,
-      ];
+  withScrollButton(config: Partial<Plotly.Config>): Partial<Plotly.Config> {
+    if (!this.cooperative || config.staticPlot) return config;
+    return {
+      ...config,
+      ...(Array.isArray(config.modeBarButtons)
+        ? {
+            modeBarButtons: [...config.modeBarButtons, [this.scrollPageButton]],
+          }
+        : {
+            modeBarButtonsToAdd: [
+              ...(config.modeBarButtonsToAdd ?? []),
+              this.scrollPageButton,
+            ],
+          }),
+    };
   }
   updateScrollButton() {
     const button = this.el.querySelector<HTMLButtonElement>(

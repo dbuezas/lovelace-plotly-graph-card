@@ -756,7 +756,6 @@ export class PlotlyGraph extends HTMLElement {
       }
       copyPlotlyStyles(this.plotlyStyleEl);
       this.touchController.Fx = (Plotly as any).Fx;
-      this.touchController.addScrollButton(config);
       await this.withoutRelayout(async () => {
         const autorangeMainAxis =
           autorange_after_scroll &&
@@ -772,7 +771,7 @@ export class PlotlyGraph extends HTMLElement {
           this.contentEl,
           drawnEntities,
           layout,
-          config,
+          this.touchController.withScrollButton(config),
         );
         if (autorangeMainAxis) {
           const update = {
