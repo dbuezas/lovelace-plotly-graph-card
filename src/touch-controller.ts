@@ -1,7 +1,9 @@
 import { TouchGestures } from "./types";
+import { GestureLock } from "./gesture-lock";
 
 type PlotlyEl = Plotly.PlotlyHTMLElement & {
   layout: Plotly.Layout;
+  _fullLayout?: Plotly.Layout;
   // Plotly keeps its drag state on the graph div "so that others can look at
   // and modify them" (plotly.js dragelement)
   _dragging?: boolean;
@@ -68,7 +70,7 @@ const wheel = (
   if (scrollZoom) scrollZoom.cartesian = true;
   try {
     dragger.dispatchEvent(
-      new WheelEvent("wheel", { clientX, clientY, deltaY }),
+      new WheelEvent("wheel", { clientX, clientY, deltaY, ctrlKey: true }),
     );
   } finally {
     if (scrollZoom) scrollZoom.cartesian = enabled;
@@ -124,7 +126,8 @@ const pinch: Gesture = (el, controller) => {
     },
     end: (e) => {
       if (!dragger) return;
-      if (e.touches.length) return void (last = measure(e.touches));
+      if (e.touches.length >= (controller.cooperative ? 2 : 1))
+        return void (last = measure(e.touches));
       dragger = undefined;
       controller.zoomEnd();
     },
@@ -134,7 +137,6 @@ const pinch: Gesture = (el, controller) => {
 // Double tap, then drag: up/down zooms, left/right pans. A plain double tap
 // stays Plotly's (reset), so the gesture only starts once the finger moves.
 const doubleTapDrag: Gesture = (el, controller) => {
-  let lastTapTime = -Infinity;
   let firstTap: { x: number; y: number } | undefined; // until it moves
   let tap:
     | { dragger: Element; x: number; y: number; lastX: number; lastY: number }
@@ -148,10 +150,12 @@ const doubleTapDrag: Gesture = (el, controller) => {
   return {
     start: (e) => {
       end(); // a second finger hands over to pinch
-      if (e.touches.length !== 1) return void (lastTapTime = -Infinity);
+      firstTap = undefined;
+      if (e.touches.length !== 1)
+        return void (controller.lastTapTime = -Infinity);
       const t = e.touches[0];
       const dragger = draggerOf(el, t);
-      if (e.timeStamp - lastTapTime >= DOUBLE_TAP_MS)
+      if (e.timeStamp - controller.lastTapTime >= DOUBLE_TAP_MS)
         return void (firstTap = { x: t.clientX, y: t.clientY });
       if (controller.enabled.double_tap_drag_to_zoom && dragger)
         tap = {
@@ -187,7 +191,8 @@ const doubleTapDrag: Gesture = (el, controller) => {
     },
     end: (e) => {
       // Only a tap that didn't move can start a double tap
-      lastTapTime = firstTap && !e.touches.length ? e.timeStamp : -Infinity;
+      controller.lastTapTime =
+        firstTap && !e.touches.length ? e.timeStamp : -Infinity;
       firstTap = undefined;
       end();
     },
@@ -243,10 +248,16 @@ const scan: Gesture = (el, controller) => {
       const t = e.touches[0];
       if (e.touches.length !== 1 || (!hold.scanning && moved(t, hold)))
         return end(); // Plotly pans
+      if (controller.cooperative && !hold.scanning) return;
       stop(e); // while holding, small moves stay hidden from Plotly
       if (hold.scanning) hover(hold.dragger, t.clientX, t.clientY);
     },
-    end,
+    end: (e) => {
+      // A held touch must not turn into the browser's compatibility mouse click.
+      if (controller.cooperative && hold?.scanning && e.cancelable)
+        e.preventDefault();
+      end();
+    },
     cleanup: end,
   };
 };
@@ -258,7 +269,11 @@ const tapWithoutTooltip: Gesture = (el, controller) => ({
   move: () => {},
   end: (e) => {
     // _dragging is still set when Plotly owns the touch (no gesture took it)
-    if (controller.enabled.hold_to_scan && !e.touches.length && el._dragging)
+    if (
+      controller.enabled.hold_to_scan &&
+      !e.touches.length &&
+      (el._dragging || (controller.cooperative && !e.defaultPrevented))
+    )
       setTimeout(() => controller.Fx?.unhover(el)); // after Plotly's touchend
   },
 });
@@ -266,6 +281,98 @@ const tapWithoutTooltip: Gesture = (el, controller) => ({
 type TouchEventName = "touchstart" | "touchmove" | "touchend" | "touchcancel";
 
 export class TouchController {
+  private lockEnabled = false;
+  private locked = true;
+  private dragmode: Plotly.Layout["dragmode"] = "pan";
+  private restoreDragTimer?: ReturnType<typeof setTimeout>;
+  private restoreDragmode?: () => void;
+  private gestureLock: GestureLock;
+  get cooperative() {
+    return this.lockEnabled && this.locked;
+  }
+  selectTouchTool(mode: Plotly.Layout["dragmode"]) {
+    if (!this.lockEnabled) return;
+    this.locked = mode === false;
+    if (mode !== false) this.dragmode = mode;
+    this.lastTapTime = -Infinity;
+    this.gestureLock.update(this.lockEnabled, this.locked);
+  }
+  resetLock() {
+    this.locked = true;
+    this.dragmode = "pan";
+    this.lastTapTime = -Infinity;
+  }
+  prepareLayout(
+    layout: Partial<Plotly.Layout>,
+    config: Partial<Plotly.Config>,
+    explicitDragmode: boolean,
+  ) {
+    this.lockEnabled =
+      !explicitDragmode &&
+      layout.dragmode === false &&
+      config.displayModeBar !== false &&
+      !config.staticPlot;
+    this.gestureLock.update(this.lockEnabled, this.locked);
+    return this.lockEnabled
+      ? { ...layout, dragmode: this.locked ? false : this.dragmode }
+      : layout;
+  }
+  private allowNativeDrag() {
+    this.restoreDragmode?.();
+    const layout = this.el._fullLayout;
+    if (!layout || layout.dragmode !== false) return;
+    layout.dragmode = "pan";
+    // Plotly reads the mode when its drag starts; restore it after that event.
+    this.restoreDragmode = () => {
+      layout.dragmode = false;
+      this.restoreDragmode = undefined;
+    };
+    clearTimeout(this.restoreDragTimer);
+    this.restoreDragTimer = setTimeout(() => this.restoreDragmode?.());
+  }
+  private onAxisDrag = (event: MouseEvent) => {
+    const target = event.target as Element;
+    if (this.cooperative && target.closest(".drag:not(.nsewdrag)"))
+      this.allowNativeDrag();
+  };
+  private onToggleLock: (mode: Plotly.Layout["dragmode"]) => void;
+  private toggleLock = () => {
+    this.selectTouchTool(this.locked ? this.dragmode : false);
+    this.onToggleLock(this.locked ? false : this.dragmode);
+  };
+  lastTapTime = -Infinity; // a touch right after a tap is a gesture, not a scroll
+  private onCooperativeClick = (e: MouseEvent) => {
+    if (
+      this.cooperative &&
+      this.enabled.hold_to_scan &&
+      "pointerType" in e &&
+      e.pointerType === "touch"
+    )
+      this.Fx?.unhover(this.el);
+  };
+  private onCooperativeInput = (e: TouchEvent | WheelEvent) => {
+    if (!this.cooperative) return;
+    if ("touches" in e) {
+      if (
+        e.touches.length === 1 &&
+        e.timeStamp - this.lastTapTime < DOUBLE_TAP_MS
+      ) {
+        this.allowNativeDrag();
+      } else if (
+        e.touches.length === 1 &&
+        !this.zooms &&
+        (e.touches[0].target as Element).closest(".drag")
+      ) {
+        // Even with dragmode:false, Plotly also handles the compatibility click.
+        // Do not start a second click sequence for a plain page-scrolling touch.
+        e.stopPropagation();
+      }
+    } else if (!e.ctrlKey && !e.metaKey) {
+      // Plotly's dragmode:false leaves touch scrolling to the browser; wheel
+      // zoom is separate, so only modified wheel events reach Plotly.
+      e.stopPropagation();
+    }
+  };
   enabled: TouchGestures = {
     pinch_to_zoom: true,
     double_tap_drag_to_zoom: true,
@@ -280,15 +387,34 @@ export class TouchController {
   cleanups: (() => void)[] = [];
   constructor(param: {
     el: PlotlyEl;
+    lockElement: HTMLElement;
+    onToggleLock: (mode: Plotly.Layout["dragmode"]) => void;
     onZoomStart: () => any;
     onZoomEnd: () => any;
   }) {
     this.el = param.el;
+    this.onToggleLock = param.onToggleLock;
+    this.gestureLock = new GestureLock(
+      param.el,
+      param.lockElement,
+      this.toggleLock,
+    );
     this.onZoomStart = param.onZoomStart;
     this.onZoomEnd = param.onZoomEnd;
   }
   connect() {
     this.disconnect();
+    this.gestureLock.connect();
+    this.el.addEventListener("mousedown", this.onAxisDrag, true);
+    this.el.addEventListener("wheel", this.onCooperativeInput, {
+      capture: true,
+      passive: true,
+    });
+    this.el.addEventListener("touchstart", this.onCooperativeInput, {
+      capture: true,
+      passive: true,
+    });
+    this.el.addEventListener("click", this.onCooperativeClick, true);
     for (const gesture of [pinch, doubleTapDrag, scan, tapWithoutTooltip]) {
       const { start, move, end, cleanup } = gesture(this.el, this);
       if (cleanup) this.cleanups.push(cleanup);
@@ -303,6 +429,13 @@ export class TouchController {
       this.el.addEventListener(type, fn, { capture: true, passive: false });
   }
   disconnect() {
+    this.gestureLock.disconnect();
+    clearTimeout(this.restoreDragTimer);
+    this.restoreDragmode?.();
+    this.el.removeEventListener("mousedown", this.onAxisDrag, true);
+    this.el.removeEventListener("wheel", this.onCooperativeInput, true);
+    this.el.removeEventListener("touchstart", this.onCooperativeInput, true);
+    this.el.removeEventListener("click", this.onCooperativeClick, true);
     for (const [type, fn] of this.listeners)
       this.el.removeEventListener(type, fn, { capture: true });
     this.listeners = [];

@@ -239,6 +239,55 @@ export class PlotlyGraph extends HTMLElement {
               border: 0px;
               border-radius: 3px;
             }
+            #gesture-lock {
+              position: absolute;
+              left: 50%;
+              top: 38%;
+              transform: translate(-50%, -50%);
+              display: flex;
+              align-items: center;
+              gap: 10px;
+              box-sizing: border-box;
+              width: 270px;
+              max-width: calc(100% - 24px);
+              padding: 6px 7px 6px 12px;
+              border: 1px solid var(--divider-color, #8886);
+              border-radius: 9px;
+              background: color-mix(in srgb, var(--ha-card-background, var(--card-background-color, #fff)) 82%, transparent);
+              color: var(--primary-text-color, #333);
+              font: 12px var(--ha-font-family-body, var(--paper-font-body1_-_font-family, sans-serif));
+              z-index: 10;
+              pointer-events: none;
+            }
+            #gesture-lock[hidden], #gesture-lock [hidden] { display: none; }
+            #gesture-lock [role=status] { flex: 1; min-width: 0; }
+            #gesture-lock button {
+              display: inline-flex;
+              align-items: center;
+              gap: 6px;
+              flex-shrink: 0;
+              min-height: 44px;
+              padding: 8px;
+              border: 1px solid var(--divider-color, #8886);
+              border-radius: 7px;
+              background: var(--secondary-background-color, #eee);
+              color: var(--primary-color, #03a9f4);
+              font: inherit;
+              cursor: pointer;
+              pointer-events: auto;
+            }
+            #gesture-lock ha-icon { --mdc-icon-size: 18px; width: 18px; height: 18px; }
+            #gesture-lock.unlocked {
+              left: 48px;
+              top: 8px;
+              transform: none;
+              width: auto;
+              padding: 0;
+              border: 0;
+              background: none;
+              opacity: .7;
+            }
+            #gesture-lock.unlocked:hover, #gesture-lock:focus-within { opacity: 1; }
             #error-msg {
               position: absolute;
               color: #ffffff;
@@ -262,6 +311,10 @@ export class PlotlyGraph extends HTMLElement {
           <div id="loading" role="status" aria-label="Loading graph"></div>
           <span id="error-msg"> </span>
           <button id="reset" class="hidden">↻</button>
+          <div id="gesture-lock" hidden>
+            <span role="status" hidden></span>
+            <button type="button" aria-label="Unlock chart"><ha-icon icon="mdi:lock" aria-hidden="true"></ha-icon><span>Unlock</span></button>
+          </div>
         </ha-card>`;
     this.errorMsgEl = shadow.querySelector("#error-msg")!;
     this.cardEl = shadow.querySelector("ha-card")!;
@@ -273,6 +326,13 @@ export class PlotlyGraph extends HTMLElement {
     this.contentEl.style.visibility = "hidden";
     this.touchController = new TouchController({
       el: this.contentEl,
+      lockElement: shadow.querySelector("#gesture-lock")!,
+      onToggleLock: (dragmode) => {
+        void this.withoutRelayout(async () => {
+          const { default: Plotly } = await import("./plotly");
+          await Plotly.relayout(this.contentEl, { dragmode });
+        });
+      },
       onZoomStart: () => {
         this.pausedRendering = true;
       },
@@ -554,9 +614,11 @@ export class PlotlyGraph extends HTMLElement {
     this.enterBrowsingMode();
     await this.plot({ should_fetch: true });
   };
-  onRelayout = async () => {
+  onRelayout = async (update: Partial<Plotly.Layout>) => {
     // user panned/zoomed
     if (this.isInternalRelayout) return;
+    if (update.dragmode !== undefined)
+      this.touchController.selectTouchTool(update.dragmode);
     this.enterBrowsingMode();
     await this.plot({ should_fetch: true });
   };
@@ -565,6 +627,7 @@ export class PlotlyGraph extends HTMLElement {
   // render an error card.
   async setConfig(config: InputConfig) {
     this.config = config;
+    this.touchController.resetLock();
     setInitialLoadingHeight(this.cardEl, config.layout);
     if (this.isConnected) this.updateCardSize();
     void this.exitBrowsingMode();
@@ -763,10 +826,16 @@ export class PlotlyGraph extends HTMLElement {
           entities,
           this.parsed_config.raw_plotly_config,
         );
+        const plotLayout = this.touchController.prepareLayout(
+          layout,
+          config,
+          this.config.layout?.dragmode !== undefined ||
+            this.config.raw_plotly_config === true,
+        );
         await plotlyModule.reactWithMarginFix(
           this.contentEl,
           drawnEntities,
-          layout,
+          plotLayout,
           config,
         );
         if (autorangeMainAxis) {
