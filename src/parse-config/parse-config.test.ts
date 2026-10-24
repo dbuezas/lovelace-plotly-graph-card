@@ -300,6 +300,75 @@ describe("statistics request batching", () => {
     });
   });
 
+  it("keeps boundary statistics bars after filters with visible-range autorange", async () => {
+    const day = 86400000;
+    const start = Date.parse("2025-01-01T00:00:00Z");
+    const callWS = vi.fn(async () => ({
+      "sensor.east": [1000, 10].map((mean, i) => ({
+        ...statistic("sensor.east", mean),
+        start: new Date(start + i * day).toISOString(),
+        end: new Date(start + (i + 1) * day).toISOString(),
+      })),
+    }));
+    const result = await update(
+      new ConfigParser(),
+      callWS,
+      [
+        {
+          entity: "sensor.east",
+          statistic: "mean",
+          period: "day",
+          type: "bar",
+          filters: [{ multiply: 1 }],
+        },
+      ],
+      {
+        autorange_after_scroll: true,
+        visible_range: [start + 3 * 3600000, NOW],
+        time_zone: "UTC",
+      },
+    );
+    expect(result.errors).toEqual([]);
+    expect(result.parsed.entities[0]).toMatchObject({
+      x: ["2025-01-01 00:00:00.000", "2025-01-02 00:00:00.000"],
+      y: [1000, 10],
+    });
+  });
+
+  it("keeps statistics lines extended to the left edge when using autorange and filters", async () => {
+    const start = Date.parse("2025-01-01T00:00:00Z");
+    const callWS = vi.fn(async () => ({
+      "sensor.east": [1000, 10].map((mean, i) => ({
+        ...statistic("sensor.east", mean),
+        start: new Date(start + i * 86400000).toISOString(),
+        end: new Date(start + (i + 1) * 86400000).toISOString(),
+      })),
+    }));
+    const result = await update(
+      new ConfigParser(),
+      callWS,
+      [
+        {
+          entity: "sensor.east",
+          statistic: "mean",
+          period: "day",
+          type: "scatter",
+          filters: [{ multiply: 1 }],
+        },
+      ],
+      {
+        autorange_after_scroll: true,
+        visible_range: [start + 3 * 3600000, NOW],
+        time_zone: "UTC",
+      },
+    );
+    expect(result.errors).toEqual([]);
+    expect(result.parsed.entities[0]).toMatchObject({
+      x: ["2025-01-01 03:00:00.000", "2025-01-02 00:00:00.000"],
+      y: [1000, 10],
+    });
+  });
+
   it("bounds batched statistics and refetches pruned data when browsing back", async () => {
     const hour = 3600000;
     const samples = Array.from({ length: 40 }, (_, i) => ({
