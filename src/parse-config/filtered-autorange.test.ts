@@ -176,7 +176,7 @@ describe("autorange after custom filters", () => {
     });
   });
 
-  it("keeps state and statistics metadata aligned with the remaining points", async () => {
+  it("keeps the boundary statistic and its metadata when clipping filtered data", async () => {
     const result = await setup({
       entities: [
         {
@@ -197,7 +197,7 @@ describe("autorange after custom filters", () => {
             "$ex states.map((state, i) => [state.state, statistics[i].mean])",
         },
       ],
-    }).update();
+    }).update([START + HOUR / 2, START + 2.5 * HOUR]);
     expect(result.errors).toEqual([]);
     expect(result.parsed.entities[0]).toHaveProperty("customdata", [
       ["10", 10],
