@@ -158,6 +158,17 @@ describe("ConfigParser cache retention", () => {
     ]);
   });
 
+  it("still extends state history to a rolling range's left edge", async () => {
+    vi.setSystemTime(BASE + 24.5 * HOUR);
+    const { update } = setup();
+    const result = await update({ time_zone: "local" });
+    expect(result.errors).toEqual([]);
+    expect(result.parsed.entities[0]).toMatchObject({
+      x: [21.5, 22, 23, 24].map((hour) => new Date(BASE + hour * HOUR)),
+      y: [21, 22, 23, 24].map(String),
+    });
+  });
+
   it("keeps history batched while pruning and refetching rolling windows", async () => {
     const { parser, callWS, update } = setup();
     const entities = [sensor, { entity: "sensor.two" }];

@@ -757,7 +757,9 @@ function removeOutOfRange(data: EntityData, range: [number, number]) {
   const first = bounds.le(data.xs, new Date(range[0]));
   if (first > -1) {
     data.xs.splice(0, first);
-    data.xs[0] = new Date(range[0]);
+    // State history extends to the left edge; statistics must keep their
+    // period boundaries so Plotly can calculate bar widths from real intervals.
+    if (!data.statistics.length) data.xs[0] = new Date(range[0]);
     data.ys.splice(0, first);
     data.states.splice(0, first);
     data.statistics.splice(0, first);

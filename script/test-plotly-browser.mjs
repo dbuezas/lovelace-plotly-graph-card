@@ -1033,6 +1033,52 @@ try {
   results.results.push(
     "rolling dynamic range keeps 61 samples across 20 card refreshes",
   );
+  await page.evaluate(async () => {
+    const card = document.getElementById("card-under-test");
+    const entity = "sensor.daily_statistics";
+    const day = 86400000;
+    const base = Date.parse("2025-01-01T00:00:00Z");
+    const rows = [0, 1, 2].map((i) => ({
+      start: base + i * day,
+      end: base + (i + 1) * day,
+      mean: i + 1,
+    }));
+    card.hass = {
+      ...card.hass,
+      callWS: async (request) => {
+        if (request.type !== "recorder/statistics_during_period")
+          throw new Error("Unexpected request");
+        return { [entity]: rows };
+      },
+    };
+    window.statisticsBarStart = base;
+    await card.setConfig({
+      type: "custom:plotly-graph",
+      time_zone: "UTC",
+      refresh_interval: 0,
+      visible_range: `$fn () => [window.statisticsBarStart, ${base + 3 * day}]`,
+      entities: [{ entity, statistic: "mean", period: "day", type: "bar" }],
+    });
+    let initialWidth;
+    for (const hours of [0, 3, 6]) {
+      window.statisticsBarStart = base + hours * 3600000;
+      await card.plot({ should_fetch: true });
+      if (card.errorMsgEl.textContent)
+        throw new Error(card.errorMsgEl.textContent);
+      const bars = card.contentEl.calcdata[0];
+      if (bars.length !== rows.length)
+        throw new Error("A valid statistics bar was removed");
+      initialWidth ??= bars[0].w;
+      if (
+        initialWidth <= 0 ||
+        bars.some((bar) => Math.abs(bar.w - initialWidth) > 1)
+      )
+        throw new Error("Moving the visible range changed Plotly's bar widths");
+    }
+  });
+  results.results.push(
+    "statistics bars keep Plotly's automatic widths when the left edge moves inside a period",
+  );
   const modernCardResults = await page.evaluate(async () => {
     const card = document.getElementById("card-under-test");
     const rendered = [];
