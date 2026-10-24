@@ -262,6 +262,7 @@ class ConfigParser {
       path.match(/^entities\.\d+\.filters$/) &&
       this.fnParam.getFromConfig("autorange_after_scroll") &&
       !this.fnParam.getFromConfig("raw_plotly_config") &&
+      !this.fnParam.preserveStatisticsPeriods &&
       this.fnParam.xs &&
       this.fnParam.xs.every((x) => x instanceof Date)
     ) {
@@ -308,6 +309,7 @@ class ConfigParser {
       delete this.fnParam.xs;
       delete this.fnParam.ys;
       delete this.fnParam.statistics;
+      delete this.fnParam.preserveStatisticsPeriods;
       delete this.fnParam.states;
       delete this.fnParam.meta;
     }
@@ -586,7 +588,16 @@ class ConfigParser {
 
     if (offset) data.xs = data.xs.map((x) => new Date(+x + offset));
 
-    removeOutOfRange(data, this.observed_range);
+    const traceType = get(this.yaml_with_defaults, `${path}.type`);
+    // Dynamic trace types are resolved after fetching. Leave their timestamps
+    // intact too; Plotly will determine the rendered bar extents.
+    this.fnParam.preserveStatisticsPeriods =
+      !!statisticsParams && (traceType === "bar" || is$fn(traceType));
+    removeOutOfRange(
+      data,
+      this.observed_range,
+      this.fnParam.preserveStatisticsPeriods,
+    );
     if (extend_to_present && data.xs.length > 0) {
       // Todo: should this be done after the entity was fully evaluated?
       // this would make it also work if filters change the data.
@@ -753,11 +764,16 @@ function is$fn(value) {
   );
 }
 
-function removeOutOfRange(data: EntityData, range: [number, number]) {
+function removeOutOfRange(
+  data: EntityData,
+  range: [number, number],
+  preservePeriods = false,
+) {
   const first = bounds.le(data.xs, new Date(range[0]));
   if (first > -1) {
     data.xs.splice(0, first);
-    data.xs[0] = new Date(range[0]);
+    // Bars need real period boundaries; lines retain their left-edge sample.
+    if (!preservePeriods) data.xs[0] = new Date(range[0]);
     data.ys.splice(0, first);
     data.states.splice(0, first);
     data.statistics.splice(0, first);
@@ -783,6 +799,7 @@ type FnParam = {
   xs?: Date[];
   ys?: YValue[];
   statistics?: StatisticValue[];
+  preserveStatisticsPeriods?: boolean;
   states?: HassEntity[];
   meta?: HassEntity["attributes"];
   /** IANA timezone the plot is drawn in, undefined for the browser's */

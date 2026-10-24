@@ -1033,6 +1033,141 @@ try {
   results.results.push(
     "rolling dynamic range keeps 61 samples across 20 card refreshes",
   );
+  await page.evaluate(async () => {
+    const card = document.getElementById("card-under-test");
+    const entity = "sensor.daily_statistics";
+    const day = 86400000;
+    const base = Date.parse("2025-01-01T00:00:00Z");
+    const rows = [0, 1, 2].map((i) => ({
+      start: base + i * day,
+      end: base + (i + 1) * day,
+      mean: [1000, 10, 20][i],
+    }));
+    card.hass = {
+      ...card.hass,
+      callWS: async (request) => {
+        if (request.type !== "recorder/statistics_during_period")
+          throw new Error("Unexpected request");
+        return { [entity]: rows };
+      },
+    };
+    window.statisticsBarStart = base;
+    await card.setConfig({
+      type: "custom:plotly-graph",
+      time_zone: "UTC",
+      refresh_interval: 0,
+      visible_range: `$fn () => [window.statisticsBarStart, ${base + 3 * day}]`,
+      entities: [{ entity, statistic: "mean", period: "day", type: "bar" }],
+    });
+    let initialWidth;
+    for (const hours of [0, 3, 6]) {
+      window.statisticsBarStart = base + hours * 3600000;
+      await card.plot({ should_fetch: true });
+      if (card.errorMsgEl.textContent)
+        throw new Error(card.errorMsgEl.textContent);
+      const bars = card.contentEl.calcdata[0];
+      if (bars.length !== rows.length)
+        throw new Error("A valid statistics bar was removed");
+      initialWidth ??= bars[0].w;
+      if (
+        initialWidth <= 0 ||
+        bars.some((bar) => Math.abs(bar.w - initialWidth) > 1)
+      )
+        throw new Error("Moving the visible range changed Plotly's bar widths");
+    }
+    const snapshot = () => ({
+      values: Array.from(card.contentEl.data[0].y),
+      source: Array.from(card.parsed_config.entities[0].y),
+      width: card.contentEl.calcdata[0].map((bar) => bar.w),
+      maximum: card.contentEl._fullLayout.yaxis.range[1],
+    });
+    for (const filtered of [false, true]) {
+      const config = {
+        ...card.config,
+        autorange_after_scroll: true,
+        entities: [
+          {
+            entity,
+            ...(filtered ? {} : { statistic: "mean" }),
+            period: "day",
+            type: filtered ? "$fn () => 'bar'" : "bar",
+            ...(filtered ? { filters: [{ multiply: 1 }] } : {}),
+          },
+        ],
+      };
+      await card.setConfig(config);
+      for (const hours of [3, 12, 3]) {
+        window.statisticsBarStart = base + hours * 3600000;
+        await card.plot({ should_fetch: true });
+        const state = snapshot();
+        if (card.errorMsgEl.textContent)
+          throw new Error(card.errorMsgEl.textContent);
+        if (state.width.some((width) => Math.abs(width - initialWidth) > 1))
+          throw new Error("Autorange changed the original bar widths");
+        if (state.source[0] !== 1000)
+          throw new Error("Autorange modified the original statistics data");
+        if (hours === 12) {
+          if (state.values[0] !== null || state.maximum > 100)
+            throw new Error(
+              "A fully clipped statistics bar still affects autorange",
+            );
+        } else if (state.values[0] !== 1000 || state.maximum < 1000) {
+          throw new Error(
+            "A partly visible statistics bar was removed from autorange",
+          );
+        }
+      }
+    }
+    await card.setConfig({
+      ...card.config,
+      entities: [
+        {
+          entity,
+          statistic: "mean",
+          period: "day",
+          type: "bar",
+          width: 6 * 3600000,
+          offset: 8 * 3600000,
+        },
+      ],
+    });
+    for (const hours of [12, 15]) {
+      window.statisticsBarStart = base + hours * 3600000;
+      await card.plot({ should_fetch: true });
+      const state = snapshot();
+      if (hours === 12 ? state.values[0] !== 1000 : state.values[0] !== null)
+        throw new Error(
+          "Statistics autorange ignored Plotly's explicit bar offset or width",
+        );
+    }
+    await card.setConfig({
+      ...card.config,
+      layout: { barmode: "stack" },
+      entities: [
+        {
+          entity,
+          statistic: "mean",
+          period: "day",
+          type: "bar",
+          width: 3600000,
+        },
+        { entity, statistic: "mean", period: "day", type: "bar", width: day },
+      ],
+    });
+    window.statisticsBarStart = base + 3 * 3600000;
+    await card.plot({ should_fetch: true });
+    if (
+      card.contentEl.data[0].y[0] !== 1000 ||
+      card.contentEl.calcdata[1][0].b !== 1000 ||
+      card.contentEl._fullLayout.yaxis.range[1] < 2000
+    )
+      throw new Error(
+        "Clipping changed the base of a partly visible statistics stack",
+      );
+  });
+  results.results.push(
+    "statistics bars retain native widths and offsets, keep partly visible values, exclude fully clipped values from autorange and restore them when panning back, with or without filters",
+  );
   const modernCardResults = await page.evaluate(async () => {
     const card = document.getElementById("card-under-test");
     const rendered = [];

@@ -770,14 +770,27 @@ export class PlotlyGraph extends HTMLElement {
           config,
         );
         if (autorangeMainAxis) {
-          const update = {
-            "yaxis.autorange": true,
-          };
-          // Plotly accepts attribute paths, but its public types only list nested keys.
-          await Plotly.relayout(
-            this.contentEl,
-            update as Partial<Plotly.Layout>,
-          );
+          const visibleBars = this.parsed_config.raw_plotly_config
+            ? undefined
+            : plotlyModule.getVisibleStatisticsBars(
+                this.contentEl,
+                drawnEntities,
+              );
+          if (visibleBars) {
+            await plotlyModule.reactWithMarginFix(
+              this.contentEl,
+              visibleBars,
+              { ...layout, yaxis: { ...layout.yaxis, autorange: true } },
+              config,
+            );
+          } else {
+            const update = { "yaxis.autorange": true };
+            // Plotly accepts attribute paths, but its public types only list nested keys.
+            await Plotly.relayout(
+              this.contentEl,
+              update as Partial<Plotly.Layout>,
+            );
+          }
         }
         const editorUpdate = getEditorYAxisRelayout(
           this.parsed_config,
