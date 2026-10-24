@@ -121,7 +121,7 @@ try {
     }, config);
 
   const mountLegacy = (config) =>
-    mount({ ...config, cooperative_gestures: false });
+    mount({ ...config, layout: { dragmode: "pan", ...config.layout } });
 
   const state = (target = page) =>
     target.evaluate(() => {
@@ -751,6 +751,38 @@ try {
     s1.scrollY > 20 && s1.range === s0.range,
     "normal wheel scrolls the page, not the plot",
   );
+  const platform = await desktopPage.evaluate(() => navigator.platform);
+  for (const [value, modifier] of [
+    ["MacIntel", "Cmd"],
+    ["Win32", "Ctrl"],
+  ]) {
+    await desktopPage.evaluate(
+      (value) =>
+        Object.defineProperty(navigator, "platform", {
+          configurable: true,
+          value,
+        }),
+      value,
+    );
+    await mountScrollable({}, desktopPage);
+    await desktopPage.mouse.move(dx, dy);
+    await desktopPage.mouse.wheel(0, 100);
+    await wait(200);
+    check(
+      (await desktopPage
+        .locator("#gesture-lock [role=status]")
+        .textContent()) === `Hold ${modifier} to zoom`,
+      `${value} shows the matching English modifier-key hint`,
+    );
+  }
+  await desktopPage.evaluate(
+    (value) =>
+      Object.defineProperty(navigator, "platform", {
+        configurable: true,
+        value,
+      }),
+    platform,
+  );
 
   for (const key of ["Control", "Meta"]) {
     await mountScrollable({}, desktopPage);
@@ -778,10 +810,7 @@ try {
   await desktopPage.mouse.up();
   await wait(300);
   s1 = await state(desktopPage);
-  check(
-    s1.range !== s0.range && Math.abs(s1.span - s0.span) < tol(s0.span),
-    "mouse dragging still pans the plot",
-  );
+  check(s1.range === s0.range, "locked mouse drags do not move the plot");
 
   await mountScrollable();
   s0 = await state();
@@ -792,6 +821,36 @@ try {
   check(
     s1.scrollY > 20 && s1.range === s0.range && !s1.paused,
     "one-finger swipes scroll the page without panning the plot",
+  );
+  const lockButton = "#gesture-lock button";
+  check(
+    (await page.locator("#gesture-lock").isVisible()) &&
+      (await page.locator(lockButton).textContent()) === "Unlock",
+    "actual dashboard scrolling reveals the labelled Unlock button",
+  );
+  const lockIcon = await page
+    .locator(`${lockButton} ha-icon`)
+    .getAttribute("icon");
+  await page.locator(lockButton).tap();
+  await wait(300);
+  s0 = await state();
+  await page.evaluate(() =>
+    document.getElementById("c").plot({ should_fetch: false }),
+  );
+  s0 = await state();
+  check(
+    (await page.locator("#gesture-lock").isVisible()) &&
+      (await page.locator(lockButton).textContent()) === "Lock" &&
+      (await page.locator(`${lockButton} ha-icon`).getAttribute("icon")) ===
+        lockIcon,
+    "Unlock leaves the same labelled lock control visible after a redraw",
+  );
+  await page.locator(lockButton).tap();
+  await wait(100);
+  check(
+    (await state()).range === s0.range &&
+      !(await page.locator("#gesture-lock").isVisible()),
+    "Lock restores scrolling without resetting the range or leaving a hint",
   );
 
   await mountScrollable();
@@ -812,7 +871,6 @@ try {
     "one-finger swipes over axis handles also scroll the page",
   );
 
-  const scrollButton = '.modebar-btn[data-attr="cooperative_gestures"]';
   const selectTool = async (mode, target = page) => {
     const button = target.locator(
       `.modebar-btn[data-attr="dragmode"][data-val="${mode}"]`,
@@ -828,18 +886,17 @@ try {
   );
   s0 = await state();
   await touch("touchStart", [[cx - 90, cy - 50]]);
-  await wait(450);
+  await wait(20);
   await moves(steps([[cx - 90, cy - 50]], [[cx + 90, cy + 50]]).slice(1));
   await touch("touchEnd");
   await wait(300);
   s1 = await state();
   check(
     s1.span < s0.span * 0.8 && s1.scrollY === 0,
-    "modebar Zoom uses native one-finger box zoom, even after a redraw or a hold",
+    "modebar Zoom uses native one-finger box zoom after a redraw",
   );
 
   await mountScrollable({ config: { displayModeBar: true } });
-  // Pan is already Plotly's default: selecting it must still unlock touch.
   await selectTool("pan");
   s0 = await state();
   await drag(steps([[cx + 60, cy]], [[cx - 60, cy]], 30));
@@ -850,9 +907,9 @@ try {
     s1.range !== s0.range &&
       Math.abs(s1.span - s0.span) < tol(s0.span) &&
       s1.scrollY === 0,
-    "selecting the already-active Pan tool enables native one-finger panning",
+    "selecting Pan unlocks native one-finger panning",
   );
-  await page.locator(scrollButton).tap();
+  await page.locator(lockButton).tap();
   await wait(300);
   s0 = await state();
   await drag(steps([[cx, cy + 60]], [[cx, cy - 60]], 30));
@@ -860,11 +917,8 @@ try {
   await wait(300);
   s1 = await state();
   check(
-    s1.scrollY > 20 &&
-      s1.range === s0.range &&
-      (await page.locator(scrollButton).getAttribute("aria-pressed")) ===
-        "true",
-    "Scroll page restores one-finger dashboard scrolling",
+    s1.scrollY > 20 && s1.range === s0.range,
+    "Lock restores one-finger dashboard scrolling",
   );
 
   await mountScrollable({
@@ -873,9 +927,11 @@ try {
       modeBarButtons: [["pan2d", "zoom2d"]],
     },
   });
+  await selectTool("pan");
   check(
-    (await page.locator(scrollButton).count()) === 1,
-    "custom modebar layouts also include the Scroll page button",
+    (await page.locator(lockButton).count()) === 1 &&
+      (await page.locator("#gesture-lock").isVisible()),
+    "custom modebar layouts retain the Lock control without extra modebar buttons",
   );
 
   await mountScrollable();
@@ -949,8 +1005,10 @@ try {
   await wait(300);
   s1 = await state();
   check(
-    s1.events.click === 1 && s1.hover === "",
-    "a plot tap still emits one click without showing a tooltip",
+    s1.events.click === 1 &&
+      s1.hover === "" &&
+      !(await page.locator("#gesture-lock").isVisible()),
+    "a plot tap emits one click without a tooltip or an Unlock hint",
     `${s1.events.click} clicks; tooltip: ${s1.hover}`,
   );
   await tap(...s1.legend);
@@ -981,8 +1039,9 @@ try {
     s1.hover !== "" &&
       s1.events.click === 0 &&
       s1.range === s0.range &&
-      s1.scrollY === 0,
-    "press and hold keeps the tooltip without moving the plot or triggering a click",
+      s1.scrollY === 0 &&
+      !(await page.locator("#gesture-lock").isVisible()),
+    "press and hold keeps the tooltip without moving the plot or showing Unlock",
   );
 
   await mountScrollable();
@@ -1002,7 +1061,7 @@ try {
     "lifting a finger ends the cooperative two-finger interaction",
   );
 
-  await mountScrollable({ cooperative_gestures: false }, desktopPage);
+  await mountScrollable({ layout: { dragmode: "pan" } }, desktopPage);
   s0 = await state(desktopPage);
   await desktopPage.mouse.move(dx, dy);
   await desktopPage.mouse.wheel(0, -120);
@@ -1010,7 +1069,50 @@ try {
   s1 = await state(desktopPage);
   check(
     s1.span < s0.span * 0.98 && s1.scrollY === 0,
-    "cooperative_gestures: false restores ordinary wheel zoom",
+    "an explicit dragmode restores ordinary wheel zoom without a lock",
+  );
+  await mountScrollable({ config: { displayModeBar: false } }, desktopPage);
+  s0 = await state(desktopPage);
+  await desktopPage.mouse.move(dx, dy);
+  await desktopPage.mouse.wheel(0, -100);
+  await wait(200);
+  check(
+    (await state(desktopPage)).span < s0.span &&
+      !(await desktopPage.locator("#gesture-lock").isVisible()),
+    "a hidden modebar keeps native controls without a lock",
+  );
+
+  await mountScrollable({}, desktopPage);
+  await desktopPage.evaluate(async () => {
+    const card = document.getElementById("c");
+    card.style.width = "320px";
+    const host = document.createElement("div");
+    const shadow = host.attachShadow({ mode: "open" });
+    const scroller = document.createElement("div");
+    scroller.id = "dashboard-scroll";
+    scroller.style.cssText = "height:280px;overflow:auto";
+    shadow.append(scroller);
+    document.body.append(host);
+    scroller.append(card);
+    const below = document.createElement("div");
+    below.style.height = "400px";
+    scroller.append(below);
+    await new Promise((resolve) => setTimeout(resolve, 400));
+  });
+  const nestedPlot = desktopPage.locator(".nsewdrag");
+  const nestedRect = await nestedPlot.boundingBox();
+  await desktopPage.mouse.move(
+    nestedRect.x + nestedRect.width / 2,
+    nestedRect.y + 100,
+  );
+  await desktopPage.mouse.wheel(0, 50);
+  await wait(200);
+  check(
+    (await desktopPage.locator("#gesture-lock").isVisible()) &&
+      (await desktopPage
+        .locator("#dashboard-scroll")
+        .evaluate((el) => el.scrollTop > 0)),
+    "scrolling inside a shadow-root dashboard shows Unlock",
   );
   await desktop.close();
   await page.evaluate(() => {

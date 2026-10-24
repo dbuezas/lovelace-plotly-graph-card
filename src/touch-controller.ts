@@ -1,4 +1,5 @@
 import { TouchGestures } from "./types";
+import { GestureLock } from "./gesture-lock";
 
 type PlotlyEl = Plotly.PlotlyHTMLElement & {
   layout: Plotly.Layout;
@@ -37,8 +38,8 @@ const stop = (e: TouchEvent) => {
 };
 const moved = (t: Touch, from: { x: number; y: number }) =>
   Math.hypot(t.clientX - from.x, t.clientY - from.y) >= TAP_TOLERANCE_PX;
-const draggerOf = (el: PlotlyEl, touch?: Touch, selector = ".nsewdrag") => {
-  const dragger = (touch?.target as Element | null)?.closest?.(selector);
+const draggerOf = (el: PlotlyEl, touch?: Touch) => {
+  const dragger = (touch?.target as Element | null)?.closest?.(".nsewdrag");
   return dragger && el.contains(dragger) ? dragger : undefined;
 };
 
@@ -104,7 +105,6 @@ const pinch: Gesture = (el, controller) => {
   };
   return {
     start: (e) => {
-      if (controller.plotlyTouch) return;
       if (!dragger) {
         if (!controller.enabled.pinch_to_zoom || e.touches.length < 2) return;
         dragger = draggerOf(el, e.touches[0]) ?? draggerOf(el, e.touches[1]);
@@ -151,7 +151,6 @@ const doubleTapDrag: Gesture = (el, controller) => {
     start: (e) => {
       end(); // a second finger hands over to pinch
       firstTap = undefined;
-      if (controller.plotlyTouch) return;
       if (e.touches.length !== 1)
         return void (controller.lastTapTime = -Infinity);
       const t = e.touches[0];
@@ -228,7 +227,6 @@ const scan: Gesture = (el, controller) => {
   return {
     start: (e) => {
       end();
-      if (controller.plotlyTouch) return;
       const t = e.touches[0];
       const dragger = e.touches.length === 1 && draggerOf(el, t);
       if (
@@ -270,7 +268,6 @@ const tapWithoutTooltip: Gesture = (el, controller) => ({
   start: () => {},
   move: () => {},
   end: (e) => {
-    if (controller.plotlyTouch) return;
     // _dragging is still set when Plotly owns the touch (no gesture took it)
     if (
       controller.enabled.hold_to_scan &&
@@ -284,68 +281,69 @@ const tapWithoutTooltip: Gesture = (el, controller) => ({
 type TouchEventName = "touchstart" | "touchmove" | "touchend" | "touchcancel";
 
 export class TouchController {
-  cooperative = true;
-  private touchToolSelected = false;
-  get plotlyTouch() {
-    return this.cooperative && this.touchToolSelected;
+  private lockEnabled = false;
+  private locked = true;
+  private dragmode: Plotly.Layout["dragmode"] = "pan";
+  private restoreDragTimer?: ReturnType<typeof setTimeout>;
+  private restoreDragmode?: () => void;
+  private gestureLock: GestureLock;
+  get cooperative() {
+    return this.lockEnabled && this.locked;
   }
-  selectTouchTool(selected: boolean) {
-    this.touchToolSelected = selected;
+  selectTouchTool(mode: Plotly.Layout["dragmode"]) {
+    if (!this.lockEnabled) return;
+    this.locked = mode === false;
+    if (mode !== false) this.dragmode = mode;
     this.lastTapTime = -Infinity;
-    this.updateScrollButton();
+    this.gestureLock.update(this.lockEnabled, this.locked);
   }
-  private scrollPageButton: Plotly.ModeBarButton = {
-    name: "scrollPage",
-    title: "Scroll page",
-    attr: "cooperative_gestures",
-    toggle: true,
-    icon: {
-      width: 24,
-      height: 24,
-      path: "M11 5.83 7.41 9.41 6 8l6-6 6 6-1.41 1.41L13 5.83v12.34l3.59-3.58L18 16l-6 6-6-6 1.41-1.41L11 18.17Z",
-    },
-    click: () => {
-      this.selectTouchTool(!this.touchToolSelected);
-      // Plotly updates its toggle after the click handler returns.
-      queueMicrotask(() => this.updateScrollButton());
-    },
-  };
-  withScrollButton(config: Partial<Plotly.Config>): Partial<Plotly.Config> {
-    if (!this.cooperative || config.staticPlot) return config;
-    return {
-      ...config,
-      ...(Array.isArray(config.modeBarButtons)
-        ? {
-            modeBarButtons: [...config.modeBarButtons, [this.scrollPageButton]],
-          }
-        : {
-            modeBarButtonsToAdd: [
-              ...(config.modeBarButtonsToAdd ?? []),
-              this.scrollPageButton,
-            ],
-          }),
+  resetLock() {
+    this.locked = true;
+    this.dragmode = "pan";
+    this.lastTapTime = -Infinity;
+  }
+  prepareLayout(
+    layout: Partial<Plotly.Layout>,
+    config: Partial<Plotly.Config>,
+    explicitDragmode: boolean,
+  ) {
+    this.lockEnabled =
+      !explicitDragmode &&
+      layout.dragmode === false &&
+      config.displayModeBar !== false &&
+      !config.staticPlot;
+    this.gestureLock.update(this.lockEnabled, this.locked);
+    return this.lockEnabled
+      ? { ...layout, dragmode: this.locked ? false : this.dragmode }
+      : layout;
+  }
+  private allowNativeDrag() {
+    this.restoreDragmode?.();
+    const layout = this.el._fullLayout;
+    if (!layout || layout.dragmode !== false) return;
+    layout.dragmode = "pan";
+    // Plotly reads the mode when its drag starts; restore it after that event.
+    this.restoreDragmode = () => {
+      layout.dragmode = false;
+      this.restoreDragmode = undefined;
     };
+    clearTimeout(this.restoreDragTimer);
+    this.restoreDragTimer = setTimeout(() => this.restoreDragmode?.());
   }
-  updateScrollButton() {
-    const button = this.el.querySelector<HTMLButtonElement>(
-      '.modebar-btn[data-attr="cooperative_gestures"]',
-    );
-    if (!button) return;
-    const selected = !this.touchToolSelected;
-    button.classList.toggle("active", selected);
-    button.setAttribute("aria-pressed", String(selected));
-    const path = button.querySelector<SVGPathElement>(".icon path");
-    const style = this.el._fullLayout?.modebar;
-    if (path)
-      path.style.fill = String(
-        (selected ? style?.activecolor : style?.color) ?? "",
-      );
-  }
+  private onAxisDrag = (event: MouseEvent) => {
+    const target = event.target as Element;
+    if (this.cooperative && target.closest(".drag:not(.nsewdrag)"))
+      this.allowNativeDrag();
+  };
+  private onToggleLock: (mode: Plotly.Layout["dragmode"]) => void;
+  private toggleLock = () => {
+    this.selectTouchTool(this.locked ? this.dragmode : false);
+    this.onToggleLock(this.locked ? false : this.dragmode);
+  };
   lastTapTime = -Infinity; // a touch right after a tap is a gesture, not a scroll
   private onCooperativeClick = (e: MouseEvent) => {
     if (
       this.cooperative &&
-      !this.plotlyTouch &&
       this.enabled.hold_to_scan &&
       "pointerType" in e &&
       e.pointerType === "touch"
@@ -354,16 +352,26 @@ export class TouchController {
   };
   private onCooperativeInput = (e: TouchEvent | WheelEvent) => {
     if (!this.cooperative) return;
-    const pageScroll =
-      "touches" in e
-        ? !this.plotlyTouch &&
-          e.touches.length === 1 &&
-          !this.zooms &&
-          e.timeStamp - this.lastTapTime >= DOUBLE_TAP_MS &&
-          draggerOf(this.el, e.touches[0], ".drag")
-        : !e.ctrlKey && !e.metaKey;
-    // Leave browser scrolling intact, but don't let Plotly capture the input.
-    if (pageScroll) e.stopPropagation();
+    if ("touches" in e) {
+      if (
+        e.touches.length === 1 &&
+        e.timeStamp - this.lastTapTime < DOUBLE_TAP_MS
+      ) {
+        this.allowNativeDrag();
+      } else if (
+        e.touches.length === 1 &&
+        !this.zooms &&
+        (e.touches[0].target as Element).closest(".drag")
+      ) {
+        // Even with dragmode:false, Plotly also handles the compatibility click.
+        // Do not start a second click sequence for a plain page-scrolling touch.
+        e.stopPropagation();
+      }
+    } else if (!e.ctrlKey && !e.metaKey) {
+      // Plotly's dragmode:false leaves touch scrolling to the browser; wheel
+      // zoom is separate, so only modified wheel events reach Plotly.
+      e.stopPropagation();
+    }
   };
   enabled: TouchGestures = {
     pinch_to_zoom: true,
@@ -379,15 +387,25 @@ export class TouchController {
   cleanups: (() => void)[] = [];
   constructor(param: {
     el: PlotlyEl;
+    lockElement: HTMLElement;
+    onToggleLock: (mode: Plotly.Layout["dragmode"]) => void;
     onZoomStart: () => any;
     onZoomEnd: () => any;
   }) {
     this.el = param.el;
+    this.onToggleLock = param.onToggleLock;
+    this.gestureLock = new GestureLock(
+      param.el,
+      param.lockElement,
+      this.toggleLock,
+    );
     this.onZoomStart = param.onZoomStart;
     this.onZoomEnd = param.onZoomEnd;
   }
   connect() {
     this.disconnect();
+    this.gestureLock.connect();
+    this.el.addEventListener("mousedown", this.onAxisDrag, true);
     this.el.addEventListener("wheel", this.onCooperativeInput, {
       capture: true,
       passive: true,
@@ -411,6 +429,10 @@ export class TouchController {
       this.el.addEventListener(type, fn, { capture: true, passive: false });
   }
   disconnect() {
+    this.gestureLock.disconnect();
+    clearTimeout(this.restoreDragTimer);
+    this.restoreDragmode?.();
+    this.el.removeEventListener("mousedown", this.onAxisDrag, true);
     this.el.removeEventListener("wheel", this.onCooperativeInput, true);
     this.el.removeEventListener("touchstart", this.onCooperativeInput, true);
     this.el.removeEventListener("click", this.onCooperativeClick, true);

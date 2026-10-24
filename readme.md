@@ -1407,42 +1407,46 @@ raw_plotly_config: true # defaults to false
 To define general configurations like enabling scroll to zoom, disabling the modebar, etc.
 Anything from https://plotly.com/javascript/configuration-options/.
 
-## cooperative_gestures
+## Dashboard scrolling
 
 Enabled by default so graphs do not interrupt dashboard scrolling:
 
 - Mouse or trackpad scrolling moves the page. Hold Ctrl or Cmd to zoom the graph.
 - On Cartesian plots, swipe with one finger to scroll the page; use two fingers to pan or zoom.
-- Mouse dragging, legend clicks, press-and-hold tooltips and tap + drag (on the plot or an axis) still work.
+- Taps, legend clicks, press-and-hold tooltips and tap + drag (on the plot or an axis) still work.
 
-Selecting Zoom, Pan or another drag tool in the modebar enables Plotly's native
-one-finger controls. The **Scroll page** button returns to dashboard scrolling.
-It also toggles between these two touch modes without changing the selected
-Plotly tool. The choice survives redraws, and Ctrl/Cmd + scroll is unchanged.
-The extra tap, hold and pinch gestures yield to Plotly while a drag tool is active.
+Scrolling over a graph briefly shows a hint and an **Unlock** button. Reading a
+data point does not show the hint. Unlock enables normal mouse-wheel and
+one-finger controls; **Lock** returns to dashboard scrolling without resetting
+the view. The choice survives redraws. Selecting Zoom, Pan or another drag tool
+in the modebar also unlocks the graph, and the extra touch gestures stay available.
 
 Two-finger gestures require `pinch_to_zoom` in `extended_touch_support`.
 `config.scrollZoom: false` still disables mouse-wheel zoom, including Ctrl/Cmd.
 A two-finger interaction ends when either finger is lifted.
 
-To restore the previous scroll and touch behavior:
+To use normal dragging and wheel zoom without the lock:
 
 ```yaml
-cooperative_gestures: false
+layout:
+  dragmode: pan
 ```
+
+An explicit `layout.dragmode` or `config.displayModeBar: false` leaves interaction
+to Plotly and does not show the lock. Static plots do not show it either.
 
 ## extended_touch_support
 
 Touch gestures on the plot area:
 
-- Drag with one finger: scroll the page, or pan with `cooperative_gestures: false` (Plotly).
+- Drag with one finger: scroll the page while locked, or use the selected Plotly drag tool while unlocked.
 - Tap: click (Plotly). Double tap: reset (Plotly).
-- `pinch_to_zoom`: pinch with two fingers to zoom at the fingers and pan with them, like a map. With `cooperative_gestures: false`, lifting one finger keeps panning with the other.
+- `pinch_to_zoom`: pinch with two fingers to zoom at the fingers and pan with them, like a map. While unlocked, lifting one finger keeps panning with the other.
 - `double_tap_drag_to_zoom`: double tap, keep the finger down and drag up or down to zoom, left or right to pan.
 - `hold_to_scan`: press and hold for 300 ms, then slide. The tooltip follows the finger through the data and stays after lifting the finger, until the next touch. With `hovermode: closest` (Plotly's default) it follows the x position of the finger, like `hovermode: x`. It is off with `hovermode: false`. While it is on, a tap doesn't show the tooltip.
 
-All extra gestures are on by default. Turn them off below; page scrolling still
-follows `cooperative_gestures`:
+All extra gestures are on by default. Turn them off below; the scrolling lock
+still works:
 
 ```yaml
 extended_touch_support: false
