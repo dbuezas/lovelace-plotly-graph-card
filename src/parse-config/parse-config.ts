@@ -269,7 +269,13 @@ class ConfigParser {
       // Other x formats may represent non-time axes; leave those unchanged.
       // Clip after the complete chain without mutating arrays stored in vars.
       const [start, end] = this.getVisibleRange();
-      const mask = this.fnParam.xs.map((x) => +x >= start && +x <= end);
+      // Keep the boundary statistic: its bar or line can still enter the view.
+      const first = this.fnParam.statistics?.length
+        ? bounds.le(this.fnParam.xs, new Date(start))
+        : -1;
+      const mask = this.fnParam.xs.map(
+        (x, i) => (i === first || +x >= start) && +x <= end,
+      );
       this.fnParam.xs = this.fnParam.xs.filter((_, i) => mask[i]);
       this.fnParam.ys = this.fnParam.ys?.filter((_, i) => mask[i]);
       this.fnParam.states = this.fnParam.states?.filter((_, i) => mask[i]);
@@ -757,7 +763,8 @@ function removeOutOfRange(data: EntityData, range: [number, number]) {
   const first = bounds.le(data.xs, new Date(range[0]));
   if (first > -1) {
     data.xs.splice(0, first);
-    data.xs[0] = new Date(range[0]);
+    // Statistics represent periods; moving their starts changes bar widths.
+    if (!data.statistics.length) data.xs[0] = new Date(range[0]);
     data.ys.splice(0, first);
     data.states.splice(0, first);
     data.statistics.splice(0, first);

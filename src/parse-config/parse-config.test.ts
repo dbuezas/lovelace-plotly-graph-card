@@ -233,6 +233,111 @@ describe("statistics request batching", () => {
     expect(callWS).toHaveBeenCalledTimes(1);
   });
 
+  it.each([0, 10.5])(
+    "keeps daily statistics on their original boundaries with a %s-hour range offset",
+    async (offset) => {
+      const day = 24 * 3600000;
+      const start = Date.parse("2025-01-01T00:00:00Z");
+      const timestamps = [start, start + day];
+      const callWS = vi.fn(async () => ({
+        "sensor.east": timestamps.map((timestamp, i) => ({
+          ...statistic("sensor.east", i + 1),
+          start: new Date(timestamp).toISOString(),
+          end: new Date(timestamp + day).toISOString(),
+        })),
+      }));
+      const result = await update(
+        new ConfigParser(),
+        callWS,
+        [
+          {
+            entity: "sensor.east",
+            statistic: "mean",
+            period: "day",
+            type: "bar",
+          },
+        ],
+        { visible_range: [start + offset * 3600000, NOW], time_zone: "local" },
+      );
+      expect(result.errors).toEqual([]);
+      expect(result.parsed.entities[0]).toMatchObject({
+        x: timestamps.map((timestamp) => new Date(timestamp)),
+        y: [1, 2],
+      });
+    },
+  );
+
+  it("keeps the first hourly statistic's period start after a rolling range moves", async () => {
+    const hour = 3600000;
+    const timestamps = [NOW - 3 * hour, NOW - 2 * hour, NOW - hour];
+    const callWS = vi.fn(async ({ start_time, end_time }) => ({
+      "sensor.east": timestamps
+        .filter(
+          (timestamp) =>
+            timestamp >= Date.parse(start_time) &&
+            timestamp < Date.parse(end_time),
+        )
+        .map((timestamp) => ({
+          ...statistic("sensor.east", timestamp),
+          start: new Date(timestamp).toISOString(),
+          end: new Date(timestamp + hour).toISOString(),
+        })),
+    }));
+    const parser = new ConfigParser();
+    const entities: InputConfig["entities"] = [
+      { entity: "sensor.east", statistic: "mean", period: "hour", type: "bar" },
+    ];
+    await update(parser, callWS, entities, { hours_to_show: 3.5 });
+    vi.mocked(Date.now).mockReturnValue(NOW + hour);
+    const result = await update(parser, callWS, entities, {
+      hours_to_show: 3.5,
+      time_zone: "local",
+    });
+    expect(result.errors).toEqual([]);
+    expect(result.parsed.entities[0]).toMatchObject({
+      x: timestamps.map((timestamp) => new Date(timestamp)),
+      y: timestamps,
+    });
+  });
+
+  it.each(["bar", "scatter"] as const)(
+    "keeps boundary statistics after filters with visible-range autorange for %s",
+    async (type) => {
+      const day = 86400000;
+      const start = Date.parse("2025-01-01T00:00:00Z");
+      const callWS = vi.fn(async () => ({
+        "sensor.east": [1000, 10].map((mean, i) => ({
+          ...statistic("sensor.east", mean),
+          start: new Date(start + i * day).toISOString(),
+          end: new Date(start + (i + 1) * day).toISOString(),
+        })),
+      }));
+      const result = await update(
+        new ConfigParser(),
+        callWS,
+        [
+          {
+            entity: "sensor.east",
+            statistic: "mean",
+            period: "day",
+            type,
+            filters: [{ multiply: 2 }],
+          },
+        ],
+        {
+          autorange_after_scroll: true,
+          visible_range: [start + 3 * 3600000, NOW],
+          time_zone: "local",
+        },
+      );
+      expect(result.errors).toEqual([]);
+      expect(result.parsed.entities[0]).toMatchObject({
+        x: [start, start + day].map((timestamp) => new Date(timestamp)),
+        y: [2000, 20],
+      });
+    },
+  );
+
   it("bounds batched statistics and refetches pruned data when browsing back", async () => {
     const hour = 3600000;
     const samples = Array.from({ length: 40 }, (_, i) => ({
