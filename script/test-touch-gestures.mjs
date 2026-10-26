@@ -13,7 +13,9 @@ const server = createServer((req, res) => {
     isJs ? "text/javascript; charset=utf-8" : "text/html",
   );
   res.end(
-    isJs ? js : `<!doctype html><body><script src="/card.js"></script></body>`,
+    isJs
+      ? js
+      : `<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><body><script src="/card.js"></script></body>`,
   );
 });
 await new Promise((r) => server.listen(0, "127.0.0.1", r));
@@ -32,6 +34,7 @@ try {
   const context = await browser.newContext({
     viewport: { width: 600, height: 500 },
     hasTouch: true,
+    isMobile: true,
   });
   const page = await context.newPage();
   const errors = [];
@@ -68,8 +71,8 @@ try {
       ]),
     );
 
-  const mount = (config) =>
-    page.evaluate(async (config) => {
+  const mount = (config, target = page) =>
+    target.evaluate(async (config) => {
       if (!customElements.get("ha-card"))
         customElements.define(
           "ha-card",
@@ -117,8 +120,11 @@ try {
         card.contentEl.on(`plotly_${name}`, () => window.events[name]++);
     }, config);
 
-  const state = () =>
-    page.evaluate(() => {
+  const mountLegacy = (config) =>
+    mount({ ...config, layout: { dragmode: "pan", ...config.layout } });
+
+  const state = (target = page) =>
+    target.evaluate(() => {
       const card = document.getElementById("c");
       const el = card.contentEl;
       const r = el.querySelector(".nsewdrag").getBoundingClientRect();
@@ -134,6 +140,9 @@ try {
           .map((n) => n.textContent)
           .join(" | "),
         paused: card.pausedRendering,
+        scrollY: window.scrollY,
+        pageScale: window.visualViewport.scale,
+        visible: el._fullData.map((trace) => trace.visible),
         events: { ...window.events },
       };
     });
@@ -145,7 +154,7 @@ try {
       return el._fullLayout.xaxis.p2l(clientX - r.left);
     }, clientX);
 
-  await mount({});
+  await mountLegacy({});
   const s = await state();
   const { l, t, w, h } = s.rect;
   const cx = l + w / 2;
@@ -157,7 +166,7 @@ try {
   for (const extended_touch_support of [false, true]) {
     const tag = `extended_touch_support ${extended_touch_support}:`;
     const config = { extended_touch_support };
-    await mount(config);
+    await mountLegacy(config);
     let s0 = await state();
     await tap(cx, cy);
     await wait(100);
@@ -176,7 +185,7 @@ try {
     );
     await wait(400);
 
-    await mount(config);
+    await mountLegacy(config);
     await tap(cx, cy);
     await wait(80);
     await tap(cx, cy);
@@ -188,7 +197,7 @@ try {
       `doubleclick=${s1.events.doubleclick}`,
     );
 
-    await mount(config);
+    await mountLegacy(config);
     s0 = await state();
     await tap(...s0.legend);
     await wait(80);
@@ -201,7 +210,7 @@ try {
       `legenddoubleclick=${s1.events.legenddoubleclick}`,
     );
 
-    await mount(config);
+    await mountLegacy(config);
     s0 = await state();
     const x0 = await xAt(cx);
     await drag(steps([[cx, cy]], [[cx - 100, cy]]));
@@ -214,7 +223,7 @@ try {
   }
 
   // --- Pinch: zoom at the fingers and pan with them, like a map
-  await mount({});
+  await mountLegacy({});
   let s0 = await state();
   let a = await xAt(cx - 50);
   let b = await xAt(cx + 50);
@@ -251,7 +260,7 @@ try {
     JSON.stringify(s1.events),
   );
 
-  await mount({});
+  await mountLegacy({});
   s0 = await state();
   a = await xAt(cx);
   await drag(
@@ -275,7 +284,7 @@ try {
     "two fingers moving together pan without zooming",
   );
 
-  await mount({});
+  await mountLegacy({});
   a = await xAt(cx - 50);
   await touch("touchStart", [
     [cx - 50, cy],
@@ -291,7 +300,7 @@ try {
     "after lifting one finger, the other keeps panning",
   );
 
-  await mount({});
+  await mountLegacy({});
   s0 = await state();
   a = await xAt(cx - 40);
   await drag(steps([[cx - 40, cy]], [[cx - 10, cy]], 4)); // Plotly pans first
@@ -320,7 +329,7 @@ try {
     `${(((await xAt(cx - 60)) - a) / 60000).toFixed(1)} min off`,
   );
 
-  await mount({});
+  await mountLegacy({});
   await drag(
     steps(
       [
@@ -345,7 +354,7 @@ try {
   check((await state()).range !== s0.range, "pan works after touchcancel");
 
   // --- Double tap, then drag
-  await mount({});
+  await mountLegacy({});
   s0 = await state();
   await tap(cx, cy);
   await wait(80);
@@ -364,7 +373,7 @@ try {
     "no Plotly double click (reset) after double-tap-drag",
   );
 
-  await mount({});
+  await mountLegacy({});
   s0 = await state();
   a = await xAt(cx);
   await tap(cx, cy);
@@ -379,7 +388,7 @@ try {
     "double tap + drag sideways pans with the finger, without zooming",
   );
 
-  await mount({});
+  await mountLegacy({});
   s0 = await state();
   a = await xAt(cx);
   await tap(cx, cy);
@@ -394,7 +403,7 @@ try {
     "double tap + diagonal drag zooms and keeps the data under the finger",
   );
 
-  await mount({});
+  await mountLegacy({});
   s0 = await state();
   await tap(cx, cy);
   await wait(80);
@@ -409,7 +418,7 @@ try {
   );
 
   // --- Scan (press and hold)
-  await mount({});
+  await mountLegacy({});
   s0 = await state();
   await touch("touchStart", [[l + w * 0.3, cy]]);
   await wait(450);
@@ -453,7 +462,7 @@ try {
     "a pan afterwards clears the tooltip and pans",
   );
 
-  await mount({});
+  await mountLegacy({});
   s0 = await state();
   await touch("touchStart", [[cx, cy]]);
   await wait(450);
@@ -481,7 +490,7 @@ try {
     "scan, then a second finger: pinch zooms and the tooltip goes away",
   );
 
-  await mount({});
+  await mountLegacy({});
   s0 = await state();
   await tap(cx, cy);
   await wait(80);
@@ -496,7 +505,7 @@ try {
     "double tap + hold scans (no zoom)",
   );
 
-  await mount({ layout: { hovermode: false } });
+  await mountLegacy({ layout: { hovermode: false } });
   s0 = await state();
   await touch("touchStart", [[cx, cy]]);
   await wait(450);
@@ -509,7 +518,7 @@ try {
     "hovermode: false turns scan off (hold + slide pans)",
   );
 
-  await mount({ extended_touch_support: { hold_to_scan: false } });
+  await mountLegacy({ extended_touch_support: { hold_to_scan: false } });
   s0 = await state();
   await touch("touchStart", [[cx, cy]]);
   await wait(450);
@@ -522,7 +531,7 @@ try {
     "hold_to_scan: false: hold + slide pans",
   );
 
-  await mount({ disable_pinch_to_zoom: true });
+  await mountLegacy({ disable_pinch_to_zoom: true });
   s0 = await state();
   await drag(
     steps(
@@ -571,21 +580,25 @@ try {
     await wait(300);
     return (await state()).span < s0.span * 0.8;
   };
-  await mount({ extended_touch_support: { pinch_to_zoom: false } });
+  await mountLegacy({ extended_touch_support: { pinch_to_zoom: false } });
   let p = await pinchOut();
-  await mount({ extended_touch_support: { pinch_to_zoom: false } });
+  await mountLegacy({ extended_touch_support: { pinch_to_zoom: false } });
   check(
     !p && (await doubleTapDragIn()),
     "pinch_to_zoom: false: no pinch, double-tap-drag still zooms",
   );
-  await mount({ extended_touch_support: { double_tap_drag_to_zoom: false } });
+  await mountLegacy({
+    extended_touch_support: { double_tap_drag_to_zoom: false },
+  });
   p = await pinchOut();
-  await mount({ extended_touch_support: { double_tap_drag_to_zoom: false } });
+  await mountLegacy({
+    extended_touch_support: { double_tap_drag_to_zoom: false },
+  });
   check(
     p && !(await doubleTapDragIn()),
     "double_tap_drag_to_zoom: false: no double-tap-drag, pinch still zooms",
   );
-  await mount({ extended_touch_support: { hold_to_scan: false } });
+  await mountLegacy({ extended_touch_support: { hold_to_scan: false } });
   await tap(cx, cy);
   await wait(100);
   check(
@@ -594,7 +607,7 @@ try {
   );
 
   // --- scrollZoom: false only turns off the mouse wheel
-  await mount({ config: { scrollZoom: false } });
+  await mountLegacy({ config: { scrollZoom: false } });
   check(await pinchOut(), "scrollZoom: false: pinch still zooms");
   s0 = await state();
   await page.mouse.move(cx, cy);
@@ -606,7 +619,7 @@ try {
   );
 
   // --- Two quick swipes are pans, not a double-tap-drag
-  await mount({});
+  await mountLegacy({});
   s0 = await state();
   await drag(steps([[cx + 60, cy]], [[cx - 60, cy]], 4), 10);
   await touch("touchEnd");
@@ -621,7 +634,7 @@ try {
   );
 
   // --- A pan while the data loads is not undone when the data arrives
-  await mount({});
+  await mountLegacy({});
   await page.evaluate(() => {
     const parser = document.getElementById("c").configParser;
     const update = parser.update.bind(parser);
@@ -645,7 +658,7 @@ try {
   );
 
   // --- Lifecycle
-  await mount({});
+  await mountLegacy({});
   await page.evaluate(() => {
     window.old = document.getElementById("c");
     window.oldHovers = 0;
@@ -665,7 +678,7 @@ try {
     "card removed while holding: no tooltip afterwards",
   );
 
-  await mount({});
+  await mountLegacy({});
   await drag(
     steps(
       [
@@ -688,7 +701,7 @@ try {
     await page.evaluate(() => !window.old.pausedRendering),
     "card removed in the middle of a pinch: rendering is not left paused",
   );
-  await mount({});
+  await mountLegacy({});
   s0 = await state();
   await drag(
     steps(
@@ -712,6 +725,401 @@ try {
     ratio.toFixed(2),
   );
 
+  // --- Cooperative input is the default on scrollable dashboards.
+  const mountScrollable = async (config = {}, target = page) => {
+    await target.evaluate(() => {
+      document.body.style.minHeight = "1800px";
+      window.scrollTo(0, 0);
+    });
+    await mount(config, target);
+  };
+  const desktop = await browser.newContext({
+    viewport: { width: 600, height: 500 },
+  });
+  const desktopPage = await desktop.newPage();
+  desktopPage.on("pageerror", (e) => errors.push(e.message));
+  await desktopPage.goto(`http://127.0.0.1:${server.address().port}`);
+  await mountScrollable({}, desktopPage);
+  s0 = await state(desktopPage);
+  const dx = s0.rect.l + s0.rect.w / 2;
+  const dy = s0.rect.t + s0.rect.h / 2;
+  await desktopPage.mouse.move(dx, dy);
+  await desktopPage.mouse.wheel(0, 120);
+  await wait(300);
+  s1 = await state(desktopPage);
+  check(
+    s1.scrollY > 20 && s1.range === s0.range,
+    "normal wheel scrolls the page, not the plot",
+  );
+  const platform = await desktopPage.evaluate(() => navigator.platform);
+  for (const [value, modifier] of [
+    ["MacIntel", "Cmd"],
+    ["Win32", "Ctrl"],
+  ]) {
+    await desktopPage.evaluate(
+      (value) =>
+        Object.defineProperty(navigator, "platform", {
+          configurable: true,
+          value,
+        }),
+      value,
+    );
+    await mountScrollable({}, desktopPage);
+    await desktopPage.mouse.move(dx, dy);
+    await desktopPage.mouse.wheel(0, 100);
+    await wait(200);
+    check(
+      (await desktopPage
+        .locator("#gesture-lock [role=status]")
+        .textContent()) === `Hold ${modifier} to zoom`,
+      `${value} shows the matching English modifier-key hint`,
+    );
+  }
+  await desktopPage.evaluate(
+    (value) =>
+      Object.defineProperty(navigator, "platform", {
+        configurable: true,
+        value,
+      }),
+    platform,
+  );
+
+  for (const key of ["Control", "Meta"]) {
+    await mountScrollable({}, desktopPage);
+    s0 = await state(desktopPage);
+    await desktopPage.mouse.move(dx, dy);
+    await desktopPage.keyboard.down(key);
+    try {
+      await desktopPage.mouse.wheel(0, -120);
+    } finally {
+      await desktopPage.keyboard.up(key);
+    }
+    await wait(300);
+    s1 = await state(desktopPage);
+    check(
+      s1.span < s0.span * 0.98 && s1.scrollY === 0 && s1.pageScale === 1,
+      `${key}+wheel zooms the plot without scrolling or zooming the page`,
+    );
+  }
+
+  await mountScrollable({}, desktopPage);
+  s0 = await state(desktopPage);
+  await desktopPage.mouse.move(dx, dy);
+  await desktopPage.mouse.down();
+  await desktopPage.mouse.move(dx - 80, dy, { steps: 8 });
+  await desktopPage.mouse.up();
+  await wait(300);
+  s1 = await state(desktopPage);
+  check(s1.range === s0.range, "locked mouse drags do not move the plot");
+
+  await mountScrollable();
+  s0 = await state();
+  await drag(steps([[cx, cy + 60]], [[cx, cy - 60]], 30));
+  await touch("touchEnd");
+  await wait(300);
+  s1 = await state();
+  check(
+    s1.scrollY > 20 && s1.range === s0.range && !s1.paused,
+    "one-finger swipes scroll the page without panning the plot",
+  );
+  const lockButton = "#gesture-lock button";
+  check(
+    (await page.locator("#gesture-lock").isVisible()) &&
+      (await page.locator(lockButton).textContent()) === "Unlock",
+    "actual dashboard scrolling reveals the labelled Unlock button",
+  );
+  const lockIcon = await page
+    .locator(`${lockButton} ha-icon`)
+    .getAttribute("icon");
+  await page.locator(lockButton).tap();
+  await wait(300);
+  s0 = await state();
+  await page.evaluate(() =>
+    document.getElementById("c").plot({ should_fetch: false }),
+  );
+  s0 = await state();
+  check(
+    (await page.locator("#gesture-lock").isVisible()) &&
+      (await page.locator(lockButton).textContent()) === "Lock" &&
+      (await page.locator(`${lockButton} ha-icon`).getAttribute("icon")) ===
+        lockIcon,
+    "Unlock leaves the same labelled lock control visible after a redraw",
+  );
+  await page.locator(lockButton).tap();
+  await wait(100);
+  check(
+    (await state()).range === s0.range &&
+      !(await page.locator("#gesture-lock").isVisible()),
+    "Lock restores scrolling without resetting the range or leaving a hint",
+  );
+
+  await mountScrollable();
+  s0 = await state();
+  const axisX = await page.evaluate(() => {
+    const r = document
+      .getElementById("c")
+      .contentEl.querySelector(".nsdrag")
+      .getBoundingClientRect();
+    return r.left + r.width / 2;
+  });
+  await drag(steps([[axisX, cy + 60]], [[axisX, cy - 60]], 30));
+  await touch("touchEnd");
+  await wait(300);
+  s1 = await state();
+  check(
+    s1.scrollY > 20 && s1.range === s0.range,
+    "one-finger swipes over axis handles also scroll the page",
+  );
+
+  const selectTool = async (mode, target = page) => {
+    const button = target.locator(
+      `.modebar-btn[data-attr="dragmode"][data-val="${mode}"]`,
+    );
+    await button.tap();
+    await wait(300);
+  };
+
+  await mountScrollable({ config: { displayModeBar: true } });
+  await selectTool("zoom");
+  await page.evaluate(() =>
+    document.getElementById("c").plot({ should_fetch: false }),
+  );
+  s0 = await state();
+  await touch("touchStart", [[cx - 90, cy - 50]]);
+  await wait(20);
+  await moves(steps([[cx - 90, cy - 50]], [[cx + 90, cy + 50]]).slice(1));
+  await touch("touchEnd");
+  await wait(300);
+  s1 = await state();
+  check(
+    s1.span < s0.span * 0.8 && s1.scrollY === 0,
+    "modebar Zoom uses native one-finger box zoom after a redraw",
+  );
+
+  await mountScrollable({ config: { displayModeBar: true } });
+  await selectTool("pan");
+  s0 = await state();
+  await drag(steps([[cx + 60, cy]], [[cx - 60, cy]], 30));
+  await touch("touchEnd");
+  await wait(300);
+  s1 = await state();
+  check(
+    s1.range !== s0.range &&
+      Math.abs(s1.span - s0.span) < tol(s0.span) &&
+      s1.scrollY === 0,
+    "selecting Pan unlocks native one-finger panning",
+  );
+  await page.locator(lockButton).tap();
+  await wait(300);
+  s0 = await state();
+  await drag(steps([[cx, cy + 60]], [[cx, cy - 60]], 30));
+  await touch("touchEnd");
+  await wait(300);
+  s1 = await state();
+  check(
+    s1.scrollY > 20 && s1.range === s0.range,
+    "Lock restores one-finger dashboard scrolling",
+  );
+
+  await mountScrollable({
+    config: {
+      displayModeBar: true,
+      modeBarButtons: [["pan2d", "zoom2d"]],
+    },
+  });
+  await selectTool("pan");
+  check(
+    (await page.locator(lockButton).count()) === 1 &&
+      (await page.locator("#gesture-lock").isVisible()),
+    "custom modebar layouts retain the Lock control without extra modebar buttons",
+  );
+
+  await mountScrollable();
+  s0 = await state();
+  await tap(cx, cy);
+  await wait(80);
+  await drag(steps([[cx, cy]], [[cx, cy + 80]]));
+  await touch("touchEnd");
+  await wait(300);
+  s1 = await state();
+  check(
+    s1.span < s0.span * 0.8 && s1.scrollY === 0 && s1.events.doubleclick === 0,
+    "tap + drag zooms the plot, not the page",
+  );
+
+  await mountScrollable();
+  s0 = await state();
+  const [ax, ay] = await page.evaluate(() => {
+    const r = document
+      .getElementById("c")
+      .contentEl.querySelector(".ewdrag")
+      .getBoundingClientRect();
+    return [r.left + r.width / 2, r.top + r.height / 2];
+  });
+  await tap(ax, ay);
+  await wait(80);
+  await drag(steps([[ax, ay]], [[ax - 100, ay]]));
+  await touch("touchEnd");
+  await wait(300);
+  s1 = await state();
+  check(
+    s1.range !== s0.range && s1.scrollY === 0,
+    "tap + drag on an axis drags the axis, not the page",
+  );
+
+  await mountScrollable();
+  p = await pinchOut();
+  s1 = await state();
+  check(
+    p && s1.scrollY === 0 && s1.pageScale === 1 && !s1.paused,
+    "two-finger pinch zooms the plot, not the page",
+  );
+
+  await mountScrollable();
+  s0 = await state();
+  await drag(
+    steps(
+      [
+        [cx - 40, cy],
+        [cx + 40, cy],
+      ],
+      [
+        [cx + 20, cy],
+        [cx + 100, cy],
+      ],
+    ),
+  );
+  await touch("touchEnd");
+  await wait(300);
+  s1 = await state();
+  check(
+    s1.range !== s0.range &&
+      Math.abs(s1.span - s0.span) < tol(s0.span) &&
+      s1.scrollY === 0,
+    "two fingers pan the plot without scrolling the page",
+  );
+
+  await mountScrollable();
+  s0 = await state();
+  await tap(cx, cy);
+  await wait(300);
+  s1 = await state();
+  check(
+    s1.events.click === 1 &&
+      s1.hover === "" &&
+      !(await page.locator("#gesture-lock").isVisible()),
+    "a plot tap emits one click without a tooltip or an Unlock hint",
+    `${s1.events.click} clicks; tooltip: ${s1.hover}`,
+  );
+  await tap(...s1.legend);
+  await wait(300);
+  check(
+    (await state()).visible[0] === "legendonly",
+    "legend taps still toggle a trace",
+  );
+
+  await mountScrollable();
+  await tap(cx, cy);
+  await wait(80);
+  await tap(cx, cy);
+  await wait(300);
+  check(
+    (await state()).events.doubleclick === 1,
+    "double tap still resets the plot",
+  );
+
+  await mountScrollable();
+  s0 = await state();
+  await touch("touchStart", [[cx, cy]]);
+  await wait(450);
+  await touch("touchEnd");
+  await wait(300);
+  s1 = await state();
+  check(
+    s1.hover !== "" &&
+      s1.events.click === 0 &&
+      s1.range === s0.range &&
+      s1.scrollY === 0 &&
+      !(await page.locator("#gesture-lock").isVisible()),
+    "press and hold keeps the tooltip without moving the plot or showing Unlock",
+  );
+
+  await mountScrollable();
+  await touch("touchStart", [
+    [cx - 40, cy],
+    [cx + 40, cy],
+  ]);
+  await touch("touchEnd", [[cx + 40, cy, 1]]);
+  s0 = await state();
+  const remainingFingerX = await xAt(cx);
+  await moves(steps([[cx - 40, cy]], [[cx + 40, cy]]).slice(1));
+  await touch("touchEnd");
+  await wait(300);
+  s1 = await state();
+  check(
+    Math.abs((await xAt(cx)) - remainingFingerX) < tol(s0.span) && !s1.paused,
+    "lifting a finger ends the cooperative two-finger interaction",
+  );
+
+  await mountScrollable({ layout: { dragmode: "pan" } }, desktopPage);
+  s0 = await state(desktopPage);
+  await desktopPage.mouse.move(dx, dy);
+  await desktopPage.mouse.wheel(0, -120);
+  await wait(300);
+  s1 = await state(desktopPage);
+  check(
+    s1.span < s0.span * 0.98 && s1.scrollY === 0,
+    "an explicit dragmode restores ordinary wheel zoom without a lock",
+  );
+  await mountScrollable({ config: { displayModeBar: false } }, desktopPage);
+  s0 = await state(desktopPage);
+  await desktopPage.mouse.move(dx, dy);
+  await desktopPage.mouse.wheel(0, -100);
+  await wait(200);
+  check(
+    (await state(desktopPage)).span < s0.span &&
+      !(await desktopPage.locator("#gesture-lock").isVisible()),
+    "a hidden modebar keeps native controls without a lock",
+  );
+
+  await mountScrollable({}, desktopPage);
+  await desktopPage.evaluate(async () => {
+    const card = document.getElementById("c");
+    card.style.width = "320px";
+    const host = document.createElement("div");
+    const shadow = host.attachShadow({ mode: "open" });
+    const scroller = document.createElement("div");
+    scroller.id = "dashboard-scroll";
+    scroller.style.cssText = "height:280px;overflow:auto";
+    shadow.append(scroller);
+    document.body.append(host);
+    scroller.append(card);
+    const below = document.createElement("div");
+    below.style.height = "400px";
+    scroller.append(below);
+    await new Promise((resolve) => setTimeout(resolve, 400));
+  });
+  const nestedPlot = desktopPage.locator(".nsewdrag");
+  const nestedRect = await nestedPlot.boundingBox();
+  await desktopPage.mouse.move(
+    nestedRect.x + nestedRect.width / 2,
+    nestedRect.y + 100,
+  );
+  await desktopPage.mouse.wheel(0, 50);
+  await wait(200);
+  check(
+    (await desktopPage.locator("#gesture-lock").isVisible()) &&
+      (await desktopPage
+        .locator("#dashboard-scroll")
+        .evaluate((el) => el.scrollTop > 0)),
+    "scrolling inside a shadow-root dashboard shows Unlock",
+  );
+  await desktop.close();
+  await page.evaluate(() => {
+    document.body.style.minHeight = "";
+    window.scrollTo(0, 0);
+  });
+
   check(errors.length === 0, "no page errors", errors.join("; "));
 
   // --- Speed, with the CPU slowed down 4x like a phone
@@ -733,7 +1141,7 @@ try {
       ),
     ],
   ]) {
-    await mount({});
+    await mountLegacy({});
     const t0 = Date.now();
     await drag(path, 0);
     const ms = (Date.now() - t0) / 40;

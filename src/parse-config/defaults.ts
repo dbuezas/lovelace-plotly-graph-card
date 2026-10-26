@@ -129,7 +129,12 @@ const defaultYamlOptional: {
   },
   layout: {
     height: DEFAULT_PLOT_HEIGHT,
-    dragmode: "pan",
+    // @ts-expect-error Runtime defaults are evaluated before reaching Plotly.
+    dragmode: pureDefault(({ get }) =>
+      get("config.displayModeBar") === false || get("config.staticPlot")
+        ? "pan"
+        : false,
+    ),
     xaxis: {
       autorange: false,
       type: "date",
