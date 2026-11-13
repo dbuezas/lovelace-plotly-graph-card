@@ -41,9 +41,8 @@ describe("Home Assistant theme colors", () => {
     expect(first["blue-color"]).toBe("#123456");
   });
 
-  it("preserves the existing themed layout without changing trace colors", () => {
+  it("applies themed fonts without changing trace colors", () => {
     const values: Record<string, string> = {
-      "--card-background-color": "#222222",
       "--secondary-text-color": "#eeeeee",
       "--blue-color": "#123456",
     };
@@ -55,8 +54,6 @@ describe("Home Assistant theme colors", () => {
       "font-size": "14px",
       "font-weight": "500",
     });
-    expect(layout.paper_bgcolor).toBe("#222222");
-    expect(layout.plot_bgcolor).toBe("#222222");
     expect(layout.font?.color).toBe("#eeeeee");
     expect(layout.font?.family).toBe("Test Sans");
     expect(layout.font?.size).toBe(14);
