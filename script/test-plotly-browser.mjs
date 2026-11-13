@@ -653,8 +653,16 @@ try {
     customElements.define(
       "ha-card",
       class extends HTMLElement {
-        connectedCallback() {
-          this.style.display = "block";
+        constructor() {
+          super();
+          this.attachShadow({ mode: "open" }).innerHTML = `
+            <style>
+              :host {
+                display: block;
+                background: var(--ha-card-background, var(--card-background-color, white));
+              }
+            </style>
+            <slot></slot>`;
         }
       },
     );
@@ -876,6 +884,55 @@ try {
     "theme colors resolve through $ex/$fn and update on render",
   );
   results.results.push("theme colors remain available with ha_theme disabled");
+  await page.evaluate(async () => {
+    const card = document.getElementById("card-under-test");
+    const config = {
+      ...card.config,
+      ha_theme: true,
+      title: "Theme background",
+    };
+    const firstBackground = "rgba(10, 10, 10, 0.4)";
+    const nextBackground = "rgba(245, 245, 245, 0.4)";
+    const transparent = "rgba(0, 0, 0, 0)";
+    const background = (element) => getComputedStyle(element).backgroundColor;
+    const render = async (options) => {
+      await card.setConfig(options);
+      await card.plot({ should_fetch: false });
+      if (card.errorMsgEl.textContent)
+        throw new Error(card.errorMsgEl.textContent);
+    };
+    card.style.setProperty("--ha-card-background", firstBackground);
+    card.style.setProperty("--card-background-color", "rgba(25, 25, 25, 0.9)");
+    await render(config);
+    if (
+      background(card.cardEl) !== firstBackground ||
+      background(card.titleEl) !== transparent ||
+      background(card.contentEl.querySelector(".main-svg")) !== transparent ||
+      Number(card.contentEl.querySelector(".bglayer .bg").style.fillOpacity) !==
+        0
+    )
+      throw new Error("Plotly obscures the native card background");
+    card.style.setProperty("--ha-card-background", nextBackground);
+    if (background(card.cardEl) !== nextBackground)
+      throw new Error("The card background did not follow the theme change");
+    await render({
+      ...config,
+      layout: { paper_bgcolor: "#112233", plot_bgcolor: "#445566" },
+    });
+    if (
+      background(card.titleEl) !== "rgb(17, 34, 51)" ||
+      background(card.contentEl.querySelector(".main-svg")) !==
+        "rgb(17, 34, 51)" ||
+      card.contentEl.querySelector(".bglayer .bg").style.fill !==
+        "rgb(68, 85, 102)"
+    )
+      throw new Error("Explicit Plotly backgrounds were overridden");
+    card.style.removeProperty("--ha-card-background");
+    card.style.setProperty("--card-background-color", "white");
+  });
+  results.results.push(
+    "theme background follows ha-card without overriding explicit plot colors",
+  );
   const barColors = await page.evaluate(async () => {
     const card = document.getElementById("card-under-test");
     const bar = { entity: "", type: "bar", x: [1, 2], y: [1, 2] };

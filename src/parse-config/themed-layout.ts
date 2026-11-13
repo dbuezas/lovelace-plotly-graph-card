@@ -67,8 +67,9 @@ export default function getThemedLayout(
   haTheme: HATheme,
 ): Partial<Plotly.Layout> {
   return {
-    paper_bgcolor: haTheme["card-background-color"],
-    plot_bgcolor: haTheme["card-background-color"],
+    // Let ha-card paint the theme background once, including translucent themes.
+    paper_bgcolor: "rgba(0,0,0,0)",
+    plot_bgcolor: "rgba(0,0,0,0)",
     font: {
       color: haTheme["secondary-text-color"],
       family: haTheme["font-family"] || undefined,

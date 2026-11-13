@@ -1350,7 +1350,12 @@ Anything from https://plotly.com/javascript/reference/layout/.
 
 ### Home Assistant theming:
 
-Toggle Home Assistant theme colors and fonts:
+With `ha_theme` enabled (the default), Plotly's backgrounds are transparent so
+the native Home Assistant card background shows through, including translucent
+themes. Set `layout.paper_bgcolor` or `layout.plot_bgcolor` to override the
+corresponding Plotly background.
+
+The following theme values are available in `css_vars`:
 
 - card-background-color
 - primary-background-color

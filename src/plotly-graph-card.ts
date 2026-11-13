@@ -136,16 +136,11 @@ export class PlotlyGraph extends HTMLElement {
               display: block;
               overflow: hidden;
               position: relative;
-              background: transparent;
               width: 100%;
               height: calc(100% - 5px);
               direction: ltr;
             }
             ha-card.loading {
-              background: var(
-                --ha-card-background,
-                var(--card-background-color, var(--primary-background-color))
-              );
               height: auto;
               min-height: var(--plotly-loading-height, ${DEFAULT_PLOT_HEIGHT}px);
             }
@@ -219,7 +214,6 @@ export class PlotlyGraph extends HTMLElement {
             }
             ha-card > #title{
               text-align: center;
-              background: var(--card-background-color);
               color: var(--secondary-text-color);
               margin: 0;
               padding-top: 10px;
@@ -724,9 +718,7 @@ export class PlotlyGraph extends HTMLElement {
         );
       }
       this.titleEl.innerText = this.parsed_config.title || "";
-      if (layout.paper_bgcolor) {
-        this.titleEl.style.background = layout.paper_bgcolor as string;
-      }
+      this.titleEl.style.background = (layout.paper_bgcolor as string) ?? "";
       // Plotly is only downloaded once a card is drawn
       let Plotly: typeof import("./plotly").default;
       let plotlyModule: typeof import("./plotly");

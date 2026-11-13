@@ -29,7 +29,17 @@ try {
     };
     const frame = () => new Promise(requestAnimationFrame);
     const realReact = Plotly.react;
-    customElements.define("ha-card", class extends HTMLElement {});
+    customElements.define(
+      "ha-card",
+      class extends HTMLElement {
+        constructor() {
+          super();
+          this.attachShadow({ mode: "open" }).innerHTML = `
+            <style>:host { background: var(--ha-card-background); }</style>
+            <slot></slot>`;
+        }
+      },
+    );
     const makeCard = async (height) => {
       const card = new PlotlyGraph();
       // Exercise the actual render path explicitly, without observer races.
@@ -82,8 +92,8 @@ try {
         "Loader visible",
       );
       check(
-        getComputedStyle(card.cardEl).backgroundColor === "rgba(0, 0, 0, 0)",
-        "Card background not transparent after loading",
+        getComputedStyle(card.cardEl).backgroundColor === "rgb(240, 241, 242)",
+        "HA background lost after loading",
       );
       check(card.isInternalRelayout === 0, "Relayout guard remained set");
     };
